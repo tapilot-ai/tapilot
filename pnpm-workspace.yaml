@@ -1,0 +1,11 @@
+packages:
+  - packages/android-accessibility
+
+allowBuilds:
+  core-js: true
+  sharp: true
+
+minimumReleaseAgeExclude:
+  - '@midscene/core@1.12.9'
+  - '@midscene/shared@1.12.9'
+  - '@midscene/test@1.12.9'

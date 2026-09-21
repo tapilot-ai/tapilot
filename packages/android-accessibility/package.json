@@ -1,0 +1,56 @@
+{
+  "name": "@tapilot/android-accessibility",
+  "version": "0.1.0",
+  "description": "Android AccessibilityService device adapter for Midscene",
+  "license": "MIT",
+  "author": "quanru (https://github.com/quanru)",
+  "homepage": "https://github.com/quanru/tapilot/tree/main/packages/android-accessibility#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/quanru/tapilot.git",
+    "directory": "packages/android-accessibility"
+  },
+  "bugs": {
+    "url": "https://github.com/quanru/tapilot/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "main": "./dist/lib/index.js",
+  "module": "./dist/es/index.mjs",
+  "types": "./dist/types/src/index.d.ts",
+  "files": ["dist", "README.md"],
+  "exports": {
+    ".": {
+      "types": "./dist/types/src/index.d.ts",
+      "import": "./dist/es/index.mjs",
+      "require": "./dist/lib/index.js"
+    },
+    "./protocol": {
+      "types": "./dist/types/src/protocol.d.ts",
+      "import": "./dist/es/protocol.mjs",
+      "require": "./dist/lib/protocol.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "protocol": ["./dist/types/src/protocol.d.ts"]
+    }
+  },
+  "scripts": {
+    "build": "rslib build",
+    "build:watch": "rslib build --watch --no-clean",
+    "test": "rstest"
+  },
+  "dependencies": {
+    "@midscene/core": "1.12.9"
+  },
+  "devDependencies": {
+    "@rslib/core": "^0.18.3",
+    "@rstest/core": "0.11.5",
+    "@types/node": "^18.0.0",
+    "typescript": "^5.8.3"
+  },
+  "license": "MIT"
+}

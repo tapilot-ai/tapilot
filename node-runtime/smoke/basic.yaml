@@ -1,0 +1,5 @@
+cases:
+  - name: Embedded Node runtime executes Test Runner YAML
+    steps:
+      - runtime.echo:
+          message: hello from Android

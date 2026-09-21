@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Tapilot robot tap logo">
+  <!-- A light, flat robot mark: solid fills and one thin outline system. -->
+  <g stroke="#34405E" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M512 278V210" fill="none" stroke-width="20"/>
+    <circle cx="512" cy="174" r="38" fill="#6EE7B7" stroke-width="20"/>
+
+    <rect x="138" y="426" width="92" height="196" rx="46" fill="#2DD4D9" stroke-width="20"/>
+    <rect x="794" y="426" width="92" height="196" rx="46" fill="#2DD4D9" stroke-width="20"/>
+
+    <rect x="190" y="278" width="644" height="468" rx="178" fill="#FFFFFF" stroke-width="20"/>
+    <rect x="250" y="344" width="524" height="332" rx="132" fill="#EEF0FF" stroke-width="18"/>
+
+    <path d="M358 494c22-42 76-42 98 0M546 494c22-42 76-42 98 0" fill="none" stroke="#5145CD" stroke-width="24"/>
+
+    <circle cx="656" cy="590" r="62" fill="none" stroke="#6EE7B7" stroke-width="22"/>
+    <path d="M650 566l24 118 29-34 45 55 38-32-45-55 42-20z" fill="#FFFFFF" stroke-width="16"/>
+  </g>
+</svg>

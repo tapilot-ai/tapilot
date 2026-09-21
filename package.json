@@ -1,0 +1,45 @@
+{
+  "name": "tapilot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "On-device Android visual automation client powered by AccessibilityService and Midscene.",
+  "license": "MIT",
+  "author": "quanru (https://github.com/quanru)",
+  "homepage": "https://github.com/quanru/tapilot#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/quanru/tapilot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/quanru/tapilot/issues"
+  },
+  "keywords": [
+    "android",
+    "accessibility",
+    "automation",
+    "midscene",
+    "on-device",
+    "ai-agent"
+  ],
+  "type": "module",
+  "scripts": {
+    "build": "rsbuild build",
+    "build:adapter": "pnpm --filter @tapilot/android-accessibility build",
+    "build:android": "pnpm run build:adapter && pnpm run build && pnpm run runtime:bundle && pnpm run runtime:node && ./gradlew assembleDebug",
+    "runtime:bundle": "node scripts/bundle-node-runtime.mjs",
+    "runtime:doctor": "node build/node-runtime-bundle/runner.mjs doctor",
+    "runtime:node": "bash scripts/fetch-node-runtime.sh",
+    "dev": "rsbuild dev",
+    "test": "rstest"
+  },
+  "dependencies": {
+    "@lobehub/icons-static-svg": "^1.95.0",
+    "@tapilot/android-accessibility": "workspace:*"
+  },
+  "devDependencies": {
+    "@rsbuild/core": "^1.6.15",
+    "@rsbuild/plugin-node-polyfill": "1.4.2",
+    "@rstest/core": "0.11.5",
+    "typescript": "^5.8.3"
+  }
+}

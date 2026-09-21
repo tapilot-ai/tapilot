@@ -1,0 +1,14 @@
+.android-sdk/
+.cache/
+.gradle/
+app/build/
+artifacts/
+app/src/main/assets/node-runtime-bundle.zip
+app/src/main/assets/node-runtime-manifest.json
+build/
+dist/
+!packages/**/dist/
+!packages/**/dist/**
+local.properties
+midscene_run/
+node_modules/

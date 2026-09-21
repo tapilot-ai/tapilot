@@ -1,0 +1,166 @@
+# Tapilot
+
+[English](README.md) · **简体中文**
+
+这是一个基于 `AccessibilityService` 的实验性 Android 端侧客户端。运行时不依赖
+ADB、Shizuku 或 root。
+
+每次任务开始时，原生服务会查询可见应用的名称、包名和启动组件，以及设备可用的系统动作。
+应用清单会放进模型的 Launch 动作描述，帮助它识别中英文应用名称，避免猜包名。
+应用名称只作为数据；有多个候选时应询问用户。安装变化会在下次任务刷新，不持续轮询。
+
+除点击、滑动、缩放、输入、返回、主页、最近应用和启动应用外，还提供：
+
+- 通知栏、快捷设置、分屏切换、锁屏、电源菜单、截图保存，按设备支持情况开放。
+  截图时隐藏助手悬浮效果，以 PNG 保存到相册的 `Pictures/Tapilot`，写入完成才返回成功。
+  系统保护的页面可能禁止截图。
+- MultiTouchGesture：1–10 根手指同时执行路径，支持长按后不松手连续拖拽。
+  Rotate 和 TwoFingerPan 分别用于双指旋转和平移。
+- EditText：选择文字（UTF-16 偏移）、替换选区、复制、剪切、粘贴，以及键盘的搜索/发送/完成。
+  需要先聚焦输入框，且目标应用支持相应操作。
+
+不可用的系统动作不会出现在动作列表，执行时也会再次检查。越界坐标和无效选区会明确报错。
+划掉最近应用卡片不是强制停止，不能用“清理全部”代替关闭一个应用。
+锁屏、电源操作和提交文字必须符合用户意图。已添加适配器与原生测试；不同厂商的手势和系统界面仍需真机验证。
+
+Android 14 及以上，模型截图会尝试直接截取单个全屏应用窗口，让四周特效继续播放。
+出现系统栏、键盘、弹窗、分屏、坐标不确定或截图失败时，自动回退到短暂隐藏悬浮层后截全屏。
+窗口截图失败后暂停尝试 30 秒；成功的图片也必须与屏幕尺寸、方向和窗口 ID 匹配，避免点击偏移。
+用户主动保存到相册的截图始终使用全屏截图。这是尽力而为策略，不保证每台设备、每个页面都不断动画。
+
+Tapilot 采用 `lifeos.md.tapilot` 应用 ID。使用相同签名密钥打出的 APK 可覆盖更新
+已安装的 Tapilot 并保留应用数据；更换签名密钥则需要重新安装。
+
+## 构建
+
+需要 JDK 17、Android SDK Platform 35、对应 Build Tools、Node 和 pnpm。
+
+在本目录中构建：
+
+```sh
+pnpm install
+pnpm run build
+pnpm run runtime:bundle
+pnpm run runtime:node
+./gradlew assembleDebug
+```
+
+也可以使用组合命令：
+
+```sh
+pnpm run build:android
+```
+
+Debug APK 输出到 `app/build/outputs/apk/debug/app-debug.apk`。
+`runtime:bundle` 会生成不含符号链接的自包含 Node 依赖包，并在打包前真实执行一个
+`@midscene/test` YAML 冒烟项目。`runtime:node` 会下载锁定版本的 Termux arm64 包、
+校验 SHA-256，并修补 ELF 依赖以便 APK 加载。生成的依赖包和原生二进制均属于构建产物，
+不会提交到仓库。
+`packages/android-accessibility`（以
+[`@tapilot/android-accessibility`](https://www.npmjs.com/package/@tapilot/android-accessibility)
+名义发布）是本社区项目自行维护、可独立构建的设备适配包
+（`pnpm run build:adapter`）。它只包含设备动作和原生设备协议；WebView 宿主、
+模型请求、报告管理和应用设置留在 `runtime/`。Core、Shared、Test 直接使用兼容的
+Midscene 上游正式发布版本，独立仓库不再保存或修改这些包的源码快照。
+
+## 内嵌 Node 运行时
+
+APK 内置 arm64 版 Node.js 24 和打包后的 `@midscene/test` 运行时。Android 会将带版本
+指纹的 JavaScript 依赖包解压到应用私有目录，并以受监管的子进程启动 Node。Android
+与 Node 通过标准输入/输出上的结构化 JSON RPC 通信，不开放本地网络端口。只有白名单内
+的模型环境变量会传给子进程，同时最多运行一个 Runner 进程。
+
+设置页的运行时检测会同时验证 Node 可执行文件以及 Test Runner 模块是否能加载。构建
+阶段还会执行普通 Test Runner 冒烟用例，以及连接模拟 Android device interface 的桥接
+冒烟用例。设置页中的自然语言任务会转换为单步 `aiAct` YAML，用户输入的 YAML 则保持
+原样；两者都由设备内的 `@midscene/test` 和 `@midscene/core` 执行。WebView 只负责配置、
+发起/停止任务和打开报告，不再承载 Agent。
+
+## 首次使用
+
+1. 打开应用，按照顶部引导进入辅助功能设置。
+2. 启用 **Tapilot 设备控制**，然后返回应用；启用后页面左上角只显示绿色状态点。
+3. 配置一个兼容 OpenAI 接口的 HTTPS 视觉模型。
+4. 输入任务并点击 **开始执行**。
+
+界面语言默认跟随 Android 系统，也可从 App 统一风格的自绘弹层中固定为简体中文或
+English。语言选择会同时作用于 WebView 设置页、原生辅助功能引导和任务状态通知，
+并在应用重启后保留。自然语言输入框默认保持紧凑，聚焦后会自动增高。YAML 和 Test
+Runner 相关能力只有开启“高级模式”后才出现，YAML 编辑框仍可展开为全屏。
+辅助服务的连接和断开会实时通知设置页；系统重启服务或服务稍晚完成连接时，无需重新进入
+页面，顶部会先显示正在重连，然后自动切换为绿色状态点。升级时必须保持 application ID、
+签名密钥和辅助服务组件名不变。本地测试不要执行
+`adb shell am force-stop lifeos.md.tapilot`：Android 会把 force-stop 视为明确停用该包的辅助服务。
+应使用 `adb install -r` 覆盖安装后正常启动。
+
+辅助服务的生命周期完全由 Android 管理。只要授权仍处于开启状态，系统会在需要时重新
+绑定服务；应用不会为了“假保活”常驻一个无意义的前台服务。对于后台限制较严格的手机，
+请将 Tapilot 的电池用量设为“不受限制”，加入厂商提供的后台白名单，并避免在系统管家中
+手动清理。用户主动关闭、强制停止或厂商系统直接撤销的权限，应用无法静默恢复。
+
+可选的全局悬浮球通过无障碍 Overlay 实现。只有 Tapilot 不在前台且当前没有任务运行时才会
+显示；单击会回到自然语言输入框，拖动后会保存新的屏幕位置。
+
+## 执行状态
+
+任务执行时，应用通过不拦截触摸的无障碍 Overlay 在完整显示区域四周显示动态光效，
+包含状态栏、导航栏和刘海/挖孔区域，不再显示右侧悬浮按钮。每次截取供视觉模型分析的
+屏幕前，原生层会先隐藏光效，等待窗口刷新后再截图，因此光效不会进入 Midscene 的模型
+输入。开始、成功、失败和停止状态也会通过
+Toast、无障碍播报和前台服务通知提示。前台服务会在任务运行期间提高进程优先级，降低
+切换到目标应用后 WebView runtime 被系统回收的概率。
+
+## 调试报告
+
+输入框右下角提供发送按钮，键盘“发送”开始执行，Shift+Enter 换行。卡片标题旁的图标仅作装饰。
+回放页菜单支持“分享 HTML”“保存 HTML 文件到…”和保存到下载目录。
+Export Video 会将 WebM 视频保存到系统视频库的 **Movies/Tapilot** 目录。
+部分相册不显示 WebM 视频，仍可在文件管理器中找到文件。
+失败任务即使只有 Test Runner 报告，也会保留查看入口。
+关闭指定应用卡片时，助手优先调用系统最近任务动作打开后台列表；划掉卡片不等于系统强行停止应用。
+
+每次由 Midscene runtime 完整结束的任务，无论成功还是失败，结束后都会生成
+一份内嵌截图的单文件 HTML 报告。结果卡片中的 **查看报告** 可直接打开最新报告，
+用于回看模型规划、动作轨迹和错误上下文。报告由设备内 Node Test Runner 使用 Midscene
+标准报告器直接写到本次运行目录，Android 再通过临时文件和原子重命名导入报告仓库，
+不再把大段 HTML 传回 WebView；其他应用不能直接访问。
+报告头部的 Midscene 图片由 APK 内置资源提供，即使设备无法访问图片 CDN 也不会显示破图。
+
+报告可能包含任务指令、模型输出和操作过程中的屏幕截图。清除应用数据或卸载应用会一并
+删除报告。结果卡片会打开最近一次报告，“历史”中可以查看更早的任务及其报告。删除历史
+记录前会二次确认，并同时删除关联的 HTML 文件。私有目录最多保留 20 份、合计 200 MB
+报告，并始终保留最新一份。超出限制的旧报告会自动删除，未完成的报告会中止并清理。
+
+## 动作能力
+
+运行时复用 Midscene JS SDK 的标准移动端 Action，并通过原生 Bridge 执行 `Tap`、
+`DoubleClick`、`LongPress`、`DragAndDrop`、`Swipe`、`Pinch`、`Scroll`、
+`PullGesture`、`Input`、`ClearInput`、`KeyboardPress`、`CursorMove`、系统返回/主页/
+最近任务，以及 `Launch`。普通 Android 应用无法获得 ADB 的 shell 和强停其他应用权限，
+因此无 Shizuku、ADB 或 root 模式下不提供 `RunAdbShell` 和 `Terminate`。
+
+每个模型预设分别维护自己的配置。API Key 会先使用 Android Keystore 密钥加密，再写入
+应用私有配置；其他非敏感模型字段保存在 WebView 的应用私有存储中。任务完成或应用重启
+不会清空配置。“恢复默认”会清除当前预设的 API Key，清除应用数据或卸载应用则会删除
+全部预设。模型请求由 Android
+原生层发送。模型请求使用独立的 165 秒 Bridge 超时（覆盖原生 30 秒连接和 120 秒读取
+超时），任务中止时会同时断开对应的原生网络连接。当前传输层会先完整缓冲流式响应，
+再转交 JavaScript runtime；增量原生流式传输属于后续优化项。
+
+自然语言和 YAML 都复用设备内 Node.js 中现有的 Midscene Agent、Test Runner 与标准报告
+能力，不重新实现规划或报告逻辑。Android 侧只实现 device interface 和进程/RPC 生命周期。
+YAML 支持 Test Runner 通用节点，以及 `launch`、`home`、`back`、`recentApps` 这些 Android
+直连节点；受应用沙箱限制，仍不提供 shell 和强停任意应用。
+
+文本输入依赖目标控件提供可编辑无障碍节点；Canvas、游戏或自绘输入控件可能拒绝输入。
+这是实验性版本，需要 Android 11 或更高版本。
+
+## 参与贡献
+
+欢迎参与贡献。开发环境、测试要求与提交流程请见 [CONTRIBUTING.md](CONTRIBUTING.md)，
+参与即表示同意遵守[行为准则](CODE_OF_CONDUCT.md)。安全漏洞请按
+[SECURITY.md](SECURITY.md) 私下报告，不要提交公开 issue。
+
+## 许可证
+
+[MIT](LICENSE)

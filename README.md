@@ -1,0 +1,219 @@
+# Tapilot
+
+**English** · [简体中文](README.zh.md)
+
+Experimental on-device Android client powered by `AccessibilityService`. It
+does not require ADB, Shizuku, or root while running.
+
+Tapilot ships under the `lifeos.md.tapilot` application ID. An APK signed with
+the same key can update an existing installation without clearing its app data;
+changing the signing key requires a new installation.
+
+## Build
+
+Requirements:
+
+- JDK 17
+- Android SDK platform 35 and build tools
+- Node and pnpm
+
+From this directory:
+
+```sh
+pnpm install
+pnpm run build
+pnpm run runtime:bundle
+pnpm run runtime:node
+./gradlew assembleDebug
+```
+
+Or run the combined script:
+
+```sh
+pnpm run build:android
+```
+
+The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
+`runtime:bundle` creates a self-contained, symlink-free Node module bundle and
+runs a real `@midscene/test` YAML smoke project before packaging it.
+`runtime:node` downloads pinned Termux arm64 packages, verifies their SHA-256
+checksums, and patches the ELF dependencies for APK loading. Generated bundles
+and native binaries are build artifacts and are not committed.
+`packages/android-accessibility` (published as
+[`@tapilot/android-accessibility`](https://www.npmjs.com/package/@tapilot/android-accessibility))
+is this community project's independently buildable device adapter
+(`pnpm run build:adapter`). Its public package contains
+the device actions and native device protocol; the WebView host, model requests,
+report management, and app settings live in `runtime/`. Core, Shared, and Test
+are consumed directly from the compatible upstream Midscene release. The
+standalone repository does not carry or patch snapshots of those packages.
+
+## Embedded Node runtime
+
+The APK includes Node.js 24 for arm64 and a bundled `@midscene/test` runtime.
+Android extracts the versioned JavaScript bundle into app-private storage and
+starts Node as a supervised child process. Android and Node communicate through
+structured JSON RPC over standard input and output; no local network port is
+opened. Only allow-listed model environment variables are forwarded to the
+process, and one runner process may be active at a time.
+
+The settings page runtime check verifies both the Node executable and that the
+Test Runner module can be loaded. The bundled build executes a regular Test
+Runner smoke case and a bridge smoke case against a simulated Android device
+interface. Natural-language tasks are converted to a one-step `aiAct` YAML
+case, while user YAML is kept as entered. Both run through the on-device
+`@midscene/test` and `@midscene/core`. The WebView only handles configuration,
+start/stop controls, and report navigation; it no longer hosts the Agent.
+
+## First run
+
+At task start the native service queries visible launcher entries (label,
+package and component) and available system actions. The launcher catalogue is
+included in the model's Launch action description, so it can resolve localized
+app names without guessing package names. App labels are data, not instructions;
+ambiguous requests should be clarified. Installation changes are picked up on
+the next task, not by continuous polling.
+
+Beyond tap, swipe, pinch, input, Back/Home/Recents and Launch, the adapter provides:
+
+- Notification shade, Quick Settings, split-screen toggle, lock screen, power
+  menu and screenshot saving where supported. PNG screenshots are saved to the
+  gallery under `Pictures/Tapilot` with assistant overlays hidden. Saving must
+  finish before the action succeeds; secure screens may reject capture.
+- MultiTouchGesture: 1–10 simultaneous paths, including long-press before a
+  continuous drag. Rotate and TwoFingerPan cover rotation and translation.
+- EditText: selection (UTF-16 offsets), selection replacement, copy/cut/paste and
+  the keyboard Search/Send/Done action. Requires a compatible focused text field.
+
+Unavailable system actions are omitted and checked again at execution. Invalid
+coordinates/ranges fail explicitly. Dismissing a recent-app card is not force-stop;
+never clear all apps when asked to dismiss one. Locking, power controls and text
+submission require user intent. Adapter/native tests cover dispatch and validation;
+OEM-specific gesture/system behavior still requires physical-device verification.
+
+On Android 14+, model screenshots opportunistically capture a single full-screen
+application window without hiding the animated edge effect. Visible system bars,
+keyboards, dialogs, split-screen, uncertain geometry or capture errors use the
+full-display fallback (temporarily hide overlays). Failed window attempts back off
+for 30 seconds. Window images are accepted only with matching display dimensions,
+orientation and window ID, keeping touch coordinates unchanged. User-requested
+gallery screenshots always capture the full display. This is best effort, not a
+guarantee of uninterrupted effects on every device or page.
+
+1. Open the app and follow the setup card into Accessibility settings.
+2. Enable **Tapilot device control** and return. Once enabled, only a green
+   status dot remains at the top left.
+3. Configure an HTTPS OpenAI-compatible vision model.
+4. Enter a task and tap **Start**.
+
+The interface follows the Android system language by default. Simplified
+Chinese and English can also be selected explicitly from the app-styled
+language sheet. The choice applies to the WebView settings, native accessibility
+setup, and task notifications, and is retained across app restarts. The natural
+language editor starts compact and grows when focused. YAML and Test Runner
+controls are available only when Advanced mode is enabled; the YAML editor can
+still expand to full screen.
+Accessibility service connections and disconnections are pushed to the page in
+real time. If Android restarts the service or binds it after the page resumes,
+the setup card first shows a reconnecting state, then changes to the green
+status dot without reopening the app. Keep the application ID, signing key, and
+accessibility service component stable across upgrades. During local testing,
+do not run `adb shell am force-stop lifeos.md.tapilot`: Android treats a
+force-stop as an explicit request to disable the package's accessibility
+service. Use `adb install -r` followed by a normal launch instead.
+
+Android exclusively manages the accessibility-service lifecycle. When the
+permission remains enabled, Android binds the service again as needed; the app
+does not run a fake permanent foreground service. On aggressive OEM systems,
+set Tapilot battery usage to **Unrestricted**, add it to any vendor-specific
+background allowlist, and avoid task-manager cleanup. The app cannot silently
+restore a permission removed by the user, a force-stop, or the device vendor.
+
+The optional global floating ball is backed by an accessibility overlay. It is
+shown only while Tapilot is outside the foreground and no task is running.
+Tapping it returns to the natural-language field; dragging it changes its saved
+screen position.
+
+## Execution status
+
+While a task is active, a touch-through Accessibility overlay renders an
+animated effect around the complete display perimeter, including the status
+bar, navigation bar, and cutout area. There is no persistent right-side overlay
+button. Before each model screenshot, the native layer hides the edge effect
+and waits for the window to settle, so the effect is excluded from Midscene's
+visual input. Start, success, failure, and cancellation are also
+reported through toasts and accessibility announcements. They are also
+reflected in a foreground-service notification. The foreground service raises
+the process priority while a task is active, reducing the chance that Android
+reclaims the WebView runtime after switching to the target app.
+
+## Debug reports
+
+The input field has a send button in its bottom-right corner. The keyboard Send
+action starts the task; Shift+Enter inserts a newline. The heading icon is decorative.
+The replay toolbar offers **Share HTML**, **Save HTML file to…**, and a Downloads shortcut.
+Export Video saves WebM video to the system video library under **Movies/Tapilot**.
+Gallery support for WebM varies; the file is also available in the file manager.
+Failed tasks retain a report link even when only a Test Runner report is available.
+The assistant uses the system recent-apps action to open the task overview before
+dismissing a requested app card. Removing a card is not a system force-stop.
+
+Every task that completes in the Midscene runtime produces a self-contained
+HTML report after success or failure. Tap **View report** on the result card to
+inspect the latest model plan, action trace,
+screenshots, and error context. The on-device Node Test Runner writes the
+standard Midscene report directly into the run directory. Android then imports
+it into the report repository through a temporary file and atomic rename, so a
+large HTML document no longer needs to cross the WebView bridge.
+The report header uses the logo bundled in the APK, so it remains intact when
+the device cannot reach the image CDN.
+
+Reports may contain task prompts, model output, and screenshots captured during
+execution. Clearing app data or uninstalling the app removes them. The result
+card opens the latest report, while **History** lists earlier tasks and their
+reports. Deleting a history entry asks for confirmation and removes its HTML
+files. Private storage retains at most 20 reports and 200 MB; the newest report
+is always kept. Older reports are removed automatically, and incomplete drafts
+are aborted and cleaned up.
+
+## Action support
+
+The runtime reuses the standard Midscene JS SDK mobile actions. The native
+bridge implements `Tap`, `DoubleClick`, `LongPress`, `DragAndDrop`, `Swipe`,
+`Pinch`, `Scroll`, `PullGesture`, `Input`, `ClearInput`, `KeyboardPress`,
+`CursorMove`, Android back/home/recent-apps, and `Launch`. A regular Android app
+cannot obtain ADB shell access or force-stop arbitrary apps, so `RunAdbShell`
+and `Terminate` are intentionally unavailable without Shizuku, ADB, or root.
+
+Each model preset keeps its own configuration. API Keys are encrypted with an
+Android Keystore key before being written to app-private preferences; non-secret
+model fields remain in app-private WebView storage. They remain available after
+tasks and app restarts. **Restore defaults** clears the selected preset's API
+Key, while clearing app data or uninstalling removes every preset.
+Model HTTP requests are sent by the native Android layer. They use a separate
+165-second bridge budget over the native 30-second connect and 120-second read
+timeouts, and aborting a task disconnects its active native request. The current
+transport buffers a complete streaming response before forwarding it to the JavaScript runtime;
+incremental native streaming is a follow-up optimization.
+
+Natural-language and YAML runs reuse the existing Midscene Agent, Test Runner,
+and standard reporter inside on-device Node.js. Planning and report generation
+are not reimplemented; Android owns only the device interface and process/RPC
+lifecycle. YAML supports the common Test Runner nodes plus the direct Android
+nodes `launch`, `home`, `back`, and `recentApps`. Shell commands and force-stop
+remain unavailable under the regular app sandbox.
+
+Text input requires the target control to expose an editable accessibility
+node. Canvas, game, and custom-rendered inputs may reject it. This is an
+experimental build and requires Android 11 or newer.
+
+## Contributing
+
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) for
+the development setup, testing expectations, and pull request process, and
+note the [Code of Conduct](CODE_OF_CONDUCT.md). For vulnerability reports,
+follow [SECURITY.md](SECURITY.md) instead of opening a public issue.
+
+## License
+
+[MIT](LICENSE)

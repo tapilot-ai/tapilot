@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Tapilot robot visor logo">
+  <defs>
+    <linearGradient id="visor" x1="270" y1="390" x2="760" y2="700" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#35D5EA"/>
+      <stop offset="0.42" stop-color="#3D83F7"/>
+      <stop offset="0.74" stop-color="#7658F6"/>
+      <stop offset="1" stop-color="#C148F2"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="translate(535 420) rotate(92) scale(190 245)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFB09B" stop-opacity="0.92"/>
+      <stop offset="1" stop-color="#FFB09B" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- The generous transparent margin is intentional: Android launchers crop adaptive icons. -->
+  <path
+    d="M395 220h234c31 0 48 36 27 59l-86 92c-32 34-84 34-116 0l-86-92c-21-23-4-59 27-59Z"
+    fill="#FFFFFF"
+    stroke="#384250"
+    stroke-width="18"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M344 265c-95 26-164 105-181 204l-23 134c-17 100 40 198 135 232l76 27c104 37 218 37 322 0l76-27c95-34 152-132 135-232l-23-134c-17-99-86-178-181-204l-71 76c-52 56-142 56-194 0l-71-76Z"
+    fill="#FFFFFF"
+    stroke="#384250"
+    stroke-width="18"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M277 468c13-53 59-91 114-91h242c55 0 101 38 114 91l25 101c17 70-28 139-99 151l-80 14c-54 9-109 9-163 0l-80-14c-71-12-116-81-99-151l26-101Z"
+    fill="url(#visor)"
+    stroke="#384250"
+    stroke-width="18"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M277 468c13-53 59-91 114-91h242c55 0 101 38 114 91l25 101c17 70-28 139-99 151l-80 14c-54 9-109 9-163 0l-80-14c-71-12-116-81-99-151l26-101Z"
+    fill="url(#glow)"
+  />
+
+  <!-- A quiet tap ripple replaces the old oversized cursor. -->
+  <circle cx="642" cy="584" r="20" fill="#FFFFFF"/>
+  <path
+    d="M602 538a65 65 0 0 1 84 91"
+    fill="none"
+    stroke="#FFFFFF"
+    stroke-opacity="0.9"
+    stroke-width="17"
+    stroke-linecap="round"
+  />
+</svg>

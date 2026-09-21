@@ -1,0 +1,66 @@
+name: Bug report
+description: Report a problem with Tapilot
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report.
+        Security vulnerabilities must be reported privately — see
+        [SECURITY.md](https://github.com/quanru/tapilot/blob/main/SECURITY.md).
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear and concise description of the bug.
+      placeholder: What did you expect to happen, and what actually happened?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: The smallest reliable set of steps to reproduce the issue.
+      placeholder: |
+        1. Open Tapilot and ...
+        2. Start the task "..."
+        3. Observe ...
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device model
+      placeholder: e.g. Pixel 8
+    validations:
+      required: true
+  - type: input
+    id: android-version
+    attributes:
+      label: Android version
+      placeholder: e.g. Android 14
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: App version / commit
+      placeholder: e.g. main @ f36c8be
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or reports
+      description: Please paste log output or attach an exported report. Remove any API keys or personal information first.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission checklist
+      options:
+        - label: I searched existing issues and did not find a duplicate
+          required: true
+        - label: The issue is not a security vulnerability (those are reported privately)
+          required: true

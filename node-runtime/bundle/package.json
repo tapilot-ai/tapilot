@@ -1,0 +1,20 @@
+{
+  "name": "midscene-android-node-bundle",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@img/sharp-wasm32": "0.34.5",
+    "@tapilot/android-accessibility": "npm:@midscene/core@1.12.9",
+    "@midscene/core": "1.12.9",
+    "@midscene/shared": "1.12.9",
+    "@midscene/test": "1.12.9",
+    "esbuild": "0.23.1",
+    "tsx": "4.19.2"
+  },
+  "pnpm": {
+    "supportedArchitectures": {
+      "cpu": ["wasm32"],
+      "os": ["current"]
+    }
+  }
+}

@@ -1,0 +1,35 @@
+<resources>
+    <string name="app_name">Tapilot</string>
+    <string name="html_report_title">回放</string>
+    <string name="report_save_as">保存 HTML 文件到…</string>
+    <string name="video_saved">视频已保存到 Movies/Tapilot，可在相册或文件管理器中查看。</string>
+    <string name="video_save_failed">视频保存失败，请重试：%1$s</string>
+    <string name="navigate_back">返回</string>
+    <string name="report_more_actions">报告操作</string>
+    <string name="report_share">分享 HTML</string>
+    <string name="report_save_downloads">保存到下载目录</string>
+    <string name="report_open_external">使用其他应用打开</string>
+    <string name="report_delete">删除报告</string>
+    <string name="report_delete_title">删除这份报告？</string>
+    <string name="report_delete_description">这份 HTML 报告将从当前设备中永久删除。</string>
+    <string name="report_deleted">报告已删除</string>
+    <string name="report_delete_failed">报告删除失败</string>
+    <string name="report_load_failed">报告加载失败：%1$s</string>
+    <string name="report_load_failed_generic">WebView 无法加载本地报告。</string>
+    <string name="report_saved">已保存为 %1$s</string>
+    <string name="report_save_failed">报告保存失败</string>
+    <string name="cancel">取消</string>
+    <string name="accessibility_service_name">Tapilot 设备控制</string>
+    <string name="accessibility_description">允许你启动的 Tapilot 任务读取屏幕并执行点击、滑动、导航和文本输入。</string>
+    <string name="task_notification_channel">任务执行</string>
+    <string name="task_notification_channel_description">在 Tapilot 控制其他应用时保持任务运行</string>
+    <string name="task_notification_starting">Tapilot 正在准备任务</string>
+    <string name="task_notification_running">Tapilot 正在执行任务</string>
+    <string name="task_notification_finalizing">Tapilot 正在生成执行报告</string>
+    <string name="task_notification_succeeded">Tapilot 任务已完成</string>
+    <string name="task_notification_failed">Tapilot 任务执行失败</string>
+    <string name="task_notification_stopped">Tapilot 任务已停止</string>
+    <string name="task_notification_description">点击返回任务配置与执行结果</string>
+    <string name="task_notification_stop">停止</string>
+    <string name="floating_ball_accessibility_label">打开 Tapilot 任务输入框</string>
+</resources>

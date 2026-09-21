@@ -1,0 +1,35 @@
+<resources>
+    <string name="app_name">Tapilot</string>
+    <string name="html_report_title">Replay</string>
+    <string name="report_save_as">Save HTML file to…</string>
+    <string name="video_saved">Video saved to Movies/Tapilot. Open Gallery or Files to find it.</string>
+    <string name="video_save_failed">Could not save video. Please retry: %1$s</string>
+    <string name="navigate_back">Back</string>
+    <string name="report_more_actions">Report actions</string>
+    <string name="report_share">Share HTML</string>
+    <string name="report_save_downloads">Save to Downloads</string>
+    <string name="report_open_external">Open in another app</string>
+    <string name="report_delete">Delete report</string>
+    <string name="report_delete_title">Delete this report?</string>
+    <string name="report_delete_description">This HTML report will be permanently removed from this device.</string>
+    <string name="report_deleted">Report deleted</string>
+    <string name="report_delete_failed">Could not delete the report</string>
+    <string name="report_load_failed">Could not load the report: %1$s</string>
+    <string name="report_load_failed_generic">WebView could not load the local report.</string>
+    <string name="report_saved">Saved as %1$s</string>
+    <string name="report_save_failed">Could not save report</string>
+    <string name="cancel">Cancel</string>
+    <string name="accessibility_service_name">Tapilot device control</string>
+    <string name="accessibility_description">Allow Tapilot tasks you start to read the screen and perform taps, swipes, navigation, and text input.</string>
+    <string name="task_notification_channel">Task execution</string>
+    <string name="task_notification_channel_description">Keep Tapilot running while it controls other apps</string>
+    <string name="task_notification_starting">Tapilot is preparing the task</string>
+    <string name="task_notification_running">Tapilot is running the task</string>
+    <string name="task_notification_finalizing">Tapilot is generating the report</string>
+    <string name="task_notification_succeeded">Tapilot task completed</string>
+    <string name="task_notification_failed">Tapilot task failed</string>
+    <string name="task_notification_stopped">Tapilot task stopped</string>
+    <string name="task_notification_description">Tap to return to task configuration and results</string>
+    <string name="task_notification_stop">Stop</string>
+    <string name="floating_ball_accessibility_label">Open Tapilot task input</string>
+</resources>
