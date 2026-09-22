@@ -1,0 +1,53 @@
+name: Midscene Action smoke test
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/midscene-action-smoke.yml'
+      - 'midscene-scripts/**'
+      - 'runtime/**'
+      - 'rsbuild.config.ts'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  MIDSCENE_MODEL_API_KEY: ${{ secrets.MIDSCENE_MODEL_API_KEY }}
+  MIDSCENE_MODEL_BASE_URL: ${{ vars.MIDSCENE_MODEL_BASE_URL }}
+  MIDSCENE_MODEL_NAME: ${{ vars.MIDSCENE_MODEL_NAME }}
+  MIDSCENE_MODEL_FAMILY: ${{ vars.MIDSCENE_MODEL_FAMILY }}
+
+jobs:
+  smoke:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - run: corepack enable && corepack prepare pnpm@12.4.1 --activate
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Start Tapilot preview
+        run: |
+          python3 -m http.server 4173 --directory dist/runtime &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:4173/ && break
+            sleep 1
+          done
+      - name: Run Midscene Action from the public repository
+        uses: quanru/midscene-action@c7c339f66a6a73bf8655e7023c4b71cc572d1dc5
+        with:
+          yaml-files: midscene-scripts/smoke.yaml
+          preview-url: http://127.0.0.1:4173
+          max-cases: '1'
+          timeout-minutes: '8'
+          retries: '1'
+          install-browser-deps: 'false'
+          artifact-name: tapilot-midscene-report
+          retention-days: '7'
+          comment-identifier: tapilot-smoke

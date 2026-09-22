@@ -1,0 +1,7 @@
+web:
+  url: ${MIDSCENE_PREVIEW_URL}
+
+tasks:
+  - name: Tapilot home screen renders
+    flow:
+      - aiAssert: the page shows the "Tapilot" heading and a model configuration section
