@@ -98,6 +98,10 @@ const translations = {
     releaseToSend: '松开发送',
     releaseToCancel: '松开取消',
     slideUpToCancel: '上滑取消',
+    voiceListening: '正在录音',
+    releaseToTranscribe: '松开转写 · 上滑取消',
+    releaseToSendHint: '松开发送 · 上滑取消',
+    releaseToCancelHint: '松开取消',
     transcribing: '正在转写…',
     attachmentAdd: '添加照片或文件',
     attachmentRemove: '移除附件',
@@ -152,7 +156,7 @@ const translations = {
     taskInstruction: '想做的事',
     expandEditor: '全屏编辑',
     collapseEditor: '退出全屏',
-    taskPlaceholder: '发消息给 Tapilot',
+    taskPlaceholder: '长按语音输入',
     yamlHint: '支持 aiAct、aiTap、aiAssert、aiAsk、launch、home、back 等节点',
     start: '开始执行',
     runYaml: '执行 YAML',
@@ -301,6 +305,10 @@ const translations = {
     releaseToSend: 'Release to send',
     releaseToCancel: 'Release to cancel',
     slideUpToCancel: 'Slide up to cancel',
+    voiceListening: 'Recording',
+    releaseToTranscribe: 'Release to transcribe · Slide up to cancel',
+    releaseToSendHint: 'Release to send · Slide up to cancel',
+    releaseToCancelHint: 'Release to cancel',
     transcribing: 'Transcribing…',
     attachmentAdd: 'Add a photo or file',
     attachmentRemove: 'Remove attachment',
@@ -364,7 +372,7 @@ const translations = {
     taskInstruction: 'What you want done',
     expandEditor: 'Fullscreen',
     collapseEditor: 'Exit fullscreen',
-    taskPlaceholder: 'Message Tapilot',
+    taskPlaceholder: 'Hold to speak',
     yamlHint:
       'Supports aiAct, aiTap, aiAssert, aiAsk, launch, home, back, and more',
     start: 'Start',
@@ -2958,7 +2966,6 @@ runButton.addEventListener('click', async () => {
   }
   await stopActiveTask();
 });
-runButton.addEventListener('pointerdown', (event) => event.preventDefault());
 runningTaskStop.addEventListener('click', () => void stopActiveTask());
 
 conversationList.addEventListener('change', () => {
@@ -3044,9 +3051,11 @@ function setVoiceMode(enabled: boolean): void {
 voiceModeToggle.addEventListener('click', () =>
   setVoiceMode(!taskPanel.classList.contains('is-voice-mode')),
 );
-function voiceFeedback(message: string): void {
+function voiceFeedback(message: string, recording = false): void {
   voiceState.textContent = message;
   voiceState.hidden = !message;
+  voiceState.classList.toggle('is-recording', recording);
+  voiceState.classList.toggle('will-cancel', recording && voiceCancelOnRelease);
 }
 function beginVoiceRecording(event: PointerEvent, target: HTMLElement): void {
   if (running || voicePointerActive || voiceBridge) return;
@@ -3059,7 +3068,7 @@ function beginVoiceRecording(event: PointerEvent, target: HTMLElement): void {
   target.classList.add('is-recording');
   if (target === fields.task) fields.task.blur();
   voiceRecordLabel.textContent = t('releaseToSend');
-  voiceFeedback(t('slideUpToCancel'));
+  voiceFeedback(`${t('voiceListening')}\n${t(target === fields.task ? 'releaseToTranscribe' : 'releaseToSendHint')}`, true);
   const bridge = new WebViewNativeBridge();
   voiceBridge = bridge;
   voiceStart = (async () => {
@@ -3090,11 +3099,13 @@ function moveVoiceRecording(event: PointerEvent): void {
   voiceCancelOnRelease = cancel;
   voiceCaptureTarget?.classList.toggle('will-cancel', cancel);
   voiceRecordLabel.textContent = t(cancel ? 'releaseToCancel' : 'releaseToSend');
+  voiceFeedback(`${t('voiceListening')}\n${t(cancel ? 'releaseToCancelHint' : voiceCaptureTarget === fields.task ? 'releaseToTranscribe' : 'releaseToSendHint')}`, true);
 }
 async function finishVoiceRecording(): Promise<void> {
   if (!voicePointerActive || !voiceBridge) return;
   voicePointerActive = false;
   const target = voiceCaptureTarget;
+  voiceFeedback('');
   target?.classList.remove('is-recording', 'will-cancel');
   voiceCaptureTarget = undefined;
   voiceRecordLabel.textContent = t('holdToTalk');
