@@ -2141,6 +2141,7 @@ html[data-theme="dark"] pre {
   line-height: 24px;
   resize: none;
   overflow-y: auto;
+  touch-action: none;
 }
 .chat-app #task::placeholder { color: #9ca3af; }
 .chat-app #task.is-recording { border-color: #397cf0; background: var(--brand-bubble); }
