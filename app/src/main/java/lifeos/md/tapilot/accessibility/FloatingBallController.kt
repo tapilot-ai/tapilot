@@ -67,19 +67,19 @@ class FloatingBallController(
             setPadding(dp(16), dp(12), dp(16), dp(12))
             background = GradientDrawable().apply {
                 cornerRadius = dp(16).toFloat()
-                setColor(Color.WHITE)
-                setStroke(dp(1), Color.rgb(218, 221, 236))
+                setColor(service.getColor(R.color.brand_surface))
+                setStroke(dp(1), service.getColor(R.color.brand_line))
             }
             elevation = dp(10).toFloat()
             addView(TextView(service).apply {
                 text = "Tapilot 已回复"
                 textSize = 14f
-                setTextColor(Color.rgb(38, 44, 75))
+                setTextColor(service.getColor(R.color.brand_blue))
             })
             addView(TextView(service).apply {
                 text = message.take(260)
                 textSize = 14f
-                setTextColor(Color.rgb(44, 47, 60))
+                setTextColor(service.getColor(R.color.brand_text))
                 maxLines = 5
             })
             setOnClickListener {
@@ -133,7 +133,10 @@ class FloatingBallController(
             setPadding(dp(16), dp(9), dp(16), dp(9))
             background = GradientDrawable().apply {
                 cornerRadius = dp(20).toFloat()
-                setColor(Color.rgb(55, 62, 113))
+                colors = intArrayOf(
+                    service.getColor(R.color.brand_blue),
+                    service.getColor(R.color.brand_violet),
+                )
             }
         }
         val params = WindowManager.LayoutParams(
@@ -171,8 +174,8 @@ class FloatingBallController(
             setPadding(dp(5), dp(5), dp(5), dp(5))
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.rgb(236, 235, 255))
-                setStroke(dp(1), Color.argb(60, 78, 62, 230))
+                setColor(service.getColor(R.color.brand_soft))
+                setStroke(dp(1), service.getColor(R.color.brand_line))
             }
             elevation = dp(8).toFloat()
             setOnClickListener { openTaskInput() }

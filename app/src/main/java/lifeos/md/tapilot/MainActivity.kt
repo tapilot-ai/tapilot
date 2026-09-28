@@ -314,7 +314,7 @@ class MainActivity : Activity() {
     @Suppress("DEPRECATION")
     private fun applyWindowTheme(root: View) {
         val dark = AppTheme.isDark(this)
-        val background = if (dark) Color.rgb(17, 21, 34) else Color.rgb(247, 248, 252)
+        val background = if (dark) Color.rgb(18, 24, 39) else getColor(R.color.brand_background)
         root.setBackgroundColor(background)
         window.statusBarColor = Color.TRANSPARENT
         window.navigationBarColor = Color.TRANSPARENT

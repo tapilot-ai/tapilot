@@ -536,16 +536,16 @@ class ReportActivity : Activity() {
     }
 
     private fun reportBackgroundColor(dark: Boolean): Int =
-        if (dark) Color.rgb(17, 20, 28) else Color.WHITE
+        if (dark) Color.rgb(18, 24, 39) else getColor(R.color.brand_background)
 
     private fun reportChromeColor(dark: Boolean): Int =
-        if (dark) Color.rgb(24, 28, 38) else Color.WHITE
+        if (dark) Color.rgb(28, 37, 53) else getColor(R.color.brand_surface)
 
     private fun reportPrimaryTextColor(dark: Boolean): Int =
-        if (dark) Color.rgb(241, 244, 250) else Color.rgb(24, 27, 35)
+        if (dark) Color.rgb(241, 244, 250) else getColor(R.color.brand_text)
 
     private fun reportSecondaryTextColor(dark: Boolean): Int =
-        if (dark) Color.rgb(174, 183, 201) else Color.rgb(92, 99, 119)
+        if (dark) Color.rgb(174, 183, 201) else getColor(R.color.brand_muted)
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
@@ -586,6 +586,10 @@ class ReportActivity : Activity() {
                   '.mobile-player-fullscreen-button{display:none!important}' +
                   '.main-right .main-content{box-sizing:border-box!important;' +
                   'padding-bottom:max(20px,env(safe-area-inset-bottom))!important}' +
+                  'html:not([data-theme="dark"]) .mobile-report-tabs{' +
+                  'background:#eaf2ff!important}' +
+                  'html:not([data-theme="dark"]) .mobile-report-tabs button.is-active{' +
+                  'color:#394bb0!important;background:linear-gradient(125deg,#e2f6fc,#f3eafb)!important}' +
                   'html[data-theme="dark"] .mobile-report-tabs{background:#2c2e31!important}' +
                   'html[data-theme="dark"] .mobile-report-tabs button{' +
                   'color:rgba(248,250,253,.62)!important}' +

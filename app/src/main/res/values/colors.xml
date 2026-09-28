@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="launcher_background">#ECEBFF</color>
+    <color name="launcher_background">#E9F4FF</color>
+    <color name="brand_background">#F5F8FE</color>
+    <color name="brand_surface">#FFFFFF</color>
+    <color name="brand_text">#202A3C</color>
+    <color name="brand_muted">#5D6A81</color>
+    <color name="brand_line">#DCE6F2</color>
+    <color name="brand_soft">#EAF2FF</color>
+    <color name="brand_blue">#286FCF</color>
+    <color name="brand_violet">#8244D8</color>
 </resources>

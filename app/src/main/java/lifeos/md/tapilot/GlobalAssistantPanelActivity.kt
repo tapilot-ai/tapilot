@@ -42,23 +42,25 @@ class GlobalAssistantPanelActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(18), dp(16), dp(18), dp(20))
             background = GradientDrawable().apply {
-                setColor(Color.WHITE)
+                setColor(getColor(R.color.brand_surface))
                 cornerRadii = floatArrayOf(dp(22f), dp(22f), dp(22f), dp(22f), 0f, 0f, 0f, 0f)
             }
         }
         root.addView(TextView(this).apply {
             text = "问 Tapilot"
             textSize = 18f
-            setTextColor(Color.rgb(30, 34, 52))
+            setTextColor(getColor(R.color.brand_text))
         })
         status = TextView(this).apply {
             text = "按住说话或输入，发送后继续处理"
             textSize = 12f
-            setTextColor(Color.rgb(99, 103, 122))
+            setTextColor(getColor(R.color.brand_muted))
         }
         root.addView(status)
         input = EditText(this).apply {
             hint = "问我当前屏幕上的事…"
+            setTextColor(getColor(R.color.brand_text))
+            setHintTextColor(getColor(R.color.brand_muted))
             minLines = 1
             maxLines = 3
             setSingleLine(false)
@@ -77,6 +79,11 @@ class GlobalAssistantPanelActivity : Activity() {
         }
         val voice = Button(this).apply {
             text = "按住说话"
+            setTextColor(getColor(R.color.brand_blue))
+            background = GradientDrawable().apply {
+                cornerRadius = dp(12f)
+                setColor(getColor(R.color.brand_soft))
+            }
             setOnTouchListener { _, event ->
                 when (event.actionMasked) {
                     MotionEvent.ACTION_DOWN -> { startVoice(); true }
@@ -89,6 +96,11 @@ class GlobalAssistantPanelActivity : Activity() {
         actions.addView(voice)
         actions.addView(Button(this).apply {
             text = "发送"
+            setTextColor(Color.WHITE)
+            background = GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(getColor(R.color.brand_blue), getColor(R.color.brand_violet)),
+            ).apply { cornerRadius = dp(12f) }
             setOnClickListener { send() }
         })
         root.addView(actions)
