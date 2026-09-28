@@ -17,6 +17,7 @@ import android.net.Uri
 import android.util.Base64
 import android.util.Log
 import android.provider.Settings
+import android.provider.MediaStore
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.webkit.WebResourceRequest
@@ -28,12 +29,16 @@ import androidx.webkit.WebViewClientCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.content.FileProvider
 import lifeos.md.tapilot.accessibility.MidsceneAccessibilityService
+import lifeos.md.tapilot.bridge.AttachmentReader
 import lifeos.md.tapilot.bridge.NativeJavascriptBridge
 import lifeos.md.tapilot.report.DeletedReportStore
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.util.concurrent.Executors
 
 class MainActivity : Activity() {
     override fun attachBaseContext(newBase: Context) {
@@ -43,6 +48,10 @@ class MainActivity : Activity() {
     private lateinit var webView: WebView
     private lateinit var rootView: View
     private lateinit var nativeBridge: NativeJavascriptBridge
+    private val attachmentWorker = Executors.newSingleThreadExecutor()
+    private var attachmentCallback: ((Result<JSONObject?>) -> Unit)? = null
+    private var cameraOutput: Uri? = null
+    private var cameraFile: File? = null
     private var statusBarInsetCssPx = 0
     private var navigationBarInsetCssPx = 0
     private var pageReady = false
@@ -96,6 +105,9 @@ class MainActivity : Activity() {
         applyWindowTheme(root)
         ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val keyboardBottom = if (insets.isVisible(WindowInsetsCompat.Type.ime()))
+                insets.getInsets(WindowInsetsCompat.Type.ime()).bottom else 0
+            if (root.paddingBottom != keyboardBottom) root.setPadding(0, 0, 0, keyboardBottom)
             val layout = SystemBarInsetsLayout.fromPixels(
                 topInsetPx = systemBars.top,
                 bottomInsetPx = systemBars.bottom,
@@ -149,6 +161,7 @@ class MainActivity : Activity() {
                     AppTheme.set(this@MainActivity, theme)
                     applyWindowTheme(root)
                 },
+                onPickAttachment = ::pickAttachment,
             )
             addJavascriptInterface(nativeBridge, "MidsceneNative")
             loadUrl("https://appassets.androidplatform.net/assets/index.html")
@@ -187,6 +200,64 @@ class MainActivity : Activity() {
         }
     }
 
+    @Suppress("DEPRECATION")
+    private fun pickAttachment(kind: String, callback: (Result<JSONObject?>) -> Unit) {
+        if (attachmentCallback != null) {
+            callback(Result.failure(IllegalStateException("An attachment picker is already open")))
+            return
+        }
+        attachmentCallback = callback
+        runCatching {
+            val intent = if (kind == "camera") {
+                val directory = File(cacheDir, "attachment-camera").apply { mkdirs() }
+                cameraFile = File.createTempFile("photo-", ".jpg", directory)
+                cameraOutput = FileProvider.getUriForFile(
+                    this, "$packageName.reports", cameraFile!!,
+                )
+                Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+                    putExtra(MediaStore.EXTRA_OUTPUT, cameraOutput)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                    clipData = android.content.ClipData.newRawUri("Tapilot photo", cameraOutput)
+                }
+            } else {
+                Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = if (kind == "photo") "image/*" else "*/*"
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+            }
+            startActivityForResult(intent, ATTACHMENT_REQUEST)
+        }.onFailure {
+            attachmentCallback = null
+            cameraFile?.delete()
+            cameraFile = null
+            cameraOutput = null
+            callback(Result.failure(it))
+        }
+    }
+
+    @Deprecated("Activity result API is used for the native attachment picker")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != ATTACHMENT_REQUEST) return
+        val callback = attachmentCallback ?: return
+        attachmentCallback = null
+        val uri = if (resultCode == RESULT_OK) data?.data ?: cameraOutput else null
+        val capturedFile = cameraFile
+        cameraFile = null
+        cameraOutput = null
+        if (uri == null) {
+            capturedFile?.delete()
+            callback(Result.success(null))
+            return
+        }
+        attachmentWorker.execute {
+            val result = runCatching { AttachmentReader.read(this, uri) }
+            capturedFile?.delete()
+            callback(result)
+        }
+    }
+
     override fun onStart() {
         super.onStart()
         MidsceneAccessibilityService.addConnectionListener(accessibilityConnectionListener)
@@ -200,6 +271,8 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        attachmentCallback = null
+        attachmentWorker.shutdown()
         webView.removeJavascriptInterface("MidsceneNative")
         if (::nativeBridge.isInitialized) nativeBridge.close()
         webView.destroy()
@@ -347,5 +420,6 @@ class MainActivity : Activity() {
     companion object {
         const val EXTRA_FOCUS_TASK_INPUT = "lifeos.md.tapilot.extra.FOCUS_TASK_INPUT"
         private const val NOTIFICATION_PERMISSION_REQUEST = 2108
+        private const val ATTACHMENT_REQUEST = 2112
     }
 }

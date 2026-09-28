@@ -28,6 +28,7 @@ export interface ChatAgentOptions {
   source: string;
   language: 'zh' | 'en';
   imageDataUrl?: string;
+  imageDataUrls?: string[];
   complete(messages: ChatMessage[]): Promise<ChatCompletion>;
   operatePhone(instruction: string, successCondition: string): Promise<PhoneToolResult>;
   isStopped?(): boolean;
@@ -81,11 +82,15 @@ export async function runChatAgent(options: ChatAgentOptions): Promise<ChatAgent
   const messages = conversationMessages(
     options.history, options.conversationId, options.source, options.language,
   );
-  if (options.imageDataUrl) {
+  const images = [
+    ...(options.imageDataUrl ? [options.imageDataUrl] : []),
+    ...(options.imageDataUrls ?? []),
+  ];
+  if (images.length) {
     const last = messages[messages.length - 1];
     if (last.role === 'user') last.content = [
       { type: 'text', text: options.source },
-      { type: 'image_url', image_url: { url: options.imageDataUrl } },
+      ...images.map(url => ({ type: 'image_url' as const, image_url: { url } })),
     ];
   }
   let toolCalls = 0;

@@ -1,5 +1,6 @@
 import {
   WebViewNativeBridge,
+  type NativeAttachment,
   type EdgeEffectGeometryMode,
   type EdgeEffectSettings,
 } from './native-bridge';
@@ -83,7 +84,7 @@ const translations = {
     backToChat: '返回聊天',
     generalSettings: '通用设置',
     speechConfig: '语音转写 API',
-    speechConfigHint: '选择语音服务，填写 API Key。按住麦克风说话，松开后转写并发送。',
+    speechConfigHint: '选择语音服务并填写 API Key。长按文字输入框可语音转写，按住麦克风则松开发送。',
     speechProvider: '语音服务',
     volcengineProvider: '火山引擎 Seed ASR 2.0',
     deepgramProvider: 'Deepgram Nova-3',
@@ -98,6 +99,15 @@ const translations = {
     releaseToCancel: '松开取消',
     slideUpToCancel: '上滑取消',
     transcribing: '正在转写…',
+    attachmentAdd: '添加照片或文件',
+    attachmentRemove: '移除附件',
+    attachmentPhoto: '从相册选择',
+    attachmentCamera: '拍摄照片',
+    attachmentFile: '选择文件',
+    attachmentImage: '图片',
+    attachmentDocument: '文件',
+    analyzeAttachment: '请查看附件',
+    attachmentLabel: '附件',
     newConversation: '新对话',
     modelConfigHint: '配置兼容 OpenAI 的视觉模型服务',
     modelConfigRequired: '还没有配置模型，点这里完成配置后就可以开始使用',
@@ -277,7 +287,7 @@ const translations = {
     backToChat: 'Back to chat',
     generalSettings: 'General',
     speechConfig: 'Speech transcription API',
-    speechConfigHint: 'Choose a speech service and enter its API Key. Hold the microphone to speak; release to transcribe and send.',
+    speechConfigHint: 'Choose a speech service and enter its API Key. Hold the text box to transcribe, or hold the microphone and release to send.',
     speechProvider: 'Speech service',
     volcengineProvider: 'Volcengine Seed ASR 2.0',
     deepgramProvider: 'Deepgram Nova-3',
@@ -292,6 +302,15 @@ const translations = {
     releaseToCancel: 'Release to cancel',
     slideUpToCancel: 'Slide up to cancel',
     transcribing: 'Transcribing…',
+    attachmentAdd: 'Add a photo or file',
+    attachmentRemove: 'Remove attachment',
+    attachmentPhoto: 'Choose a photo',
+    attachmentCamera: 'Take a photo',
+    attachmentFile: 'Choose a file',
+    attachmentImage: 'Photo',
+    attachmentDocument: 'File',
+    analyzeAttachment: 'Please review the attachment',
+    attachmentLabel: 'Attachment',
     newConversation: 'New chat',
     modelConfigHint: 'Configure an OpenAI-compatible vision model',
     modelConfigRequired:
@@ -523,6 +542,11 @@ const voiceModeToggle = element<HTMLButtonElement>('#voice-mode-toggle');
 const voiceRecord = element<HTMLButtonElement>('#voice-record');
 const voiceRecordLabel = element<HTMLElement>('#voice-record-label');
 const voiceState = element<HTMLElement>('#voice-state');
+const attachmentTrigger = element<HTMLButtonElement>('#attachment-trigger');
+const attachmentMenu = element<HTMLElement>('#attachment-menu');
+const attachmentPreview = element<HTMLElement>('#attachment-preview');
+const attachmentName = element<HTMLElement>('#attachment-name');
+const attachmentRemove = element<HTMLButtonElement>('#attachment-remove');
 const speechProvider = element<HTMLSelectElement>('#speech-provider');
 const speechProviderHint = element<HTMLElement>('#speech-provider-hint');
 const speechApiKey = element<HTMLInputElement>('#speech-api-key');
@@ -668,6 +692,12 @@ const fields = {
 };
 const launchContextChip = element<HTMLButtonElement>('#launch-context-chip');
 let pendingLaunchImage: string | undefined;
+let pendingAttachment: NativeAttachment | undefined;
+function renderPendingAttachment(): void {
+  attachmentPreview.hidden = !pendingAttachment || runKind !== 'task';
+  attachmentName.textContent = pendingAttachment
+    ? `${t(pendingAttachment.kind === 'image' ? 'attachmentImage' : 'attachmentDocument')} · ${pendingAttachment.name}${pendingAttachment.pageCount && pendingAttachment.pageCount > 4 ? ` · ${currentLanguage === 'zh' ? '前 4 页' : 'first 4 pages'}` : ''}` : '';
+}
 let pendingReturnToPreviousApp = false;
 launchContextChip.addEventListener('click', () => {
   pendingLaunchImage = undefined;
@@ -2082,6 +2112,7 @@ function setRunning(value: boolean): void {
   running = value;
   voiceRecord.disabled = value;
   voiceModeToggle.disabled = value;
+  attachmentTrigger.disabled = value;
   conversationList.disabled = value;
   newConversation.disabled = value;
   runningTaskBar.hidden = !value;
@@ -2112,6 +2143,9 @@ function setRunKind(value: RunKind): void {
   if (yaml) composer.append(runButton);
   else taskPanel.append(runButton);
   voiceModeToggle.hidden = yaml;
+  attachmentTrigger.hidden = yaml;
+  attachmentMenu.hidden = true;
+  renderPendingAttachment();
   voiceRecord.hidden = yaml || !taskPanel.classList.contains('is-voice-mode');
   taskModeButton.classList.toggle('is-active', !yaml);
   yamlModeButton.classList.toggle('is-active', yaml);
@@ -2217,10 +2251,18 @@ async function execute(
     return;
   }
   const executionKind = request?.kind ?? runKind;
-  const source = (
+  const attachment = !request && executionKind === 'task' ? pendingAttachment : undefined;
+  const typedSource = (
     request?.source ??
     (executionKind === 'task' ? fields.task : fields.yaml).value
   ).trim();
+  const source = attachment
+    ? `${typedSource || t('analyzeAttachment')}\n${t('attachmentLabel')}: ${attachment.name}${attachment.pageCount && attachment.pageCount > 4 ? ` (${currentLanguage === 'zh' ? '仅提供前 4 页' : 'only the first 4 pages are included'})` : ''}`
+    : typedSource;
+  const attachmentText = attachment?.text?.slice(0, 30_000);
+  const modelSource = attachmentText
+    ? `${source}\n\n文件内容：\n${attachmentText}${attachment!.text!.length > 30_000 ? '\n（后续内容已截断）' : ''}`
+    : source;
   const launchImage = executionKind === 'task' ? pendingLaunchImage : undefined;
   const returnToPreviousApp = executionKind === 'task' && pendingReturnToPreviousApp;
   preparingExecution = true;
@@ -2228,7 +2270,7 @@ async function execute(
     await modelProfilesReady;
     await flushModelProfileSave();
     await modelProfiles.save(currentModelPreset, activeModelConfiguration());
-    requireConfiguration(executionKind, request?.source);
+    requireConfiguration(executionKind, source);
   } catch (error) {
     preparingExecution = false;
     setUiStatus(
@@ -2241,6 +2283,10 @@ async function execute(
   setRunning(true);
   leaveEditorFocusMode();
   pendingLaunchImage = undefined;
+  if (attachment) {
+    pendingAttachment = undefined;
+    renderPendingAttachment();
+  }
   pendingReturnToPreviousApp = false;
   launchContextChip.hidden = true;
   preparingExecution = false;
@@ -2285,8 +2331,11 @@ async function execute(
       const agentResult = await runChatAgent({
         history: reportHistory.filter(entry => entry.id !== historyEntryId),
         conversationId: activeConversationId,
-        source,
-        imageDataUrl: launchImage,
+        source: modelSource,
+        imageDataUrls: [
+          ...(launchImage ? [launchImage] : []),
+          ...(attachment?.images ?? []),
+        ],
         language: resolveLanguage(languagePreference),
         isStopped: () => stoppedByUser,
         complete: async (messages: ChatMessage[]): Promise<ChatCompletion> => {
@@ -2846,6 +2895,45 @@ historyDeleteDialog.addEventListener('click', (event) => {
 });
 taskModeButton.addEventListener('click', () => setRunKind('task'));
 yamlModeButton.addEventListener('click', () => setRunKind('yaml'));
+attachmentTrigger.addEventListener('click', () => {
+  if (running) return;
+  attachmentMenu.hidden = !attachmentMenu.hidden;
+  attachmentTrigger.setAttribute('aria-expanded', String(!attachmentMenu.hidden));
+});
+attachmentRemove.addEventListener('click', () => {
+  pendingAttachment = undefined;
+  renderPendingAttachment();
+});
+document.addEventListener('pointerdown', event => {
+  if (attachmentMenu.hidden || attachmentMenu.contains(event.target as Node) ||
+      attachmentTrigger.contains(event.target as Node)) return;
+  attachmentMenu.hidden = true;
+  attachmentTrigger.setAttribute('aria-expanded', 'false');
+});
+for (const option of Array.from(attachmentMenu.querySelectorAll<HTMLButtonElement>('[data-attachment-kind]'))) {
+  option.addEventListener('click', async () => {
+    const kind = option.dataset.attachmentKind as 'photo' | 'camera' | 'file';
+    attachmentMenu.hidden = true;
+    attachmentTrigger.setAttribute('aria-expanded', 'false');
+    voiceFeedback('');
+    leaveEditorFocusMode();
+    attachmentTrigger.disabled = true;
+    const bridge = new WebViewNativeBridge();
+    try {
+      const attachment = await bridge.pickAttachment(kind);
+      if (attachment) {
+        pendingAttachment = attachment;
+        renderPendingAttachment();
+      }
+    } catch (error) {
+      voiceFeedback(error instanceof Error ? error.message : String(error));
+      window.setTimeout(() => voiceFeedback(''), 5000);
+    } finally {
+      bridge.destroy();
+      attachmentTrigger.disabled = running;
+    }
+  });
+}
 async function stopActiveTask(): Promise<void> {
   if (!activeBridge) return;
   stoppedByUser = true;
@@ -2938,6 +3026,11 @@ let voicePointerStartY = 0;
 let voiceCancelOnRelease = false;
 let voiceBridge: WebViewNativeBridge | undefined;
 let voiceStart: Promise<void> | undefined;
+let voiceCaptureTarget: HTMLElement | undefined;
+let textVoiceHoldTimer: number | undefined;
+let textVoiceHoldPointer: number | undefined;
+let textVoiceHoldX = 0;
+let textVoiceHoldY = 0;
 function setVoiceMode(enabled: boolean): void {
   if (voicePointerActive || running) return;
   taskPanel.classList.toggle('is-voice-mode', enabled);
@@ -2955,14 +3048,16 @@ function voiceFeedback(message: string): void {
   voiceState.textContent = message;
   voiceState.hidden = !message;
 }
-voiceRecord.addEventListener('pointerdown', (event) => {
+function beginVoiceRecording(event: PointerEvent, target: HTMLElement): void {
   if (running || voicePointerActive || voiceBridge) return;
   event.preventDefault();
   voicePointerActive = true;
+  voiceCaptureTarget = target;
   voicePointerStartY = event.clientY;
   voiceCancelOnRelease = false;
-  voiceRecord.setPointerCapture(event.pointerId);
-  voiceRecord.classList.add('is-recording');
+  target.setPointerCapture(event.pointerId);
+  target.classList.add('is-recording');
+  if (target === fields.task) fields.task.blur();
   voiceRecordLabel.textContent = t('releaseToSend');
   voiceFeedback(t('slideUpToCancel'));
   const bridge = new WebViewNativeBridge();
@@ -2978,28 +3073,30 @@ voiceRecord.addEventListener('pointerdown', (event) => {
     await bridge.startSpeech(provider, resolveLanguage(languagePreference) === 'zh' ? 'zh-CN' : 'en-US');
   })().catch(error => {
     voicePointerActive = false;
-    voiceRecord.classList.remove('is-recording');
+    target.classList.remove('is-recording');
     voiceRecordLabel.textContent = t('holdToTalk');
     voiceFeedback(error instanceof Error ? error.message : String(error));
+    window.setTimeout(() => { if (!voicePointerActive) voiceFeedback(''); }, 5000);
     bridge.destroy();
     voiceBridge = undefined;
     throw error;
   });
   void voiceStart.catch(() => undefined);
-});
-voiceRecord.addEventListener('pointermove', (event) => {
+}
+function moveVoiceRecording(event: PointerEvent): void {
   if (!voicePointerActive) return;
   const cancel = voicePointerStartY - event.clientY > 72;
   if (cancel === voiceCancelOnRelease) return;
   voiceCancelOnRelease = cancel;
-  voiceRecord.classList.toggle('will-cancel', cancel);
+  voiceCaptureTarget?.classList.toggle('will-cancel', cancel);
   voiceRecordLabel.textContent = t(cancel ? 'releaseToCancel' : 'releaseToSend');
-});
-voiceRecord.addEventListener('pointerup', async () => {
+}
+async function finishVoiceRecording(): Promise<void> {
   if (!voicePointerActive || !voiceBridge) return;
   voicePointerActive = false;
-  voiceRecord.classList.remove('is-recording');
-  voiceRecord.classList.remove('will-cancel');
+  const target = voiceCaptureTarget;
+  target?.classList.remove('is-recording', 'will-cancel');
+  voiceCaptureTarget = undefined;
   voiceRecordLabel.textContent = t('holdToTalk');
   voiceRecord.disabled = true;
   const bridge = voiceBridge;
@@ -3013,21 +3110,28 @@ voiceRecord.addEventListener('pointerup', async () => {
     voiceFeedback(t('transcribing'));
     const { text } = await bridge.finishSpeech();
     voiceFeedback('');
-    fields.task.value = text;
-    setRunKind('task');
-    await execute();
+    if (target === fields.task) {
+      fields.task.value = [fields.task.value.trim(), text].filter(Boolean).join(' ');
+      fields.task.dispatchEvent(new Event('input', { bubbles: true }));
+      fields.task.focus();
+    } else {
+      fields.task.value = text;
+      setRunKind('task');
+      await execute();
+    }
   } catch (error) {
     voiceFeedback(error instanceof Error ? error.message : String(error));
+    window.setTimeout(() => voiceFeedback(''), 5000);
   } finally {
     bridge.destroy();
     voiceBridge = undefined;
     voiceRecord.disabled = running;
   }
-});
-voiceRecord.addEventListener('pointercancel', async () => {
+}
+async function cancelVoiceRecording(): Promise<void> {
   voicePointerActive = false;
-  voiceRecord.classList.remove('is-recording');
-  voiceRecord.classList.remove('will-cancel');
+  voiceCaptureTarget?.classList.remove('is-recording', 'will-cancel');
+  voiceCaptureTarget = undefined;
   voiceRecordLabel.textContent = t('holdToTalk');
   const bridge = voiceBridge;
   if (!bridge) return;
@@ -3036,6 +3140,41 @@ voiceRecord.addEventListener('pointercancel', async () => {
   bridge.destroy();
   if (voiceBridge === bridge) voiceBridge = undefined;
   voiceFeedback('');
+}
+voiceRecord.addEventListener('pointerdown', event => beginVoiceRecording(event, voiceRecord));
+voiceRecord.addEventListener('pointermove', moveVoiceRecording);
+voiceRecord.addEventListener('pointerup', () => void finishVoiceRecording());
+voiceRecord.addEventListener('pointercancel', () => void cancelVoiceRecording());
+fields.task.addEventListener('pointerdown', event => {
+  if (event.pointerType === 'mouse' || running || taskPanel.classList.contains('is-voice-mode')) return;
+  textVoiceHoldPointer = event.pointerId;
+  textVoiceHoldX = event.clientX;
+  textVoiceHoldY = event.clientY;
+  textVoiceHoldTimer = window.setTimeout(() => {
+    textVoiceHoldTimer = undefined;
+    if (textVoiceHoldPointer === event.pointerId) beginVoiceRecording(event, fields.task);
+  }, 480);
+});
+fields.task.addEventListener('pointermove', event => {
+  if (textVoiceHoldPointer !== event.pointerId) return;
+  if (textVoiceHoldTimer !== undefined &&
+      Math.hypot(event.clientX - textVoiceHoldX, event.clientY - textVoiceHoldY) > 12) {
+    window.clearTimeout(textVoiceHoldTimer);
+    textVoiceHoldTimer = undefined;
+  }
+  moveVoiceRecording(event);
+});
+for (const eventName of ['pointerup', 'pointercancel'] as const) {
+  fields.task.addEventListener(eventName, () => {
+    if (textVoiceHoldTimer !== undefined) window.clearTimeout(textVoiceHoldTimer);
+    textVoiceHoldTimer = undefined;
+    textVoiceHoldPointer = undefined;
+    if (eventName === 'pointercancel') void cancelVoiceRecording();
+    else void finishVoiceRecording();
+  });
+}
+fields.task.addEventListener('contextmenu', event => {
+  if (voicePointerActive || textVoiceHoldTimer !== undefined) event.preventDefault();
 });
 
 openReportButton.addEventListener('click', (event) => {

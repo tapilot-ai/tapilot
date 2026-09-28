@@ -87,6 +87,24 @@ describe('chat agent', () => {
     ] });
   });
 
+  it('sends every page of a selected PDF in the current turn', async () => {
+    let sent: ChatMessage[] = [];
+    await runChatAgent({
+      history: [], conversationId: 'a', source: '概括附件', language: 'zh',
+      imageDataUrls: ['data:image/jpeg;base64,cGFnZTE=', 'data:image/jpeg;base64,cGFnZTI='],
+      async complete(messages) {
+        sent = structuredClone(messages);
+        return { choices: [{ message: { content: '两页文档' } }] };
+      },
+      async operatePhone() { throw new Error('unexpected phone operation'); },
+    });
+    expect(sent.at(-1)).toEqual({ role: 'user', content: [
+      { type: 'text', text: '概括附件' },
+      { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,cGFnZTE=' } },
+      { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,cGFnZTI=' } },
+    ] });
+  });
+
   it('passes a failed phone operation back to the agent before replying', async () => {
     const phoneCalls: Array<[string, string]> = [];
     const modelCalls: ChatMessage[][] = [];

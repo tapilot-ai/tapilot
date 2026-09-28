@@ -2143,6 +2143,8 @@ html[data-theme="dark"] pre {
   overflow-y: auto;
 }
 .chat-app #task::placeholder { color: #9ca3af; }
+.chat-app #task.is-recording { border-color: #397cf0; background: var(--brand-bubble); }
+.chat-app #task.will-cancel { border-color: var(--danger); }
 .chat-app #task:focus-visible,
 .chat-app .voice-record:focus-visible,
 .chat-app .composer-send:focus-visible { outline: 2px solid #397cf0; outline-offset: 2px; }
@@ -2170,6 +2172,60 @@ html[data-theme="dark"] pre {
   background: transparent;
 }
 .chat-app .voice-mode-toggle[hidden] { display: none; }
+.chat-app .attachment-trigger {
+  display: grid;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 44px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  color: var(--primary-dark);
+  background: var(--primary-soft);
+  font-size: 30px;
+  line-height: 1;
+}
+.chat-app .attachment-menu {
+  position: absolute;
+  right: 12px;
+  bottom: calc(100% + 8px);
+  z-index: 10;
+  display: grid;
+  width: 172px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.chat-app .attachment-menu[hidden], .chat-app .attachment-preview[hidden] { display: none; }
+.chat-app .attachment-menu button {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 9px;
+  color: var(--text);
+  background: transparent;
+  text-align: left;
+}
+.chat-app .attachment-menu button:active { background: var(--primary-soft); }
+.chat-app .attachment-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  max-width: 100%;
+  margin: 0 0 8px 48px;
+  padding: 5px 7px 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--primary-dark);
+  background: var(--primary-soft);
+  font-size: 12px;
+}
+.chat-app #attachment-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-app #attachment-remove { flex: 0 0 24px; width: 24px; height: 24px; border: 0; border-radius: 50%; color: var(--primary-dark); background: transparent; font-size: 20px; }
 .chat-app .voice-mode-toggle svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .chat-app .keyboard-switch-icon { display: none; }
 .chat-app #task-panel.is-voice-mode .voice-switch-icon { display: none; }
@@ -2205,8 +2261,9 @@ html[data-theme="dark"] pre {
   color: #fff;
   background: #343943;
   font-size: 12px;
+  pointer-events: none;
 }
-body.task-input-focused .chat-app { height: var(--keyboard-viewport-height, 100dvh); }
+body.task-input-focused .chat-app { height: 100dvh; }
 body.task-input-focused .chat-app .chat-thread { min-height: 0; max-height: none; }
 body.task-input-focused .chat-app .task-card { margin: 0 -16px; }
 body.task-input-focused .chat-app #task { height: 44px; min-height: 44px; max-height: 120px; }

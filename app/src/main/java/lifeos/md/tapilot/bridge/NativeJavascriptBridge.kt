@@ -37,6 +37,9 @@ class NativeJavascriptBridge(
     private val webView: WebView,
     private val onLanguageChanged: (String) -> Unit = {},
     private val onThemeChanged: (String) -> Unit = {},
+    private val onPickAttachment: (String, (Result<JSONObject?>) -> Unit) -> Unit = { _, callback ->
+        callback(Result.failure(UnsupportedOperationException("Attachment picker unavailable")))
+    },
 ) : AutoCloseable {
     private val modelTransport = ModelTransport()
     private val modelCredentialStore = ModelCredentialStore(webView.context)
@@ -73,6 +76,16 @@ class NativeJavascriptBridge(
         val service = MidsceneAccessibilityService.current()
 
         when (method) {
+            "app.pickAttachment" -> {
+                val kind = request.getJSONObject("params").getString("kind")
+                require(kind == "photo" || kind == "camera" || kind == "file")
+                onPickAttachment(kind) { result ->
+                    result.fold(
+                        onSuccess = { respondSuccess(requestId, it ?: JSONObject.NULL) },
+                        onFailure = { respondError(requestId, it) },
+                    )
+                }
+            }
             "app.getAssistantRole" -> {
                 val manager = if (Build.VERSION.SDK_INT >= 29)
                     webView.context.getSystemService(RoleManager::class.java) else null

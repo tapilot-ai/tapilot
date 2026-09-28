@@ -254,7 +254,7 @@
               <span class="section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Zm-6 8a6 6 0 0 0 12 0M12 17v4m-4 0h8" /></svg></span>
               <strong id="speech-config-title" data-i18n="speechConfig">语音转写 API</strong>
             </div>
-            <p class="helper" data-i18n="speechConfigHint">选择语音服务，填写 API Key。按住麦克风说话，松开后转写并发送。</p>
+            <p class="helper" data-i18n="speechConfigHint">选择语音服务并填写 API Key。长按文字输入框可语音转写，按住麦克风则松开发送。</p>
             <label for="speech-provider" data-i18n="speechProvider">语音服务</label>
             <select id="speech-provider">
               <option value="volcengine" data-i18n="volcengineProvider">火山引擎 Seed ASR 2.0</option>
@@ -271,6 +271,15 @@
 
       <section id="chat-thread" class="chat-thread" aria-live="polite"></section>
       <section class="card task-card">
+        <div id="attachment-preview" class="attachment-preview" hidden>
+          <span id="attachment-name"></span>
+          <button id="attachment-remove" type="button" data-i18n-aria-label="attachmentRemove">×</button>
+        </div>
+        <div id="attachment-menu" class="attachment-menu" hidden>
+          <button type="button" data-attachment-kind="photo" data-i18n="attachmentPhoto">从相册选择</button>
+          <button type="button" data-attachment-kind="camera" data-i18n="attachmentCamera">拍摄照片</button>
+          <button type="button" data-attachment-kind="file" data-i18n="attachmentFile">选择文件</button>
+        </div>
         <div class="section-heading compact">
           <button
             id="run"
@@ -357,6 +366,7 @@
             data-i18n-placeholder="taskPlaceholder"
           ></textarea>
           <button id="voice-record" class="voice-record" type="button" data-i18n-aria-label="holdToTalk" hidden><span id="voice-record-label">按住说话</span></button>
+          <button id="attachment-trigger" class="attachment-trigger" type="button" data-i18n-aria-label="attachmentAdd" aria-expanded="false">＋</button>
           <span id="voice-state" class="voice-state" role="status" hidden></span>
         </div>
         <div id="yaml-panel" class="editor-panel" role="tabpanel" hidden>

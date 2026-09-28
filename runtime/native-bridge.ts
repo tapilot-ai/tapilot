@@ -34,6 +34,14 @@ export interface AndroidJavascriptHost {
   postMessage(payload: string): void;
 }
 
+export interface NativeAttachment {
+  name: string;
+  kind: 'image' | 'pdf' | 'text';
+  images: string[];
+  text?: string;
+  pageCount?: number;
+}
+
 export type EdgeEffectGeometryMode = 'auto' | 'square' | 'custom';
 
 export interface EdgeEffectSettings {
@@ -326,6 +334,10 @@ export class WebViewNativeBridge implements NativeBridge {
 
   cancelSpeech(): Promise<void> {
     return this.request('speech.cancel', {});
+  }
+
+  pickAttachment(kind: 'photo' | 'camera' | 'file'): Promise<NativeAttachment | null> {
+    return this.request('app.pickAttachment', { kind }, { timeoutMs: 120_000 });
   }
 
   destroy(reason = 'Native bridge destroyed'): void {
