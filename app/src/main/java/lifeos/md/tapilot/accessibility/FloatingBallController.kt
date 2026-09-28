@@ -4,6 +4,9 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -18,6 +21,7 @@ import lifeos.md.tapilot.LaunchContext
 import lifeos.md.tapilot.R
 import org.json.JSONObject
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.roundToInt
 
 class FloatingBallController(
@@ -26,6 +30,7 @@ class FloatingBallController(
 ) : AutoCloseable {
     private val size = (56 * service.resources.displayMetrics.density).roundToInt()
     private val touchSlop = ViewConfiguration.get(service).scaledTouchSlop
+    private val mainHandler = Handler(Looper.getMainLooper())
     private var appForeground = false
     private var taskRunning = false
     private var hiddenForCapture = false
@@ -218,14 +223,26 @@ class FloatingBallController(
     }
 
     private fun openTaskInput() {
-        service.capture("launch-${UUID.randomUUID()}") { outcome ->
-            outcome.getOrNull()?.let { capture ->
-                LaunchContext.put(JSONObject()
-                    .put("kind", "screen")
-                    .put("label", "当前屏幕")
-                    .put("dataUrl", capture.dataUrl))
+        val launched = AtomicBoolean(false)
+        val fallback = Runnable {
+            if (launched.compareAndSet(false, true)) {
+                Log.w("TapilotFloatingBall", "Screen capture timed out; opening panel")
+                openAssistantPanel()
             }
-            openAssistantPanel()
+        }
+        mainHandler.postDelayed(fallback, 2_200L)
+        service.capture("launch-${UUID.randomUUID()}") { outcome ->
+            mainHandler.post {
+                if (!launched.compareAndSet(false, true)) return@post
+                mainHandler.removeCallbacks(fallback)
+                outcome.getOrNull()?.let { capture ->
+                    LaunchContext.put(JSONObject()
+                        .put("kind", "screen")
+                        .put("label", "当前屏幕")
+                        .put("dataUrl", capture.dataUrl))
+                }
+                openAssistantPanel()
+            }
         }
     }
 

@@ -204,7 +204,7 @@ const translations = {
     edgeEffectDetected: '系统检测',
     edgeEffectDetectedSquare: '系统未报告圆角',
     floatingBall: '全局悬浮球',
-    floatingBallHint: '离开 Tapilot 后显示，点击即可回来输入任务',
+    floatingBallHint: '离开 Tapilot 后显示；若点击无响应，请允许系统权限“后台弹出界面”',
     floatingBallUnavailableHint: '开启设备控制后即可显示悬浮球',
     advancedMode: '高级模式',
     advancedModeHint: '显示 YAML 和 Test Runner',
@@ -410,7 +410,7 @@ const translations = {
     edgeEffectDetected: 'System detected',
     edgeEffectDetectedSquare: 'No rounded corners reported by the system',
     floatingBall: 'Floating ball',
-    floatingBallHint: 'Appears outside Tapilot; tap it to enter a task',
+    floatingBallHint: 'Appears outside Tapilot. If tapping does nothing, allow background pop-ups in system app permissions.',
     floatingBallUnavailableHint:
       'Enable device control to show the floating ball',
     advancedMode: 'Advanced mode',
@@ -2189,7 +2189,6 @@ function confirmPhoneOperation(instruction: string): Promise<string> {
   const run = element<HTMLButtonElement>('#operation-confirm-run');
   editor.value = instruction;
   dialog.hidden = false;
-  editor.focus();
   return new Promise((resolve, reject) => {
     const close = () => {
       dialog.hidden = true;
@@ -2238,6 +2237,7 @@ async function execute(
     return;
   }
   setRunning(true);
+  leaveEditorFocusMode();
   pendingLaunchImage = undefined;
   pendingReturnToPreviousApp = false;
   launchContextChip.hidden = true;

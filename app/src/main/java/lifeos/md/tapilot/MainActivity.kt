@@ -15,6 +15,7 @@ import android.os.Handler
 import android.os.Looper
 import android.net.Uri
 import android.util.Base64
+import android.util.Log
 import android.provider.Settings
 import android.view.View
 import android.view.inputmethod.InputMethodManager
@@ -32,6 +33,7 @@ import lifeos.md.tapilot.bridge.NativeJavascriptBridge
 import lifeos.md.tapilot.report.DeletedReportStore
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
 
 class MainActivity : Activity() {
     override fun attachBaseContext(newBase: Context) {
@@ -266,16 +268,26 @@ class MainActivity : Activity() {
         if (action == Intent.ACTION_SEND && incoming.type?.startsWith("image/") == true) {
             @Suppress("DEPRECATION")
             val uri = incoming.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+                ?: incoming.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.uri
             if (uri != null) runCatching {
                 val bytes = contentResolver.openInputStream(uri)?.use { stream ->
-                    stream.readNBytes(5 * 1024 * 1024 + 1)
+                    val output = ByteArrayOutputStream()
+                    val buffer = ByteArray(8 * 1024)
+                    while (true) {
+                        val count = stream.read(buffer)
+                        if (count < 0) break
+                        require(output.size() + count <= 5 * 1024 * 1024) { "Image too large" }
+                        output.write(buffer, 0, count)
+                    }
+                    output.toByteArray()
                 } ?: error("Image unavailable")
-                require(bytes.size <= 5 * 1024 * 1024) { "Image too large" }
-                val mime = incoming.type!!.takeIf { it.matches(Regex("image/[a-zA-Z0-9.+-]+")) }
+                val mime = contentResolver.getType(uri)
+                    ?.takeIf { it.matches(Regex("image/[a-zA-Z0-9.+-]+")) }
+                    ?: incoming.type!!.takeIf { it.matches(Regex("image/[a-zA-Z0-9.+-]+")) }
                     ?: "image/jpeg"
                 context.put("dataUrl", "data:$mime;base64,${Base64.encodeToString(bytes, Base64.NO_WRAP)}")
                 context.put("label", "分享图片")
-            }
+            }.onFailure { Log.w("TapilotShare", "Unable to read shared image", it) }
         }
         if (text.isNotBlank() || context.has("dataUrl") || action == Intent.ACTION_ASSIST) {
             LaunchContext.put(context)

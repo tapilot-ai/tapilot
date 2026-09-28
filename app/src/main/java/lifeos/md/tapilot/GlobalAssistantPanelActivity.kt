@@ -8,8 +8,11 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.WindowManager
+import android.view.WindowInsets
+import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import lifeos.md.tapilot.bridge.ModelCredentialStore
@@ -32,7 +35,7 @@ class GlobalAssistantPanelActivity : Activity() {
         window.attributes = window.attributes.apply {
             gravity = Gravity.BOTTOM
             width = WindowManager.LayoutParams.MATCH_PARENT
-            height = WindowManager.LayoutParams.WRAP_CONTENT
+            height = WindowManager.LayoutParams.MATCH_PARENT
             dimAmount = 0.16f
         }
         val root = LinearLayout(this).apply {
@@ -59,9 +62,19 @@ class GlobalAssistantPanelActivity : Activity() {
             minLines = 1
             maxLines = 3
             setSingleLine(false)
+            imeOptions = EditorInfo.IME_ACTION_SEND
+            setOnEditorActionListener { _, actionId, _ ->
+                if (actionId == EditorInfo.IME_ACTION_SEND) {
+                    send()
+                    true
+                } else false
+            }
         }
         root.addView(input)
-        val actions = LinearLayout(this).apply { gravity = Gravity.END }
+        val actions = LinearLayout(this).apply {
+            gravity = Gravity.END
+            setPadding(0, 0, dp(72), 0)
+        }
         val voice = Button(this).apply {
             text = "按住说话"
             setOnTouchListener { _, event ->
@@ -79,7 +92,25 @@ class GlobalAssistantPanelActivity : Activity() {
             setOnClickListener { send() }
         })
         root.addView(actions)
-        setContentView(root)
+        val container = FrameLayout(this).apply {
+            setOnClickListener { finish() }
+            val panelParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM,
+            )
+            addView(root, panelParams)
+            setOnApplyWindowInsetsListener { _, insets ->
+                val keyboard = insets.getInsets(WindowInsets.Type.ime()).bottom
+                if (panelParams.bottomMargin != keyboard) {
+                    panelParams.bottomMargin = keyboard
+                    root.layoutParams = panelParams
+                }
+                insets
+            }
+        }
+        root.setOnClickListener { }
+        setContentView(container)
     }
 
     private fun startVoice() {
