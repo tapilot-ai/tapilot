@@ -60,10 +60,11 @@ process, and one runner process may be active at a time.
 The settings page runtime check verifies both the Node executable and that the
 Test Runner module can be loaded. The bundled build executes a regular Test
 Runner smoke case and a bridge smoke case against a simulated Android device
-interface. Natural-language tasks are converted to a one-step `aiAct` YAML
-case, while user YAML is kept as entered. Both run through the on-device
-`@midscene/test` and `@midscene/core`. The WebView only handles configuration,
-start/stop controls, and report navigation; it no longer hosts the Agent.
+interface. A separate conversation agent owns the saved chat context and uses
+the configured model API to decide when the phone tool is needed. Each phone
+tool call sends one concrete instruction as a one-step `aiAct` YAML case to the
+on-device `@midscene/test` and `@midscene/core`; its result returns to the
+conversation agent for the final reply. User YAML runs directly as entered.
 
 ## First run
 
@@ -104,7 +105,16 @@ guarantee of uninterrupted effects on every device or page.
 2. Enable **Tapilot device control** and return. Once enabled, only a green
    status dot remains at the top left.
 3. Configure an HTTPS OpenAI-compatible vision model.
-4. Enter a task and tap **Start**.
+4. Send a message. Tapilot shows the result in the current conversation; you can follow up or start a new chat.
+
+Voice input supports the official Volcengine Seed ASR 2.0 API and Deepgram Nova-3
+(Simplified Chinese or US English, following the app language). Choose a provider in model settings and save its API Key. Volcengine uses
+an API Key from the new Doubao Speech console and the fixed resource ID
+`volc.seedasr.sauc.duration`. Hold the microphone beside the composer to speak;
+release to finish transcription and send. The first recording requires microphone
+permission. Audio streams through the selected provider's WebSocket API without
+creating a recording file. Each provider's key is encrypted separately with Android
+Keystore. Android speech recognition is not used.
 
 The interface follows the Android system language by default. Simplified
 Chinese and English can also be selected explicitly from the app-styled
@@ -196,10 +206,10 @@ timeouts, and aborting a task disconnects its active native request. The current
 transport buffers a complete streaming response before forwarding it to the JavaScript runtime;
 incremental native streaming is a follow-up optimization.
 
-Natural-language and YAML runs reuse the existing Midscene Agent, Test Runner,
-and standard reporter inside on-device Node.js. Planning and report generation
-are not reimplemented; Android owns only the device interface and process/RPC
-lifecycle. YAML supports the common Test Runner nodes plus the direct Android
+Phone operations and YAML runs reuse the existing Midscene Agent, Test Runner,
+and standard reporter inside on-device Node.js. The conversation agent owns
+context, tool calls, and final replies; Android provides model transport, the
+device interface, and process/RPC lifecycle. YAML supports the common Test Runner nodes plus the direct Android
 nodes `launch`, `home`, `back`, and `recentApps`. Shell commands and force-stop
 remain unavailable under the regular app sandbox.
 

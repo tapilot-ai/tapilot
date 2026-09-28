@@ -32,6 +32,13 @@ describe('task history', () => {
     ]);
   });
 
+  it('restores conversation ids and assistant replies', () => {
+    expect(normalizeTaskHistory([{
+      id: 'turn', conversationId: 'chat', source: '打开日历',
+      reply: '已经打开', status: 'succeeded', reports: [],
+    }])[0]).toMatchObject({ conversationId: 'chat', reply: '已经打开' });
+  });
+
   it('adds, limits, and updates entries without duplicating ids', () => {
     const first = {
       id: '1',

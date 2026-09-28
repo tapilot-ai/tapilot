@@ -99,6 +99,8 @@ class ModelCredentialStore(context: Context) {
             "mimo",
             "glm",
             "custom",
+            "speech-volcengine",
+            "speech-deepgram",
         )
     }
 }

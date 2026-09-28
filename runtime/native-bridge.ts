@@ -284,6 +284,26 @@ export class WebViewNativeBridge implements NativeBridge {
     return this.request('app.deleteModelCredential', { preset });
   }
 
+  hasSpeechCredential(provider: 'volcengine' | 'deepgram'): Promise<{ configured: boolean }> {
+    return this.request('speech.hasCredential', { provider });
+  }
+
+  setSpeechCredential(provider: 'volcengine' | 'deepgram', apiKey: string): Promise<void> {
+    return this.request('speech.setCredential', { provider, apiKey });
+  }
+
+  startSpeech(provider: 'volcengine' | 'deepgram', language: 'zh-CN' | 'en-US'): Promise<void> {
+    return this.request('speech.start', { provider, language }, { timeoutMs: 20_000 });
+  }
+
+  finishSpeech(): Promise<{ text: string }> {
+    return this.request('speech.finish', {}, { timeoutMs: 35_000 });
+  }
+
+  cancelSpeech(): Promise<void> {
+    return this.request('speech.cancel', {});
+  }
+
   destroy(reason = 'Native bridge destroyed'): void {
     for (const requestId of this.pendingRequestIds) {
       const request = pendingRequests.get(requestId);

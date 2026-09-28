@@ -21,6 +21,8 @@ import {
   updateTaskHistoryEntry,
 } from './task-history';
 import { resolveRunResultMessage } from './final-response';
+import { conversationEntries } from './conversation';
+import { PHONE_TOOL, runChatAgent, type ChatMessage, type ChatCompletion } from './chat-agent';
 import {
   classifyModelConnectionResponse,
   modelConnectionEndpoint,
@@ -75,6 +77,25 @@ const translations = {
     openAccessibilitySettings: '重新开启',
     batteryOptimizationHelp: '关闭电量优化',
     modelConfig: '模型配置',
+    settingsTitle: '设置',
+    backToChat: '返回聊天',
+    speechConfig: '语音转写 API',
+    speechConfigHint: '选择语音服务，填写 API Key。按住麦克风说话，松开后转写并发送。',
+    speechProvider: '语音服务',
+    volcengineProvider: '火山引擎 Seed ASR 2.0',
+    deepgramProvider: 'Deepgram Nova-3（英语）',
+    volcengineHint: '使用新版豆包语音控制台的 API Key；资源 ID 固定为 volc.seedasr.sauc.duration。',
+    deepgramHint: '使用 Deepgram API Key，Nova-3 美式英语模型。',
+    speechSave: '保存语音配置',
+    speechKeyPlaceholder: '输入后保存到 Android Keystore',
+    holdToTalk: '按住说话',
+    switchToVoiceInput: '切换到语音输入',
+    switchToTextInput: '切换到文字输入',
+    releaseToSend: '松开发送',
+    releaseToCancel: '松开取消',
+    slideUpToCancel: '上滑取消',
+    transcribing: '正在转写…',
+    newConversation: '新对话',
     modelConfigHint: '配置兼容 OpenAI 的视觉模型服务',
     modelConfigRequired: '还没有配置模型，点这里完成配置后就可以开始使用',
     configured: '已配置',
@@ -118,7 +139,7 @@ const translations = {
     taskInstruction: '想做的事',
     expandEditor: '全屏编辑',
     collapseEditor: '退出全屏',
-    taskPlaceholder: '比如：给微信好友发消息，或找附近的霸王茶姬',
+    taskPlaceholder: '发消息给 Tapilot',
     yamlHint: '支持 aiAct、aiTap、aiAssert、aiAsk、launch、home、back 等节点',
     start: '开始执行',
     runYaml: '执行 YAML',
@@ -249,6 +270,25 @@ const translations = {
     openAccessibilitySettings: 'Reconnect',
     batteryOptimizationHelp: 'Battery settings',
     modelConfig: 'Model configuration',
+    settingsTitle: 'Settings',
+    backToChat: 'Back to chat',
+    speechConfig: 'Speech transcription API',
+    speechConfigHint: 'Choose a speech service and enter its API Key. Hold the microphone to speak; release to transcribe and send.',
+    speechProvider: 'Speech service',
+    volcengineProvider: 'Volcengine Seed ASR 2.0',
+    deepgramProvider: 'Deepgram Nova-3 (English)',
+    volcengineHint: 'Use an API Key from the new Doubao Speech console. Resource ID: volc.seedasr.sauc.duration.',
+    deepgramHint: 'Use a Deepgram API Key with Nova-3 US English.',
+    speechSave: 'Save speech settings',
+    speechKeyPlaceholder: 'Stored with Android Keystore',
+    holdToTalk: 'Hold to talk',
+    switchToVoiceInput: 'Switch to voice input',
+    switchToTextInput: 'Switch to text input',
+    releaseToSend: 'Release to send',
+    releaseToCancel: 'Release to cancel',
+    slideUpToCancel: 'Slide up to cancel',
+    transcribing: 'Transcribing…',
+    newConversation: 'New chat',
     modelConfigHint: 'Configure an OpenAI-compatible vision model',
     modelConfigRequired:
       'No model is configured yet. Tap here to finish setup before you begin',
@@ -301,7 +341,7 @@ const translations = {
     taskInstruction: 'What you want done',
     expandEditor: 'Fullscreen',
     collapseEditor: 'Exit fullscreen',
-    taskPlaceholder: 'For example: Message a friend or find a nearby CHAGEE',
+    taskPlaceholder: 'Message Tapilot',
     yamlHint:
       'Supports aiAct, aiTap, aiAssert, aiAsk, launch, home, back, and more',
     start: 'Start',
@@ -468,6 +508,22 @@ const resultTitle = element<HTMLElement>('#result-title');
 const result = element<HTMLPreElement>('#result');
 const openReportButton = element<HTMLButtonElement>('#open-report');
 const taskCard = element<HTMLElement>('.task-card');
+const chatThread = element<HTMLElement>('#chat-thread');
+const conversationList = element<HTMLSelectElement>('#conversation-list');
+const newConversation = element<HTMLButtonElement>('#new-conversation');
+const settingsOpen = element<HTMLButtonElement>('#settings-open');
+const settingsPage = element<HTMLElement>('#settings-page');
+const settingsBack = element<HTMLButtonElement>('#settings-back');
+const settingsScroll = element<HTMLElement>('#settings-scroll');
+const voiceModeToggle = element<HTMLButtonElement>('#voice-mode-toggle');
+const voiceRecord = element<HTMLButtonElement>('#voice-record');
+const voiceRecordLabel = element<HTMLElement>('#voice-record-label');
+const voiceState = element<HTMLElement>('#voice-state');
+const speechProvider = element<HTMLSelectElement>('#speech-provider');
+const speechProviderHint = element<HTMLElement>('#speech-provider-hint');
+const speechApiKey = element<HTMLInputElement>('#speech-api-key');
+const speechSave = element<HTMLButtonElement>('#speech-save');
+const speechConfigStatus = element<HTMLElement>('#speech-config-status');
 const runButton = element<HTMLButtonElement>('#run');
 const runButtonLabel = element<HTMLElement>('#run .button-label');
 const runningTaskBar = element<HTMLElement>('#running-task-bar');
@@ -479,8 +535,8 @@ taskDecoration.innerHTML = '<svg viewBox="0 0 24 24"><path d="M5 4h14v12H9l-4 4V
 runButton.before(taskDecoration);
 const apiKeyToggle = element<HTMLButtonElement>('#toggle-api-key');
 const modelConfig = element<HTMLDetailsElement>('#model-config');
-// Configuration is secondary to the task and its latest result, so keep it below both cards.
-resultCard.after(modelConfig);
+const preferenceCard = element<HTMLElement>('.preference-card');
+settingsScroll.append(modelConfig, preferenceCard);
 const modelConfigRequired = document.createElement('button');
 modelConfigRequired.type = 'button';
 modelConfigRequired.className = 'model-config-required';
@@ -565,6 +621,7 @@ const reportHistoryEmpty = element<HTMLElement>('#report-history-empty');
 const taskModeButton = element<HTMLButtonElement>('#mode-task');
 const yamlModeButton = element<HTMLButtonElement>('#mode-yaml');
 const taskPanel = element<HTMLElement>('#task-panel');
+if (localStorage.getItem('tapilot.inputMode') === 'voice') taskPanel.classList.add('is-voice-mode');
 const yamlPanel = element<HTMLElement>('#yaml-panel');
 const modeTabs = element<HTMLElement>('.mode-tabs');
 const executionHint = element<HTMLElement>('#execution-hint');
@@ -822,6 +879,8 @@ function readReportHistory(): TaskHistoryEntry[] {
 }
 
 let reportHistory = readReportHistory();
+let activeConversationId = localStorage.getItem('tapilot.activeConversation') ??
+  reportHistory[0]?.conversationId ?? reportHistory[0]?.id ?? `chat-${Date.now()}`;
 if (reportHistory.length === 0 && latestReportId) {
   reportHistory = [
     {
@@ -866,6 +925,7 @@ declare global {
       enabled: boolean,
     ) => void;
     __tapilotFocusTaskInput?: () => void;
+    __tapilotHandleBack?: () => boolean;
     __tapilotReportsDeleted?: (reportIds: string[]) => void;
     __tapilotSetThemePreference?: (preference: ThemePreference) => void;
   }
@@ -922,6 +982,9 @@ function applyLanguage(): void {
   updateModelConfigStatus();
   updateModelPresetUi();
   setRunKind(runKind);
+  voiceModeToggle.setAttribute('aria-label', t(taskPanel.classList.contains('is-voice-mode')
+    ? 'switchToTextInput' : 'switchToVoiceInput'));
+  if (!voicePointerActive) voiceRecordLabel.textContent = t('holdToTalk');
   languageValue.textContent =
     languagePreference === 'system'
       ? t('followSystem')
@@ -948,6 +1011,8 @@ function applyLanguage(): void {
     );
   }
   renderReportHistory();
+  renderConversation();
+  speechProviderHint.textContent = t(selectedSpeechProvider() === 'volcengine' ? 'volcengineHint' : 'deepgramHint');
   if (accessibilityState && !running) renderAccessibilityStatus();
 }
 
@@ -1570,6 +1635,11 @@ function updateEditorExpandButtons(): void {
 }
 
 function resizeEditorsToContent(editor: HTMLTextAreaElement): void {
+  if (editor === fields.task) {
+    editor.style.height = '44px';
+    editor.style.height = `${Math.min(120, Math.max(44, editor.scrollHeight))}px`;
+    return;
+  }
   // Grow only when content needs more room. Temporarily collapsing the focused
   // textarea for every input event cancels some IMEs' long-press backspace repeat
   // and also makes the page jump as the keyboard's visual viewport settles.
@@ -1843,6 +1913,51 @@ function renderReportHistory(): void {
 
 function persistReportHistory(): void {
   localStorage.setItem(REPORT_HISTORY_KEY, JSON.stringify(reportHistory));
+  renderReportHistory();
+  renderConversation();
+}
+
+function renderConversation(): void {
+  const language = resolveLanguage(languagePreference);
+  const names = new Map<string, string>();
+  for (const entry of [...reportHistory].reverse()) {
+    const id = entry.conversationId ?? entry.id;
+    if (!names.has(id)) names.set(id, entry.source.slice(0, 28) || (language === 'zh' ? '旧对话' : 'Previous chat'));
+  }
+  conversationList.replaceChildren();
+  if (activeConversationId && !names.has(activeConversationId)) names.set(activeConversationId, 'Tapilot');
+  const orderedIds = [...new Set(reportHistory.map(entry => entry.conversationId ?? entry.id))];
+  if (activeConversationId && !orderedIds.includes(activeConversationId)) orderedIds.unshift(activeConversationId);
+  for (const id of orderedIds) {
+    const option = document.createElement('option');
+    option.value = id;
+    option.textContent = names.get(id) ?? id;
+    conversationList.append(option);
+  }
+  conversationList.value = activeConversationId;
+  chatThread.replaceChildren();
+  const entries = conversationEntries(reportHistory, activeConversationId);
+  if (!entries.length) {
+    const empty = document.createElement('div');
+    empty.className = 'chat-empty';
+    empty.textContent = language === 'zh' ? '你好，我是 Tapilot。说说你想在手机上完成什么。' : 'Hi, I’m Tapilot. What would you like me to do on your phone?';
+    chatThread.append(empty);
+  }
+  for (const entry of entries) {
+    const user = document.createElement('div');
+    user.className = 'chat-message chat-user';
+    user.textContent = entry.source;
+    chatThread.append(user);
+    const assistant = document.createElement('div');
+    assistant.className = 'chat-message chat-assistant';
+    assistant.textContent = entry.status === 'running'
+      ? (language === 'zh' ? '正在执行…' : 'Working…')
+      : entry.reply || entry.detail || (language === 'zh' ? '任务已完成' : 'Task complete');
+    const report = primaryTaskReport(entry.reports);
+    if (report) assistant.append(reportButton(report.reportId));
+    chatThread.append(assistant);
+  }
+  chatThread.scrollTop = chatThread.scrollHeight;
 }
 
 function openReportDialog(trigger: HTMLElement = taskHistoryTrigger): void {
@@ -1937,6 +2052,10 @@ function updateRunButtonPresentation(): void {
 
 function setRunning(value: boolean): void {
   running = value;
+  voiceRecord.disabled = value;
+  voiceModeToggle.disabled = value;
+  conversationList.disabled = value;
+  newConversation.disabled = value;
   runningTaskBar.hidden = !value;
   runningTaskStop.disabled = false;
   runButton.disabled = false;
@@ -1962,7 +2081,10 @@ function setRunKind(value: RunKind): void {
     editor.before(composer);
     composer.append(editor);
   }
-  composer.append(runButton);
+  if (yaml) composer.append(runButton);
+  else taskPanel.append(runButton);
+  voiceModeToggle.hidden = yaml;
+  voiceRecord.hidden = yaml || !taskPanel.classList.contains('is-voice-mode');
   taskModeButton.classList.toggle('is-active', !yaml);
   yamlModeButton.classList.toggle('is-active', yaml);
   taskModeButton.setAttribute('aria-selected', String(!yaml));
@@ -1996,7 +2118,7 @@ function requireConfiguration(kind: RunKind, sourceOverride?: string): void {
   ];
   const missing = required.find(([input]) => !input.value.trim());
   if (missing) {
-    modelConfig.open = true;
+    openSettings();
     missing[0].focus();
     throw new Error(t(missing[1]));
   }
@@ -2016,7 +2138,7 @@ function requireModelConfiguration(): void {
   ];
   const missing = required.find(([input]) => !input.value.trim());
   if (!missing) return;
-  modelConfig.open = true;
+  openSettings();
   missing[0].focus();
   throw new Error(t(missing[1]));
 }
@@ -2060,9 +2182,12 @@ async function execute(
   setRunning(true);
   preparingExecution = false;
   stoppedByUser = false;
+  if (!activeConversationId) activeConversationId = `chat-${Date.now()}`;
+  localStorage.setItem('tapilot.activeConversation', activeConversationId);
   const historyEntryId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   reportHistory = addTaskHistoryEntry(reportHistory, {
     id: historyEntryId,
+    conversationId: activeConversationId,
     createdAt: Date.now(),
     source,
     kind: executionKind,
@@ -2088,29 +2213,96 @@ async function execute(
   activeBridge = bridge;
   try {
     setUiStatus('running', t('preparing'), t('preparingDetail'));
-    const capabilities = await bridge.getCapabilities();
-    if (!capabilities.canCapture || !capabilities.canPerformGestures)
-      throw new Error(t('enableAccessibility'));
-    setUiStatus('running', t('executingTask'), t('executingDetail'));
-    const runResultPromise = bridge.runNodeTest({
-      source,
-      kind: executionKind,
-      environment: modelEnvironment(),
-    });
-    await bridge.goHome();
-    const runResult = await runResultPromise;
+    let runResult: Awaited<ReturnType<WebViewNativeBridge['runNodeTest']>>;
+    if (executionKind === 'task') {
+      const toolReports: Awaited<ReturnType<WebViewNativeBridge['runNodeTest']>>['reports'] = [];
+      let lastReportId = '';
+      let startedPhoneWork = false;
+      const reply = await runChatAgent({
+        history: reportHistory.filter(entry => entry.id !== historyEntryId),
+        conversationId: activeConversationId,
+        source,
+        language: resolveLanguage(languagePreference),
+        isStopped: () => stoppedByUser,
+        complete: async (messages: ChatMessage[]): Promise<ChatCompletion> => {
+          setUiStatus('running', t('executingTask'), t('executingDetail'));
+          const response = await bridge.httpRequest({
+            url: modelConnectionEndpoint(fields.baseUrl.value.trim()),
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${fields.apiKey.value.trim()}`,
+              'Content-Type': 'application/json',
+            },
+            bodyBase64: encodeBase64(JSON.stringify({
+              model: fields.modelName.value.trim(),
+              messages,
+              tools: [PHONE_TOOL],
+              tool_choice: 'auto',
+              stream: false,
+              max_tokens: 2048,
+            })),
+          });
+          const body = decodeBase64(response.bodyBase64);
+          if (response.status < 200 || response.status >= 300)
+            throw new Error(`Conversation model HTTP ${response.status}: ${body.slice(0, 500)}`);
+          return JSON.parse(body) as ChatCompletion;
+        },
+        operatePhone: async instruction => {
+          const capabilities = await bridge.getCapabilities();
+          if (!capabilities.canCapture || !capabilities.canPerformGestures)
+            throw new Error(t('enableAccessibility'));
+          const pending = bridge.runNodeTest({
+            source: instruction,
+            kind: 'task',
+            environment: modelEnvironment(),
+          });
+          if (!startedPhoneWork) {
+            startedPhoneWork = true;
+            await bridge.goHome();
+          }
+          const result = await pending;
+          lastReportId = result.reportId;
+          toolReports.push(...result.reports);
+          return {
+            success: result.exitCode === 0,
+            result: result.exitCode === 0
+              ? result.finalResponse || result.output.slice(-10).join('\n') || 'Phone operation completed'
+              : result.failure || result.output.slice(-10).join('\n') || 'Phone operation failed',
+          };
+        },
+      });
+      runResult = {
+        exitCode: 0,
+        reportId: lastReportId,
+        reports: toolReports,
+        output: [],
+        finalResponse: reply,
+      };
+    } else {
+      const capabilities = await bridge.getCapabilities();
+      if (!capabilities.canCapture || !capabilities.canPerformGestures)
+        throw new Error(t('enableAccessibility'));
+      setUiStatus('running', t('executingTask'), t('executingDetail'));
+      const pending = bridge.runNodeTest({
+        source,
+        kind: executionKind,
+        environment: modelEnvironment(),
+      });
+      await bridge.goHome();
+      runResult = await pending;
+    }
     latestReportId = runResult.reportId;
     showingPersistedReport = false;
-    localStorage.setItem('midscene.latestReportId', latestReportId);
+    if (latestReportId) localStorage.setItem('midscene.latestReportId', latestReportId);
     const reports = runResult.reports?.length
       ? runResult.reports
-      : [
+      : runResult.reportId ? [
           {
             reportId: runResult.reportId,
             kind: 'agent' as const,
             title: 'Agent report',
           },
-        ];
+        ] : [];
     const output = runResult.output.slice(-30).join('\n');
     if (runResult.exitCode === 0) {
       reportHistory = updateTaskHistoryEntry(reportHistory, historyEntryId, {
@@ -2124,6 +2316,9 @@ async function execute(
         runResult.output,
         t('taskSucceededDetail'),
       );
+      reportHistory = updateTaskHistoryEntry(reportHistory, historyEntryId, {
+        reply: latestTaskResponse,
+      });
       revealResult(latestTaskResponse, t('taskSucceeded'), 'succeeded');
     } else {
       const failure = runResult.failure || `Exit code ${runResult.exitCode}`;
@@ -2212,11 +2407,15 @@ for (const [key, input] of Object.entries(fields)) {
   const defaultLanguage = resolveLanguage(languagePreference);
   const defaultValue =
     key === 'task'
-      ? DEFAULT_TASK[defaultLanguage]
+      ? ''
       : key === 'yaml'
         ? DEFAULT_YAML[defaultLanguage]
         : '';
-  input.value = localStorage.getItem(storageKey) ?? defaultValue;
+  const storedValue = localStorage.getItem(storageKey);
+  input.value = key === 'task' &&
+    (storedValue === DEFAULT_TASK.zh || storedValue === DEFAULT_TASK.en)
+    ? ''
+    : storedValue ?? defaultValue;
   input.addEventListener('input', () => {
     if (key !== 'apiKey') localStorage.setItem(storageKey, input.value);
     if ((MODEL_FIELD_KEYS as readonly string[]).includes(key)) {
@@ -2324,6 +2523,7 @@ document.addEventListener('keydown', (event) => {
   else if (!themeDialog.hidden) closeThemeDialog();
   else if (!edgeEffectDialog.hidden) closeEdgeEffectDialog();
   else if (!reportDialog.hidden) closeReportDialog();
+  else if (!settingsPage.hidden) closeSettings();
 });
 for (const button of fieldHelpButtons) {
   button.addEventListener('click', () => {
@@ -2453,13 +2653,37 @@ modelConfig.open = savedModelConfigOpen === 'true';
 modelConfig.addEventListener('toggle', () =>
   localStorage.setItem(MODEL_CONFIG_OPEN_KEY, String(modelConfig.open)),
 );
-modelConfigRequired.addEventListener('click', () => {
+function openSettings(): void {
+  if (!settingsPage.hidden) return;
   fields.task.blur();
+  settingsPage.hidden = false;
+  document.body.classList.add('show-settings');
   modelConfig.open = true;
-  requestAnimationFrame(() =>
-    modelConfig.scrollIntoView({ behavior: 'smooth', block: 'start' }),
-  );
+  settingsScroll.scrollTop = 0;
+  history.pushState({ tapilotPage: 'settings' }, '');
+}
+function hideSettings(): void {
+  settingsPage.hidden = true;
+  document.body.classList.remove('show-settings');
+  settingsOpen.focus();
+}
+function closeSettings(): void {
+  if (history.state?.tapilotPage === 'settings') history.back();
+  else hideSettings();
+}
+window.__tapilotHandleBack = (): boolean => {
+  if (settingsPage.hidden) return false;
+  closeSettings();
+  return true;
+};
+window.addEventListener('popstate', () => {
+  if (!settingsPage.hidden) hideSettings();
 });
+modelConfigRequired.addEventListener('click', () => {
+  openSettings();
+});
+settingsOpen.addEventListener('click', openSettings);
+settingsBack.addEventListener('click', closeSettings);
 
 apiKeyToggle.addEventListener('click', () => {
   const reveal = fields.apiKey.type === 'password';
@@ -2527,7 +2751,10 @@ async function stopActiveTask(): Promise<void> {
   runButton.disabled = true;
   runningTaskStop.disabled = true;
   try {
-    await activeBridge.stopNodeTest();
+    await Promise.allSettled([
+      activeBridge.cancelSession(),
+      activeBridge.stopNodeTest(),
+    ]);
   } catch (error) {
     console.error('Unable to stop Node Test Runner', error);
     runButton.disabled = false;
@@ -2544,6 +2771,169 @@ runButton.addEventListener('click', async () => {
 });
 runButton.addEventListener('pointerdown', (event) => event.preventDefault());
 runningTaskStop.addEventListener('click', () => void stopActiveTask());
+
+conversationList.addEventListener('change', () => {
+  if (running) return;
+  activeConversationId = conversationList.value;
+  localStorage.setItem('tapilot.activeConversation', activeConversationId);
+  renderConversation();
+});
+newConversation.addEventListener('click', () => {
+  if (running) return;
+  activeConversationId = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  localStorage.setItem('tapilot.activeConversation', activeConversationId);
+  renderConversation();
+  fields.task.focus();
+});
+
+type SpeechProvider = 'volcengine' | 'deepgram';
+const storedSpeechProvider = localStorage.getItem('tapilot.speech.provider');
+speechProvider.value = storedSpeechProvider === 'deepgram' ? 'deepgram' : 'volcengine';
+function selectedSpeechProvider(): SpeechProvider {
+  return speechProvider.value === 'deepgram' ? 'deepgram' : 'volcengine';
+}
+async function refreshSpeechProvider(): Promise<void> {
+  const provider = selectedSpeechProvider();
+  speechProviderHint.textContent = t(provider === 'volcengine' ? 'volcengineHint' : 'deepgramHint');
+  const bridge = new WebViewNativeBridge();
+  try {
+    const { configured } = await bridge.hasSpeechCredential(provider);
+    if (selectedSpeechProvider() !== provider) return;
+    speechConfigStatus.textContent = configured
+      ? (resolveLanguage(languagePreference) === 'zh' ? 'API Key 已保存' : 'API Key saved')
+      : (resolveLanguage(languagePreference) === 'zh' ? '尚未配置' : 'Not configured');
+  } catch {
+    speechConfigStatus.textContent = '';
+  } finally {
+    bridge.destroy();
+  }
+}
+speechProvider.addEventListener('change', () => {
+  localStorage.setItem('tapilot.speech.provider', selectedSpeechProvider());
+  speechApiKey.value = '';
+  void refreshSpeechProvider();
+});
+speechSave.addEventListener('click', async () => {
+  try {
+    const provider = selectedSpeechProvider();
+    const bridge = new WebViewNativeBridge();
+    try {
+      if (speechApiKey.value.trim()) await bridge.setSpeechCredential(provider, speechApiKey.value.trim());
+      const { configured } = await bridge.hasSpeechCredential(provider);
+      if (!configured) throw new Error('API Key required');
+      speechApiKey.value = '';
+      speechConfigStatus.textContent = resolveLanguage(languagePreference) === 'zh' ? '已保存' : 'Saved';
+    } finally { bridge.destroy(); }
+  } catch (error) {
+    speechConfigStatus.textContent = error instanceof Error ? error.message : String(error);
+  }
+});
+void refreshSpeechProvider();
+
+let voicePointerActive = false;
+let voicePointerStartY = 0;
+let voiceCancelOnRelease = false;
+let voiceBridge: WebViewNativeBridge | undefined;
+let voiceStart: Promise<void> | undefined;
+function setVoiceMode(enabled: boolean): void {
+  if (voicePointerActive || running) return;
+  taskPanel.classList.toggle('is-voice-mode', enabled);
+  localStorage.setItem('tapilot.inputMode', enabled ? 'voice' : 'text');
+  voiceModeToggle.setAttribute('aria-pressed', String(enabled));
+  voiceModeToggle.setAttribute('aria-label', t(enabled ? 'switchToTextInput' : 'switchToVoiceInput'));
+  voiceRecord.hidden = !enabled;
+  if (enabled) fields.task.blur();
+  else fields.task.focus();
+}
+voiceModeToggle.addEventListener('click', () =>
+  setVoiceMode(!taskPanel.classList.contains('is-voice-mode')),
+);
+function voiceFeedback(message: string): void {
+  voiceState.textContent = message;
+  voiceState.hidden = !message;
+}
+voiceRecord.addEventListener('pointerdown', (event) => {
+  if (running || voicePointerActive || voiceBridge) return;
+  event.preventDefault();
+  voicePointerActive = true;
+  voicePointerStartY = event.clientY;
+  voiceCancelOnRelease = false;
+  voiceRecord.setPointerCapture(event.pointerId);
+  voiceRecord.classList.add('is-recording');
+  voiceRecordLabel.textContent = t('releaseToSend');
+  voiceFeedback(t('slideUpToCancel'));
+  const bridge = new WebViewNativeBridge();
+  voiceBridge = bridge;
+  voiceStart = (async () => {
+    const provider = selectedSpeechProvider();
+    const { configured } = await bridge.hasSpeechCredential(provider);
+    if (!configured) {
+      openSettings();
+      requestAnimationFrame(() => speechProvider.scrollIntoView({ block: 'center' }));
+      throw new Error(resolveLanguage(languagePreference) === 'zh' ? '请先保存语音转写 API 配置' : 'Save speech API settings first');
+    }
+    await bridge.startSpeech(provider, resolveLanguage(languagePreference) === 'zh' ? 'zh-CN' : 'en-US');
+  })().catch(error => {
+    voicePointerActive = false;
+    voiceRecord.classList.remove('is-recording');
+    voiceRecordLabel.textContent = t('holdToTalk');
+    voiceFeedback(error instanceof Error ? error.message : String(error));
+    bridge.destroy();
+    voiceBridge = undefined;
+    throw error;
+  });
+  void voiceStart.catch(() => undefined);
+});
+voiceRecord.addEventListener('pointermove', (event) => {
+  if (!voicePointerActive) return;
+  const cancel = voicePointerStartY - event.clientY > 72;
+  if (cancel === voiceCancelOnRelease) return;
+  voiceCancelOnRelease = cancel;
+  voiceRecord.classList.toggle('will-cancel', cancel);
+  voiceRecordLabel.textContent = t(cancel ? 'releaseToCancel' : 'releaseToSend');
+});
+voiceRecord.addEventListener('pointerup', async () => {
+  if (!voicePointerActive || !voiceBridge) return;
+  voicePointerActive = false;
+  voiceRecord.classList.remove('is-recording');
+  voiceRecord.classList.remove('will-cancel');
+  voiceRecordLabel.textContent = t('holdToTalk');
+  voiceRecord.disabled = true;
+  const bridge = voiceBridge;
+  try {
+    await voiceStart;
+    if (voiceCancelOnRelease) {
+      await bridge.cancelSpeech();
+      voiceFeedback('');
+      return;
+    }
+    voiceFeedback(t('transcribing'));
+    const { text } = await bridge.finishSpeech();
+    voiceFeedback('');
+    fields.task.value = text;
+    setRunKind('task');
+    await execute();
+  } catch (error) {
+    voiceFeedback(error instanceof Error ? error.message : String(error));
+  } finally {
+    bridge.destroy();
+    voiceBridge = undefined;
+    voiceRecord.disabled = running;
+  }
+});
+voiceRecord.addEventListener('pointercancel', async () => {
+  voicePointerActive = false;
+  voiceRecord.classList.remove('is-recording');
+  voiceRecord.classList.remove('will-cancel');
+  voiceRecordLabel.textContent = t('holdToTalk');
+  const bridge = voiceBridge;
+  if (!bridge) return;
+  await voiceStart?.catch(() => undefined);
+  await bridge.cancelSpeech().catch(() => undefined);
+  bridge.destroy();
+  if (voiceBridge === bridge) voiceBridge = undefined;
+  voiceFeedback('');
+});
 
 openReportButton.addEventListener('click', (event) => {
   event.stopPropagation();
@@ -2645,6 +3035,7 @@ async function loadFloatingBallState(): Promise<void> {
 applyTheme(true);
 applyLanguage();
 renderReportHistory();
+renderConversation();
 enableBottomSheetGestures();
 window.__midsceneRefreshCapabilities = () => void refreshCapabilities();
 window.__midsceneSetAccessibilityState = (connected, enabled) => {

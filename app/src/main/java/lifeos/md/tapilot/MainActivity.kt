@@ -194,6 +194,19 @@ class MainActivity : Activity() {
         super.onDestroy()
     }
 
+    @Suppress("DEPRECATION")
+    override fun onBackPressed() {
+        if (!::webView.isInitialized || !pageReady) {
+            super.onBackPressed()
+            return
+        }
+        webView.evaluateJavascript("window.__tapilotHandleBack?.() === true") { handled ->
+            if (handled != "true" && !isFinishing && !isDestroyed) {
+                super.onBackPressed()
+            }
+        }
+    }
+
     private fun applySystemBarInsets() {
         if (!::webView.isInitialized) return
         webView.evaluateJavascript(

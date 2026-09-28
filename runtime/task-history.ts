@@ -15,12 +15,14 @@ export interface TaskHistoryReport {
 
 export interface TaskHistoryEntry {
   id: string;
+  conversationId?: string;
   createdAt: number;
   source: string;
   kind: 'task' | 'yaml';
   modelName: string;
   status: TaskHistoryStatus;
   detail?: string;
+  reply?: string;
   reports: TaskHistoryReport[];
 }
 
@@ -52,6 +54,8 @@ interface LegacyReportRun {
   status?: unknown;
   succeeded?: unknown;
   detail?: unknown;
+  reply?: unknown;
+  conversationId?: unknown;
   reports?: unknown;
 }
 
@@ -93,11 +97,13 @@ export function normalizeTaskHistory(value: unknown): TaskHistoryEntry[] {
             ? legacy.createdAt
             : Date.now(),
         source,
+        conversationId: typeof legacy.conversationId === 'string' ? legacy.conversationId : undefined,
         kind: legacy.kind === 'yaml' ? 'yaml' : 'task',
         modelName:
           typeof legacy.modelName === 'string' ? legacy.modelName : '',
         status,
         detail: typeof legacy.detail === 'string' ? legacy.detail : undefined,
+        reply: typeof legacy.reply === 'string' ? legacy.reply : undefined,
         reports: Array.isArray(legacy.reports)
           ? (legacy.reports as TaskHistoryReport[])
           : [],

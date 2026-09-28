@@ -72,16 +72,24 @@ APK 内置 arm64 版 Node.js 24 和打包后的 `@midscene/test` 运行时。And
 
 设置页的运行时检测会同时验证 Node 可执行文件以及 Test Runner 模块是否能加载。构建
 阶段还会执行普通 Test Runner 冒烟用例，以及连接模拟 Android device interface 的桥接
-冒烟用例。设置页中的自然语言任务会转换为单步 `aiAct` YAML，用户输入的 YAML 则保持
-原样；两者都由设备内的 `@midscene/test` 和 `@midscene/core` 执行。WebView 只负责配置、
-发起/停止任务和打开报告，不再承载 Agent。
+冒烟用例。聊天由独立的对话 Agent 管理完整的已保存会话上下文，并通过配置的模型 API
+决定是否调用手机工具。每次手机工具调用只把一条具体指令转换为单步 `aiAct` YAML，交给
+设备内的 `@midscene/test` 和 `@midscene/core` 执行；Midscene 的结果再交回对话 Agent
+组织回复。用户输入的 YAML 保持原样，直接由 Test Runner 执行。
 
 ## 首次使用
 
 1. 打开应用，按照顶部引导进入辅助功能设置。
 2. 启用 **Tapilot 设备控制**，然后返回应用；启用后页面左上角只显示绿色状态点。
 3. 配置一个兼容 OpenAI 接口的 HTTPS 视觉模型。
-4. 输入任务并点击 **开始执行**。
+4. 输入消息并点击发送。Tapilot 会在当前对话中显示执行结果；可以继续追问或点右上角开启新对话。
+
+语音输入支持火山引擎 Seed ASR 2.0 官方 API 和 Deepgram Nova-3（简体中文或美式英语，跟随界面语言）。
+在模型配置中选择服务并保存该服务的 API Key。火山引擎使用新版豆包语音控制台的
+API Key，资源 ID 固定为 `volc.seedasr.sauc.duration`；Deepgram 使用自己的 API Key。
+按住输入框旁的麦克风说话，松开后会完成转写并发送；转写失败时不会执行任务。
+首次录音需授予麦克风权限。音频通过所选服务的 WebSocket API 流式发送，不保存录音文件；
+两家服务的密钥分别由 Android Keystore 加密保存，不使用系统语音识别。
 
 界面语言默认跟随 Android 系统，也可从 App 统一风格的自绘弹层中固定为简体中文或
 English。语言选择会同时作用于 WebView 设置页、原生辅助功能引导和任务状态通知，
@@ -147,8 +155,9 @@ Export Video 会将 WebM 视频保存到系统视频库的 **Movies/Tapilot** �
 超时），任务中止时会同时断开对应的原生网络连接。当前传输层会先完整缓冲流式响应，
 再转交 JavaScript runtime；增量原生流式传输属于后续优化项。
 
-自然语言和 YAML 都复用设备内 Node.js 中现有的 Midscene Agent、Test Runner 与标准报告
-能力，不重新实现规划或报告逻辑。Android 侧只实现 device interface 和进程/RPC 生命周期。
+手机操作和 YAML 都复用设备内 Node.js 中现有的 Midscene Agent、Test Runner 与标准报告
+能力。对话 Agent 负责上下文、工具调用和最终回复；Android 侧提供模型传输、device
+interface 和进程/RPC 生命周期。
 YAML 支持 Test Runner 通用节点，以及 `launch`、`home`、`back`、`recentApps` 这些 Android
 直连节点；受应用沙箱限制，仍不提供 shell 和强停任意应用。
 

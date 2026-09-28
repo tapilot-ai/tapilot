@@ -1,6 +1,7 @@
 package lifeos.md.tapilot.bridge
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -36,6 +37,7 @@ class NativeJavascriptBridge(
 ) : AutoCloseable {
     private val modelTransport = ModelTransport()
     private val modelCredentialStore = ModelCredentialStore(webView.context)
+    private val speechTranscriber = SpeechTranscriber(webView.context as Activity)
     private val reportRepository = ReportRepository(File(webView.context.filesDir, "reports")).apply {
         cleanupStaleDrafts()
     }
@@ -157,7 +159,7 @@ class NativeJavascriptBridge(
             }
             "app.getModelCredentials" -> respondSuccess(
                 requestId,
-                JSONObject(modelCredentialStore.getAll()),
+                JSONObject(modelCredentialStore.getAll().filterKeys { !it.startsWith("speech-") }),
             )
             "app.setModelCredential" -> {
                 val params = request.getJSONObject("params")
@@ -167,6 +169,43 @@ class NativeJavascriptBridge(
             "app.deleteModelCredential" -> {
                 modelCredentialStore.delete(request.getJSONObject("params").getString("preset"))
                 respondSuccess(requestId, JSONObject.NULL)
+            }
+            "speech.hasCredential" -> respondSuccess(
+                requestId,
+                JSONObject().put("configured", modelCredentialStore.getAll()[speechPreset(request)]?.isNotBlank() == true),
+            )
+            "speech.setCredential" -> {
+                modelCredentialStore.set(speechPreset(request), request.getJSONObject("params").getString("apiKey"))
+                respondSuccess(requestId, JSONObject.NULL)
+            }
+            "speech.start" -> {
+                val params = request.getJSONObject("params")
+                val provider = params.getString("provider")
+                val language = params.optString("language", "en-US")
+                val key = modelCredentialStore.getAll()[speechPreset(request)] ?: error("Speech API Key is missing")
+                speechTranscriber.start(provider, key, language) { outcome ->
+                    outcome.fold(
+                        onSuccess = { respondSuccess(requestId, JSONObject.NULL) },
+                        onFailure = { respondError(requestId, it) },
+                    )
+                }
+            }
+            "speech.cancel" -> {
+                speechTranscriber.cancel()
+                respondSuccess(requestId, JSONObject.NULL)
+            }
+            "speech.finish" -> {
+                try {
+                    speechTranscriber.finish { outcome ->
+                        outcome.fold(
+                            onSuccess = { respondSuccess(requestId, JSONObject().put("text", it)) },
+                            onFailure = { respondError(requestId, it) },
+                        )
+                    }
+                } catch (error: Throwable) {
+                    speechTranscriber.cancel()
+                    throw error
+                }
             }
             "report.begin" -> executeReportOperation(requestId) {
                 JSONObject().put("reportId", reportRepository.begin())
@@ -345,6 +384,14 @@ class NativeJavascriptBridge(
         }
     }
 
+    private fun speechPreset(request: JSONObject): String = when (
+        request.getJSONObject("params").getString("provider")
+    ) {
+        SpeechTranscriber.VOLCENGINE -> "speech-volcengine"
+        SpeechTranscriber.DEEPGRAM -> "speech-deepgram"
+        else -> throw IllegalArgumentException("Unsupported speech provider")
+    }
+
     private fun executeNodeTestRun(requestId: String, params: JSONObject) {
         val environmentJson = params.getJSONObject("environment")
         val environment = environmentJson.keys().asSequence().associateWith { name ->
@@ -480,6 +527,7 @@ class NativeJavascriptBridge(
         IllegalStateException("Enable Tapilot device control in Accessibility settings")
 
     override fun close() {
+        speechTranscriber.close()
         modelTransport.close()
         nodeTestRunCoordinator.close()
         reportRepository.close()
