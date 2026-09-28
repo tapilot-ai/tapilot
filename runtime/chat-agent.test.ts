@@ -65,6 +65,25 @@ describe('chat agent', () => {
     expect(operated).toBe(false);
   });
 
+  it('attaches only the current launch image to the new user turn', async () => {
+    let sent: ChatMessage[] = [];
+    await runChatAgent({
+      history: [entry('1', 'a', '之前的问题', '之前的答案')],
+      conversationId: 'a', source: '这是什么？', language: 'zh',
+      imageDataUrl: 'data:image/png;base64,dGVzdA==',
+      async complete(messages) {
+        sent = structuredClone(messages);
+        return { choices: [{ message: { content: '一张测试图片' } }] };
+      },
+      async operatePhone() { throw new Error('unexpected phone operation'); },
+    });
+    expect(sent[1]).toEqual({ role: 'user', content: '之前的问题' });
+    expect(sent.at(-1)).toEqual({ role: 'user', content: [
+      { type: 'text', text: '这是什么？' },
+      { type: 'image_url', image_url: { url: 'data:image/png;base64,dGVzdA==' } },
+    ] });
+  });
+
   it('passes a failed phone operation back to the agent before replying', async () => {
     const phoneCalls: string[] = [];
     const modelCalls: ChatMessage[][] = [];

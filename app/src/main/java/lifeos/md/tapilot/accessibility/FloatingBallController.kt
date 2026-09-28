@@ -1,6 +1,5 @@
 package lifeos.md.tapilot.accessibility
 
-import android.accessibilityservice.AccessibilityService
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
@@ -11,12 +10,18 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
 import lifeos.md.tapilot.MainActivity
+import lifeos.md.tapilot.GlobalAssistantPanelActivity
+import lifeos.md.tapilot.LaunchContext
 import lifeos.md.tapilot.R
+import org.json.JSONObject
+import java.util.UUID
 import kotlin.math.roundToInt
 
 class FloatingBallController(
-    private val service: AccessibilityService,
+    private val service: MidsceneAccessibilityService,
     private val windowManager: WindowManager,
 ) : AutoCloseable {
     private val size = (56 * service.resources.displayMetrics.density).roundToInt()
@@ -26,6 +31,8 @@ class FloatingBallController(
     private var hiddenForCapture = false
     private var view: View? = null
     private var layoutParams: WindowManager.LayoutParams? = null
+    private var statusView: View? = null
+    private var resultView: View? = null
 
     fun setAppForeground(foreground: Boolean) {
         appForeground = foreground
@@ -39,7 +46,51 @@ class FloatingBallController(
 
     fun setTaskRunning(running: Boolean) {
         taskRunning = running
+        if (running) {
+            resultView?.let { runCatching { windowManager.removeView(it) } }
+            resultView = null
+        }
         updateVisibility()
+        if (running && !appForeground) showStatus() else hideStatus()
+    }
+
+    fun showResult(message: String) {
+        hideStatus()
+        resultView?.let { runCatching { windowManager.removeView(it) } }
+        val panel = LinearLayout(service).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(12), dp(16), dp(12))
+            background = GradientDrawable().apply {
+                cornerRadius = dp(16).toFloat()
+                setColor(Color.WHITE)
+                setStroke(dp(1), Color.rgb(218, 221, 236))
+            }
+            elevation = dp(10).toFloat()
+            addView(TextView(service).apply {
+                text = "Tapilot 已回复"
+                textSize = 14f
+                setTextColor(Color.rgb(38, 44, 75))
+            })
+            addView(TextView(service).apply {
+                text = message.take(260)
+                textSize = 14f
+                setTextColor(Color.rgb(44, 47, 60))
+                maxLines = 5
+            })
+            setOnClickListener {
+                resultView?.let { view -> runCatching { windowManager.removeView(view) } }
+                resultView = null
+                openMainActivity()
+            }
+        }
+        val params = WindowManager.LayoutParams(
+            windowManager.currentWindowMetrics.bounds.width() - dp(32),
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT,
+        ).apply { gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL; y = dp(48) }
+        runCatching { windowManager.addView(panel, params) }.onSuccess { resultView = panel }
     }
 
     fun hideForCapture(): Boolean {
@@ -65,6 +116,34 @@ class FloatingBallController(
         val shouldShow = FloatingBallPreferences.isEnabled(service) &&
             !appForeground && !taskRunning && !hiddenForCapture
         if (shouldShow && view == null) show() else if (!shouldShow && view != null) hide()
+        if (taskRunning && !appForeground) showStatus() else hideStatus()
+    }
+
+    private fun showStatus() {
+        if (statusView != null) return
+        val label = TextView(service).apply {
+            text = "Tapilot 正在处理…"
+            textSize = 13f
+            setTextColor(Color.WHITE)
+            setPadding(dp(16), dp(9), dp(16), dp(9))
+            background = GradientDrawable().apply {
+                cornerRadius = dp(20).toFloat()
+                setColor(Color.rgb(55, 62, 113))
+            }
+        }
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.TRANSLUCENT,
+        ).apply { gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL; y = dp(48) }
+        runCatching { windowManager.addView(label, params) }.onSuccess { statusView = label }
+    }
+
+    private fun hideStatus() {
+        statusView?.let { runCatching { windowManager.removeView(it) } }
+        statusView = null
     }
 
     private fun show() {
@@ -139,20 +218,37 @@ class FloatingBallController(
     }
 
     private fun openTaskInput() {
+        service.capture("launch-${UUID.randomUUID()}") { outcome ->
+            outcome.getOrNull()?.let { capture ->
+                LaunchContext.put(JSONObject()
+                    .put("kind", "screen")
+                    .put("label", "当前屏幕")
+                    .put("dataUrl", capture.dataUrl))
+            }
+            openAssistantPanel()
+        }
+    }
+
+    private fun openAssistantPanel() {
         service.startActivity(
-            Intent(service, MainActivity::class.java).apply {
-                addFlags(
-                    Intent.FLAG_ACTIVITY_NEW_TASK or
-                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                        Intent.FLAG_ACTIVITY_SINGLE_TOP,
-                )
-                putExtra(MainActivity.EXTRA_FOCUS_TASK_INPUT, true)
+            Intent(service, GlobalAssistantPanelActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             },
         )
     }
 
+    private fun openMainActivity() {
+        service.startActivity(Intent(service, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            putExtra(MainActivity.EXTRA_FOCUS_TASK_INPUT, true)
+        })
+    }
+
     override fun close() {
         hide()
+        hideStatus()
+        resultView?.let { runCatching { windowManager.removeView(it) } }
+        resultView = null
     }
 
     private fun dp(value: Int): Int =

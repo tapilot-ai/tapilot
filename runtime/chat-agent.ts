@@ -2,7 +2,8 @@ import { conversationEntries } from './conversation';
 import type { TaskHistoryEntry } from './task-history';
 
 export type ChatMessage =
-  | { role: 'system' | 'user'; content: string }
+  | { role: 'system'; content: string }
+  | { role: 'user'; content: string | Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> }
   | { role: 'assistant'; content: string | null; tool_calls?: ToolCall[] }
   | { role: 'tool'; tool_call_id: string; content: string };
 
@@ -26,6 +27,7 @@ export interface ChatAgentOptions {
   conversationId: string;
   source: string;
   language: 'zh' | 'en';
+  imageDataUrl?: string;
   complete(messages: ChatMessage[]): Promise<ChatCompletion>;
   operatePhone(instruction: string): Promise<PhoneToolResult>;
   isStopped?(): boolean;
@@ -71,6 +73,13 @@ export async function runChatAgent(options: ChatAgentOptions): Promise<string> {
   const messages = conversationMessages(
     options.history, options.conversationId, options.source, options.language,
   );
+  if (options.imageDataUrl) {
+    const last = messages[messages.length - 1];
+    if (last.role === 'user') last.content = [
+      { type: 'text', text: options.source },
+      { type: 'image_url', image_url: { url: options.imageDataUrl } },
+    ];
+  }
   let toolCalls = 0;
   for (let turn = 0; turn < 8; turn += 1) {
     if (options.isStopped?.()) throw new Error('Task stopped');

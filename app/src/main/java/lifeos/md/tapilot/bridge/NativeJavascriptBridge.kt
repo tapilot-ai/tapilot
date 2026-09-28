@@ -2,6 +2,8 @@ package lifeos.md.tapilot.bridge
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.role.RoleManager
+import android.os.Build
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -11,6 +13,7 @@ import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import lifeos.md.tapilot.ReportActivity
+import lifeos.md.tapilot.LaunchContext
 import lifeos.md.tapilot.TaskRuntimeService
 import lifeos.md.tapilot.accessibility.MidsceneAccessibilityService
 import lifeos.md.tapilot.accessibility.FloatingBallPreferences
@@ -70,6 +73,29 @@ class NativeJavascriptBridge(
         val service = MidsceneAccessibilityService.current()
 
         when (method) {
+            "app.getAssistantRole" -> {
+                val manager = if (Build.VERSION.SDK_INT >= 29)
+                    webView.context.getSystemService(RoleManager::class.java) else null
+                respondSuccess(requestId, JSONObject()
+                    .put("available", manager?.isRoleAvailable(RoleManager.ROLE_ASSISTANT) == true)
+                    .put("held", manager?.isRoleHeld(RoleManager.ROLE_ASSISTANT) == true))
+            }
+            "app.requestAssistantRole" -> {
+                val manager = if (Build.VERSION.SDK_INT >= 29)
+                    webView.context.getSystemService(RoleManager::class.java) else null
+                check(manager?.isRoleAvailable(RoleManager.ROLE_ASSISTANT) == true) {
+                    "Assistant role is unavailable on this device"
+                }
+                if (!manager.isRoleHeld(RoleManager.ROLE_ASSISTANT)) {
+                    (webView.context as Activity).startActivityForResult(
+                        manager.createRequestRoleIntent(RoleManager.ROLE_ASSISTANT), 2110,
+                    )
+                }
+                respondSuccess(requestId, JSONObject.NULL)
+            }
+            "app.consumeLaunchContext" -> respondSuccess(
+                requestId, LaunchContext.consume() ?: JSONObject.NULL,
+            )
             "device.getCapabilities" -> respondSuccess(
                 requestId,
                 (service?.capabilityDetails() ?: JSONObject())
@@ -174,6 +200,13 @@ class NativeJavascriptBridge(
                 requestId,
                 JSONObject().put("configured", modelCredentialStore.getAll()[speechPreset(request)]?.isNotBlank() == true),
             )
+            "speech.setProvider" -> {
+                val provider = request.getJSONObject("params").getString("provider")
+                require(provider == "volcengine" || provider == "deepgram")
+                webView.context.getSharedPreferences("tapilot-speech", 0).edit()
+                    .putString("provider", provider).apply()
+                respondSuccess(requestId, JSONObject.NULL)
+            }
             "speech.setCredential" -> {
                 modelCredentialStore.set(speechPreset(request), request.getJSONObject("params").getString("apiKey"))
                 respondSuccess(requestId, JSONObject.NULL)
@@ -352,6 +385,15 @@ class NativeJavascriptBridge(
                     },
                     GO_HOME_RESPONSE_DELAY_MILLIS,
                 )
+            }
+            "app.returnToPreviousApp" -> {
+                respondSuccess(requestId, JSONObject.NULL)
+                webView.postDelayed({ (webView.context as Activity).moveTaskToBack(true) },
+                    GO_HOME_RESPONSE_DELAY_MILLIS)
+            }
+            "app.showGlobalResult" -> {
+                service?.showGlobalResult(request.getJSONObject("params").getString("message"))
+                respondSuccess(requestId, JSONObject.NULL)
             }
             "app.bringToFront" -> {
                 respondSuccess(requestId, JSONObject.NULL)

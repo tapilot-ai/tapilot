@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -12,6 +13,8 @@ import android.os.Bundle
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.net.Uri
+import android.util.Base64
 import android.provider.Settings
 import android.view.View
 import android.view.inputmethod.InputMethodManager
@@ -28,6 +31,7 @@ import lifeos.md.tapilot.accessibility.MidsceneAccessibilityService
 import lifeos.md.tapilot.bridge.NativeJavascriptBridge
 import lifeos.md.tapilot.report.DeletedReportStore
 import org.json.JSONArray
+import org.json.JSONObject
 
 class MainActivity : Activity() {
     override fun attachBaseContext(newBase: Context) {
@@ -77,6 +81,7 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         pendingTaskInputFocus = intent.getBooleanExtra(EXTRA_FOCUS_TASK_INPUT, false)
+        receiveExternalIntent(intent)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
             WebView.setWebContentsDebuggingEnabled(true)
@@ -130,6 +135,7 @@ class MainActivity : Activity() {
                     syncThemePreference()
                     notifyDeletedReports()
                     focusTaskInputIfRequested()
+                    deliverLaunchContext()
                 }
             }
             nativeBridge = NativeJavascriptBridge(
@@ -164,11 +170,15 @@ class MainActivity : Activity() {
         refreshAccessibilityState(force = true)
         notifyDeletedReports()
         focusTaskInputIfRequested()
+        deliverLaunchContext()
+        if (pageReady) webView.evaluateJavascript("window.__tapilotRefreshAssistantRole?.()", null)
     }
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        receiveExternalIntent(intent)
+        deliverLaunchContext()
         if (intent.getBooleanExtra(EXTRA_FOCUS_TASK_INPUT, false)) {
             pendingTaskInputFocus = true
             focusTaskInputIfRequested()
@@ -240,6 +250,43 @@ class MainActivity : Activity() {
                     .showSoftInput(webView, InputMethodManager.SHOW_IMPLICIT)
             }, 120L)
         }
+    }
+
+    private fun receiveExternalIntent(incoming: Intent) {
+        val action = incoming.action
+        if (action != Intent.ACTION_SEND && action != Intent.ACTION_PROCESS_TEXT &&
+            action != Intent.ACTION_ASSIST) return
+        val text = when (action) {
+            Intent.ACTION_PROCESS_TEXT -> incoming.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()
+            Intent.ACTION_SEND -> incoming.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
+            else -> null
+        }?.take(20_000).orEmpty()
+        val context = JSONObject().put("kind", "share").put("label", "分享内容")
+            .put("text", text)
+        if (action == Intent.ACTION_SEND && incoming.type?.startsWith("image/") == true) {
+            @Suppress("DEPRECATION")
+            val uri = incoming.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+            if (uri != null) runCatching {
+                val bytes = contentResolver.openInputStream(uri)?.use { stream ->
+                    stream.readNBytes(5 * 1024 * 1024 + 1)
+                } ?: error("Image unavailable")
+                require(bytes.size <= 5 * 1024 * 1024) { "Image too large" }
+                val mime = incoming.type!!.takeIf { it.matches(Regex("image/[a-zA-Z0-9.+-]+")) }
+                    ?: "image/jpeg"
+                context.put("dataUrl", "data:$mime;base64,${Base64.encodeToString(bytes, Base64.NO_WRAP)}")
+                context.put("label", "分享图片")
+            }
+        }
+        if (text.isNotBlank() || context.has("dataUrl") || action == Intent.ACTION_ASSIST) {
+            LaunchContext.put(context)
+            pendingTaskInputFocus = true
+        }
+    }
+
+    private fun deliverLaunchContext() {
+        if (!pageReady || !::webView.isInitialized) return
+        // The bridge consumes the payload on the Web side; this event only triggers retrieval.
+        webView.evaluateJavascript("window.__tapilotReceiveLaunchContext?.()", null)
     }
 
     private fun notifyDeletedReports() {

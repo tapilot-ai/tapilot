@@ -25,6 +25,17 @@
         </header>
         <div id="settings-scroll" class="settings-scroll"></div>
       </section>
+      <div id="operation-confirm" class="operation-confirm" role="dialog" aria-modal="true" aria-label="确认手机操作" hidden>
+        <div class="operation-confirm-card">
+          <strong>确认要执行的操作</strong>
+          <p>请检查指令；可以修改后继续。</p>
+          <textarea id="operation-confirm-instruction" aria-label="操作指令"></textarea>
+          <div class="operation-confirm-actions">
+            <button id="operation-confirm-cancel" type="button">取消</button>
+            <button id="operation-confirm-run" type="button">继续执行</button>
+          </div>
+        </div>
+      </div>
       <span
         id="accessibility-connected-dot"
         class="accessibility-connected-dot"
@@ -337,6 +348,7 @@
               </button>
             </div>
           </div>
+          <button id="launch-context-chip" class="launch-context-chip" type="button" hidden></button>
           <textarea
             id="task"
             enterkeyhint="enter"
@@ -476,6 +488,16 @@
           >
             <span class="switch-thumb" aria-hidden="true"></span>
           </button>
+        </div>
+        <div class="preference-row">
+          <span class="preference-copy"><span class="preference-label">默认 AI 助手</span>
+            <small id="assistant-role-status">检查系统支持情况…</small></span>
+          <button id="assistant-role-request" class="secondary-button" type="button">设为默认</button>
+        </div>
+        <div class="preference-row">
+          <span class="preference-copy"><span class="preference-label">每步确认</span>
+            <small>每次操作手机前暂停，可修改指令再继续</small></span>
+          <button id="confirm-every-step" class="switch-control" type="button" role="switch" aria-checked="false" aria-label="每步确认"><span class="switch-thumb" aria-hidden="true"></span></button>
         </div>
         <div class="preference-row">
           <span class="preference-copy">

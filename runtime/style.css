@@ -2115,6 +2115,13 @@ html[data-theme="dark"] pre {
 .chat-app .task-editor-toolbar { display: none; }
 .chat-app #task-panel { display: flex; align-items: flex-end; gap: 8px; position: relative; }
 .chat-app #task-panel[hidden] { display: none; }
+.chat-app .launch-context-chip { position: absolute; left: 50px; bottom: calc(100% + 7px); max-width: calc(100% - 100px); padding: 6px 10px; border: 1px solid #d4d8ea; border-radius: 16px; color: #353b61; background: #f1f2ff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.operation-confirm[hidden] { display: none; }
+.operation-confirm { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 20px; background: #1014238c; }
+.operation-confirm-card { width: min(100%, 420px); padding: 20px; border-radius: 18px; background: #fff; color: #202334; box-shadow: 0 16px 55px #0004; }
+.operation-confirm-card p { margin: 8px 0 14px; font-size: 13px; color: #666b7a; }
+.operation-confirm-card textarea { box-sizing: border-box; width: 100%; min-height: 100px; padding: 10px; border: 1px solid #d5d9e2; border-radius: 10px; font: inherit; resize: vertical; }
+.operation-confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
 .chat-app .composer { flex: 1 1 auto; min-width: 0; }
 .chat-app #task {
   display: block;

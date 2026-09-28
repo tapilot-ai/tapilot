@@ -631,6 +631,20 @@ const executionHint = element<HTMLElement>('#execution-hint');
 const advancedModeToggle = element<HTMLButtonElement>('#advanced-mode-toggle');
 const floatingBallToggle = element<HTMLButtonElement>('#floating-ball-toggle');
 const floatingBallHint = element<HTMLElement>('#floating-ball-hint');
+const assistantRoleRequest = element<HTMLButtonElement>('#assistant-role-request');
+const assistantRoleStatus = element<HTMLElement>('#assistant-role-status');
+const confirmEveryStepToggle = element<HTMLButtonElement>('#confirm-every-step');
+let confirmEveryStep = localStorage.getItem('tapilot.confirmEveryStep') === 'true';
+function updateConfirmEveryStep(): void {
+  confirmEveryStepToggle.setAttribute('aria-checked', String(confirmEveryStep));
+  confirmEveryStepToggle.classList.toggle('is-enabled', confirmEveryStep);
+}
+updateConfirmEveryStep();
+confirmEveryStepToggle.addEventListener('click', () => {
+  confirmEveryStep = !confirmEveryStep;
+  localStorage.setItem('tapilot.confirmEveryStep', String(confirmEveryStep));
+  updateConfirmEveryStep();
+});
 const fieldHelpButtons = Array.from(
   document.querySelectorAll<HTMLButtonElement>('.field-help-button'),
 );
@@ -650,6 +664,13 @@ const fields = {
   task: element<HTMLTextAreaElement>('#task'),
   yaml: element<HTMLTextAreaElement>('#yaml-source'),
 };
+const launchContextChip = element<HTMLButtonElement>('#launch-context-chip');
+let pendingLaunchImage: string | undefined;
+let pendingReturnToPreviousApp = false;
+launchContextChip.addEventListener('click', () => {
+  pendingLaunchImage = undefined;
+  launchContextChip.hidden = true;
+});
 
 const MODEL_CONFIG_OPEN_KEY = 'midscene.modelConfigOpen';
 const savedModelConfigOpen = localStorage.getItem(MODEL_CONFIG_OPEN_KEY);
@@ -928,6 +949,8 @@ declare global {
       enabled: boolean,
     ) => void;
     __tapilotFocusTaskInput?: () => void;
+    __tapilotReceiveLaunchContext?: () => void;
+    __tapilotRefreshAssistantRole?: () => void;
     __tapilotHandleBack?: () => boolean;
     __tapilotReportsDeleted?: (reportIds: string[]) => void;
     __tapilotSetThemePreference?: (preference: ThemePreference) => void;
@@ -2157,6 +2180,34 @@ function modelEnvironment(): Record<string, string> {
   };
 }
 
+const sensitiveOperation = /(发送|转账|付款|支付|购买|下单|删除|清空|卸载|发布|提交|授权|分享给|send|transfer|pay|purchase|delete|uninstall|publish|submit)/i;
+function confirmPhoneOperation(instruction: string): Promise<string> {
+  if (!confirmEveryStep && !sensitiveOperation.test(instruction)) return Promise.resolve(instruction);
+  const dialog = element<HTMLElement>('#operation-confirm');
+  const editor = element<HTMLTextAreaElement>('#operation-confirm-instruction');
+  const cancel = element<HTMLButtonElement>('#operation-confirm-cancel');
+  const run = element<HTMLButtonElement>('#operation-confirm-run');
+  editor.value = instruction;
+  dialog.hidden = false;
+  editor.focus();
+  return new Promise((resolve, reject) => {
+    const close = () => {
+      dialog.hidden = true;
+      cancel.removeEventListener('click', onCancel);
+      run.removeEventListener('click', onRun);
+    };
+    const onCancel = () => { close(); stoppedByUser = true; reject(new Error('用户取消了此操作')); };
+    const onRun = () => {
+      const revised = editor.value.trim();
+      if (!revised) return;
+      close();
+      resolve(revised);
+    };
+    cancel.addEventListener('click', onCancel);
+    run.addEventListener('click', onRun);
+  });
+}
+
 async function execute(
   request?: { source: string; kind: RunKind },
 ): Promise<void> {
@@ -2169,6 +2220,8 @@ async function execute(
     request?.source ??
     (executionKind === 'task' ? fields.task : fields.yaml).value
   ).trim();
+  const launchImage = executionKind === 'task' ? pendingLaunchImage : undefined;
+  const returnToPreviousApp = executionKind === 'task' && pendingReturnToPreviousApp;
   preparingExecution = true;
   try {
     await modelProfilesReady;
@@ -2185,6 +2238,9 @@ async function execute(
     return;
   }
   setRunning(true);
+  pendingLaunchImage = undefined;
+  pendingReturnToPreviousApp = false;
+  launchContextChip.hidden = true;
   preparingExecution = false;
   stoppedByUser = false;
   if (!activeConversationId) activeConversationId = `chat-${Date.now()}`;
@@ -2217,6 +2273,7 @@ async function execute(
   const bridge = new WebViewNativeBridge();
   activeBridge = bridge;
   try {
+    await bridge.reportTaskStatus('starting');
     setUiStatus('running', t('preparing'), t('preparingDetail'));
     let runResult: Awaited<ReturnType<WebViewNativeBridge['runNodeTest']>>;
     if (executionKind === 'task') {
@@ -2227,6 +2284,7 @@ async function execute(
         history: reportHistory.filter(entry => entry.id !== historyEntryId),
         conversationId: activeConversationId,
         source,
+        imageDataUrl: launchImage,
         language: resolveLanguage(languagePreference),
         isStopped: () => stoppedByUser,
         complete: async (messages: ChatMessage[]): Promise<ChatCompletion> => {
@@ -2253,6 +2311,8 @@ async function execute(
           return JSON.parse(body) as ChatCompletion;
         },
         operatePhone: async instruction => {
+          instruction = await confirmPhoneOperation(instruction);
+          await bridge.reportTaskStatus('running');
           const capabilities = await bridge.getCapabilities();
           if (!capabilities.canCapture || !capabilities.canPerformGestures)
             throw new Error(t('enableAccessibility'));
@@ -2263,7 +2323,8 @@ async function execute(
           });
           if (!startedPhoneWork) {
             startedPhoneWork = true;
-            await bridge.goHome();
+            if (returnToPreviousApp) await bridge.returnToPreviousApp();
+            else await bridge.goHome();
           }
           const result = await pending;
           lastReportId = result.reportId;
@@ -2399,9 +2460,17 @@ async function execute(
   } finally {
     setRunning(false);
     leaveEditorFocusMode();
-    await bridge.bringToFront().catch((error) => {
-      console.error('Unable to return Tapilot to the foreground', error);
-    });
+    const finalStatus = latestTaskResultStatus === 'succeeded' ? 'succeeded'
+      : stoppedByUser ? 'stopped' : 'failed';
+    await bridge.reportTaskStatus(finalStatus).catch(console.error);
+    if (returnToPreviousApp) {
+      await bridge.returnToPreviousApp().catch(console.error);
+      await bridge.showGlobalResult(latestTaskResponse || '任务已结束').catch(console.error);
+    } else {
+      await bridge.bringToFront().catch((error) => {
+        console.error('Unable to return Tapilot to the foreground', error);
+      });
+    }
     bridge.destroy();
     activeBridge = undefined;
   }
@@ -2666,7 +2735,30 @@ function openSettings(): void {
   document.body.classList.add('show-settings');
   settingsScroll.scrollTop = 0;
   history.pushState({ tapilotPage: 'settings' }, '');
+  void refreshAssistantRole();
 }
+async function refreshAssistantRole(): Promise<void> {
+  const bridge = new WebViewNativeBridge();
+  try {
+    const role = await bridge.getAssistantRole();
+    assistantRoleStatus.textContent = role.held ? '已设为默认助手'
+      : role.available ? '可通过系统助手手势唤起' : '此设备不支持默认助手入口';
+    assistantRoleRequest.disabled = !role.available || role.held;
+    assistantRoleRequest.textContent = role.held ? '已设置' : '设为默认';
+  } catch {
+    assistantRoleStatus.textContent = '暂时无法检查系统助手状态';
+  } finally { bridge.destroy(); }
+}
+assistantRoleRequest.addEventListener('click', async () => {
+  const bridge = new WebViewNativeBridge();
+  try { await bridge.requestAssistantRole(); }
+  catch (error) { assistantRoleStatus.textContent = String(error); }
+  finally { bridge.destroy(); }
+});
+window.addEventListener('focus', () => { if (!settingsPage.hidden) void refreshAssistantRole(); });
+window.__tapilotRefreshAssistantRole = () => {
+  if (!settingsPage.hidden) void refreshAssistantRole();
+};
 function hideSettings(): void {
   settingsPage.hidden = true;
   document.body.classList.remove('show-settings');
@@ -2815,6 +2907,8 @@ async function refreshSpeechProvider(): Promise<void> {
 }
 speechProvider.addEventListener('change', () => {
   localStorage.setItem('tapilot.speech.provider', selectedSpeechProvider());
+  const bridge = new WebViewNativeBridge();
+  void bridge.setSpeechProvider(selectedSpeechProvider()).finally(() => bridge.destroy());
   speechApiKey.value = '';
   void refreshSpeechProvider();
 });
@@ -3059,6 +3153,24 @@ window.__tapilotFocusTaskInput = () => {
     fields.task.value.length,
     fields.task.value.length,
   );
+};
+window.__tapilotReceiveLaunchContext = () => {
+  const bridge = new WebViewNativeBridge();
+  void bridge.consumeLaunchContext().then(context => {
+    if (!context) return;
+    if (context.text) fields.task.value = fields.task.value
+      ? `${fields.task.value}\n${context.text}` : context.text;
+    if (context.dataUrl) {
+      pendingLaunchImage = context.dataUrl;
+      launchContextChip.textContent = `${context.label || '图片'} ×`;
+      launchContextChip.hidden = false;
+    }
+    pendingReturnToPreviousApp = context.fromPanel === true;
+    if (context.kind === 'screen' && !fields.task.value.trim())
+      fields.task.placeholder = '问我当前屏幕上的事…';
+    setRunKind('task');
+    if (context.autoSend && fields.task.value.trim()) void execute();
+  }).finally(() => bridge.destroy());
 };
 window.__tapilotSetThemePreference = (preference) => {
   themePreference = resolveThemePreference(preference);

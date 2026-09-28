@@ -222,6 +222,18 @@ export class WebViewNativeBridge implements NativeBridge {
     return this.request('app.setLanguage', { language });
   }
 
+  consumeLaunchContext(): Promise<{ kind: string; label: string; text?: string; dataUrl?: string; autoSend?: boolean; fromPanel?: boolean } | null> {
+    return this.request('app.consumeLaunchContext', {});
+  }
+
+  getAssistantRole(): Promise<{ available: boolean; held: boolean }> {
+    return this.request('app.getAssistantRole', {});
+  }
+
+  requestAssistantRole(): Promise<void> {
+    return this.request('app.requestAssistantRole', {});
+  }
+
   setAppTheme(theme: NativeAppTheme): Promise<void> {
     return this.request('app.setTheme', { theme });
   }
@@ -254,6 +266,14 @@ export class WebViewNativeBridge implements NativeBridge {
 
   goHome(): Promise<void> {
     return this.request('app.goHome', {});
+  }
+
+  returnToPreviousApp(): Promise<void> {
+    return this.request('app.returnToPreviousApp', {});
+  }
+
+  showGlobalResult(message: string): Promise<void> {
+    return this.request('app.showGlobalResult', { message });
   }
 
   bringToFront(): Promise<void> {
@@ -290,6 +310,10 @@ export class WebViewNativeBridge implements NativeBridge {
 
   setSpeechCredential(provider: 'volcengine' | 'deepgram', apiKey: string): Promise<void> {
     return this.request('speech.setCredential', { provider, apiKey });
+  }
+
+  setSpeechProvider(provider: 'volcengine' | 'deepgram'): Promise<void> {
+    return this.request('speech.setProvider', { provider });
   }
 
   startSpeech(provider: 'volcengine' | 'deepgram', language: 'zh-CN' | 'en-US'): Promise<void> {

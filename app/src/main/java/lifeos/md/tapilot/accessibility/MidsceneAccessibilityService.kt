@@ -138,6 +138,10 @@ class MidsceneAccessibilityService : AccessibilityService() {
         if (::floatingBall.isInitialized) floatingBall.setEnabled(enabled)
     }
 
+    fun showGlobalResult(message: String) {
+        if (::floatingBall.isInitialized) floatingBall.showResult(message)
+    }
+
     internal fun previewEdgeEffect(settings: EdgeEffectGeometrySettings) {
         if (::taskEffects.isInitialized) taskEffects.preview(settings)
     }
