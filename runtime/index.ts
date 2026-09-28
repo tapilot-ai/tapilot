@@ -23,6 +23,8 @@ import {
 import { resolveRunResultMessage } from './final-response';
 import { conversationEntries } from './conversation';
 import { PHONE_TOOL, runChatAgent, type ChatMessage, type ChatCompletion } from './chat-agent';
+import { resolveChatAgentOutcome } from './chat-agent-outcome';
+import { verifiedPhoneTask } from './verified-phone-task';
 import {
   classifyModelConnectionResponse,
   modelConnectionEndpoint,
@@ -2280,7 +2282,7 @@ async function execute(
       const toolReports: Awaited<ReturnType<WebViewNativeBridge['runNodeTest']>>['reports'] = [];
       let lastReportId = '';
       let startedPhoneWork = false;
-      const reply = await runChatAgent({
+      const agentResult = await runChatAgent({
         history: reportHistory.filter(entry => entry.id !== historyEntryId),
         conversationId: activeConversationId,
         source,
@@ -2310,15 +2312,15 @@ async function execute(
             throw new Error(`Conversation model HTTP ${response.status}: ${body.slice(0, 500)}`);
           return JSON.parse(body) as ChatCompletion;
         },
-        operatePhone: async instruction => {
+        operatePhone: async (instruction, successCondition) => {
           instruction = await confirmPhoneOperation(instruction);
           await bridge.reportTaskStatus('running');
           const capabilities = await bridge.getCapabilities();
           if (!capabilities.canCapture || !capabilities.canPerformGestures)
             throw new Error(t('enableAccessibility'));
           const pending = bridge.runNodeTest({
-            source: instruction,
-            kind: 'task',
+            source: verifiedPhoneTask(instruction, successCondition),
+            kind: 'yaml',
             environment: modelEnvironment(),
           });
           if (!startedPhoneWork) {
@@ -2337,12 +2339,14 @@ async function execute(
           };
         },
       });
+      const outcome = resolveChatAgentOutcome(agentResult, resolveLanguage(languagePreference));
       runResult = {
-        exitCode: 0,
+        exitCode: outcome.exitCode,
         reportId: lastReportId,
         reports: toolReports,
         output: [],
-        finalResponse: reply,
+        finalResponse: outcome.finalResponse,
+        failure: outcome.failure,
       };
     } else {
       const capabilities = await bridge.getCapabilities();

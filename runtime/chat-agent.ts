@@ -29,19 +29,27 @@ export interface ChatAgentOptions {
   language: 'zh' | 'en';
   imageDataUrl?: string;
   complete(messages: ChatMessage[]): Promise<ChatCompletion>;
-  operatePhone(instruction: string): Promise<PhoneToolResult>;
+  operatePhone(instruction: string, successCondition: string): Promise<PhoneToolResult>;
   isStopped?(): boolean;
+}
+
+export interface ChatAgentResult {
+  reply: string;
+  lastPhoneResult?: PhoneToolResult;
 }
 
 export const PHONE_TOOL = {
   type: 'function',
   function: {
     name: 'operate_phone',
-    description: 'Execute one concrete phone operation through Midscene and return its observed result. Do not include conversation history.',
+    description: 'Execute one concrete phone operation through Midscene, then verify a visible success condition on the final screen. Do not include conversation history.',
     parameters: {
       type: 'object',
-      properties: { instruction: { type: 'string', description: 'A self-contained instruction for the phone operation.' } },
-      required: ['instruction'],
+      properties: {
+        instruction: { type: 'string', description: 'A self-contained instruction for the phone operation.' },
+        success_condition: { type: 'string', description: 'A concrete condition that must be visible on the final phone screen to consider the operation successful.' },
+      },
+      required: ['instruction', 'success_condition'],
       additionalProperties: false,
     },
   },
@@ -49,8 +57,8 @@ export const PHONE_TOOL = {
 
 function systemPrompt(language: 'zh' | 'en'): string {
   return language === 'zh'
-    ? `你是 Tapilot 的对话助手。你负责理解并维护整段对话的上下文，直接回答无需手机操作的问题。需要读取或操作手机时，调用 operate_phone，给它一条具体、完整的操作指令。Midscene 只负责执行这条指令；不要把聊天记录、角色设定或回复用户的要求传给它。根据工具返回的真实结果向用户回复，不要声称未执行的操作已经完成。工具失败时可调整指令重试，无法完成则如实说明。`
-    : `You are Tapilot's conversation assistant. You own the conversation context and answer questions that do not need the phone directly. When the phone must be read or operated, call operate_phone with one concrete, self-contained instruction. Midscene executes only that instruction; never pass chat history, a persona, or response-writing directions to it. Report the actual tool result and never claim an unperformed action succeeded. You may retry a failed tool call with a corrected instruction, then explain any remaining failure.`;
+    ? `你是 Tapilot 的对话助手。你负责理解并维护整段对话的上下文，直接回答无需手机操作的问题。需要读取或操作手机时，调用 operate_phone，给它一条具体、完整的操作指令，并给出执行后能从手机最终画面确认的 success_condition。Midscene 只负责执行和检查；不要把聊天记录、角色设定或回复用户的要求传给它。根据工具返回的真实结果向用户回复，不要声称未执行或未验证的操作已经完成。工具失败时可调整指令重试，无法完成则如实说明。`
+    : `You are Tapilot's conversation assistant. You own the conversation context and answer questions that do not need the phone directly. When the phone must be read or operated, call operate_phone with one concrete, self-contained instruction and a success_condition observable on the final phone screen. Midscene only executes and checks; never pass chat history, a persona, or response-writing directions to it. Report the actual tool result and never claim an unperformed or unverified action succeeded. You may retry a failed tool call with a corrected instruction, then explain any remaining failure.`;
 }
 
 export function conversationMessages(
@@ -69,7 +77,7 @@ export function conversationMessages(
   return messages;
 }
 
-export async function runChatAgent(options: ChatAgentOptions): Promise<string> {
+export async function runChatAgent(options: ChatAgentOptions): Promise<ChatAgentResult> {
   const messages = conversationMessages(
     options.history, options.conversationId, options.source, options.language,
   );
@@ -81,6 +89,7 @@ export async function runChatAgent(options: ChatAgentOptions): Promise<string> {
     ];
   }
   let toolCalls = 0;
+  let lastPhoneResult: PhoneToolResult | undefined;
   for (let turn = 0; turn < 8; turn += 1) {
     if (options.isStopped?.()) throw new Error('Task stopped');
     const completion = await options.complete(messages);
@@ -90,7 +99,7 @@ export async function runChatAgent(options: ChatAgentOptions): Promise<string> {
     if (!calls.length) {
       const content = message.content?.trim();
       if (!content) throw new Error('Conversation model returned an empty reply');
-      return content;
+      return { reply: content, lastPhoneResult };
     }
     if (toolCalls + calls.length > 4) throw new Error('Phone operation limit reached');
     messages.push({ role: 'assistant', content: message.content ?? null, tool_calls: calls });
@@ -99,13 +108,19 @@ export async function runChatAgent(options: ChatAgentOptions): Promise<string> {
       let result: PhoneToolResult;
       try {
         if (call.function.name !== PHONE_TOOL.function.name) throw new Error('Unknown phone tool');
-        const args = JSON.parse(call.function.arguments) as { instruction?: unknown };
+        const args = JSON.parse(call.function.arguments) as {
+          instruction?: unknown;
+          success_condition?: unknown;
+        };
         if (typeof args.instruction !== 'string' || !args.instruction.trim())
           throw new Error('Phone instruction is empty');
-        result = await options.operatePhone(args.instruction.trim());
+        if (typeof args.success_condition !== 'string' || !args.success_condition.trim())
+          throw new Error('Phone success condition is empty');
+        result = await options.operatePhone(args.instruction.trim(), args.success_condition.trim());
       } catch (error) {
         result = { success: false, result: error instanceof Error ? error.message : String(error) };
       }
+      lastPhoneResult = result;
       messages.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(result) });
     }
   }

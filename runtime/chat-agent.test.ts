@@ -27,8 +27,8 @@ describe('chat agent', () => {
 
   it('keeps chat context in the model and sends only an explicit instruction to the phone', async () => {
     const modelCalls: ChatMessage[][] = [];
-    const phoneCalls: string[] = [];
-    const reply = await runChatAgent({
+    const phoneCalls: Array<[string, string]> = [];
+    const outcome = await runChatAgent({
       history: [entry('1', 'a', '打开相机', '相机已打开')],
       conversationId: 'a', source: '再返回桌面', language: 'zh',
       async complete(messages) {
@@ -36,18 +36,21 @@ describe('chat agent', () => {
         return modelCalls.length === 1
           ? { choices: [{ message: { content: null, tool_calls: [{
             id: 'call-1', type: 'function', function: {
-              name: 'operate_phone', arguments: JSON.stringify({ instruction: '返回 Android 桌面' }),
+              name: 'operate_phone', arguments: JSON.stringify({
+                instruction: '返回 Android 桌面',
+                success_condition: 'Android 桌面图标和搜索栏可见',
+              }),
             },
           }] } }] }
           : { choices: [{ message: { content: '已经返回桌面。' } }] };
       },
-      async operatePhone(instruction) {
-        phoneCalls.push(instruction);
+      async operatePhone(instruction, successCondition) {
+        phoneCalls.push([instruction, successCondition]);
         return { success: true, result: 'Android 桌面已显示' };
       },
     });
-    expect(reply).toBe('已经返回桌面。');
-    expect(phoneCalls).toEqual(['返回 Android 桌面']);
+    expect(outcome).toEqual({ reply: '已经返回桌面。', lastPhoneResult: { success: true, result: 'Android 桌面已显示' } });
+    expect(phoneCalls).toEqual([['返回 Android 桌面', 'Android 桌面图标和搜索栏可见']]);
     expect(modelCalls[0].some(message => message.content === '打开相机')).toBe(true);
     expect(modelCalls[1].at(-1)).toEqual({
       role: 'tool', tool_call_id: 'call-1', content: JSON.stringify({ success: true, result: 'Android 桌面已显示' }),
@@ -56,12 +59,12 @@ describe('chat agent', () => {
 
   it('answers directly without invoking the phone', async () => {
     let operated = false;
-    const reply = await runChatAgent({
+    const outcome = await runChatAgent({
       history: [], conversationId: 'a', source: '你好', language: 'zh',
       async complete() { return { choices: [{ message: { content: '你好！' } }] }; },
       async operatePhone() { operated = true; return { success: true, result: '' }; },
     });
-    expect(reply).toBe('你好！');
+    expect(outcome).toEqual({ reply: '你好！', lastPhoneResult: undefined });
     expect(operated).toBe(false);
   });
 
@@ -85,30 +88,54 @@ describe('chat agent', () => {
   });
 
   it('passes a failed phone operation back to the agent before replying', async () => {
-    const phoneCalls: string[] = [];
+    const phoneCalls: Array<[string, string]> = [];
     const modelCalls: ChatMessage[][] = [];
-    const reply = await runChatAgent({
+    const outcome = await runChatAgent({
       history: [], conversationId: 'a', source: '打开设置', language: 'zh',
       async complete(messages) {
         modelCalls.push(structuredClone(messages));
         return modelCalls.length === 1
           ? { choices: [{ message: { tool_calls: [{
             id: 'call-1', type: 'function', function: {
-              name: 'operate_phone', arguments: JSON.stringify({ instruction: '打开手机设置应用' }),
+              name: 'operate_phone', arguments: JSON.stringify({
+                instruction: '打开手机设置应用',
+                success_condition: '设置首页标题可见',
+              }),
             },
           }] } }] }
           : { choices: [{ message: { content: '打开设置失败，请重试。' } }] };
       },
-      async operatePhone(instruction) {
-        phoneCalls.push(instruction);
+      async operatePhone(instruction, successCondition) {
+        phoneCalls.push([instruction, successCondition]);
         return { success: false, result: '设备暂时不可用' };
       },
     });
-    expect(phoneCalls).toEqual(['打开手机设置应用']);
+    expect(phoneCalls).toEqual([['打开手机设置应用', '设置首页标题可见']]);
     expect(modelCalls[1].at(-1)).toEqual({
       role: 'tool', tool_call_id: 'call-1',
       content: JSON.stringify({ success: false, result: '设备暂时不可用' }),
     });
-    expect(reply).toBe('打开设置失败，请重试。');
+    expect(outcome).toEqual({ reply: '打开设置失败，请重试。', lastPhoneResult: { success: false, result: '设备暂时不可用' } });
+  });
+
+  it('rejects a phone operation without an observable success condition', async () => {
+    let operated = false;
+    let calls = 0;
+    const outcome = await runChatAgent({
+      history: [], conversationId: 'a', source: '打开设置', language: 'zh',
+      async complete() {
+        calls += 1;
+        return calls === 1
+          ? { choices: [{ message: { tool_calls: [{
+            id: 'call-1', type: 'function', function: {
+              name: 'operate_phone', arguments: JSON.stringify({ instruction: '打开设置' }),
+            },
+          }] } }] }
+          : { choices: [{ message: { content: '这次没能执行。' } }] };
+      },
+      async operatePhone() { operated = true; return { success: true, result: '' }; },
+    });
+    expect(operated).toBe(false);
+    expect(outcome.lastPhoneResult).toEqual({ success: false, result: 'Phone success condition is empty' });
   });
 });
