@@ -40,7 +40,12 @@ body.show-settings .chat-app .config-card, body.show-settings .chat-app .prefere
 .chat-app .composer textarea { padding-left: 55px; }
 .chat-app .voice-state { display: block; padding: 5px 10px; color: var(--muted); font-size: 12px; }
 .chat-app .voice-state[hidden] { display: none; }
-.speech-config { display: grid; gap: 9px; border-top: 1px solid var(--line); margin-top: 18px; padding-top: 18px; }
+.speech-config { display: grid; gap: 11px; }
+.speech-config-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 2px; }
+.speech-config-heading strong { font-size: 17px; }
+.speech-config label { font-size: 13px; font-weight: 650; }
+.speech-config #speech-save { width: 100%; }
+.speech-config #speech-config-status { min-height: 18px; color: var(--muted); font-size: 12px; }
 .speech-config input { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--text); padding: 10px 12px; }
 .speech-config select { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--text); padding: 10px 12px; }
 .speech-config .helper { margin: 0; }
@@ -858,6 +863,7 @@ body.task-input-focused .task-card ~ * {
   padding-top: 6px;
   padding-bottom: 6px;
 }
+.preference-heading { margin: 12px 0 4px; font-size: 17px; }
 
 .preference-row {
   display: flex;
@@ -2237,7 +2243,8 @@ body.task-input-focused .chat-app #task { height: 44px; min-height: 44px; max-he
   padding: 16px 16px 32px;
 }
 .chat-app .settings-scroll .config-card,
-.chat-app .settings-scroll .preference-card { margin: 0 0 14px; }
+.chat-app .settings-scroll .preference-card,
+.chat-app .settings-scroll .speech-config { margin: 0 0 14px; }
 body.show-settings .chat-app .chat-topbar,
 body.show-settings .chat-app .status-card,
 body.show-settings .chat-app .chat-thread,

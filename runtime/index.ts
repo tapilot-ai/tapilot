@@ -79,13 +79,14 @@ const translations = {
     modelConfig: '模型配置',
     settingsTitle: '设置',
     backToChat: '返回聊天',
+    generalSettings: '通用设置',
     speechConfig: '语音转写 API',
     speechConfigHint: '选择语音服务，填写 API Key。按住麦克风说话，松开后转写并发送。',
     speechProvider: '语音服务',
     volcengineProvider: '火山引擎 Seed ASR 2.0',
-    deepgramProvider: 'Deepgram Nova-3（英语）',
+    deepgramProvider: 'Deepgram Nova-3',
     volcengineHint: '使用新版豆包语音控制台的 API Key；资源 ID 固定为 volc.seedasr.sauc.duration。',
-    deepgramHint: '使用 Deepgram API Key，Nova-3 美式英语模型。',
+    deepgramHint: '使用 Deepgram API Key；支持简体中文或美式英语，跟随界面语言。',
     speechSave: '保存语音配置',
     speechKeyPlaceholder: '输入后保存到 Android Keystore',
     holdToTalk: '按住说话',
@@ -272,13 +273,14 @@ const translations = {
     modelConfig: 'Model configuration',
     settingsTitle: 'Settings',
     backToChat: 'Back to chat',
+    generalSettings: 'General',
     speechConfig: 'Speech transcription API',
     speechConfigHint: 'Choose a speech service and enter its API Key. Hold the microphone to speak; release to transcribe and send.',
     speechProvider: 'Speech service',
     volcengineProvider: 'Volcengine Seed ASR 2.0',
-    deepgramProvider: 'Deepgram Nova-3 (English)',
+    deepgramProvider: 'Deepgram Nova-3',
     volcengineHint: 'Use an API Key from the new Doubao Speech console. Resource ID: volc.seedasr.sauc.duration.',
-    deepgramHint: 'Use a Deepgram API Key with Nova-3 US English.',
+    deepgramHint: 'Use a Deepgram API Key. Nova-3 follows the app language (Simplified Chinese or US English).',
     speechSave: 'Save speech settings',
     speechKeyPlaceholder: 'Stored with Android Keystore',
     holdToTalk: 'Hold to talk',
@@ -535,8 +537,9 @@ taskDecoration.innerHTML = '<svg viewBox="0 0 24 24"><path d="M5 4h14v12H9l-4 4V
 runButton.before(taskDecoration);
 const apiKeyToggle = element<HTMLButtonElement>('#toggle-api-key');
 const modelConfig = element<HTMLDetailsElement>('#model-config');
+const speechConfig = element<HTMLElement>('#speech-config');
 const preferenceCard = element<HTMLElement>('.preference-card');
-settingsScroll.append(modelConfig, preferenceCard);
+settingsScroll.append(speechConfig, modelConfig, preferenceCard);
 const modelConfigRequired = document.createElement('button');
 modelConfigRequired.type = 'button';
 modelConfigRequired.className = 'model-config-required';
@@ -2119,6 +2122,7 @@ function requireConfiguration(kind: RunKind, sourceOverride?: string): void {
   const missing = required.find(([input]) => !input.value.trim());
   if (missing) {
     openSettings();
+    modelConfig.open = true;
     missing[0].focus();
     throw new Error(t(missing[1]));
   }
@@ -2139,6 +2143,7 @@ function requireModelConfiguration(): void {
   const missing = required.find(([input]) => !input.value.trim());
   if (!missing) return;
   openSettings();
+  modelConfig.open = true;
   missing[0].focus();
   throw new Error(t(missing[1]));
 }
@@ -2656,9 +2661,9 @@ modelConfig.addEventListener('toggle', () =>
 function openSettings(): void {
   if (!settingsPage.hidden) return;
   fields.task.blur();
+  modelConfig.open = !isModelConfigurationComplete();
   settingsPage.hidden = false;
   document.body.classList.add('show-settings');
-  modelConfig.open = true;
   settingsScroll.scrollTop = 0;
   history.pushState({ tapilotPage: 'settings' }, '');
 }

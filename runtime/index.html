@@ -238,20 +238,23 @@
             aria-live="polite"
             hidden
           ></p>
-          <div class="speech-config">
-            <strong data-i18n="speechConfig">语音转写 API</strong>
+          <section id="speech-config" class="speech-config card" aria-labelledby="speech-config-title">
+            <div class="speech-config-heading">
+              <span class="section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Zm-6 8a6 6 0 0 0 12 0M12 17v4m-4 0h8" /></svg></span>
+              <strong id="speech-config-title" data-i18n="speechConfig">语音转写 API</strong>
+            </div>
             <p class="helper" data-i18n="speechConfigHint">选择语音服务，填写 API Key。按住麦克风说话，松开后转写并发送。</p>
             <label for="speech-provider" data-i18n="speechProvider">语音服务</label>
             <select id="speech-provider">
               <option value="volcengine" data-i18n="volcengineProvider">火山引擎 Seed ASR 2.0</option>
-              <option value="deepgram" data-i18n="deepgramProvider">Deepgram Nova-3（英语）</option>
+              <option value="deepgram" data-i18n="deepgramProvider">Deepgram Nova-3</option>
             </select>
             <p id="speech-provider-hint" class="helper"></p>
             <label for="speech-api-key">API Key</label>
             <input id="speech-api-key" type="password" autocomplete="off" placeholder="输入后保存到 Android Keystore" data-i18n-placeholder="speechKeyPlaceholder" />
             <button id="speech-save" class="secondary-button" type="button" data-i18n="speechSave">保存语音配置</button>
             <span id="speech-config-status" role="status"></span>
-          </div>
+          </section>
         </div>
       </details>
 
@@ -401,6 +404,7 @@
       </section>
 
       <section class="card preference-card">
+        <h2 class="preference-heading" data-i18n="generalSettings">通用设置</h2>
         <div class="preference-row">
           <span class="preference-label" data-i18n="language">界面语言</span>
           <button

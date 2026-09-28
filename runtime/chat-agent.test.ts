@@ -64,4 +64,32 @@ describe('chat agent', () => {
     expect(reply).toBe('你好！');
     expect(operated).toBe(false);
   });
+
+  it('passes a failed phone operation back to the agent before replying', async () => {
+    const phoneCalls: string[] = [];
+    const modelCalls: ChatMessage[][] = [];
+    const reply = await runChatAgent({
+      history: [], conversationId: 'a', source: '打开设置', language: 'zh',
+      async complete(messages) {
+        modelCalls.push(structuredClone(messages));
+        return modelCalls.length === 1
+          ? { choices: [{ message: { tool_calls: [{
+            id: 'call-1', type: 'function', function: {
+              name: 'operate_phone', arguments: JSON.stringify({ instruction: '打开手机设置应用' }),
+            },
+          }] } }] }
+          : { choices: [{ message: { content: '打开设置失败，请重试。' } }] };
+      },
+      async operatePhone(instruction) {
+        phoneCalls.push(instruction);
+        return { success: false, result: '设备暂时不可用' };
+      },
+    });
+    expect(phoneCalls).toEqual(['打开手机设置应用']);
+    expect(modelCalls[1].at(-1)).toEqual({
+      role: 'tool', tool_call_id: 'call-1',
+      content: JSON.stringify({ success: false, result: '设备暂时不可用' }),
+    });
+    expect(reply).toBe('打开设置失败，请重试。');
+  });
 });

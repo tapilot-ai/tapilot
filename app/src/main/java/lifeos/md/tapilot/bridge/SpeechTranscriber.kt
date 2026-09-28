@@ -19,7 +19,6 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
-import org.json.JSONObject
 
 /** Streams 16 kHz mono PCM to the two API providers supported by Doubao Say. */
 internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable {
@@ -191,22 +190,10 @@ internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable
         override fun onMessage(webSocket: WebSocket, text: String) {
             if (session.provider != DEEPGRAM) return
             try {
-                val message = JSONObject(text)
-                if (message.optString("type") == "Error") {
-                    throw IOException("Deepgram rejected request: ${message.optString("code")}")
-                }
-                if (message.optString("type") != "Results") return
-                val transcript = message.optJSONObject("channel")?.optJSONArray("alternatives")
-                    ?.optJSONObject(0)?.optString("transcript")?.trim().orEmpty()
+                val transcript = DeepgramProtocol.finalTranscript(text) ?: return
                 synchronized(session) {
                     if (session.cancelled) return
-                    if (message.optBoolean("is_final") && transcript.isNotBlank()) {
-                        session.finalSegments.add(transcript)
-                    }
-                }
-                if (message.optBoolean("from_finalize")) {
-                    webSocket.send("{\"type\":\"CloseStream\"}")
-                    complete(session, session.finalSegments.joinToString(" "))
+                    session.finalSegments.add(transcript)
                 }
             } catch (error: Throwable) { fail(session, error) }
         }
@@ -265,7 +252,7 @@ internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable
                 session.socket?.send(
                     SeedAsrProtocol.audioRequest(session.sequence++, byteArrayOf(), last = true).toByteString(),
                 )
-            } else session.socket?.send("{\"type\":\"Finalize\"}")
+            } else session.socket?.send(DeepgramProtocol.CLOSE_STREAM)
             if (sent != true) throw IOException("Unable to finish speech stream")
         }
     }
