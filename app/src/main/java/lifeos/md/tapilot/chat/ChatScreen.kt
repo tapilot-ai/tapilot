@@ -62,9 +62,9 @@ fun ChatScreen(controller: ChatController) {
         LaunchedEffect(state.activeConversationId, state.messages.size, state.messages.lastOrNull()?.text) {
             if (state.messages.isNotEmpty()) list.animateScrollToItem(state.messages.lastIndex)
         }
-        Box(Modifier.fillMaxSize().background(colors.background).statusBarsPadding().navigationBarsPadding().imePadding()) {
+        Box(Modifier.fillMaxSize().background(colors.background).navigationBarsPadding().imePadding()) {
             Column(Modifier.fillMaxSize()) {
-                Row(Modifier.fillMaxWidth().height(60.dp).background(colors.surface).padding(horizontal = 12.dp),
+                Row(Modifier.fillMaxWidth().background(colors.surface).statusBarsPadding().height(60.dp).padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     Row(Modifier.weight(1f).clickable(enabled = !busy) { sessions = true }.padding(8.dp),
                         verticalAlignment = Alignment.CenterVertically) {
