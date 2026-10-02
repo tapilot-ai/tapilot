@@ -1,5 +1,7 @@
 # 原生聊天迁移与真机验收（2026-10-02）
 
+> 历史记录：此原生实现已保存到 `backup/native-chat-before-baseline-20261002`。当前主分支已恢复到迁移前 `edc1ac9` 的应用源码，见 [界面基准](ui-baseline-20261002.zh.md)。
+
 ## 实现范围
 
 聊天页、会话列表、消息气泡、附件入口、操作确认和输入区迁移到 Kotlin + Jetpack Compose。文字输入使用 Android EditText，支持键盘发送、多行草稿及长按录音。原生录音直接使用已有 SpeechTranscriber 和 Keystore 中保存的 API 密钥。

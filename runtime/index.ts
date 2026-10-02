@@ -23,8 +23,6 @@ import {
 } from './task-history';
 import { resolveRunResultMessage } from './final-response';
 import { conversationEntries } from './conversation';
-import { conversationView } from './native-chat-state';
-import { installNativeChat, publishNativeChat } from './native-chat-runtime';
 import { PHONE_TOOL, runChatAgent, type ChatMessage, type ChatCompletion } from './chat-agent';
 import { resolveChatAgentOutcome } from './chat-agent-outcome';
 import { verifiedPhoneTask } from './verified-phone-task';
@@ -704,7 +702,6 @@ const launchContextChip = element<HTMLButtonElement>('#launch-context-chip');
 let pendingLaunchImage: string | undefined;
 let pendingAttachment: NativeAttachment | undefined;
 function renderPendingAttachment(): void {
-  publishNativeChat();
   attachmentPreview.hidden = !pendingAttachment || runKind !== 'task';
   attachmentName.textContent = pendingAttachment
     ? `${t(pendingAttachment.kind === 'image' ? 'attachmentImage' : 'attachmentDocument')} · ${pendingAttachment.name}${pendingAttachment.pageCount && pendingAttachment.pageCount > 4 ? ` · ${currentLanguage === 'zh' ? '前 4 页' : 'first 4 pages'}` : ''}` : '';
@@ -948,10 +945,6 @@ function readReportHistory(): TaskHistoryEntry[] {
 let reportHistory = readReportHistory();
 let activeConversationId = localStorage.getItem('tapilot.activeConversation') ??
   reportHistory[0]?.conversationId ?? reportHistory[0]?.id ?? `chat-${Date.now()}`;
-let nativeDraftEpoch = 0;
-let nativeAdvancedOpen = false;
-let nativeConfirmation: string | undefined;
-let resolveNativeConfirmation: ((instruction?: string) => void) | undefined;
 if (reportHistory.length === 0 && latestReportId) {
   reportHistory = [
     {
@@ -1026,7 +1019,6 @@ function latestResultDefaultMessage(status: LatestTaskResultStatus): string {
 }
 
 function applyLanguage(): void {
-  publishNativeChat();
   currentLanguage = resolveLanguage(languagePreference);
   document.documentElement.lang = currentLanguage === 'zh' ? 'zh-CN' : 'en';
   for (const item of Array.from(
@@ -1106,7 +1098,6 @@ function updateThemePreferenceUi(): void {
 }
 
 function applyTheme(syncNative = false): void {
-  publishNativeChat();
   const theme = resolveTheme(themePreference, systemTheme.matches);
   document.documentElement.dataset.theme = theme;
   document.documentElement.style.colorScheme = theme;
@@ -1993,7 +1984,6 @@ function persistReportHistory(): void {
 }
 
 function renderConversation(): void {
-  publishNativeChat();
   const language = resolveLanguage(languagePreference);
   const names = new Map<string, string>();
   for (const entry of [...reportHistory].reverse()) {
@@ -2046,7 +2036,6 @@ function openReportDialog(trigger: HTMLElement = taskHistoryTrigger): void {
 }
 
 function setUiStatus(state: UiState, title: string, message: string): void {
-  publishNativeChat();
   statusCard.hidden = false;
   statusCard.dataset.state = state;
   statusTitle.textContent = title;
@@ -2055,7 +2044,6 @@ function setUiStatus(state: UiState, title: string, message: string): void {
 }
 
 function renderAccessibilityStatus(): void {
-  publishNativeChat();
   if (!accessibilityState || running) return;
   const { connected, enabled } = accessibilityState;
   const state = resolveAccessibilityStatus(connected, enabled);
@@ -2129,7 +2117,6 @@ function updateRunButtonPresentation(): void {
 }
 
 function setRunning(value: boolean): void {
-  publishNativeChat();
   running = value;
   voiceRecord.disabled = value;
   voiceModeToggle.disabled = value;
@@ -2185,7 +2172,6 @@ function isModelConfigurationComplete(): boolean {
 }
 
 function updateModelConfigStatus(): void {
-  publishNativeChat();
   const complete = isModelConfigurationComplete();
   modelConfigStatus.textContent = complete
     ? `${t('configured')} · ${fields.modelName.value.trim()}`
@@ -2241,19 +2227,6 @@ function modelEnvironment(): Record<string, string> {
 const sensitiveOperation = /(发送|转账|付款|支付|购买|下单|删除|清空|卸载|发布|提交|授权|分享给|send|transfer|pay|purchase|delete|uninstall|publish|submit)/i;
 function confirmPhoneOperation(instruction: string): Promise<string> {
   if (!confirmEveryStep && !sensitiveOperation.test(instruction)) return Promise.resolve(instruction);
-  if (window.TapilotChat) {
-    nativeConfirmation = instruction;
-    publishNativeChat();
-    return new Promise((resolve, reject) => {
-      resolveNativeConfirmation = revised => {
-        nativeConfirmation = undefined;
-        resolveNativeConfirmation = undefined;
-        publishNativeChat();
-        if (revised) resolve(revised);
-        else { stoppedByUser = true; reject(new Error('用户取消了此操作')); }
-      };
-    });
-  }
   const dialog = element<HTMLElement>('#operation-confirm');
   const editor = element<HTMLTextAreaElement>('#operation-confirm-instruction');
   const cancel = element<HTMLButtonElement>('#operation-confirm-cancel');
@@ -2301,7 +2274,6 @@ async function execute(
   const launchImage = executionKind === 'task' ? pendingLaunchImage : undefined;
   const returnToPreviousApp = executionKind === 'task' && pendingReturnToPreviousApp;
   preparingExecution = true;
-  publishNativeChat();
   try {
     await modelProfilesReady;
     await flushModelProfileSave();
@@ -2343,7 +2315,6 @@ async function execute(
   persistReportHistory();
   if (!request && executionKind === 'task') {
     fields.task.value = '';
-    nativeDraftEpoch++;
     localStorage.setItem('midscene.task', '');
     document.documentElement.style.removeProperty('--task-editor-height');
   }
@@ -2818,7 +2789,6 @@ modelConfig.addEventListener('toggle', () =>
   localStorage.setItem(MODEL_CONFIG_OPEN_KEY, String(modelConfig.open)),
 );
 function openSettings(): void {
-  publishNativeChat();
   if (!settingsPage.hidden) return;
   fields.task.blur();
   modelConfig.open = !isModelConfigurationComplete();
@@ -2851,7 +2821,6 @@ window.__tapilotRefreshAssistantRole = () => {
   if (!settingsPage.hidden) void refreshAssistantRole();
 };
 function hideSettings(): void {
-  publishNativeChat();
   settingsPage.hidden = true;
   document.body.classList.remove('show-settings');
   settingsOpen.focus();
@@ -2861,11 +2830,6 @@ function closeSettings(): void {
   else hideSettings();
 }
 window.__tapilotHandleBack = (): boolean => {
-  if (settingsPage.hidden && nativeAdvancedOpen) {
-    nativeAdvancedOpen = false;
-    publishNativeChat();
-    return true;
-  }
   if (settingsPage.hidden) return false;
   closeSettings();
   return true;
@@ -2979,7 +2943,6 @@ for (const option of Array.from(attachmentMenu.querySelectorAll<HTMLButtonElemen
   });
 }
 async function stopActiveTask(): Promise<void> {
-  resolveNativeConfirmation?.();
   if (!activeBridge) return;
   stoppedByUser = true;
   runButton.disabled = true;
@@ -3335,7 +3298,6 @@ window.__midsceneSetAccessibilityState = (connected, enabled) => {
   renderAccessibilityStatus();
 };
 window.__tapilotFocusTaskInput = () => {
-  if (window.TapilotChat) { window.__tapilotNativeChatFocus?.(); return; }
   setRunKind('task');
   // The field may still own focus while the Activity is in the background. In that case
   // focus() does not dispatch another focus event, so enter the focused layout explicitly.
@@ -3362,8 +3324,6 @@ window.__tapilotReceiveLaunchContext = () => {
       fields.task.placeholder = '问我当前屏幕上的事…';
     setRunKind('task');
     if (context.autoSend && fields.task.value.trim()) void execute();
-    nativeDraftEpoch++;
-    publishNativeChat();
   }).finally(() => bridge.destroy());
 };
 window.__tapilotSetThemePreference = (preference) => {
@@ -3396,71 +3356,3 @@ void displayAppVersion().catch((error) => {
   console.error('Unable to read app version', error);
 });
 void checkNodeRuntimeOnce();
-
-installNativeChat(() => ({
-  protocolVersion: 1,
-  ready: true,
-  language: resolveLanguage(languagePreference),
-  theme: resolveTheme(themePreference, systemTheme.matches),
-  webSurfaceOpen: !settingsPage.hidden || nativeAdvancedOpen,
-  advancedMode,
-  activeConversationId,
-  ...conversationView(reportHistory, activeConversationId),
-  draft: fields.task.value,
-  draftEpoch: nativeDraftEpoch,
-  running: running || preparingExecution,
-  configured: isModelConfigurationComplete(),
-  modelName: fields.modelName.value,
-  speechProvider: selectedSpeechProvider(),
-  status: statusCard.hidden ? '' : status.textContent,
-  statusTitle: statusCard.hidden ? '' : statusTitle.textContent,
-  needsAccessibility: !accessibilityActions.hidden,
-  attachment: pendingAttachment ? { name: pendingAttachment.name, kind: pendingAttachment.kind,
-    pageCount: pendingAttachment.pageCount, preview: pendingAttachment.images[0] } :
-    pendingLaunchImage ? { name: launchContextChip.textContent, kind: 'image', preview: pendingLaunchImage } : null,
-  confirmation: nativeConfirmation ?? null,
-}), async command => {
-  switch (command.action) {
-    case 'refresh': break;
-    case 'draft':
-      fields.task.value = command.text ?? '';
-      localStorage.setItem('midscene.task', fields.task.value);
-      break;
-    case 'send':
-      if (running || preparingExecution) return;
-      fields.task.value = command.text ?? fields.task.value;
-      setRunKind('task');
-      await execute();
-      break;
-    case 'stop': await stopActiveTask(); break;
-    case 'new':
-      if (running || preparingExecution) return;
-      activeConversationId = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-      localStorage.setItem('tapilot.activeConversation', activeConversationId);
-      renderConversation();
-      break;
-    case 'select':
-      if (running || preparingExecution || !command.id) return;
-      activeConversationId = command.id;
-      localStorage.setItem('tapilot.activeConversation', activeConversationId);
-      renderConversation();
-      break;
-    case 'settings': openSettings(); break;
-    case 'advanced':
-      if (!running && advancedMode) { nativeAdvancedOpen = true; setRunKind('yaml'); }
-      break;
-    case 'attachment':
-      if (!running) { pendingAttachment = command.attachment; renderPendingAttachment(); }
-      break;
-    case 'removeAttachment':
-      pendingAttachment = undefined;
-      pendingLaunchImage = undefined;
-      launchContextChip.hidden = true;
-      renderPendingAttachment();
-      break;
-    case 'report': if (command.id) await openReport(command.id); break;
-    case 'confirm':
-      resolveNativeConfirmation?.(command.accepted ? command.text?.trim() : undefined);
-      break;
-  }
-}, error => setUiStatus('error', t('deviceError'), error instanceof Error ? error.message : String(error)));

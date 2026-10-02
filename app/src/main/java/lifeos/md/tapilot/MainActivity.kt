@@ -23,13 +23,7 @@ import android.view.inputmethod.InputMethodManager
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
-import android.widget.FrameLayout
-import androidx.activity.ComponentActivity
-import androidx.activity.OnBackPressedCallback
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.ViewCompositionStrategy
-import lifeos.md.tapilot.chat.ChatController
-import lifeos.md.tapilot.chat.ChatScreen
+import android.widget.LinearLayout
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
 import androidx.core.view.ViewCompat
@@ -46,7 +40,7 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.concurrent.Executors
 
-class MainActivity : ComponentActivity() {
+class MainActivity : Activity() {
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(AppLanguage.wrap(newBase))
     }
@@ -54,8 +48,6 @@ class MainActivity : ComponentActivity() {
     private lateinit var webView: WebView
     private lateinit var rootView: View
     private lateinit var nativeBridge: NativeJavascriptBridge
-    private lateinit var chatController: ChatController
-    private lateinit var chatView: ComposeView
     private val attachmentWorker = Executors.newSingleThreadExecutor()
     private var attachmentCallback: ((Result<JSONObject?>) -> Unit)? = null
     private var cameraOutput: Uri? = null
@@ -106,15 +98,16 @@ class MainActivity : ComponentActivity() {
             WebView.setWebContentsDebuggingEnabled(true)
         }
 
-        val root = FrameLayout(this)
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
         rootView = root
         applyWindowTheme(root)
         ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             val keyboardBottom = if (insets.isVisible(WindowInsetsCompat.Type.ime()))
                 insets.getInsets(WindowInsetsCompat.Type.ime()).bottom else 0
-            val bottom = if (::chatController.isInitialized && chatController.state.webSurfaceOpen) keyboardBottom else 0
-            if (root.paddingBottom != bottom) root.setPadding(0, 0, 0, bottom)
+            if (root.paddingBottom != keyboardBottom) root.setPadding(0, 0, 0, keyboardBottom)
             val layout = SystemBarInsetsLayout.fromPixels(
                 topInsetPx = systemBars.top,
                 bottomInsetPx = systemBars.bottom,
@@ -171,34 +164,17 @@ class MainActivity : ComponentActivity() {
                 onPickAttachment = ::pickAttachment,
             )
             addJavascriptInterface(nativeBridge, "MidsceneNative")
-            chatController = ChatController(this@MainActivity, this, ::showSettingsSurface, ::pickAttachment)
-            addJavascriptInterface(chatController, "TapilotChat")
-            visibility = View.INVISIBLE
             loadUrl("https://appassets.androidplatform.net/assets/index.html")
         }
         root.addView(
             webView,
-            FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT),
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f,
+            ),
         )
-        chatView = ComposeView(this).apply {
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-            setContent { ChatScreen(chatController) }
-        }
-        root.addView(chatView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
         setContentView(root)
-        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                if (chatController.recording || chatController.transcribing) {
-                    chatController.cancelRecording()
-                    return
-                }
-                handleChatBack {
-                    isEnabled = false
-                    onBackPressedDispatcher.onBackPressed()
-                    isEnabled = true
-                }
-            }
-        })
         requestNotificationPermissionIfNeeded()
     }
 
@@ -289,7 +265,6 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
-        if (::chatController.isInitialized && (chatController.recording || chatController.transcribing)) chatController.cancelRecording()
         accessibilityStateHandler.removeCallbacks(accessibilityStatePoll)
         MidsceneAccessibilityService.removeConnectionListener(accessibilityConnectionListener)
         super.onStop()
@@ -299,21 +274,20 @@ class MainActivity : ComponentActivity() {
         attachmentCallback = null
         attachmentWorker.shutdown()
         webView.removeJavascriptInterface("MidsceneNative")
-        webView.removeJavascriptInterface("TapilotChat")
-        if (::chatController.isInitialized) chatController.close()
         if (::nativeBridge.isInitialized) nativeBridge.close()
         webView.destroy()
         super.onDestroy()
     }
 
-    private fun handleChatBack(exit: () -> Unit) {
+    @Suppress("DEPRECATION")
+    override fun onBackPressed() {
         if (!::webView.isInitialized || !pageReady) {
-            exit()
+            super.onBackPressed()
             return
         }
         webView.evaluateJavascript("window.__tapilotHandleBack?.() === true") { handled ->
             if (handled != "true" && !isFinishing && !isDestroyed) {
-                exit()
+                super.onBackPressed()
             }
         }
     }
@@ -341,15 +315,16 @@ class MainActivity : ComponentActivity() {
         if (!pendingTaskInputFocus || !pageReady || !::webView.isInitialized) return
         pendingTaskInputFocus = false
         intent.removeExtra(EXTRA_FOCUS_TASK_INPUT)
-        chatController.requestFocus()
-    }
-
-    private fun showSettingsSurface(settings: Boolean) {
-        getSystemService(InputMethodManager::class.java).hideSoftInputFromWindow(rootView.windowToken, 0)
-        chatView.visibility = if (settings) View.GONE else View.VISIBLE
-        webView.visibility = if (settings) View.VISIBLE else View.INVISIBLE
-        if (!settings) rootView.setPadding(0, 0, 0, 0)
-        ViewCompat.requestApplyInsets(rootView)
+        // Give the WebView native focus before focusing the DOM editor. Doing this in the
+        // evaluateJavascript callback immediately blurs the textarea again and exits the
+        // focused composer layout when the app is opened from the floating ball.
+        webView.requestFocus(View.FOCUS_DOWN)
+        webView.evaluateJavascript("window.__tapilotFocusTaskInput?.()") {
+            webView.postDelayed({
+                getSystemService(InputMethodManager::class.java)
+                    .showSoftInput(webView, InputMethodManager.SHOW_IMPLICIT)
+            }, 120L)
+        }
     }
 
     private fun receiveExternalIntent(incoming: Intent) {
