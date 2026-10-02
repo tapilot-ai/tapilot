@@ -1,5 +1,6 @@
 # 聊天界面迁移基准（2026-10-02）
 
+> 历史记录：此文对应临时恢复为 WebView 的版本。该恢复错误撤回了原生聊天代码，现已修正；当前状态见 [代码恢复与配色核查](native-brand-repair-20261002.zh.md)。
 ## 原版来源
 
 使用迁移到 Kotlin 聊天界面前的提交 `edc1ac9`。已完整恢复 `app/`、`runtime/`、Gradle 配置和 README/CONTRIBUTING，核对这些路径与原提交没有差异。聊天页重新使用原版 HTML/CSS/TypeScript，原版 MainActivity 承载 WebView。

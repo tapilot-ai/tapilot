@@ -1,6 +1,6 @@
 # 原生聊天迁移与真机验收（2026-10-02）
 
-> 历史记录：此原生实现已保存到 `backup/native-chat-before-baseline-20261002`。当前主分支已恢复到迁移前 `edc1ac9` 的应用源码，见 [界面基准](ui-baseline-20261002.zh.md)。
+> 历史记录：此前恢复为 WebView 的操作现已修正，Kotlin 聊天实现及标题栏修复已恢复；最新核查见 [代码恢复与配色核查](native-brand-repair-20261002.zh.md)。
 
 ## 实现范围
 

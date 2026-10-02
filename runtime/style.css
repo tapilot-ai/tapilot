@@ -2290,7 +2290,7 @@ body.voice-recording .chat-app .task-card { z-index: 250; }
   max-width: 200px;
   aspect-ratio: 2.1;
   border-radius: 18px;
-  background: #95ed68;
+  background: var(--brand-gradient);
   transform: translateX(-50%);
 }
 .chat-app .voice-bubble::after {
@@ -2304,7 +2304,7 @@ body.voice-recording .chat-app .task-card { z-index: 250; }
   background: inherit;
   transform: rotate(45deg);
 }
-.chat-app .voice-wave { display: flex; align-items: center; justify-content: center; gap: 1px; height: 20px; color: #46782e; }
+.chat-app .voice-wave { display: flex; align-items: center; justify-content: center; gap: 1px; height: 20px; color: #ffffffe6; }
 .chat-app .voice-wave i { width: 2px; border-radius: 2px; background: currentColor; animation: voice-wave 1.1s ease-in-out infinite alternate; }
 @keyframes voice-wave { to { transform: scaleY(.55); } }
 .chat-app .voice-release-hint { position: absolute; top: 57%; left: 0; width: 100%; color: #ffffffb3; font-size: 16px; }
@@ -2332,8 +2332,8 @@ body.voice-recording .chat-app .task-card { z-index: 250; }
   border-radius: 50% 50% 0 0 / 30% 30% 0 0;
   background: linear-gradient(#9b9b9b, #ccc);
 }
-.chat-app .voice-state.will-cancel .voice-bubble { background: #fa6a80; }
-.chat-app .voice-state.will-cancel .voice-wave { color: #8c2e43; }
+.chat-app .voice-state.will-cancel .voice-bubble { background: var(--danger); }
+.chat-app .voice-state.will-cancel .voice-wave { color: #ffffffe6; }
 .chat-app .voice-state.will-cancel .voice-slide-cancel,
 .chat-app .voice-state.will-transcribe .voice-slide-transcribe { background: #ffffff40; }
 body.task-input-focused .chat-app { height: 100dvh; }
