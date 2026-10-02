@@ -32,9 +32,10 @@ For frontend-only work, the Rsbuild dev server is available with
 ## Project layout
 
 - `app/` — the Android application (Kotlin): AccessibilityService, native
-  bridge, runtime process management, and report storage.
-- `runtime/` — the WebView UI (TypeScript) and the JavaScript side of the
-  JSON-RPC bridge.
+  Compose chat UI, bridge, runtime process management, and report storage.
+- `runtime/` — the conversation agent, native chat state/command contract,
+  remaining WebView settings/advanced UI (TypeScript), and the JavaScript side
+  of the JSON-RPC bridge.
 - `packages/android-accessibility/` — the independently buildable device
   adapter implementing the Midscene device interface.
 - `scripts/` — build scripts for bundling the on-device Node runtime.

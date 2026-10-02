@@ -5,6 +5,14 @@
 Experimental on-device Android client powered by `AccessibilityService`. It
 does not require ADB, Shizuku, or root while running.
 
+The chat screen uses Kotlin and Jetpack Compose with a native Android text editor,
+hold-to-record gestures, release-to-cancel after sliding up, and photo, camera,
+PDF, and text attachments. A structured state/command interface connects the
+native UI to the existing conversation agent and preserves private history and
+API configuration. The agent currently runs in a hidden WebView host; Midscene
+runs in the embedded Node.js process. Settings, advanced YAML editing, and HTML
+reports remain WebView screens during this incremental migration.
+
 Tapilot ships under the `lifeos.md.tapilot` application ID. An APK signed with
 the same key can update an existing installation without clearing its app data;
 changing the signing key requires a new installation.
