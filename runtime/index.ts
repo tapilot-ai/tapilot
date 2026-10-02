@@ -23,6 +23,7 @@ import {
 } from './task-history';
 import { resolveRunResultMessage } from './final-response';
 import { conversationEntries } from './conversation';
+import { recordingFeedback, voiceGesture } from './voice-feedback';
 import { PHONE_TOOL, runChatAgent, type ChatMessage, type ChatCompletion } from './chat-agent';
 import { resolveChatAgentOutcome } from './chat-agent-outcome';
 import { verifiedPhoneTask } from './verified-phone-task';
@@ -3031,6 +3032,7 @@ void refreshSpeechProvider();
 let voicePointerActive = false;
 let voicePointerStartY = 0;
 let voiceCancelOnRelease = false;
+let voiceTranscribeOnRelease = false;
 let voiceBridge: WebViewNativeBridge | undefined;
 let voiceStart: Promise<void> | undefined;
 let voiceCaptureTarget: HTMLElement | undefined;
@@ -3052,10 +3054,18 @@ voiceModeToggle.addEventListener('click', () =>
   setVoiceMode(!taskPanel.classList.contains('is-voice-mode')),
 );
 function voiceFeedback(message: string, recording = false): void {
-  voiceState.textContent = message;
+  document.body.classList.toggle('voice-recording', recording);
+  if (recording) {
+    const zh = resolveLanguage(languagePreference) === 'zh';
+    const hint = voiceCancelOnRelease ? t('releaseToCancelHint')
+      : voiceTranscribeOnRelease || voiceCaptureTarget === fields.task ? (zh ? '松开转文字' : 'Release to transcribe')
+      : (zh ? '松开发送' : 'Release to send');
+    recordingFeedback(voiceState, hint, zh ? '取消' : 'Cancel', zh ? '滑到这里 转文字' : 'Slide here to transcribe');
+  } else voiceState.textContent = message;
   voiceState.hidden = !message;
   voiceState.classList.toggle('is-recording', recording);
   voiceState.classList.toggle('will-cancel', recording && voiceCancelOnRelease);
+  voiceState.classList.toggle('will-transcribe', recording && voiceTranscribeOnRelease);
 }
 function beginVoiceRecording(event: PointerEvent, target: HTMLElement): void {
   if (running || voicePointerActive || voiceBridge) return;
@@ -3064,6 +3074,7 @@ function beginVoiceRecording(event: PointerEvent, target: HTMLElement): void {
   voiceCaptureTarget = target;
   voicePointerStartY = event.clientY;
   voiceCancelOnRelease = false;
+  voiceTranscribeOnRelease = false;
   target.setPointerCapture(event.pointerId);
   target.classList.add('is-recording');
   if (target === fields.task) fields.task.blur();
@@ -3094,9 +3105,12 @@ function beginVoiceRecording(event: PointerEvent, target: HTMLElement): void {
 }
 function moveVoiceRecording(event: PointerEvent): void {
   if (!voicePointerActive) return;
-  const cancel = voicePointerStartY - event.clientY > 72;
-  if (cancel === voiceCancelOnRelease) return;
+  const gesture = voiceGesture(voicePointerStartY, event.clientX, event.clientY, window.innerWidth);
+  const cancel = gesture === 'cancel';
+  const transcribe = gesture === 'transcribe';
+  if (cancel === voiceCancelOnRelease && transcribe === voiceTranscribeOnRelease) return;
   voiceCancelOnRelease = cancel;
+  voiceTranscribeOnRelease = transcribe;
   voiceCaptureTarget?.classList.toggle('will-cancel', cancel);
   voiceRecordLabel.textContent = t(cancel ? 'releaseToCancel' : 'releaseToSend');
   voiceFeedback(`${t('voiceListening')}\n${t(cancel ? 'releaseToCancelHint' : voiceCaptureTarget === fields.task ? 'releaseToTranscribe' : 'releaseToSendHint')}`, true);
@@ -3121,7 +3135,7 @@ async function finishVoiceRecording(): Promise<void> {
     voiceFeedback(t('transcribing'));
     const { text } = await bridge.finishSpeech();
     voiceFeedback('');
-    if (target === fields.task) {
+    if (target === fields.task || voiceTranscribeOnRelease) {
       fields.task.value = [fields.task.value.trim(), text].filter(Boolean).join(' ');
       fields.task.dispatchEvent(new Event('input', { bubbles: true }));
       fields.task.focus();
