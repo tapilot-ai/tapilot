@@ -62,7 +62,7 @@ fun ChatScreen(controller: ChatController) {
         LaunchedEffect(state.activeConversationId, state.messages.size, state.messages.lastOrNull()?.text) {
             if (state.messages.isNotEmpty()) list.animateScrollToItem(state.messages.lastIndex)
         }
-        Box(Modifier.fillMaxSize().background(colors.background).navigationBarsPadding().imePadding()) {
+        BoxWithConstraints(Modifier.fillMaxSize().background(colors.background).navigationBarsPadding().imePadding()) {
             Column(Modifier.fillMaxSize()) {
                 Row(Modifier.fillMaxWidth().background(colors.surface).statusBarsPadding().height(60.dp).padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically) {
@@ -135,17 +135,13 @@ fun ChatScreen(controller: ChatController) {
                 ChatComposer(controller, onAttachments = { attachments = true })
             }
             if (controller.recording) {
-                Column(Modifier.align(Alignment.Center).padding(36.dp).fillMaxWidth()
-                    .background(if (controller.willCancel) Brush.horizontalGradient(listOf(Color(0xFFCA4568), Color(0xFFB8365C))) else Brand,
-                        RoundedCornerShape(28.dp)).padding(vertical = 32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    ChatIcon("mic", Color.White, modifier = Modifier.size(42.dp))
-                    Spacer(Modifier.height(18.dp))
-                    Text(label("正在录音", "Recording"), color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 22.sp)
-                    Spacer(Modifier.height(12.dp))
-                    Text(if (controller.willCancel) label("松开取消", "Release to cancel")
-                        else if (controller.sendOnRelease) label("松开发送 · 上滑取消", "Release to send · slide up to cancel")
-                        else label("松开转写 · 上滑取消", "Release to transcribe · slide up to cancel"), color = Color.White, fontSize = 17.sp)
-                }
+                RecordingFeedback(controller.willCancel,
+                    label("正在录音", "Recording"),
+                    if (controller.willCancel) label("松开取消", "Release to cancel")
+                    else if (controller.sendOnRelease) label("松开发送 · 上滑取消", "Release to send · Slide up to cancel")
+                    else label("松开转写 · 上滑取消", "Release to transcribe · Slide up to cancel"),
+                    Modifier.align(Alignment.Center).offset(y = maxHeight * -.08f)
+                        .width(minOf(maxWidth * .78f, 300.dp)))
             }
         }
         if (sessions) AlertDialog(onDismissRequest = { sessions = false },
