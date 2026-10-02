@@ -1,5 +1,7 @@
 package lifeos.md.tapilot
 
+import lifeos.md.tapilot.theme.BrandColors
+
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
@@ -536,16 +538,16 @@ class ReportActivity : Activity() {
     }
 
     private fun reportBackgroundColor(dark: Boolean): Int =
-        if (dark) Color.rgb(18, 24, 39) else getColor(R.color.brand_background)
+        if (dark) getColor(R.color.brand_dark_background) else getColor(R.color.brand_background)
 
     private fun reportChromeColor(dark: Boolean): Int =
-        if (dark) Color.rgb(28, 37, 53) else getColor(R.color.brand_surface)
+        if (dark) getColor(R.color.brand_dark_surface) else getColor(R.color.brand_surface)
 
     private fun reportPrimaryTextColor(dark: Boolean): Int =
-        if (dark) Color.rgb(241, 244, 250) else getColor(R.color.brand_text)
+        if (dark) getColor(R.color.brand_dark_text) else getColor(R.color.brand_text)
 
     private fun reportSecondaryTextColor(dark: Boolean): Int =
-        if (dark) Color.rgb(174, 183, 201) else getColor(R.color.brand_muted)
+        if (dark) getColor(R.color.brand_dark_muted) else getColor(R.color.brand_muted)
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
@@ -580,21 +582,21 @@ class ReportActivity : Activity() {
               if (!document.getElementById(id)) {
                 var style = document.createElement('style');
                 style.id = id;
-                style.textContent = '@media (max-width:1024px),(pointer:coarse){' +
+                style.textContent = '${BrandColors.reportCss}' + '@media (max-width:1024px),(pointer:coarse){' +
                   '.page-nav-version,.page-nav .theme-divider{display:none!important}' +
                   '.page-nav-left{overflow:hidden!important}' +
                   '.mobile-player-fullscreen-button{display:none!important}' +
                   '.main-right .main-content{box-sizing:border-box!important;' +
                   'padding-bottom:max(20px,env(safe-area-inset-bottom))!important}' +
                   'html:not([data-theme="dark"]) .mobile-report-tabs{' +
-                  'background:#eaf2ff!important}' +
+                  'background:var(--primary-soft)!important}' +
                   'html:not([data-theme="dark"]) .mobile-report-tabs button.is-active{' +
-                  'color:#394bb0!important;background:linear-gradient(125deg,#e2f6fc,#f3eafb)!important}' +
-                  'html[data-theme="dark"] .mobile-report-tabs{background:#2c2e31!important}' +
+                  'color:var(--primary-dark)!important;background:var(--brand-bubble)!important}' +
+                  'html[data-theme="dark"] .mobile-report-tabs{background:var(--surface)!important}' +
                   'html[data-theme="dark"] .mobile-report-tabs button{' +
                   'color:rgba(248,250,253,.62)!important}' +
                   'html[data-theme="dark"] .mobile-report-tabs button.is-active{' +
-                  'color:#f8fafd!important;background:#3a3d42!important;' +
+                  'color:var(--text)!important;background:var(--primary-soft)!important;' +
                   'box-shadow:0 2px 8px rgba(0,0,0,.28)!important}' +
                   '}';
                 document.head.appendChild(style);

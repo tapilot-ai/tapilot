@@ -1,6 +1,7 @@
 package lifeos.md.tapilot.chat
 
 import android.app.Activity
+import android.os.SystemClock
 import android.os.Handler
 import android.os.Looper
 import android.webkit.JavascriptInterface
@@ -32,6 +33,12 @@ class ChatController(
         private set
     var transcribing by mutableStateOf(false)
         private set
+    var recordingSeconds by mutableStateOf(0)
+        private set
+    var audioLevels by mutableStateOf(List(24) { 0f })
+        private set
+    var canRetrySpeech by mutableStateOf(false)
+        private set
     var picking by mutableStateOf(false)
         private set
     var error by mutableStateOf("")
@@ -44,6 +51,17 @@ class ChatController(
     private var closed = false
     private var speechGeneration = 0
     private var voiceSend = false
+    private var recordingStarted = 0L
+    private var lastLevelUpdate = 0L
+    private var retryProvider = ""
+    private var retrySend = false
+    private val recordingClock = object : Runnable {
+        override fun run() {
+            if (!recording || closed) return
+            recordingSeconds = ((SystemClock.elapsedRealtime() - recordingStarted) / 1000).toInt()
+            if (recordingSeconds >= 60) releaseRecording() else handler.postDelayed(this, 250)
+        }
+    }
     val sendOnRelease: Boolean get() = voiceSend
 
     @JavascriptInterface
@@ -51,6 +69,11 @@ class ChatController(
         val next = runCatching { ChatState.parse(payload) }.getOrNull() ?: return
         handler.post {
             if (closed) return@post
+            if (state.activeConversationId != next.activeConversationId && canRetrySpeech) {
+                speech.cancel()
+                canRetrySpeech = false
+                error = ""
+            }
             if (!state.ready || next.draftEpoch != state.draftEpoch) draft = next.draft
             val surfaceChanged = state.webSurfaceOpen != next.webSurfaceOpen
             state = next
@@ -114,6 +137,14 @@ class ChatController(
             command("settings")
             return
         }
+        canRetrySpeech = false
+        retryProvider = state.speechProvider
+        retrySend = sendOnRelease
+        recordingSeconds = 0
+        audioLevels = List(24) { 0f }
+        recordingStarted = SystemClock.elapsedRealtime()
+        lastLevelUpdate = 0
+        handler.post(recordingClock)
         speechGeneration++
         val generation = speechGeneration
         voiceSend = sendOnRelease
@@ -121,15 +152,23 @@ class ChatController(
         willTranscribe = false
         recording = true
         runCatching {
-            speech.start(state.speechProvider, key, if (state.chinese) "zh-CN" else "en-US") { result ->
+            speech.start(state.speechProvider, key, if (state.chinese) "zh-CN" else "en-US",
+                onLevel = { level -> handler.post {
+                    val now = SystemClock.elapsedRealtime()
+                    if (!closed && recording && generation == speechGeneration && now - lastLevelUpdate >= 80) {
+                        audioLevels = audioLevels.drop(1) + level
+                        lastLevelUpdate = now
+                    }
+                } }, onError = { failure -> handler.post {
+                    if (!closed && generation == speechGeneration) speechFailure(failure)
+                } }) { result ->
                 handler.post {
                     if (!closed && generation == speechGeneration) result.onFailure {
-                        recording = false
-                        showError(it.message.orEmpty())
+                        speechFailure(it)
                     }
                 }
             }
-        }.onFailure { recording = false; speech.cancel(); showError(it.message.orEmpty()) }
+        }.onFailure { speechFailure(it) }
     }
 
     fun moveRecording(gesture: RecordingGesture) {
@@ -141,7 +180,9 @@ class ChatController(
     fun releaseRecording() {
         if (!recording) return
         if (willCancel) { cancelRecording(); return }
+        handler.removeCallbacks(recordingClock)
         val shouldSend = voiceSend && !willTranscribe
+        retrySend = shouldSend
         recording = false
         transcribing = true
         val generation = speechGeneration
@@ -152,12 +193,45 @@ class ChatController(
                 result.fold(onSuccess = { text ->
                     edit(listOf(draft.trim(), text.trim()).filter { it.isNotBlank() }.joinToString(" "))
                     if (shouldSend) send() else focusRequest++
-                }, onFailure = { showError(it.message.orEmpty()) })
+                }, onFailure = { speechFailure(it) })
             } }
-        }.onFailure { transcribing = false; speech.cancel(); showError(it.message.orEmpty()) }
+        }.onFailure { speechFailure(it) }
+    }
+
+    private fun speechFailure(failure: Throwable) {
+        if (recording) retrySend = voiceSend && !willTranscribe
+        recording = false
+        transcribing = false
+        handler.removeCallbacks(recordingClock)
+        canRetrySpeech = speech.canRetry
+        val prefix = if (state.chinese) {
+            if (canRetrySpeech) "转写失败，原录音已保留，可重试。" else "语音转写失败，请检查 API 配置或重新录音。"
+        } else if (canRetrySpeech) "Transcription failed. Retry the saved recording." else "Transcription failed. Check API settings or record again."
+        showError("$prefix ${failure.message.orEmpty()}")
+    }
+
+    fun retrySpeech() {
+        if (!canRetrySpeech || recording || transcribing || state.running || picking) return
+        val key = credentials.getAll()["speech-$retryProvider"].orEmpty()
+        error = ""
+        canRetrySpeech = false
+        transcribing = true
+        val generation = speechGeneration
+        runCatching {
+            speech.retry(key) { result -> handler.post {
+                if (closed || generation != speechGeneration) return@post
+                transcribing = false
+                result.fold(onSuccess = { text ->
+                    edit(listOf(draft.trim(), text.trim()).filter { it.isNotBlank() }.joinToString(" "))
+                    if (retrySend) send() else focusRequest++
+                }, onFailure = { speechFailure(it) })
+            } }
+        }.onFailure { speechFailure(it) }
     }
 
     fun cancelRecording() {
+        handler.removeCallbacks(recordingClock)
+        canRetrySpeech = false
         speechGeneration++
         speech.cancel()
         recording = false
@@ -167,7 +241,10 @@ class ChatController(
     }
 
     fun showError(message: String) { error = message }
-    fun dismissError() { error = "" }
+    fun dismissError() {
+        error = ""
+        if (canRetrySpeech) { speech.cancel(); canRetrySpeech = false }
+    }
 
     override fun close() {
         closed = true

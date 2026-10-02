@@ -3,6 +3,7 @@ package lifeos.md.tapilot.bridge
 import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
+import android.content.pm.ApplicationInfo
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
@@ -30,13 +31,22 @@ internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable
     private val timeouts = Executors.newSingleThreadScheduledExecutor()
     private var active: Session? = null
     private var lastFailure: Throwable? = null
+    private data class Retained(val provider: String, val language: String, val pcm: ByteArray, val attempts: Int)
+    private var retained: Retained? = null
+    val canRetry: Boolean @Synchronized get() = retained?.let { it.attempts < 2 && it.pcm.isNotEmpty() } == true
 
     private class Session(
         val provider: String,
-        val audio: AudioRecord,
+        val audio: AudioRecord?,
+        val language: String,
+        val attempts: Int = 0,
+        val onLevel: (Float) -> Unit = {},
+        val onError: (Throwable) -> Unit = {},
         var startCallback: ((Result<Unit>) -> Unit)?,
     ) {
         val recording = AtomicBoolean(true)
+        val captureStopped = AtomicBoolean(false)
+        val pcm = SpeechAudio()
         val pending = ArrayDeque<ByteArray>()
         var pendingBytes = 0
         var totalBytes = 0
@@ -53,13 +63,15 @@ internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable
     }
 
     @Synchronized
-    fun start(provider: String, apiKey: String, language: String, callback: (Result<Unit>) -> Unit) {
+    fun start(provider: String, apiKey: String, language: String,
+        onLevel: (Float) -> Unit = {}, onError: (Throwable) -> Unit = {}, callback: (Result<Unit>) -> Unit) {
         require(provider == VOLCENGINE || provider == DEEPGRAM) { "Unsupported speech provider" }
         require(language == "zh-CN" || language == "en-US") { "Unsupported speech language" }
         require(apiKey.isNotBlank() && apiKey.length <= 4096 &&
             apiKey.none { it == '\r' || it == '\n' || it == '\u0000' }) { "Invalid speech API Key" }
         check(active == null) { "Recording is already in progress" }
         lastFailure = null
+        retained = null
         if (activity.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             activity.requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), MICROPHONE_REQUEST)
             error("Microphone permission requested. Tap the microphone again after allowing access.")
@@ -74,30 +86,17 @@ internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable
             AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSize,
         )
         check(audio.state == AudioRecord.STATE_INITIALIZED) { "Microphone is unavailable" }
-        val session = Session(provider, audio, callback)
+        val session = Session(provider, audio, language, onLevel = onLevel, onError = onError, startCallback = callback)
         try {
             audio.startRecording()
             active = session
             session.captureThread = Thread(
                 { capture(session, bufferSize) }, "tapilot-speech-capture",
             ).apply { start() }
-            val request = Request.Builder()
-                .url(if (provider == VOLCENGINE) VOLCENGINE_URL else "$DEEPGRAM_URL&language=$language")
-                .apply {
-                    if (provider == VOLCENGINE) {
-                        header("X-Api-Key", apiKey)
-                        header("X-Api-Resource-Id", RESOURCE_ID)
-                        header("X-Api-Request-Id", UUID.randomUUID().toString())
-                    } else {
-                        header("Authorization", "Token $apiKey")
-                    }
-                }.build()
-            session.socket = client.newWebSocket(request, listener(session))
+            connect(session, apiKey)
             session.startCallback = null
             callback(Result.success(Unit))
-            timeouts.schedule({
-                if (!session.ready) fail(session, IOException("Speech service connection timed out"))
-            }, 12, TimeUnit.SECONDS)
+
         } catch (error: Throwable) {
             if (active === session) fail(session, error)
             else {
@@ -105,6 +104,41 @@ internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable
                 callback(Result.failure(error))
             }
         }
+    }
+
+    private fun connect(session: Session, apiKey: String) {
+        val request = Request.Builder()
+            .url(if (session.provider == VOLCENGINE) VOLCENGINE_URL else "$DEEPGRAM_URL&language=${session.language}")
+            .apply {
+                if (session.provider == VOLCENGINE) {
+                    header("X-Api-Key", apiKey)
+                    header("X-Api-Resource-Id", RESOURCE_ID)
+                    header("X-Api-Request-Id", UUID.randomUUID().toString())
+                } else header("Authorization", "Token $apiKey")
+            }.build()
+        session.socket = client.newWebSocket(request, listener(session))
+        timeouts.schedule({ if (!session.ready) fail(session, IOException("Speech service connection timed out")) },
+            12, TimeUnit.SECONDS)
+    }
+
+    @Synchronized
+    fun retry(apiKey: String, callback: (Result<String>) -> Unit) {
+        check(active == null) { "Transcription is already in progress" }
+        val saved = retained?.takeIf { it.attempts < 2 } ?: error("No recording available to retry")
+        require(apiKey.isNotBlank() && apiKey.length <= 4096 &&
+            apiKey.none { it == '\r' || it == '\n' || it == '\u0000' }) { "Invalid speech API Key" }
+        val session = Session(saved.provider, null, saved.language, attempts = saved.attempts + 1, startCallback = null)
+        session.pcm.append(saved.pcm)
+        session.totalBytes = saved.pcm.size
+        session.finishing = true
+        session.finishCallback = callback
+        for (offset in saved.pcm.indices step 3200) {
+            session.pending.addLast(saved.pcm.copyOfRange(offset, minOf(offset + 3200, saved.pcm.size)))
+        }
+        session.pendingBytes = saved.pcm.size
+        active = session
+        runCatching { connect(session, apiKey) }.onFailure { fail(session, it) }
+        timeouts.schedule({ fail(session, IOException("Speech service response timed out")) }, 35, TimeUnit.SECONDS)
     }
 
     @Synchronized
@@ -120,6 +154,13 @@ internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable
             fail(session, IllegalArgumentException("Recording is too short"))
             return
         }
+        // One-shot fault injection is restricted to debug APKs for real-device recovery testing.
+        if ((activity.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0 &&
+            activity.intent.getBooleanExtra("tapilot.debug.failSpeechOnce", false)) {
+            activity.intent.removeExtra("tapilot.debug.failSpeechOnce")
+            fail(session, IOException("Injected speech response failure for E2E"))
+            return
+        }
         runCatching { synchronized(session) { flush(session) } }
             .onFailure { fail(session, it) }
         timeouts.schedule({
@@ -129,6 +170,7 @@ internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable
 
     @Synchronized
     fun cancel() {
+        retained = null
         val session = active ?: return
         active = null
         synchronized(session) { session.cancelled = true }
@@ -140,13 +182,15 @@ internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable
         val buffer = ByteArray(bufferSize)
         try {
             while (session.recording.get() && session.totalBytes < MAX_PCM_BYTES) {
-                val count = session.audio.read(buffer, 0, buffer.size)
+                val count = session.audio!!.read(buffer, 0, buffer.size)
                 if (count < 0) throw IOException("Microphone capture failed")
                 if (count == 0) continue
-                val chunk = buffer.copyOf(count)
+                val chunk = buffer.copyOf(minOf(count, MAX_PCM_BYTES - session.totalBytes))
                 synchronized(session) {
                     if (session.cancelled || session.finishing) return
-                    session.totalBytes += count
+                    session.totalBytes += chunk.size
+                    session.pcm.append(chunk)
+                    session.onLevel(SpeechAudio.level(chunk))
                     if (session.ready) sendAudio(session, chunk)
                     else {
                         session.pending.addLast(chunk)
@@ -273,6 +317,8 @@ internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable
         var finishCallback: ((Result<String>) -> Unit)? = null
         synchronized(this) {
             if (active !== session) return
+            val pcm = synchronized(session) { session.pcm.snapshot() }
+            retained = if (result.isFailure && pcm.size >= RATE / 5) Retained(session.provider, session.language, pcm, session.attempts) else null
             active = null
             synchronized(session) {
                 session.cancelled = true
@@ -286,13 +332,15 @@ internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable
         session.socket?.cancel()
         startCallback?.invoke(Result.failure(result.exceptionOrNull() ?: IOException("Speech service closed early")))
         finishCallback?.invoke(result)
+        if (finishCallback == null && startCallback == null) result.exceptionOrNull()?.let(session.onError)
     }
 
     private fun stopCapture(session: Session) {
+        if (!session.captureStopped.compareAndSet(false, true)) return
         session.recording.set(false)
-        runCatching { session.audio.stop() }
+        runCatching { session.audio?.stop() }
         if (Thread.currentThread() !== session.captureThread) session.captureThread?.join(1000)
-        runCatching { session.audio.release() }
+        runCatching { session.audio?.release() }
     }
 
     override fun close() {

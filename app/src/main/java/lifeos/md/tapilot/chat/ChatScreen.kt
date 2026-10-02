@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.chat
 
+import lifeos.md.tapilot.theme.BrandColors
 import android.graphics.BitmapFactory
 import android.graphics.drawable.GradientDrawable
 import android.text.Editable
@@ -42,18 +43,21 @@ import androidx.compose.ui.semantics.contentDescription
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-internal val Blue = Color(0xFF286FCF)
-internal val Purple = Color(0xFF8244D8)
-internal val Brand = Brush.horizontalGradient(listOf(Blue, Color(0xFF5A5DE9), Purple))
+internal val Blue = Color(BrandColors.blue)
+internal val Purple = Color(BrandColors.violet)
+internal val Brand = Brush.horizontalGradient(listOf(Blue, Color(BrandColors.middle), Purple))
 
 @Composable
 fun ChatScreen(controller: ChatController) {
     val state = controller.state
-    val colors = if (state.dark) darkColorScheme(primary = Color(0xFFAFA5FF), secondary = Purple,
-        background = Color(0xFF121827), surface = Color(0xFF1C2535), onBackground = Color(0xFFF2F4FA), onSurface = Color(0xFFF2F4FA), onSurfaceVariant = Color(0xFFAEB6CA)) else lightColorScheme(
-        primary = Color(0xFF594CDA), secondary = Purple, background = Color(0xFFF5F8FE), surface = Color.White, onBackground = Color(0xFF202A3C),
-        onSurface = Color(0xFF202A3C), onSurfaceVariant = Color(0xFF5D6A81))
+    val colors = if (state.dark) darkColorScheme(primary = Color(BrandColors.darkPrimary), secondary = Purple,
+        background = Color(BrandColors.darkBackground), surface = Color(BrandColors.darkSurface), onBackground = Color(BrandColors.darkText), onSurface = Color(BrandColors.darkText), onSurfaceVariant = Color(BrandColors.darkMuted), error = Color(BrandColors.darkDanger), surfaceContainerHigh = Color(BrandColors.darkSurface),
+        surfaceContainer = Color(BrandColors.darkSurface), surfaceVariant = Color(BrandColors.darkSoft), outline = Color(BrandColors.darkLine)) else lightColorScheme(
+        primary = Color(BrandColors.lightPrimary), secondary = Purple, background = Color(BrandColors.lightBackground), surface = Color.White, onBackground = Color(BrandColors.lightText),
+        onSurface = Color(BrandColors.lightText), onSurfaceVariant = Color(BrandColors.lightMuted), error = Color(BrandColors.lightDanger), surfaceContainerHigh = Color(BrandColors.lightSurface),
+        surfaceContainer = Color(BrandColors.lightSurface), surfaceVariant = Color(BrandColors.lightSoft), outline = Color(BrandColors.lightLine))
     MaterialTheme(colorScheme = colors) {
+      CompositionLocalProvider(LocalContentColor provides colors.onBackground) {
         var sessions by remember { mutableStateOf(false) }
         var attachments by remember { mutableStateOf(false) }
         val list = rememberLazyListState()
@@ -115,8 +119,14 @@ fun ChatScreen(controller: ChatController) {
                     }
                 }
                 if (controller.error.isNotBlank()) {
-                    TextButton(onClick = { controller.dismissError() }, modifier = Modifier.fillMaxWidth()) {
-                        Text(controller.error, color = colors.error, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                        Text(controller.error, color = colors.error, fontSize = 13.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                        Row {
+                            if (controller.canRetrySpeech) TextButton(onClick = { controller.retrySpeech() }, enabled = !busy) {
+                                Text(label("重试转写", "Retry transcription"))
+                            }
+                            TextButton(onClick = { controller.dismissError() }) { Text(label("关闭", "Dismiss")) }
+                        }
                     }
                 }
                 if (controller.transcribing || controller.picking || !state.ready) {
@@ -140,7 +150,8 @@ fun ChatScreen(controller: ChatController) {
                     if (controller.willCancel) label("松开取消", "Release to cancel")
                     else if (controller.willTranscribe || !controller.sendOnRelease) label("松开转文字", "Release to transcribe")
                     else label("松开发送", "Release to send"),
-                    label("取消", "Cancel"), label("滑到这里 转文字", "Slide here to transcribe"))
+                    label("取消", "Cancel"), label("滑到这里 转文字", "Slide here to transcribe"),
+                    controller.audioLevels, controller.recordingSeconds)
             }
         }
         if (sessions) AlertDialog(onDismissRequest = { sessions = false },
@@ -169,6 +180,7 @@ fun ChatScreen(controller: ChatController) {
                 confirmButton = { TextButton(onClick = { controller.confirm(true, revised) }, enabled = revised.isNotBlank()) { Text(label("执行", "Run")) } },
                 dismissButton = { TextButton(onClick = { controller.confirm(false, revised) }) { Text(label("取消", "Cancel")) } })
         }
+      }
     }
 }
 
@@ -277,9 +289,9 @@ private fun ChatComposer(controller: ChatController, onAttachments: () -> Unit) 
             if (field.text.toString() != desired) { field.setText(desired); field.setSelection(desired.length) }
             field.background = GradientDrawable().apply {
                 cornerRadius = 16 * field.resources.displayMetrics.density
-                setColor(if (state.dark) 0xFF273349.toInt() else 0xFFEAF2FF.toInt())
+                setColor(if (state.dark) BrandColors.darkSoft else BrandColors.lightSoft)
                 if (controller.recording) setStroke((field.resources.displayMetrics.density * 2).toInt(),
-                    if (controller.willCancel) 0xFFCA4568.toInt() else Blue.toArgb())
+                    if (controller.willCancel) (if (state.dark) BrandColors.darkDanger else BrandColors.lightDanger) else Blue.toArgb())
             }
         })
         IconButton(onClick = onAttachments, enabled = enabled && !controller.recording, modifier = Modifier.size(44.dp)) {

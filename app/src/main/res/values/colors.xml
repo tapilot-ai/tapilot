@@ -1,12 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from theme/brand.json. -->
 <resources>
+    <color name="brand_blue">#286FCF</color>
+    <color name="brand_middle">#5A5DE9</color>
+    <color name="brand_violet">#8244D8</color>
+    <color name="brand_white">#FFFFFF</color>
     <color name="launcher_background">#E9F4FF</color>
+    <color name="brand_recording_overlay">#B8000000</color>
+    <color name="brand_hold_start">#9B9B9B</color>
+    <color name="brand_hold_end">#CCCCCC</color>
     <color name="brand_background">#F5F8FE</color>
     <color name="brand_surface">#FFFFFF</color>
     <color name="brand_text">#202A3C</color>
     <color name="brand_muted">#5D6A81</color>
     <color name="brand_line">#DCE6F2</color>
+    <color name="brand_primary">#594CDA</color>
+    <color name="brand_primary_dark">#394BB0</color>
     <color name="brand_soft">#EAF2FF</color>
-    <color name="brand_blue">#286FCF</color>
-    <color name="brand_violet">#8244D8</color>
+    <color name="brand_success">#16A34A</color>
+    <color name="brand_danger">#DC2626</color>
+    <color name="brand_bubble_start">#E2F6FC</color>
+    <color name="brand_bubble_middle">#E9EFFF</color>
+    <color name="brand_bubble_end">#F3EAFB</color>
+    <color name="brand_dark_background">#121827</color>
+    <color name="brand_dark_surface">#1C2535</color>
+    <color name="brand_dark_text">#F2F4FA</color>
+    <color name="brand_dark_muted">#AEB6CA</color>
+    <color name="brand_dark_line">#34445B</color>
+    <color name="brand_dark_primary">#AFA5FF</color>
+    <color name="brand_dark_primary_dark">#C5C4FF</color>
+    <color name="brand_dark_soft">#263452</color>
+    <color name="brand_dark_success">#4ADE80</color>
+    <color name="brand_dark_danger">#FB7185</color>
+    <color name="brand_dark_bubble_start">#213D50</color>
+    <color name="brand_dark_bubble_middle">#2B3155</color>
+    <color name="brand_dark_bubble_end">#3A2A58</color>
 </resources>

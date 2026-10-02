@@ -60,6 +60,11 @@ dependencies {
     testImplementation("org.json:json:20240303")
 }
 
+val verifyBrandTheme by tasks.registering(Exec::class) {
+    workingDir(rootProject.projectDir)
+    commandLine("node", "scripts/generate-brand.mjs", "--check")
+}
+
 val verifyRuntimeAssets by tasks.registering {
     val runtimeIndex = rootProject.file("dist/runtime/index.html")
     inputs.file(runtimeIndex)
@@ -83,7 +88,7 @@ val verifyNodeRuntimeAssets by tasks.registering {
 }
 
 tasks.named("preBuild") {
-    dependsOn(verifyRuntimeAssets)
+    dependsOn(verifyRuntimeAssets, verifyBrandTheme)
 }
 
 tasks.configureEach {

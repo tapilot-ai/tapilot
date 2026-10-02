@@ -15,6 +15,7 @@ import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import lifeos.md.tapilot.AppTheme
 import lifeos.md.tapilot.MainActivity
 import lifeos.md.tapilot.GlobalAssistantPanelActivity
 import lifeos.md.tapilot.LaunchContext
@@ -67,8 +68,8 @@ class FloatingBallController(
             setPadding(dp(16), dp(12), dp(16), dp(12))
             background = GradientDrawable().apply {
                 cornerRadius = dp(16).toFloat()
-                setColor(service.getColor(R.color.brand_surface))
-                setStroke(dp(1), service.getColor(R.color.brand_line))
+                setColor(service.getColor(if (AppTheme.isDark(service)) R.color.brand_dark_surface else R.color.brand_surface))
+                setStroke(dp(1), service.getColor(if (AppTheme.isDark(service)) R.color.brand_dark_line else R.color.brand_line))
             }
             elevation = dp(10).toFloat()
             addView(TextView(service).apply {
@@ -79,7 +80,7 @@ class FloatingBallController(
             addView(TextView(service).apply {
                 text = message.take(260)
                 textSize = 14f
-                setTextColor(service.getColor(R.color.brand_text))
+                setTextColor(service.getColor(if (AppTheme.isDark(service)) R.color.brand_dark_text else R.color.brand_text))
                 maxLines = 5
             })
             setOnClickListener {
@@ -135,6 +136,7 @@ class FloatingBallController(
                 cornerRadius = dp(20).toFloat()
                 colors = intArrayOf(
                     service.getColor(R.color.brand_blue),
+                    service.getColor(R.color.brand_middle),
                     service.getColor(R.color.brand_violet),
                 )
             }
@@ -174,8 +176,8 @@ class FloatingBallController(
             setPadding(dp(5), dp(5), dp(5), dp(5))
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(service.getColor(R.color.brand_soft))
-                setStroke(dp(1), service.getColor(R.color.brand_line))
+                setColor(service.getColor(if (AppTheme.isDark(service)) R.color.brand_dark_soft else R.color.brand_soft))
+                setStroke(dp(1), service.getColor(if (AppTheme.isDark(service)) R.color.brand_dark_line else R.color.brand_line))
             }
             elevation = dp(8).toFloat()
             setOnClickListener { openTaskInput() }

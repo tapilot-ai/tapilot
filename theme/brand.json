@@ -1,0 +1,5 @@
+{
+  "brand": {"blue":"#286FCF","middle":"#5A5DE9","violet":"#8244D8","white":"#FFFFFF","launcher":"#E9F4FF","recordingOverlay":"#000000B8","holdStart":"#9B9B9B","holdEnd":"#CCCCCC"},
+  "light": {"background":"#F5F8FE","surface":"#FFFFFF","text":"#202A3C","muted":"#5D6A81","line":"#DCE6F2","primary":"#594CDA","primaryDark":"#394BB0","soft":"#EAF2FF","success":"#16A34A","danger":"#DC2626","bubbleStart":"#E2F6FC","bubbleMiddle":"#E9EFFF","bubbleEnd":"#F3EAFB"},
+  "dark": {"background":"#121827","surface":"#1C2535","text":"#F2F4FA","muted":"#AEB6CA","line":"#34445B","primary":"#AFA5FF","primaryDark":"#C5C4FF","soft":"#263452","success":"#4ADE80","danger":"#FB7185","bubbleStart":"#213D50","bubbleMiddle":"#2B3155","bubbleEnd":"#3A2A58"}
+}

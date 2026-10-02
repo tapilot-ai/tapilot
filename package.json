@@ -23,14 +23,17 @@
   ],
   "type": "module",
   "scripts": {
-    "build": "rsbuild build",
+    "build": "pnpm run theme:check && rsbuild build",
     "build:adapter": "pnpm --filter @tapilot/android-accessibility build",
     "build:android": "pnpm run build:adapter && pnpm run build && pnpm run runtime:bundle && pnpm run runtime:node && ./gradlew assembleDebug",
     "runtime:bundle": "node scripts/bundle-node-runtime.mjs",
     "runtime:doctor": "node build/node-runtime-bundle/runner.mjs doctor",
     "runtime:node": "bash scripts/fetch-node-runtime.sh",
     "dev": "rsbuild dev",
-    "test": "rstest"
+    "test": "rstest",
+    "theme:generate": "node scripts/generate-brand.mjs",
+    "theme:check": "node scripts/generate-brand.mjs --check",
+    "baseline:check": "node scripts/visual-baseline.mjs --check"
   },
   "dependencies": {
     "@lobehub/icons-static-svg": "^1.95.0",

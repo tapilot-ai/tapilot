@@ -53,6 +53,7 @@ import {
   resolveThemePreference,
 } from './theme';
 import './style.css';
+import './brand.generated.css';
 import chatGlmIcon from '@lobehub/icons-static-svg/icons/zhipu-color.svg';
 import deepSeekIcon from '@lobehub/icons-static-svg/icons/deepseek-color.svg';
 import doubaoIcon from '@lobehub/icons-static-svg/icons/doubao-color.svg';
