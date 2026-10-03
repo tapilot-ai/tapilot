@@ -1,0 +1,30 @@
+{
+  "device": "Xiaomi M2006J10C / MIUI 14",
+  "apkSha256": "16af76022c8a8414d8d7c55f7849599702b718cfb48f9093db51cbfc5cdcc9dd",
+  "screenshots": [
+    {
+      "file": "chat.png",
+      "sha256": "05114568a4bdf640f010f9b3c693fc206f35c9b1f52e07b923e9ef9d84a61f75"
+    },
+    {
+      "file": "settings.png",
+      "sha256": "c364c62b0b5b86cc13d49b76d0dbeea0da335057fbcf96d11b070e84ad8c242c"
+    },
+    {
+      "file": "report.png",
+      "sha256": "aabaa899c3f074a227a9dd7fb8278fa9e74a43951b8e4be1fc1cf0e1a9554693"
+    },
+    {
+      "file": "chat-dark.png",
+      "sha256": "bc1bd7e73bbc1617639d12ff733f34db43669b14bbed70a520fea360864e02df"
+    },
+    {
+      "file": "settings-dark.png",
+      "sha256": "13fa71a12064ffa9423c13f52036ef1c3f03a3ee118c2bb440d3f19645a161f1"
+    },
+    {
+      "file": "report-dark.png",
+      "sha256": "9dce9008b30403543fb93d2ed21954ecba346dc9edd78019947a51af8739dae1"
+    }
+  ]
+}

@@ -6,7 +6,7 @@
 }
 
 /* Conversation view keeps the existing device controls in the settings drawer. */
-.chat-app { padding-top: calc(8px + max(env(safe-area-inset-top, 0px), var(--native-safe-area-top, 0px))); }
+.chat-app { --page-top-inset: max(env(safe-area-inset-top, 0px), var(--native-safe-area-top, 0px)); }
 .chat-topbar { display: flex; align-items: center; gap: 10px; height: 50px; padding: 4px 8px; position: sticky; top: 0; z-index: 5; background: var(--background); }
 .chat-topbar select { min-width: 0; flex: 1; border: 0; background: transparent; color: var(--text); font-weight: 700; font-size: 17px; }
 .chat-topbar button { border: 0; background: transparent; color: var(--text); font-size: 23px; width: 38px; height: 38px; }
@@ -2042,13 +2042,13 @@ html[data-theme="dark"] pre {
   height: 100dvh;
   min-height: 0;
   overflow: hidden;
-  padding: max(8px, var(--native-safe-area-top, 0px)) 16px max(8px, var(--native-safe-area-bottom, 0px));
+  padding: 0 16px max(8px, var(--native-safe-area-bottom, 0px));
   background: var(--background);
 }
 .chat-app .chat-topbar {
-  flex: 0 0 50px;
+  flex: 0 0 calc(50px + var(--page-top-inset));
   margin: 0 -16px;
-  padding: 0 12px;
+  padding: var(--page-top-inset) 12px 0;
   border-bottom: 1px solid var(--line);
   background: var(--surface);
 }
@@ -2328,10 +2328,10 @@ body.task-input-focused .chat-app #task { height: 44px; min-height: 44px; max-he
 }
 .chat-app .settings-topbar {
   display: flex;
-  flex: 0 0 56px;
+  flex: 0 0 calc(56px + var(--page-top-inset));
   align-items: center;
   gap: 8px;
-  padding: 0 16px;
+  padding: var(--page-top-inset) 16px 0;
   border-bottom: 1px solid var(--line);
   background: var(--surface);
 }

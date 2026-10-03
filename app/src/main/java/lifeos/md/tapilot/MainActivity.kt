@@ -412,9 +412,10 @@ class MainActivity : ComponentActivity() {
     @Suppress("DEPRECATION")
     private fun applyWindowTheme(root: View) {
         val dark = AppTheme.isDark(this)
-        val background = if (dark) getColor(R.color.brand_dark_background) else getColor(R.color.brand_background)
+        val background = if (dark) getColor(R.color.brand_dark_surface) else getColor(R.color.brand_surface)
         root.setBackgroundColor(background)
         window.statusBarColor = Color.TRANSPARENT
+        window.isStatusBarContrastEnforced = false
         window.navigationBarColor = Color.TRANSPARENT
         window.isNavigationBarContrastEnforced = false
         WindowCompat.getInsetsController(window, window.decorView).apply {

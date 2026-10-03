@@ -74,6 +74,7 @@ class ReportActivity : Activity() {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.isNavigationBarContrastEnforced = false
+        window.isStatusBarContrastEnforced = false
         val initialDarkTheme = AppTheme.isDark(this)
         applySystemBarTheme(initialDarkTheme)
         videoExport = VideoExportStore(applicationContext)
@@ -510,7 +511,7 @@ class ReportActivity : Activity() {
     private fun applySystemBarTheme(dark: Boolean) {
         val background = reportChromeColor(dark)
         @Suppress("DEPRECATION")
-        window.statusBarColor = background
+        window.statusBarColor = Color.TRANSPARENT
         @Suppress("DEPRECATION")
         window.navigationBarColor = background
         WindowCompat.getInsetsController(window, window.decorView).apply {
