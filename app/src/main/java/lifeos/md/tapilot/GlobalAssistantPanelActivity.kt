@@ -97,10 +97,10 @@ class GlobalAssistantPanelActivity : Activity() {
         actions.addView(Button(this).apply {
             text = "发送"
             setTextColor(Color.WHITE)
-            background = GradientDrawable(
-                GradientDrawable.Orientation.LEFT_RIGHT,
-                intArrayOf(getColor(R.color.brand_blue), getColor(R.color.brand_middle), getColor(R.color.brand_violet)),
-            ).apply { cornerRadius = dp(12f) }
+            background = GradientDrawable().apply {
+                setColor(getColor(R.color.brand_blue))
+                cornerRadius = dp(10f)
+            }
             setOnClickListener { send() }
         })
         root.addView(actions)

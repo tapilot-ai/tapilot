@@ -211,7 +211,7 @@ class ReportActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL
             orientation = LinearLayout.HORIZONTAL
             setBackgroundColor(reportChromeColor(initialDarkTheme))
-            elevation = dp(2).toFloat()
+            elevation = 0f
             addView(
                 ImageButton(context).apply {
                     setImageResource(R.drawable.ic_arrow_back)
@@ -589,16 +589,16 @@ class ReportActivity : Activity() {
                   '.mobile-player-fullscreen-button{display:none!important}' +
                   '.main-right .main-content{box-sizing:border-box!important;' +
                   'padding-bottom:max(20px,env(safe-area-inset-bottom))!important}' +
-                  'html:not([data-theme="dark"]) .mobile-report-tabs{' +
-                  'background:var(--primary-soft)!important}' +
+                  '.page-nav{background:var(--surface)!important}' +
+                  '.mobile-report-tabs{padding:4px!important;border-radius:8px!important;box-shadow:none!important;background:var(--input)!important}' +
+                  '.mobile-report-tabs button{border-radius:6px!important;min-height:40px!important;font-size:14px!important;box-shadow:none!important}' +
                   'html:not([data-theme="dark"]) .mobile-report-tabs button.is-active{' +
-                  'color:var(--primary-dark)!important;background:var(--brand-bubble)!important}' +
-                  'html[data-theme="dark"] .mobile-report-tabs{background:var(--surface)!important}' +
+                  'color:var(--primary-dark)!important;background:var(--surface)!important}' +
                   'html[data-theme="dark"] .mobile-report-tabs button{' +
                   'color:rgba(248,250,253,.62)!important}' +
                   'html[data-theme="dark"] .mobile-report-tabs button.is-active{' +
                   'color:var(--text)!important;background:var(--primary-soft)!important;' +
-                  'box-shadow:0 2px 8px rgba(0,0,0,.28)!important}' +
+                  'box-shadow:none!important}' +
                   '}';
                 document.head.appendChild(style);
               }

@@ -2,7 +2,7 @@
   color-scheme: light;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --shadow: 0 8px 28px rgba(39, 47, 75, 0.07);
+  --shadow: none;
 }
 
 /* Conversation view keeps the existing device controls in the settings drawer. */
@@ -53,11 +53,7 @@ body {
   min-width: 280px;
   margin: 0;
   color: var(--text);
-  background: radial-gradient(
-      circle at 88% 2%,
-      rgba(126, 74, 225, 0.08),
-      transparent 30%
-    ), radial-gradient(circle at 6% 12%, rgba(49, 182, 232, 0.1), transparent 36%), var(--background);
+  background: var(--background);
   -webkit-font-smoothing: antialiased;
   transition: color 180ms ease-out, background-color 180ms ease-out;
 }
@@ -216,7 +212,7 @@ h1 {
   border: 1px solid transparent;
   border-radius: 12px;
   color: #fff;
-  background: var(--brand-gradient);
+  background: var(--primary);
   font-size: 13px;
   font-weight: 650;
 }
@@ -297,7 +293,7 @@ h1 {
   margin-bottom: 14px;
   padding: 18px;
   border: 1px solid rgba(226, 229, 239, 0.9);
-  border-radius: 20px;
+  border-radius: 12px;
   background: var(--surface);
   box-shadow: var(--shadow);
 }
@@ -1581,7 +1577,7 @@ body.task-input-focused .task-card ~ * {
   justify-content: center;
   gap: 9px;
   color: #fff;
-  background: var(--brand-gradient);
+  background: var(--primary);
   box-shadow: 0 8px 18px rgba(58, 91, 203, 0.22);
   -webkit-tap-highlight-color: transparent;
 }
@@ -1845,15 +1841,11 @@ pre {
 }
 
 html[data-theme="dark"] {
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.24);
+  --shadow: none;
 }
 
 html[data-theme="dark"] body {
-  background: radial-gradient(
-      circle at 88% 2%,
-      rgba(126, 74, 225, 0.17),
-      transparent 30%
-    ), radial-gradient(circle at 6% 12%, rgba(49, 182, 232, 0.12), transparent 36%), var(--background);
+  background: var(--background);
 }
 
 html[data-theme="dark"] .card {
@@ -1922,7 +1914,7 @@ html[data-theme="dark"] .switch-control::before {
 }
 
 html[data-theme="dark"] .switch-control.is-enabled::before {
-  background: var(--brand-gradient);
+  background: var(--primary);
 }
 
 html[data-theme="dark"] .model-test-status {
@@ -2366,6 +2358,59 @@ body.task-input-focused .chat-app #task { height: 44px; min-height: 44px; max-he
 .chat-app .settings-scroll .config-card,
 .chat-app .settings-scroll .preference-card,
 .chat-app .settings-scroll .speech-config { margin: 0 0 14px; }
+.chat-app .settings-scroll .card {
+  border: 0;
+  padding: 16px;
+  box-shadow: none;
+}
+.chat-app .settings-scroll .section-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 0;
+  color: var(--muted);
+  background: transparent;
+}
+.chat-app .settings-scroll .config-heading strong,
+.chat-app .settings-scroll .speech-config-heading strong {
+  font-size: 16px;
+  font-weight: 600;
+}
+.chat-app .settings-scroll .helper {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.chat-app .settings-scroll input,
+.chat-app .settings-scroll select {
+  min-height: 44px;
+  border-radius: 8px;
+  background: var(--input);
+}
+.chat-app .settings-scroll .preference-heading {
+  margin: 8px 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.chat-app .settings-scroll .preference-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+.chat-app .settings-scroll .preference-copy small { font-size: 12px; }
+.chat-app .settings-scroll .preference-trigger {
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 8px 0 16px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 400;
+}
+.chat-app .settings-scroll button:not(.switch-control):not(.preference-trigger) {
+  border-radius: 8px;
+  box-shadow: none;
+}
 body.show-settings .chat-app .chat-topbar,
 body.show-settings .chat-app .status-card,
 body.show-settings .chat-app .chat-thread,

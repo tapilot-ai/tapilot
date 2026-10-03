@@ -69,15 +69,15 @@ fun ChatScreen(controller: ChatController) {
         }
         BoxWithConstraints(Modifier.fillMaxSize().background(colors.background)) {
             Column(Modifier.fillMaxSize().navigationBarsPadding().imePadding()) {
-                Row(Modifier.fillMaxWidth().background(colors.surface).statusBarsPadding().height(60.dp).padding(horizontal = 12.dp),
+                Row(Modifier.fillMaxWidth().background(colors.surface).statusBarsPadding().height(56.dp).padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     Row(Modifier.weight(1f).clickable(enabled = !busy) { sessions = true }.padding(8.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(state.conversations.find { it.id == state.activeConversationId }?.title ?: "Tapilot",
-                                fontSize = 19.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(if (state.running) label("正在执行…", "Working…") else label("你的手机 AI 助手", "Your phone AI assistant"),
-                                color = colors.onSurfaceVariant, fontSize = 11.sp)
+                                fontSize = 17.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            if (state.running) Text(label("正在处理…", "Working…"),
+                                color = colors.onSurfaceVariant, fontSize = 12.sp)
                         }
                         ChatIcon("down", colors.onSurfaceVariant)
                     }
@@ -85,12 +85,12 @@ fun ChatScreen(controller: ChatController) {
                         ChatIcon("settings", colors.onSurface, label("设置", "Settings"))
                     }
                     IconButton(onClick = { controller.command("new") }, enabled = state.ready && !busy) {
-                        ChatIcon("plus", colors.primary, label("新对话", "New conversation"))
+                        ChatIcon("plus", colors.onSurface, label("新对话", "New conversation"))
                     }
                 }
                 if (state.needsAccessibility) {
                     TextButton(onClick = { controller.command("settings") }, modifier = Modifier.fillMaxWidth()) {
-                        Text(label("开启设备控制，才能帮你操作手机", "Enable device control to operate your phone"))
+                        Text(label("设备控制未开启 · 前往设置", "Device control is off · Settings"), color = colors.onSurfaceVariant, fontSize = 12.sp)
                     }
                 }
                 if (!state.configured && state.ready) {
@@ -101,18 +101,14 @@ fun ChatScreen(controller: ChatController) {
                 if (state.messages.isEmpty()) {
                     Column(Modifier.weight(1f).fillMaxWidth().padding(36.dp),
                         verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                        Box(Modifier.size(64.dp).background(Brand, RoundedCornerShape(22.dp)), contentAlignment = Alignment.Center) {
-                            Text("T", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
-                        }
-                        Spacer(Modifier.height(20.dp))
-                        Text(label("你好，我是 Tapilot", "Hi, I’m Tapilot"), fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+                        Text(label("有什么需要帮忙？", "How can I help?"), fontSize = 22.sp, fontWeight = FontWeight.Medium)
                         Spacer(Modifier.height(10.dp))
-                        Text(label("说说你想在手机上完成什么", "What would you like to do on your phone?"),
+                        Text(label("输入任务，或长按输入框说话", "Type a task, or hold the input to speak"),
                             color = colors.onSurfaceVariant, fontSize = 14.sp)
                     }
                 } else {
                     LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = list,
-                        contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
                         items(state.messages, key = { it.id }) { message ->
                             MessageBubble(message, zh) { controller.command("report", id = it) }
                         }
@@ -143,6 +139,7 @@ fun ChatScreen(controller: ChatController) {
                         TextButton(onClick = { controller.command("removeAttachment") }, enabled = !busy) { Text(label("移除", "Remove")) }
                     }
                 }
+                HorizontalDivider(color = colors.outline.copy(alpha = .6f))
                 ChatComposer(controller, onAttachments = { attachments = true })
             }
             if (controller.recording) {
@@ -191,21 +188,20 @@ private fun MessageBubble(message: ChatMessage, zh: Boolean, report: (String) ->
     var details by remember(message.id) { mutableStateOf(false) }
     val quotaFailure = !user && message.status == "failed" && message.text.contains("Arrearage", ignoreCase = true)
     Row(Modifier.fillMaxWidth(), horizontalArrangement = if (user) Arrangement.End else Arrangement.Start) {
-        Column(Modifier.widthIn(max = 320.dp)
-            .background(if (user) Brush.horizontalGradient(listOf(Blue.copy(alpha = .11f), Purple.copy(alpha = .10f)))
-                else Brush.horizontalGradient(listOf(colors.surface, colors.surface)), RoundedCornerShape(20.dp))
-            .padding(16.dp)) {
+        Column(Modifier.widthIn(max = if (user) 300.dp else 560.dp)
+            .background(if (user) colors.surfaceVariant else Color.Transparent, RoundedCornerShape(16.dp))
+            .padding(horizontal = if (user) 14.dp else 0.dp, vertical = if (user) 12.dp else 4.dp)) {
             SelectionContainer {
                 Text(if (!user && message.status == "running") (if (zh) "正在执行…" else "Working…")
                     else if (quotaFailure && !details) (if (zh) "模型账户欠费，暂时无法回复。请充值或在设置中选择可用的模型 API。"
                         else "The model account is overdue. Add credit or choose an available model API in settings.")
-                    else message.text.ifBlank { if (zh) "任务已完成" else "Task complete" }, fontSize = 16.sp, lineHeight = 25.sp)
+                    else message.text.ifBlank { if (zh) "任务已完成" else "Task complete" }, fontSize = 16.sp, lineHeight = 24.sp)
             }
             if (quotaFailure) TextButton(onClick = { details = !details }, contentPadding = PaddingValues(top = 8.dp)) {
                 Text(if (details) (if (zh) "收起详情" else "Hide details") else (if (zh) "查看详情" else "Show details"))
             }
             if (message.reportId.isNotEmpty()) TextButton(onClick = { report(message.reportId) }, contentPadding = PaddingValues(top = 10.dp)) {
-                Text(if (zh) "查看报告" else "View report")
+                Text(if (zh) "查看执行记录 →" else "View activity →", fontSize = 13.sp, fontWeight = FontWeight.Medium)
             }
         }
     }
@@ -242,10 +238,10 @@ private fun ChatComposer(controller: ChatController, onAttachments: () -> Unit) 
         verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         IconButton(onClick = { voiceMode = !voiceMode; if (voiceMode) editor?.let { field ->
             field.clearFocus(); field.context.getSystemService(InputMethodManager::class.java).hideSoftInputFromWindow(field.windowToken, 0)
-        } }, enabled = enabled && !controller.recording, modifier = Modifier.size(44.dp)) {
-            ChatIcon(if (voiceMode) "keyboard" else "mic", colors.primary, if (state.chinese) "切换输入方式" else "Switch input mode")
+        } }, enabled = enabled && !controller.recording, modifier = Modifier.size(48.dp)) {
+            ChatIcon(if (voiceMode) "keyboard" else "mic", colors.onSurfaceVariant, if (state.chinese) "切换输入方式" else "Switch input mode")
         }
-        AndroidView(modifier = Modifier.weight(1f).heightIn(min = 44.dp, max = 136.dp), factory = { context ->
+        AndroidView(modifier = Modifier.weight(1f).heightIn(min = 48.dp, max = 136.dp), factory = { context ->
             HoldToRecordEditor(context).apply {
                 editor = this
                 setTextSize(16f)
@@ -288,19 +284,20 @@ private fun ChatComposer(controller: ChatController, onAttachments: () -> Unit) 
             val desired = if (voiceMode) (if (state.chinese) "按住说话" else "Hold to talk") else controller.draft
             if (field.text.toString() != desired) { field.setText(desired); field.setSelection(desired.length) }
             field.background = GradientDrawable().apply {
-                cornerRadius = 16 * field.resources.displayMetrics.density
-                setColor(if (state.dark) BrandColors.darkSoft else BrandColors.lightSoft)
+                cornerRadius = 12 * field.resources.displayMetrics.density
+                setColor(if (state.dark) BrandColors.darkInput else BrandColors.lightInput)
                 if (controller.recording) setStroke((field.resources.displayMetrics.density * 2).toInt(),
                     if (controller.willCancel) (if (state.dark) BrandColors.darkDanger else BrandColors.lightDanger) else Blue.toArgb())
             }
         })
-        IconButton(onClick = onAttachments, enabled = enabled && !controller.recording, modifier = Modifier.size(44.dp)) {
-            ChatIcon("plus", colors.primary, if (state.chinese) "添加附件" else "Add attachment")
+        IconButton(onClick = onAttachments, enabled = enabled && !controller.recording, modifier = Modifier.size(48.dp)) {
+            ChatIcon("plus", colors.onSurfaceVariant, if (state.chinese) "添加附件" else "Add attachment")
         }
+        val canSend = state.running || (enabled && !controller.recording && (controller.draft.isNotBlank() || state.attachment != null))
         IconButton(onClick = { if (state.running) controller.command("stop") else controller.send() },
-            enabled = state.running || (enabled && !controller.recording && (controller.draft.isNotBlank() || state.attachment != null)),
-            modifier = Modifier.size(44.dp).background(Brand, RoundedCornerShape(15.dp))) {
-            ChatIcon(if (state.running) "stop" else "send", Color.White, if (state.running) "停止" else "发送")
+            enabled = canSend,
+            modifier = Modifier.size(48.dp).background(if (canSend) Blue else colors.surfaceVariant, RoundedCornerShape(12.dp))) {
+            ChatIcon(if (state.running) "stop" else "send", if (canSend) Color.White else colors.onSurfaceVariant.copy(alpha = .5f), if (state.running) "停止" else "发送")
         }
     }
 }
@@ -323,8 +320,10 @@ private fun ChatIcon(kind: String, color: Color, description: String? = null, mo
                 drawPath(path, color, style = Stroke(2 * unit)); line(12f, 19f, 12f, 22f)
             }
             "settings" -> {
-                drawCircle(color, 7 * unit, style = Stroke(2 * unit)); drawCircle(color, 2.5f * unit, style = Stroke(2 * unit))
-                line(12f, 2f, 12f, 5f); line(12f, 19f, 12f, 22f); line(2f, 12f, 5f, 12f); line(19f, 12f, 22f, 12f)
+                line(4f, 7f, 7f, 7f); line(13f, 7f, 20f, 7f)
+                drawCircle(color, 3 * unit, point(10f, 7f), style = Stroke(2 * unit))
+                line(4f, 17f, 11f, 17f); line(17f, 17f, 20f, 17f)
+                drawCircle(color, 3 * unit, point(14f, 17f), style = Stroke(2 * unit))
             }
             "keyboard" -> {
                 drawRoundRect(color, point(2f, 5f), androidx.compose.ui.geometry.Size(20 * unit, 14 * unit),

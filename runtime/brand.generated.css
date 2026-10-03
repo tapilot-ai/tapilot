@@ -1,28 +1,30 @@
 /* Generated from theme/brand.json. Run pnpm theme:generate. */
 :root {
-  --background: #F5F8FE;
+  --background: #F6F7F9;
   --surface: #FFFFFF;
-  --text: #202A3C;
-  --muted: #5D6A81;
-  --line: #DCE6F2;
-  --primary: #594CDA;
-  --primary-dark: #394BB0;
-  --primary-soft: #EAF2FF;
+  --text: #20242C;
+  --muted: #667080;
+  --line: #E4E7EC;
+  --primary: #286FCF;
+  --primary-dark: #205AA8;
+  --primary-soft: #EDF3FC;
+  --input: #F0F2F5;
   --success: #16A34A;
   --danger: #DC2626;
-  --brand-bubble: linear-gradient(125deg, #E2F6FC, #E9EFFF 58%, #F3EAFB);
+  --brand-bubble: linear-gradient(125deg, #EDF3FC, #EDF3FC 58%, #EDF3FC);
   --brand-gradient: linear-gradient(120deg, #286FCF, #5A5DE9 55%, #8244D8);
 }
 html[data-theme="dark"] {
-  --background: #121827;
-  --surface: #1C2535;
-  --text: #F2F4FA;
-  --muted: #AEB6CA;
-  --line: #34445B;
-  --primary: #AFA5FF;
-  --primary-dark: #C5C4FF;
-  --primary-soft: #263452;
+  --background: #13161B;
+  --surface: #1C2027;
+  --text: #F1F3F5;
+  --muted: #A6AFBD;
+  --line: #343B46;
+  --primary: #9BBFF0;
+  --primary-dark: #B5CEF2;
+  --primary-soft: #25334A;
+  --input: #292E37;
   --success: #4ADE80;
   --danger: #FB7185;
-  --brand-bubble: linear-gradient(125deg, #213D50, #2B3155 58%, #3A2A58);
+  --brand-bubble: linear-gradient(125deg, #25334A, #25334A 58%, #25334A);
 }

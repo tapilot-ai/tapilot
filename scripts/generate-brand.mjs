@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const theme = JSON.parse(readFileSync(`${root}theme/brand.json`, 'utf8'));
 const snake = key => key.replace(/[A-Z]/g, value => `_${value.toLowerCase()}`);
-const vars = { background:'background',surface:'surface',text:'text',muted:'muted',line:'line',primary:'primary',primaryDark:'primary-dark',soft:'primary-soft',success:'success',danger:'danger' };
+const vars = { background:'background',surface:'surface',text:'text',muted:'muted',line:'line',primary:'primary',primaryDark:'primary-dark',soft:'primary-soft',input:'input',success:'success',danger:'danger' };
 const gradient = `linear-gradient(120deg, ${theme.brand.blue}, ${theme.brand.middle} 55%, ${theme.brand.violet})`;
 function cssVars(mode) {
   const palette = theme[mode];

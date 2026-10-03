@@ -2,8 +2,14 @@ import {readFileSync,writeFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {resolve} from 'node:path';
-const folder=resolve(process.argv.slice(2).find(arg=>!arg.startsWith('--'))||'docs/visual-baseline/20261002');
-const states=['chat','keyboard','recording','cancel','transcribe','attachment','settings','report'];
+const folder=resolve(process.argv.slice(2).find(arg=>!arg.startsWith('--'))||'docs/visual-baseline/20261003-refined');
+const palette=JSON.parse(readFileSync('theme/brand.json','utf8')).light;
+const allStates=['chat','keyboard','recording','cancel','transcribe','attachment','settings','report','chat-dark','settings-dark','report-dark','empty','speech-error'];
+const selectedStates=process.argv.find(arg=>arg.startsWith('--states='))?.slice('--states='.length);
+const states=selectedStates ? selectedStates.split(',') : allStates.slice(0,8);
+if(states.length===0 || states.some(state=>!allStates.includes(state)) || new Set(states).size!==states.length) {
+ throw Error('Choose unique supported visual states with --states=chat,keyboard,...');
+}
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 if(process.argv.includes('--check')) {
  const manifest=JSON.parse(readFileSync(`${folder}/manifest.json`,'utf8'));
@@ -20,6 +26,6 @@ if(process.argv.includes('--check')) {
   sourceDirty:!!execFileSync('git',['status','--porcelain'],{encoding:'utf8'}).trim(),device:'Xiaomi M2006J10C / MIUI 14',
   themeSha256:hash(readFileSync('theme/brand.json')),screenshots};
  writeFileSync(`${folder}/manifest.json`,JSON.stringify(manifest,null,2)+'\n');
- writeFileSync(`${folder}/index.html`,`<!doctype html><meta charset="utf-8"><title>Tapilot 界面基准</title><style>body{margin:24px;background:#f5f8fe;color:#202a3c;font-family:system-ui}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:24px}img{width:100%;max-width:300px;border:1px solid #dce6f2;border-radius:12px}</style><h1>Tapilot 真机界面基准</h1><p>供人工逐状态对照；完整链路结果另见验收报告。</p><main>${screenshots.map(s=>`<section><h2>${s.state}</h2><img src="${s.file}" alt="${s.state}"></section>`).join('')}</main>`);
- console.log('Saved 8 visual states and integrity manifest.');
+ writeFileSync(`${folder}/index.html`,`<!doctype html><meta charset="utf-8"><title>Tapilot 界面基准</title><style>body{margin:24px;background:${palette.background};color:${palette.text};font-family:system-ui}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:24px}img{width:100%;max-width:300px;border:1px solid ${palette.line};border-radius:12px}</style><h1>Tapilot 真机界面基准</h1><p>供人工逐状态对照；完整链路结果另见验收报告。</p><main>${screenshots.map(s=>`<section><h2>${s.state}</h2><img src="${s.file}" alt="${s.state}"></section>`).join('')}</main>`);
+ console.log(`Saved ${states.length} visual states and integrity manifest.`);
 }

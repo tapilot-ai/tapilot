@@ -71,7 +71,7 @@ class FloatingBallController(
                 setColor(service.getColor(if (AppTheme.isDark(service)) R.color.brand_dark_surface else R.color.brand_surface))
                 setStroke(dp(1), service.getColor(if (AppTheme.isDark(service)) R.color.brand_dark_line else R.color.brand_line))
             }
-            elevation = dp(10).toFloat()
+            elevation = dp(3).toFloat()
             addView(TextView(service).apply {
                 text = "Tapilot 已回复"
                 textSize = 14f
@@ -133,12 +133,8 @@ class FloatingBallController(
             setTextColor(Color.WHITE)
             setPadding(dp(16), dp(9), dp(16), dp(9))
             background = GradientDrawable().apply {
-                cornerRadius = dp(20).toFloat()
-                colors = intArrayOf(
-                    service.getColor(R.color.brand_blue),
-                    service.getColor(R.color.brand_middle),
-                    service.getColor(R.color.brand_violet),
-                )
+                cornerRadius = dp(10).toFloat()
+                setColor(service.getColor(R.color.brand_blue))
             }
         }
         val params = WindowManager.LayoutParams(
