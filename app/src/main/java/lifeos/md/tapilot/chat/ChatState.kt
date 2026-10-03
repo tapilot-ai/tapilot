@@ -2,9 +2,21 @@ package lifeos.md.tapilot.chat
 
 import org.json.JSONObject
 
-data class ChatMessage(val id: String, val role: String, val text: String, val status: String, val reportId: String)
+data class ChatMessage(val id: String, val role: String, val text: String, val status: String, val reportId: String,
+    val entryId: String = "", val attachment: ChatAttachment? = null)
 data class ChatConversation(val id: String, val title: String)
-data class ChatAttachment(val name: String, val kind: String, val preview: String)
+data class ChatAttachment(val name: String, val kind: String, val preview: String = "",
+    val id: String = "", val text: String = "", val images: List<String> = emptyList(), val pageCount: Int = 0) {
+    companion object {
+        fun parse(value: JSONObject?): ChatAttachment? = value?.let { data ->
+            val images = data.optJSONArray("images")
+            ChatAttachment(data.optString("name"), data.optString("kind"), data.optString("preview"),
+                data.optString("id"), data.optString("text"),
+                if (images == null) emptyList() else List(images.length()) { images.getString(it) }, data.optInt("pageCount"))
+        }
+    }
+}
+data class ChatProgress(val title: String, val detail: String, val operation: String, val startedAt: Long, val step: Int)
 
 data class ChatState(
     val ready: Boolean = false,
@@ -22,9 +34,13 @@ data class ChatState(
     val modelName: String = "",
     val speechProvider: String = "volcengine",
     val statusTitle: String = "",
+    val error: String = "",
+    val errorEpoch: Int = 0,
     val needsAccessibility: Boolean = false,
     val attachment: ChatAttachment? = null,
     val confirmation: String? = null,
+    val preview: ChatAttachment? = null,
+    val progress: ChatProgress? = null,
 ) {
     val chinese: Boolean get() = language == "zh"
 
@@ -42,7 +58,8 @@ data class ChatState(
                 activeConversationId = data.optString("activeConversationId"),
                 messages = List(messages.length()) { index -> messages.getJSONObject(index).let {
                     ChatMessage(it.getString("id"), it.getString("role"), it.optString("text"),
-                        it.optString("status"), it.optString("reportId"))
+                        it.optString("status"), it.optString("reportId"), it.optString("entryId", it.getString("id").substringBeforeLast("-")),
+                        ChatAttachment.parse(it.optJSONObject("attachment")))
                 } },
                 conversations = List(conversations.length()) { index -> conversations.getJSONObject(index).let {
                     ChatConversation(it.getString("id"), it.getString("title"))
@@ -50,8 +67,11 @@ data class ChatState(
                 draft = data.optString("draft"), draftEpoch = data.optInt("draftEpoch"),
                 running = data.optBoolean("running"), configured = data.optBoolean("configured"),
                 modelName = data.optString("modelName"), speechProvider = data.optString("speechProvider", "volcengine"),
-                statusTitle = data.optString("statusTitle"), needsAccessibility = data.optBoolean("needsAccessibility"),
-                attachment = attachment?.let { ChatAttachment(it.optString("name"), it.optString("kind"), it.optString("preview")) },
+                statusTitle = data.optString("statusTitle"), error = data.optString("error"), errorEpoch = data.optInt("errorEpoch"), needsAccessibility = data.optBoolean("needsAccessibility"),
+                attachment = ChatAttachment.parse(attachment),
+                preview = ChatAttachment.parse(data.optJSONObject("preview")),
+                progress = data.optJSONObject("progress")?.let { ChatProgress(it.optString("title"), it.optString("detail"),
+                    it.optString("operation"), it.optLong("startedAt"), it.optInt("step")) },
                 confirmation = data.optString("confirmation").takeIf { !data.isNull("confirmation") && it.isNotBlank() },
             )
         }

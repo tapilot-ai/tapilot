@@ -120,26 +120,32 @@ class MidsceneAccessibilityService : AccessibilityService() {
 
     fun updateTaskStatus(status: TaskExecutionStatus, detail: String? = null) {
         TaskExecutionTracker.update(status)
-        taskEffects.update(status, detail)
-        floatingBall.setTaskRunning(TaskExecutionTracker.isActive)
+        onMain {
+            taskEffects.update(status, detail)
+            floatingBall.setTaskRunning(TaskExecutionTracker.isActive)
+        }
     }
 
-    fun refreshTaskRunning() {
+    fun refreshTaskRunning() = onMain {
         if (::floatingBall.isInitialized) {
             floatingBall.setTaskRunning(TaskExecutionTracker.isActive)
         }
     }
 
-    fun setAppForeground(foreground: Boolean) {
+    fun setAppForeground(foreground: Boolean) = onMain {
         if (::floatingBall.isInitialized) floatingBall.setAppForeground(foreground)
     }
 
-    fun setFloatingBallEnabled(enabled: Boolean) {
+    fun setFloatingBallEnabled(enabled: Boolean) = onMain {
         if (::floatingBall.isInitialized) floatingBall.setEnabled(enabled)
     }
 
-    fun showGlobalResult(message: String) {
+    fun showGlobalResult(message: String) = onMain {
         if (::floatingBall.isInitialized) floatingBall.showResult(message)
+    }
+
+    private fun onMain(action: () -> Unit) {
+        if (Looper.myLooper() == Looper.getMainLooper()) action() else handler.post { action() }
     }
 
     internal fun previewEdgeEffect(settings: EdgeEffectGeometrySettings) {

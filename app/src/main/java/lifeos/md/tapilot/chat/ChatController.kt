@@ -75,6 +75,7 @@ class ChatController(
                 error = ""
             }
             if (!state.ready || next.draftEpoch != state.draftEpoch) draft = next.draft
+            if (next.error.isNotBlank() && next.errorEpoch != state.errorEpoch) error = next.error
             val surfaceChanged = state.webSurfaceOpen != next.webSurfaceOpen
             state = next
             if (surfaceChanged) onSurfaceChanged(next.webSurfaceOpen)

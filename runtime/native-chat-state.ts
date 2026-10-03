@@ -3,7 +3,7 @@ import { primaryTaskReport, type TaskHistoryEntry } from './task-history';
 
 export interface NativeChatCommand {
   action: 'refresh' | 'draft' | 'send' | 'stop' | 'new' | 'select' | 'settings'
-    | 'attachment' | 'removeAttachment' | 'report' | 'confirm' | 'advanced';
+    | 'attachment' | 'removeAttachment' | 'report' | 'confirm' | 'advanced' | 'retry' | 'editMessage' | 'preview' | 'closePreview' | 'accessibility';
   text?: string;
   id?: string;
   attachment?: import('./native-bridge').NativeAttachment;
@@ -22,9 +22,9 @@ export function conversationView(history: TaskHistoryEntry[], activeId: string) 
   return {
     conversations: ids.map(id => ({ id, title: names.get(id) || 'Tapilot' })),
     messages: conversationEntries(history, activeId).flatMap(entry => [
-      { id: `${entry.id}-user`, role: 'user', text: entry.source, status: entry.status, reportId: '' },
+      { id: `${entry.id}-user`, role: 'user', text: entry.inputText || entry.source, status: entry.status, entryId: entry.id, attachment: entry.attachment ?? null, reportId: '' },
       { id: `${entry.id}-assistant`, role: 'assistant', text: entry.reply || entry.detail || '',
-        status: entry.status, reportId: primaryTaskReport(entry.reports)?.reportId || '' },
+        status: entry.status, entryId: entry.id, reportId: primaryTaskReport(entry.reports)?.reportId || '' },
     ]),
   };
 }

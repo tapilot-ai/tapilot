@@ -23,6 +23,7 @@ import {
 } from './task-history';
 import { resolveRunResultMessage } from './final-response';
 import { conversationEntries } from './conversation';
+import { attachmentReference, loadHistoryAttachments } from './chat-attachments';
 import { recordingFeedback, voiceGesture } from './voice-feedback';
 import { conversationView } from './native-chat-state';
 import { installNativeChat, publishNativeChat } from './native-chat-runtime';
@@ -924,6 +925,12 @@ let running = false;
 let preparingExecution = false;
 let stoppedByUser = false;
 let activeBridge: WebViewNativeBridge | undefined;
+let activeAbort: AbortController | undefined;
+let taskProgress: { title: string; detail: string; startedAt: number; step: number; operation: string } | undefined;
+let previewAttachment: NativeAttachment | undefined;
+let nativeErrorEpoch = 0;
+const globalContextQueue: NonNullable<Awaited<ReturnType<WebViewNativeBridge['consumeLaunchContext']>>>[] = [];
+
 let latestReportId = localStorage.getItem('midscene.latestReportId') ?? '';
 const savedLanguage = localStorage.getItem(LANGUAGE_KEY);
 let languagePreference: LanguagePreference =
@@ -999,6 +1006,7 @@ declare global {
     ) => void;
     __tapilotFocusTaskInput?: () => void;
     __tapilotReceiveLaunchContext?: () => void;
+    __tapilotPhoneProgress?: (method: string) => void;
     __tapilotRefreshAssistantRole?: () => void;
     __tapilotHandleBack?: () => boolean;
     __tapilotReportsDeleted?: (reportIds: string[]) => void;
@@ -1990,6 +1998,9 @@ function renderReportHistory(): void {
 
 function persistReportHistory(): void {
   localStorage.setItem(REPORT_HISTORY_KEY, JSON.stringify(reportHistory));
+  const storage = new WebViewNativeBridge();
+  void storage.pruneAttachments(reportHistory.flatMap(entry => entry.attachment ? [entry.attachment.id] : []))
+    .catch(error => console.warn('Attachment cleanup failed', error)).finally(() => storage.destroy());
   renderReportHistory();
   renderConversation();
 }
@@ -2048,6 +2059,7 @@ function openReportDialog(trigger: HTMLElement = taskHistoryTrigger): void {
 }
 
 function setUiStatus(state: UiState, title: string, message: string): void {
+  if (state === 'error') nativeErrorEpoch++;
   publishNativeChat();
   statusCard.hidden = false;
   statusCard.dataset.state = state;
@@ -2281,27 +2293,27 @@ function confirmPhoneOperation(instruction: string): Promise<string> {
 }
 
 async function execute(
-  request?: { source: string; kind: RunKind },
+  request?: { source: string; kind: RunKind; attachment?: NativeAttachment; retryOf?: string },
 ): Promise<void> {
   if (running || preparingExecution) {
     setUiStatus('running', t('taskAlreadyRunning'), t('stopCurrentTask'));
     return;
   }
   const executionKind = request?.kind ?? runKind;
-  const attachment = !request && executionKind === 'task' ? pendingAttachment : undefined;
+  let attachment = executionKind === 'task' ? (request?.attachment ?? (!request ? pendingAttachment : undefined)) : undefined;
   const typedSource = (
     request?.source ??
     (executionKind === 'task' ? fields.task : fields.yaml).value
   ).trim();
-  const source = attachment
+  let source = attachment
     ? `${typedSource || t('analyzeAttachment')}\n${t('attachmentLabel')}: ${attachment.name}${attachment.pageCount && attachment.pageCount > 4 ? ` (${currentLanguage === 'zh' ? '仅提供前 4 页' : 'only the first 4 pages are included'})` : ''}`
     : typedSource;
   const attachmentText = attachment?.text?.slice(0, 30_000);
-  const modelSource = attachmentText
+  let modelSource = attachmentText
     ? `${source}\n\n文件内容：\n${attachmentText}${attachment!.text!.length > 30_000 ? '\n（后续内容已截断）' : ''}`
     : source;
-  const launchImage = executionKind === 'task' ? pendingLaunchImage : undefined;
-  const returnToPreviousApp = executionKind === 'task' && pendingReturnToPreviousApp;
+  const launchImage = !request && executionKind === 'task' ? pendingLaunchImage : undefined;
+  const returnToPreviousApp = !request && executionKind === 'task' && pendingReturnToPreviousApp;
   preparingExecution = true;
   publishNativeChat();
   try {
@@ -2309,6 +2321,16 @@ async function execute(
     await flushModelProfileSave();
     await modelProfiles.save(currentModelPreset, activeModelConfiguration());
     requireConfiguration(executionKind, source);
+    if (launchImage) attachment = { name: '当前屏幕', kind: 'image', images: [launchImage] };
+    if (attachment && !attachment.id) {
+      const store = new WebViewNativeBridge();
+      try { attachment = await store.archiveAttachment(attachment); } finally { store.destroy(); }
+    }
+    if (!launchImage && attachment?.name === '当前屏幕') modelSource += '\n图片是先前保存的屏幕快照，不是当前实时画面。';
+    if (launchImage) {
+      source = `${typedSource}\n引用：当前屏幕`;
+      modelSource = `${source}\n图片是用户唤起助手时的屏幕快照，不是当前实时画面。`;
+    }
   } catch (error) {
     preparingExecution = false;
     setUiStatus(
@@ -2320,8 +2342,8 @@ async function execute(
   }
   setRunning(true);
   leaveEditorFocusMode();
-  pendingLaunchImage = undefined;
-  if (attachment) {
+  if (!request) pendingLaunchImage = undefined;
+  if (!request && attachment) {
     pendingAttachment = undefined;
     renderPendingAttachment();
   }
@@ -2329,6 +2351,8 @@ async function execute(
   launchContextChip.hidden = true;
   preparingExecution = false;
   stoppedByUser = false;
+  activeAbort = new AbortController();
+  taskProgress = { title: '正在理解任务', detail: '', startedAt: Date.now(), step: 0, operation: '' };
   if (!activeConversationId) activeConversationId = `chat-${Date.now()}`;
   localStorage.setItem('tapilot.activeConversation', activeConversationId);
   const historyEntryId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -2337,6 +2361,8 @@ async function execute(
     conversationId: activeConversationId,
     createdAt: Date.now(),
     source,
+    inputText: typedSource,
+    attachment: attachment ? attachmentReference(attachment) : undefined,
     kind: executionKind,
     modelName: fields.modelName.value.trim(),
     status: 'running',
@@ -2367,17 +2393,25 @@ async function execute(
       const toolReports: Awaited<ReturnType<WebViewNativeBridge['runNodeTest']>>['reports'] = [];
       let lastReportId = '';
       let startedPhoneWork = false;
+      const retryEntry = request?.retryOf ? reportHistory.find(entry => entry.id === request.retryOf) : undefined;
+      const agentHistory = reportHistory.filter(entry => entry.id !== historyEntryId &&
+        (!retryEntry || (entry.id !== retryEntry.id && entry.createdAt <= retryEntry.createdAt)));
+      const historyAttachments = await loadHistoryAttachments(agentHistory, activeConversationId, id => bridge.readAttachment(id));
       const agentResult = await runChatAgent({
-        history: reportHistory.filter(entry => entry.id !== historyEntryId),
+        history: agentHistory,
+        historyAttachments,
         conversationId: activeConversationId,
         source: modelSource,
         imageDataUrls: [
-          ...(launchImage ? [launchImage] : []),
           ...(attachment?.images ?? []),
         ],
         language: resolveLanguage(languagePreference),
         isStopped: () => stoppedByUser,
         complete: async (messages: ChatMessage[]): Promise<ChatCompletion> => {
+          if (taskProgress) {
+            taskProgress.title = startedPhoneWork ? '正在整理结果' : '正在理解任务';
+            taskProgress.detail = ''; taskProgress.operation = '';
+          }
           setUiStatus('running', t('executingTask'), t('executingDetail'));
           const response = await bridge.httpRequest({
             url: modelConnectionEndpoint(fields.baseUrl.value.trim()),
@@ -2394,14 +2428,21 @@ async function execute(
               stream: false,
               max_tokens: 2048,
             })),
-          });
+          }, activeAbort?.signal);
+          if (stoppedByUser) throw new Error('Task stopped');
           const body = decodeBase64(response.bodyBase64);
           if (response.status < 200 || response.status >= 300)
             throw new Error(`Conversation model HTTP ${response.status}: ${body.slice(0, 500)}`);
           return JSON.parse(body) as ChatCompletion;
         },
         operatePhone: async (instruction, successCondition) => {
+          if (stoppedByUser) throw new Error('Task stopped');
+          if (taskProgress) { taskProgress.title = '准备操作手机'; taskProgress.detail = instruction; taskProgress.step++; }
+          publishNativeChat();
           instruction = await confirmPhoneOperation(instruction);
+          if (stoppedByUser) throw new Error('Task stopped');
+          if (taskProgress) taskProgress.title = '正在操作手机';
+          publishNativeChat();
           await bridge.reportTaskStatus('running');
           const capabilities = await bridge.getCapabilities();
           if (!capabilities.canCapture || !capabilities.canPerformGestures)
@@ -2550,6 +2591,8 @@ async function execute(
       stoppedByUser ? 'stopped' : 'failed',
     );
   } finally {
+    taskProgress = undefined;
+    activeAbort = undefined;
     setRunning(false);
     leaveEditorFocusMode();
     const finalStatus = latestTaskResultStatus === 'succeeded' ? 'succeeded'
@@ -2565,6 +2608,8 @@ async function execute(
     }
     bridge.destroy();
     activeBridge = undefined;
+    const queued = globalContextQueue.shift();
+    if (queued) await receiveLaunchContext(queued);
   }
 }
 
@@ -2790,6 +2835,10 @@ floatingBallToggle.addEventListener('click', async () => {
 });
 rememberViewportPositionOnPointerDown(floatingBallToggle);
 backgroundHelpTrigger.addEventListener('click', openBackgroundHelpDialog);
+element<HTMLButtonElement>('#device-control-settings').addEventListener('click', () => {
+  const bridge = new WebViewNativeBridge();
+  void bridge.openAccessibilitySettings().finally(() => bridge.destroy());
+});
 openAccessibilitySettingsButton.addEventListener('click', () => {
   const bridge = new WebViewNativeBridge();
   void bridge.openAccessibilitySettings().finally(() => bridge.destroy());
@@ -2984,6 +3033,9 @@ async function stopActiveTask(): Promise<void> {
   resolveNativeConfirmation?.();
   if (!activeBridge) return;
   stoppedByUser = true;
+  activeAbort?.abort();
+  if (taskProgress) taskProgress.title = '正在停止';
+  publishNativeChat();
   runButton.disabled = true;
   runningTaskStop.disabled = true;
   try {
@@ -3064,6 +3116,17 @@ speechSave.addEventListener('click', async () => {
   } catch (error) {
     speechConfigStatus.textContent = error instanceof Error ? error.message : String(error);
   }
+});
+const speechCheck = element<HTMLButtonElement>('#speech-check');
+speechCheck.addEventListener('click', async () => {
+  const bridge = new WebViewNativeBridge();
+  speechCheck.disabled = true;
+  speechConfigStatus.textContent = '正在检查已保存的语音配置…';
+  try {
+    await bridge.checkSpeechConnection(selectedSpeechProvider());
+    speechConfigStatus.textContent = '连接正常，语音服务可用';
+  } catch (error) { speechConfigStatus.textContent = error instanceof Error ? error.message : String(error); }
+  finally { speechCheck.disabled = false; bridge.destroy(); }
 });
 void refreshSpeechProvider();
 
@@ -3361,25 +3424,40 @@ window.__tapilotFocusTaskInput = () => {
     fields.task.value.length,
   );
 };
+async function receiveLaunchContext(context: Awaited<ReturnType<WebViewNativeBridge['consumeLaunchContext']>>): Promise<void> {
+  if (!context) return;
+  if (running || preparingExecution) { globalContextQueue.push(context); return; }
+  previewAttachment = undefined;
+  const previousDraft = context.autoSend ? fields.task.value : '';
+  const previousAttachment = context.autoSend ? pendingAttachment : undefined;
+  fields.task.value = context.autoSend ? context.text ?? '' : [fields.task.value, context.text].filter(Boolean).join('\n');
+  pendingAttachment = undefined;
+  pendingLaunchImage = context.dataUrl;
+  launchContextChip.textContent = `${context.label || '当前屏幕'} ×`;
+  launchContextChip.hidden = !context.dataUrl;
+  pendingReturnToPreviousApp = context.fromPanel === true;
+  setRunKind('task');
+  nativeDraftEpoch++;
+  publishNativeChat();
+  if (context.autoSend && fields.task.value.trim()) {
+    await execute();
+    if (!fields.task.value && !pendingAttachment && (previousDraft || previousAttachment)) {
+      fields.task.value = previousDraft; pendingAttachment = previousAttachment;
+      nativeDraftEpoch++; renderPendingAttachment(); publishNativeChat();
+    }
+  }
+}
 window.__tapilotReceiveLaunchContext = () => {
   const bridge = new WebViewNativeBridge();
-  void bridge.consumeLaunchContext().then(context => {
-    if (!context) return;
-    if (context.text) fields.task.value = fields.task.value
-      ? `${fields.task.value}\n${context.text}` : context.text;
-    if (context.dataUrl) {
-      pendingLaunchImage = context.dataUrl;
-      launchContextChip.textContent = `${context.label || '图片'} ×`;
-      launchContextChip.hidden = false;
-    }
-    pendingReturnToPreviousApp = context.fromPanel === true;
-    if (context.kind === 'screen' && !fields.task.value.trim())
-      fields.task.placeholder = '问我当前屏幕上的事…';
-    setRunKind('task');
-    if (context.autoSend && fields.task.value.trim()) void execute();
-    nativeDraftEpoch++;
-    publishNativeChat();
-  }).finally(() => bridge.destroy());
+  void bridge.consumeLaunchContext().then(receiveLaunchContext)
+    .catch(error => setUiStatus('error', t('deviceError'), error instanceof Error ? error.message : String(error)))
+    .finally(() => bridge.destroy());
+};
+window.__tapilotPhoneProgress = (method: string) => {
+  if (!running || !taskProgress || stoppedByUser) return;
+  taskProgress.operation = method === 'device.capture' ? '正在查看屏幕' :
+    method === 'device.execute' ? '正在执行屏幕操作' : taskProgress.operation;
+  publishNativeChat();
 };
 window.__tapilotSetThemePreference = (preference) => {
   themePreference = resolveThemePreference(preference);
@@ -3424,19 +3502,59 @@ installNativeChat(() => ({
   draft: fields.task.value,
   draftEpoch: nativeDraftEpoch,
   running: running || preparingExecution,
+  progress: taskProgress ?? null,
+  preview: previewAttachment ? { name: previewAttachment.name, kind: previewAttachment.kind,
+    images: previewAttachment.images, text: previewAttachment.text ?? '', pageCount: previewAttachment.pageCount } : null,
   configured: isModelConfigurationComplete(),
   modelName: fields.modelName.value,
   speechProvider: selectedSpeechProvider(),
   status: statusCard.hidden ? '' : status.textContent,
   statusTitle: statusCard.hidden ? '' : statusTitle.textContent,
-  needsAccessibility: !accessibilityActions.hidden,
+  errorEpoch: nativeErrorEpoch,
+  error: !statusCard.hidden && statusCard.dataset.state === 'error' && !running ? status.textContent : '',
+  needsAccessibility: accessibilityState?.connected !== true,
   attachment: pendingAttachment ? { name: pendingAttachment.name, kind: pendingAttachment.kind,
-    pageCount: pendingAttachment.pageCount, preview: pendingAttachment.images[0] } :
+    pageCount: pendingAttachment.pageCount, text: pendingAttachment.text?.slice(0, 2000), preview: pendingAttachment.images[0] } :
     pendingLaunchImage ? { name: launchContextChip.textContent, kind: 'image', preview: pendingLaunchImage } : null,
   confirmation: nativeConfirmation ?? null,
 }), async command => {
   switch (command.action) {
     case 'refresh': break;
+    case 'preview': {
+      const entry = reportHistory.find(entry => entry.id === command.id && (entry.conversationId ?? entry.id) === activeConversationId);
+      const conversationId = activeConversationId;
+      const reader = new WebViewNativeBridge();
+      try {
+        const attachment = entry?.attachment ? await reader.readAttachment(entry.attachment.id) :
+          !command.id ? pendingAttachment ?? (pendingLaunchImage ? { name: '当前屏幕', kind: 'image', images: [pendingLaunchImage] } : undefined) : undefined;
+        if (conversationId === activeConversationId) previewAttachment = attachment;
+      } finally { reader.destroy(); }
+      break;
+    }
+    case 'closePreview': previewAttachment = undefined; break;
+    case 'retry':
+    case 'editMessage': {
+      if (running || preparingExecution || !command.id) return;
+      const entry = reportHistory.find(entry => entry.id === command.id && (entry.conversationId ?? entry.id) === activeConversationId);
+      if (!entry) return;
+      const conversationId = activeConversationId;
+      const reader = new WebViewNativeBridge();
+      let attachment: NativeAttachment | undefined;
+      try { if (entry.attachment) attachment = await reader.readAttachment(entry.attachment.id); }
+      finally { reader.destroy(); }
+      if (activeConversationId !== conversationId || running || preparingExecution) return;
+      if (command.action === 'retry') await execute({ source: entry.inputText ?? entry.source, kind: entry.kind, attachment, retryOf: entry.id });
+      else {
+        pendingAttachment = attachment;
+        pendingLaunchImage = undefined;
+        pendingReturnToPreviousApp = false;
+        fields.task.value = entry.inputText ?? entry.source;
+        nativeDraftEpoch++;
+        renderPendingAttachment();
+        window.__tapilotNativeChatFocus?.();
+      }
+      break;
+    }
     case 'draft':
       fields.task.value = command.text ?? '';
       localStorage.setItem('midscene.task', fields.task.value);
@@ -3461,6 +3579,11 @@ installNativeChat(() => ({
       renderConversation();
       break;
     case 'settings': openSettings(); break;
+    case 'accessibility': {
+      const bridge = new WebViewNativeBridge();
+      try { await bridge.openAccessibilitySettings(); } finally { bridge.destroy(); }
+      break;
+    }
     case 'advanced':
       if (!running && advancedMode) { nativeAdvancedOpen = true; setRunKind('yaml'); }
       break;

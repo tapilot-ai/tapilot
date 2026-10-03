@@ -35,6 +35,7 @@ export interface AndroidJavascriptHost {
 }
 
 export interface NativeAttachment {
+  id?: string;
   name: string;
   kind: 'image' | 'pdf' | 'text';
   images: string[];
@@ -338,6 +339,19 @@ export class WebViewNativeBridge implements NativeBridge {
 
   pickAttachment(kind: 'photo' | 'camera' | 'file'): Promise<NativeAttachment | null> {
     return this.request('app.pickAttachment', { kind }, { timeoutMs: 120_000 });
+  }
+
+  archiveAttachment(attachment: NativeAttachment): Promise<NativeAttachment> {
+    return this.request('app.archiveAttachment', { attachment });
+  }
+  readAttachment(id: string): Promise<NativeAttachment> {
+    return this.request('app.readAttachment', { id });
+  }
+  pruneAttachments(ids: string[]): Promise<void> {
+    return this.request('app.pruneAttachments', { ids });
+  }
+  checkSpeechConnection(provider: 'volcengine' | 'deepgram'): Promise<{ available: boolean }> {
+    return this.request('speech.checkConnection', { provider }, { timeoutMs: 20_000 });
   }
 
   destroy(reason = 'Native bridge destroyed'): void {

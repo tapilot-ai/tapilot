@@ -25,8 +25,17 @@ describe('native conversation migration', () => {
     const failed = { ...entry('1'), reply: undefined, status: 'failed' as const, detail: 'step failed',
       reports: [{ reportId: 'runner-report', kind: 'test-runner' as const, title: 'Report' }] };
     const message = conversationView([failed], '1').messages[1];
-    expect(message).toEqual({ id: '1-assistant', role: 'assistant', text: 'step failed', status: 'failed', reportId: 'runner-report' });
+    expect(message).toEqual({ id: '1-assistant', role: 'assistant', text: 'step failed', status: 'failed', entryId: '1', reportId: 'runner-report' });
     expect(message).not.toHaveProperty('modelName');
     expect(message).not.toHaveProperty('reports');
   });
+  it('keeps attachment-only messages readable and their private archive accessible', () => {
+    const attached = { ...entry('1', 'a'), inputText: '', source: '分析附件\n附件：note.txt',
+      attachment: { id: '00000000-0000-0000-0000-000000000001', name: 'note.txt', kind: 'text' as const } };
+    const message = conversationView([attached], 'a').messages[0];
+    expect(message.text).toBe(attached.source);
+    expect(message.entryId).toBe('1');
+    expect(message.attachment).toEqual(attached.attachment);
+  });
+
 });

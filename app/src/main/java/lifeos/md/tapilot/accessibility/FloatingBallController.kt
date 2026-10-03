@@ -42,6 +42,7 @@ class FloatingBallController(
 
     fun setAppForeground(foreground: Boolean) {
         appForeground = foreground
+        if (foreground) hideResult()
         updateVisibility()
     }
 
@@ -52,17 +53,14 @@ class FloatingBallController(
 
     fun setTaskRunning(running: Boolean) {
         taskRunning = running
-        if (running) {
-            resultView?.let { runCatching { windowManager.removeView(it) } }
-            resultView = null
-        }
+        if (running) hideResult()
         updateVisibility()
         if (running && !appForeground) showStatus() else hideStatus()
     }
 
     fun showResult(message: String) {
         hideStatus()
-        resultView?.let { runCatching { windowManager.removeView(it) } }
+        hideResult()
         val panel = LinearLayout(service).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(12), dp(16), dp(12))
@@ -72,10 +70,21 @@ class FloatingBallController(
                 setStroke(dp(1), service.getColor(if (AppTheme.isDark(service)) R.color.brand_dark_line else R.color.brand_line))
             }
             elevation = dp(3).toFloat()
-            addView(TextView(service).apply {
-                text = "Tapilot 已回复"
-                textSize = 14f
-                setTextColor(service.getColor(R.color.brand_blue))
+            addView(LinearLayout(service).apply {
+                gravity = Gravity.CENTER_VERTICAL
+                addView(TextView(service).apply {
+                    text = "Tapilot 已回复 · 查看对话"
+                    textSize = 14f
+                    setTextColor(service.getColor(R.color.brand_blue))
+                }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                addView(TextView(service).apply {
+                    text = "关闭"
+                    textSize = 13f
+                    gravity = Gravity.CENTER
+                    minWidth = dp(48); minHeight = dp(48)
+                    setTextColor(service.getColor(if (AppTheme.isDark(service)) R.color.brand_dark_muted else R.color.brand_muted))
+                    setOnClickListener { hideResult() }
+                })
             })
             addView(TextView(service).apply {
                 text = message.take(260)
@@ -84,8 +93,7 @@ class FloatingBallController(
                 maxLines = 5
             })
             setOnClickListener {
-                resultView?.let { view -> runCatching { windowManager.removeView(view) } }
-                resultView = null
+                hideResult()
                 openMainActivity()
             }
         }
@@ -96,18 +104,22 @@ class FloatingBallController(
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT,
         ).apply { gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL; y = dp(48) }
-        runCatching { windowManager.addView(panel, params) }.onSuccess { resultView = panel }
+        runCatching { windowManager.addView(panel, params) }
+            .onSuccess { resultView = panel }
+            .onFailure { Log.e("TapilotFloatingBall", "Unable to show assistant result", it) }
     }
 
     fun hideForCapture(): Boolean {
         val wasVisible = view != null
         hiddenForCapture = true
+        resultView?.visibility = View.INVISIBLE
         updateVisibility()
         return wasVisible
     }
 
     fun restoreAfterCapture(wasVisible: Boolean) {
         hiddenForCapture = false
+        resultView?.visibility = View.VISIBLE
         if (wasVisible) updateVisibility()
     }
 
@@ -237,7 +249,7 @@ class FloatingBallController(
                 if (!launched.compareAndSet(false, true)) return@post
                 mainHandler.removeCallbacks(fallback)
                 outcome.getOrNull()?.let { capture ->
-                    LaunchContext.put(JSONObject()
+                    LaunchContext.putPanel(JSONObject()
                         .put("kind", "screen")
                         .put("label", "当前屏幕")
                         .put("dataUrl", capture.dataUrl))
@@ -262,11 +274,15 @@ class FloatingBallController(
         })
     }
 
+    private fun hideResult() {
+        resultView?.let { runCatching { windowManager.removeView(it) } }
+        resultView = null
+    }
+
     override fun close() {
         hide()
         hideStatus()
-        resultView?.let { runCatching { windowManager.removeView(it) } }
-        resultView = null
+        hideResult()
     }
 
     private fun dp(value: Int): Int =

@@ -1,17 +1,14 @@
 package lifeos.md.tapilot.chat
 
 import lifeos.md.tapilot.theme.BrandColors
-import android.graphics.BitmapFactory
 import android.graphics.drawable.GradientDrawable
 import android.text.Editable
 import android.text.TextWatcher
 import android.text.InputType
-import android.util.Base64
 import android.view.Gravity
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,7 +16,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -30,7 +26,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
@@ -40,8 +35,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 internal val Blue = Color(BrandColors.blue)
 internal val Purple = Color(BrandColors.violet)
@@ -89,8 +82,8 @@ fun ChatScreen(controller: ChatController) {
                     }
                 }
                 if (state.needsAccessibility) {
-                    TextButton(onClick = { controller.command("settings") }, modifier = Modifier.fillMaxWidth()) {
-                        Text(label("设备控制未开启 · 前往设置", "Device control is off · Settings"), color = colors.onSurfaceVariant, fontSize = 12.sp)
+                    TextButton(onClick = { controller.command("accessibility") }, modifier = Modifier.fillMaxWidth()) {
+                        Text(label("设备控制未连接 · 前往设置", "Device control is off · Settings"), color = colors.onSurfaceVariant, fontSize = 12.sp)
                     }
                 }
                 if (!state.configured && state.ready) {
@@ -110,10 +103,11 @@ fun ChatScreen(controller: ChatController) {
                     LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = list,
                         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
                         items(state.messages, key = { it.id }) { message ->
-                            MessageBubble(message, zh) { controller.command("report", id = it) }
+                            MessageBubble(message, zh, controller, state.running)
                         }
                     }
                 }
+                state.progress?.let { TaskProgressView(it, controller, zh) }
                 if (controller.error.isNotBlank()) {
                     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                         Text(controller.error, color = colors.error, fontSize = 13.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
@@ -133,8 +127,8 @@ fun ChatScreen(controller: ChatController) {
                 state.attachment?.let { attachment ->
                     Row(Modifier.fillMaxWidth().background(colors.surface).padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically) {
-                        AttachmentThumbnail(attachment.preview)
-                        Text(attachment.name, Modifier.weight(1f).padding(horizontal = 10.dp), fontSize = 13.sp,
+                        AttachmentThumbnail(attachment.preview, Modifier.clickable { controller.command("preview") })
+                        Text(attachment.name, Modifier.weight(1f).clickable { controller.command("preview") }.padding(horizontal = 10.dp), fontSize = 13.sp,
                             maxLines = 2, overflow = TextOverflow.Ellipsis)
                         TextButton(onClick = { controller.command("removeAttachment") }, enabled = !busy) { Text(label("移除", "Remove")) }
                     }
@@ -170,6 +164,7 @@ fun ChatScreen(controller: ChatController) {
                     TextButton(onClick = { attachments = false; controller.pick(kind) }, modifier = Modifier.fillMaxWidth()) { Text(title) }
                 }
             } }, confirmButton = { TextButton(onClick = { attachments = false }) { Text(label("取消", "Cancel")) } })
+        state.preview?.let { AttachmentPreview(it, zh) { controller.command("closePreview") } }
         state.confirmation?.let { instruction ->
             var revised by remember(instruction) { mutableStateOf(instruction) }
             AlertDialog(onDismissRequest = { controller.confirm(false, revised) }, title = { Text(label("确认手机操作", "Confirm phone operation")) },
@@ -179,45 +174,6 @@ fun ChatScreen(controller: ChatController) {
         }
       }
     }
-}
-
-@Composable
-private fun MessageBubble(message: ChatMessage, zh: Boolean, report: (String) -> Unit) {
-    val user = message.role == "user"
-    val colors = MaterialTheme.colorScheme
-    var details by remember(message.id) { mutableStateOf(false) }
-    val quotaFailure = !user && message.status == "failed" && message.text.contains("Arrearage", ignoreCase = true)
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = if (user) Arrangement.End else Arrangement.Start) {
-        Column(Modifier.widthIn(max = if (user) 300.dp else 560.dp)
-            .background(if (user) colors.surfaceVariant else Color.Transparent, RoundedCornerShape(16.dp))
-            .padding(horizontal = if (user) 14.dp else 0.dp, vertical = if (user) 12.dp else 4.dp)) {
-            SelectionContainer {
-                Text(if (!user && message.status == "running") (if (zh) "正在执行…" else "Working…")
-                    else if (quotaFailure && !details) (if (zh) "模型账户欠费，暂时无法回复。请充值或在设置中选择可用的模型 API。"
-                        else "The model account is overdue. Add credit or choose an available model API in settings.")
-                    else message.text.ifBlank { if (zh) "任务已完成" else "Task complete" }, fontSize = 16.sp, lineHeight = 24.sp)
-            }
-            if (quotaFailure) TextButton(onClick = { details = !details }, contentPadding = PaddingValues(top = 8.dp)) {
-                Text(if (details) (if (zh) "收起详情" else "Hide details") else (if (zh) "查看详情" else "Show details"))
-            }
-            if (message.reportId.isNotEmpty()) TextButton(onClick = { report(message.reportId) }, contentPadding = PaddingValues(top = 10.dp)) {
-                Text(if (zh) "查看执行记录 →" else "View activity →", fontSize = 13.sp, fontWeight = FontWeight.Medium)
-            }
-        }
-    }
-}
-
-@Composable
-private fun AttachmentThumbnail(preview: String) {
-    val bitmap by produceState<android.graphics.Bitmap?>(null, preview) {
-        value = withContext(Dispatchers.IO) {
-            runCatching {
-                val bytes = Base64.decode(preview.substringAfter(','), Base64.DEFAULT)
-                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-            }.getOrNull()
-        }
-    }
-    bitmap?.let { Image(it.asImageBitmap(), "", Modifier.size(48.dp)) }
 }
 
 @Composable

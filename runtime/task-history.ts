@@ -13,11 +13,15 @@ export interface TaskHistoryReport {
   attempt?: number;
 }
 
+export interface AttachmentReference { id: string; name: string; kind: 'image' | 'pdf' | 'text'; pageCount?: number }
+
 export interface TaskHistoryEntry {
   id: string;
   conversationId?: string;
   createdAt: number;
   source: string;
+  inputText?: string;
+  attachment?: AttachmentReference;
   kind: 'task' | 'yaml';
   modelName: string;
   status: TaskHistoryStatus;
@@ -49,6 +53,8 @@ interface LegacyReportRun {
   createdAt?: unknown;
   task?: unknown;
   source?: unknown;
+  inputText?: unknown;
+  attachment?: unknown;
   kind?: unknown;
   modelName?: unknown;
   status?: unknown;
@@ -97,6 +103,8 @@ export function normalizeTaskHistory(value: unknown): TaskHistoryEntry[] {
             ? legacy.createdAt
             : Date.now(),
         source,
+        inputText: typeof legacy.inputText === 'string' ? legacy.inputText : undefined,
+        attachment: normalizeAttachmentReference(legacy.attachment),
         conversationId: typeof legacy.conversationId === 'string' ? legacy.conversationId : undefined,
         kind: legacy.kind === 'yaml' ? 'yaml' : 'task',
         modelName:
@@ -131,4 +139,13 @@ export function updateTaskHistoryEntry(
   return history.map((entry) =>
     entry.id === id ? { ...entry, ...patch } : entry,
   );
+}
+
+export function normalizeAttachmentReference(value: unknown): AttachmentReference | undefined {
+  if (!value || typeof value !== 'object') return;
+  const ref = value as Partial<AttachmentReference>;
+  if (typeof ref.id !== 'string' || !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(ref.id) ||
+      typeof ref.name !== 'string' || !['image', 'pdf', 'text'].includes(ref.kind ?? '')) return;
+  return { id: ref.id, name: ref.name.slice(0, 120), kind: ref.kind!,
+    ...(typeof ref.pageCount === 'number' && ref.pageCount > 0 ? { pageCount: ref.pageCount } : {}) };
 }

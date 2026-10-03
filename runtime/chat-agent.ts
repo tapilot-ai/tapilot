@@ -32,6 +32,7 @@ export interface ChatAgentOptions {
   complete(messages: ChatMessage[]): Promise<ChatCompletion>;
   operatePhone(instruction: string, successCondition: string): Promise<PhoneToolResult>;
   isStopped?(): boolean;
+  historyAttachments?: Map<string, { text?: string; images: string[] }>;
 }
 
 export interface ChatAgentResult {
@@ -67,11 +68,16 @@ export function conversationMessages(
   conversationId: string,
   source: string,
   language: 'zh' | 'en',
+  attachments?: ChatAgentOptions['historyAttachments'],
 ): ChatMessage[] {
   const messages: ChatMessage[] = [{ role: 'system', content: systemPrompt(language) }];
   for (const entry of conversationEntries(history, conversationId)) {
     if (entry.kind !== 'task' || !entry.reply || entry.status === 'running') continue;
-    messages.push({ role: 'user', content: entry.source });
+    const attachment = attachments?.get(entry.id);
+    const text = attachment?.text ? `${entry.source}\n\n文件内容：\n${attachment.text.slice(0, 30_000)}` : entry.source;
+    messages.push({ role: 'user', content: attachment?.images.length ? [
+      { type: 'text', text }, ...attachment.images.map(url => ({ type: 'image_url' as const, image_url: { url } })),
+    ] : text });
     messages.push({ role: 'assistant', content: entry.reply });
   }
   messages.push({ role: 'user', content: source });
@@ -80,7 +86,7 @@ export function conversationMessages(
 
 export async function runChatAgent(options: ChatAgentOptions): Promise<ChatAgentResult> {
   const messages = conversationMessages(
-    options.history, options.conversationId, options.source, options.language,
+    options.history, options.conversationId, options.source, options.language, options.historyAttachments,
   );
   const images = [
     ...(options.imageDataUrl ? [options.imageDataUrl] : []),
@@ -98,6 +104,7 @@ export async function runChatAgent(options: ChatAgentOptions): Promise<ChatAgent
   for (let turn = 0; turn < 8; turn += 1) {
     if (options.isStopped?.()) throw new Error('Task stopped');
     const completion = await options.complete(messages);
+    if (options.isStopped?.()) throw new Error('Task stopped');
     const message = completion.choices?.[0]?.message;
     if (!message) throw new Error('Conversation model returned no message');
     const calls = message.tool_calls ?? [];
@@ -109,6 +116,7 @@ export async function runChatAgent(options: ChatAgentOptions): Promise<ChatAgent
     if (toolCalls + calls.length > 4) throw new Error('Phone operation limit reached');
     messages.push({ role: 'assistant', content: message.content ?? null, tool_calls: calls });
     for (const call of calls) {
+      if (options.isStopped?.()) throw new Error('Task stopped');
       toolCalls += 1;
       let result: PhoneToolResult;
       try {
@@ -123,6 +131,7 @@ export async function runChatAgent(options: ChatAgentOptions): Promise<ChatAgent
           throw new Error('Phone success condition is empty');
         result = await options.operatePhone(args.instruction.trim(), args.success_condition.trim());
       } catch (error) {
+        if (options.isStopped?.()) throw new Error('Task stopped');
         result = { success: false, result: error instanceof Error ? error.message : String(error) };
       }
       lastPhoneResult = result;

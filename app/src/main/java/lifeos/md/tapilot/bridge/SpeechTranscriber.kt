@@ -10,6 +10,7 @@ import android.media.MediaRecorder
 import java.io.IOException
 import java.util.ArrayDeque
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -29,6 +30,7 @@ internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable
         .pingInterval(20, TimeUnit.SECONDS)
         .build()
     private val timeouts = Executors.newSingleThreadScheduledExecutor()
+    private val probes = ConcurrentHashMap.newKeySet<WebSocket>()
     private var active: Session? = null
     private var lastFailure: Throwable? = null
     private data class Retained(val provider: String, val language: String, val pcm: ByteArray, val attempts: Int)
@@ -104,6 +106,50 @@ internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable
                 callback(Result.failure(error))
             }
         }
+    }
+
+    /** Validate API access without opening the microphone or sending user audio. */
+    fun checkConnection(provider: String, apiKey: String, callback: (Result<Unit>) -> Unit) {
+        require(provider == VOLCENGINE || provider == DEEPGRAM)
+        require(apiKey.isNotBlank() && apiKey.length <= 4096 && apiKey.none { it == '\r' || it == '\n' || it == '\u0000' })
+        val done = AtomicBoolean(false)
+        val request = Request.Builder().url(if (provider == VOLCENGINE) VOLCENGINE_URL else "$DEEPGRAM_URL&language=zh-CN")
+            .apply {
+                if (provider == VOLCENGINE) {
+                    header("X-Api-Key", apiKey)
+                    header("X-Api-Resource-Id", RESOURCE_ID)
+                    header("X-Api-Request-Id", UUID.randomUUID().toString())
+                } else header("Authorization", "Token $apiKey")
+            }.build()
+        val socket = client.newWebSocket(request, object : WebSocketListener() {
+            fun finish(socket: WebSocket, result: Result<Unit>) {
+                if (done.compareAndSet(false, true)) { probes.remove(socket); socket.cancel(); callback(result) }
+            }
+            override fun onOpen(webSocket: WebSocket, response: Response) {
+                if (done.get()) { webSocket.cancel(); return }
+                if (provider == VOLCENGINE) webSocket.send(SeedAsrProtocol.fullRequest().toByteString())
+                else finish(webSocket, Result.success(Unit))
+            }
+            override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+                if (provider != VOLCENGINE) return
+                finish(webSocket, runCatching {
+                    check(SeedAsrProtocol.parse(bytes.toByteArray()).code == 0) { "语音服务拒绝识别请求，请检查资源开通状态" }
+                })
+            }
+            override fun onFailure(webSocket: WebSocket, error: Throwable, response: Response?) {
+                finish(webSocket, Result.failure(IOException(SpeechServiceFailure.message(provider, response?.code,
+                    runCatching { response?.peekBody(4096)?.string().orEmpty() }.getOrDefault(""), response?.header("X-Tt-Logid")))))
+            }
+            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                finish(webSocket, Result.failure(IOException("语音服务提前关闭，请稍后重试")))
+            }
+        })
+        probes.add(socket)
+        if (done.get()) { probes.remove(socket); socket.cancel() }
+        timeouts.schedule({ if (done.compareAndSet(false, true)) {
+            probes.remove(socket)
+            socket.cancel(); callback(Result.failure(IOException("语音服务连接超时，请稍后重试")))
+        } }, 12, TimeUnit.SECONDS)
     }
 
     private fun connect(session: Session, apiKey: String) {
@@ -257,8 +303,9 @@ internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable
         override fun onFailure(webSocket: WebSocket, error: Throwable, response: Response?) {
             val status = response?.code
             fail(session, IOException(
-                if (status == 401 || status == 403) "Speech API Key was rejected (HTTP $status)"
-                else "Speech service connection failed${status?.let { " (HTTP $it)" }.orEmpty()}",
+                SpeechServiceFailure.message(session.provider, status,
+                    runCatching { response?.peekBody(4096)?.string().orEmpty() }.getOrDefault(""),
+                    response?.header("X-Tt-Logid")),
                 error,
             ))
         }
@@ -345,6 +392,8 @@ internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable
 
     override fun close() {
         cancel()
+        probes.forEach { it.cancel() }
+        probes.clear()
         timeouts.shutdownNow()
         client.dispatcher.executorService.shutdown()
         client.connectionPool.evictAll()

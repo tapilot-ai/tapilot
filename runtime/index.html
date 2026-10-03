@@ -264,6 +264,7 @@
             <label for="speech-api-key">API Key</label>
             <input id="speech-api-key" type="password" autocomplete="off" placeholder="输入后保存到 Android Keystore" data-i18n-placeholder="speechKeyPlaceholder" />
             <button id="speech-save" class="secondary-button" type="button" data-i18n="speechSave">保存语音配置</button>
+            <button id="speech-check" class="secondary-button" type="button">检查语音连接</button>
             <span id="speech-config-status" role="status"></span>
           </section>
         </div>
@@ -427,6 +428,10 @@
 
       <section class="card preference-card">
         <h2 class="preference-heading" data-i18n="generalSettings">通用设置</h2>
+        <div class="preference-row">
+          <span class="preference-copy"><span class="preference-label">设备控制</span><small>读取屏幕并执行手机操作</small></span>
+          <button id="device-control-settings" class="preference-trigger" type="button">管理权限 ›</button>
+        </div>
         <div class="preference-row">
           <span class="preference-label" data-i18n="language">界面语言</span>
           <button

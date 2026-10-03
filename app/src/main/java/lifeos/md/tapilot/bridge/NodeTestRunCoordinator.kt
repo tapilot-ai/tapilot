@@ -24,6 +24,7 @@ class NodeTestRunCoordinator(
     context: Context,
     private val reportRepository: ReportRepository,
     private val supervisor: NodeRuntimeProcessSupervisor = NodeRuntimeProcessSupervisor(),
+    private val onProgress: (String) -> Unit = {},
 ) : AutoCloseable {
     private val appContext = context.applicationContext
     private val executor = Executors.newSingleThreadExecutor()
@@ -258,6 +259,7 @@ class NodeTestRunCoordinator(
         val service = MidsceneAccessibilityService.current()
         appContext.mainExecutor.execute {
             runCatching {
+                onProgress(request.getString("method"))
                 when (request.getString("method")) {
                     "device.getCapabilities" -> respondSuccess(
                         requestId,

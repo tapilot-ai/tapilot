@@ -41,6 +41,7 @@ class NativeJavascriptBridge(
         callback(Result.failure(UnsupportedOperationException("Attachment picker unavailable")))
     },
 ) : AutoCloseable {
+    private val attachments = AttachmentStore(File(webView.context.filesDir, "chat-attachments"))
     private val modelTransport = ModelTransport()
     private val modelCredentialStore = ModelCredentialStore(webView.context)
     private val speechTranscriber = SpeechTranscriber(webView.context as Activity)
@@ -52,6 +53,9 @@ class NativeJavascriptBridge(
         webView.context,
         reportRepository,
         nodeRuntimeSupervisor,
+        onProgress = { method -> webView.post {
+            webView.evaluateJavascript("window.__tapilotPhoneProgress?.(${JSONObject.quote(method)})", null)
+        } },
     )
 
     @JavascriptInterface
@@ -76,6 +80,25 @@ class NativeJavascriptBridge(
         val service = MidsceneAccessibilityService.current()
 
         when (method) {
+            "app.archiveAttachment" -> executeReportOperation(requestId) {
+                attachments.save(request.getJSONObject("params").getJSONObject("attachment"))
+            }
+            "app.readAttachment" -> executeReportOperation(requestId) {
+                attachments.read(request.getJSONObject("params").getString("id"))
+            }
+            "app.pruneAttachments" -> executeReportOperation(requestId) {
+                val ids = request.getJSONObject("params").getJSONArray("ids")
+                attachments.retain((0 until ids.length()).map { ids.getString(it) }.toSet())
+                JSONObject.NULL
+            }
+            "speech.checkConnection" -> {
+                val provider = request.getJSONObject("params").getString("provider")
+                val key = modelCredentialStore.getAll()[speechPreset(request)] ?: error("请先保存语音 API Key")
+                speechTranscriber.checkConnection(provider, key) { result -> result.fold(
+                    onSuccess = { respondSuccess(requestId, JSONObject().put("available", true)) },
+                    onFailure = { respondError(requestId, it) },
+                ) }
+            }
             "app.pickAttachment" -> {
                 val kind = request.getJSONObject("params").getString("kind")
                 require(kind == "photo" || kind == "camera" || kind == "file")
