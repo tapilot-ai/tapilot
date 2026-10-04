@@ -26,59 +26,82 @@ class HoldToRecordEditor(context: Context) : EditText(context) {
     private var startY = 0f
     private var holding = false
     private var pending = false
+    var typingHint = ""
+    var speechHint = "Hold to speak"
+    fun refreshHint() { hint = if (canHoldToSpeak(holdEnabled, hasFocus(), text)) speechHint else typingHint }
+
+    override fun onFocusChanged(focused: Boolean, direction: Int, previouslyFocusedRect: android.graphics.Rect?) {
+        super.onFocusChanged(focused, direction, previouslyFocusedRect)
+        if (focused && !holding) { removeCallbacks(begin); pending = false }
+        refreshHint()
+    }
+
     private val begin = Runnable {
+        if (!pending || !canHoldToSpeak(holdEnabled, hasFocus(), text)) return@Runnable
         pending = false
         holding = true
         parent?.requestDisallowInterceptTouchEvent(true)
+        clearFocus()
+        context.getSystemService(android.view.inputmethod.InputMethodManager::class.java)
+            .hideSoftInputFromWindow(windowToken, 0)
         performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-        onHold(voiceMode)
-        val cancel = MotionEvent.obtain(0, 0, MotionEvent.ACTION_CANCEL, startX, startY, 0)
-        try { super.onTouchEvent(cancel) } finally { cancel.recycle() }
+        onHold(false)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (!holdEnabled) return super.onTouchEvent(event)
+        if (!pending && !holding && !canHoldToSpeak(holdEnabled, hasFocus(), text)) return super.onTouchEvent(event)
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 startX = event.rawX
                 startY = event.rawY
                 pending = true
-                if (voiceMode) {
-                    begin.run()
-                    return true
-                }
                 postDelayed(begin, 480L)
+                return true
             }
             MotionEvent.ACTION_MOVE -> {
                 if (holding) {
-                    onMove(recordingGesture(startY, event.rawX, event.rawY,
-                        resources.displayMetrics.widthPixels.toFloat(), resources.displayMetrics.density))
-                    return true
-                }
-                if (pending && hypot(event.rawX - startX, event.rawY - startY) > ViewConfiguration.get(context).scaledTouchSlop) {
+                    onMove(recordingGesture(event.rawX, event.rawY, rootView.width.toFloat(),
+                        rootView.height.toFloat(), resources.displayMetrics.density))
+                } else if (pending && hypot(event.rawX - startX, event.rawY - startY) > ViewConfiguration.get(context).scaledTouchSlop) {
                     removeCallbacks(begin)
                     pending = false
                 }
+                return true
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 removeCallbacks(begin)
+                val tap = pending
                 pending = false
                 if (holding) {
                     holding = false
                     parent?.requestDisallowInterceptTouchEvent(false)
                     if (event.actionMasked == MotionEvent.ACTION_UP) onRelease() else onCancel()
-                    return true
+                } else if (tap && event.actionMasked == MotionEvent.ACTION_UP && !voiceMode) {
+                    requestFocus()
+                    context.getSystemService(android.view.inputmethod.InputMethodManager::class.java)
+                        .showSoftInput(this, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+                    performClick()
                 }
+                return true
             }
         }
-        return super.onTouchEvent(event)
+        return true
     }
 
-    override fun onDetachedFromWindow() {
+    override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
+        if (!hasWindowFocus) cancelGesture()
+        super.onWindowFocusChanged(hasWindowFocus)
+    }
+
+    private fun cancelGesture() {
         removeCallbacks(begin)
         if (holding) onCancel()
         holding = false
         pending = false
+    }
+
+    override fun onDetachedFromWindow() {
+        cancelGesture()
         super.onDetachedFromWindow()
     }
 }

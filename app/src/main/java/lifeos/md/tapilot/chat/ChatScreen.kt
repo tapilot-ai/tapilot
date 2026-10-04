@@ -136,13 +136,16 @@ fun ChatScreen(controller: ChatController) {
                 HorizontalDivider(color = colors.outline.copy(alpha = .6f))
                 ChatComposer(controller, onAttachments = { attachments = true })
             }
-            if (controller.recording) {
-                RecordingFeedback(controller.willCancel, controller.willTranscribe,
-                    if (controller.willCancel) label("松开取消", "Release to cancel")
-                    else if (controller.willTranscribe || !controller.sendOnRelease) label("松开转文字", "Release to transcribe")
+            if (controller.recording || controller.transcribing) {
+                RecordingFeedback(controller.willCancel, controller.willSend,
+                    if (controller.transcribing) label("正在转文字…", "Transcribing…")
+                    else if (controller.willCancel) label("松开取消", "Release to cancel")
+                    else if (!controller.willSend) label("松手 填入输入框", "Release to insert text")
                     else label("松开发送", "Release to send"),
-                    label("取消", "Cancel"), label("滑到这里 转文字", "Slide here to transcribe"),
-                    controller.audioLevels, controller.recordingSeconds)
+                    label("取消", "Cancel"), label("发送", "Send"),
+                    controller.audioLevels, controller.recordingSeconds, controller.liveTranscript, controller.transcribing,
+                    onCancel = controller::cancelRecording,
+                    onSend = { controller.moveRecording(RecordingGesture.Send); controller.releaseRecording() })
             }
         }
         if (sessions) AlertDialog(onDismissRequest = { sessions = false },
@@ -192,7 +195,7 @@ private fun ChatComposer(controller: ChatController, onAttachments: () -> Unit) 
     }
     Row(Modifier.fillMaxWidth().background(colors.surface).padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        IconButton(onClick = { voiceMode = !voiceMode; if (voiceMode) editor?.let { field ->
+        IconButton(onClick = { voiceMode = controller.draft.isEmpty() && !voiceMode; if (voiceMode) editor?.let { field ->
             field.clearFocus(); field.context.getSystemService(InputMethodManager::class.java).hideSoftInputFromWindow(field.windowToken, 0)
         } }, enabled = enabled && !controller.recording, modifier = Modifier.size(48.dp)) {
             ChatIcon(if (voiceMode) "keyboard" else "mic", colors.onSurfaceVariant, if (state.chinese) "切换输入方式" else "Switch input mode")
@@ -208,11 +211,11 @@ private fun ChatComposer(controller: ChatController, onAttachments: () -> Unit) 
                 maxLines = 5
                 inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
                 imeOptions = EditorInfo.IME_ACTION_SEND
-                isLongClickable = false
-                onHold = { send ->
+                isLongClickable = true
+                onHold = { _ ->
                     clearFocus()
                     context.getSystemService(InputMethodManager::class.java).hideSoftInputFromWindow(windowToken, 0)
-                    controller.startRecording(send)
+                    controller.startRecording()
                 }
                 onMove = controller::moveRecording
                 onRelease = controller::releaseRecording
@@ -236,9 +239,11 @@ private fun ChatComposer(controller: ChatController, onAttachments: () -> Unit) 
             field.isFocusable = !voiceMode
             field.setTextColor(colors.onSurface.toArgb())
             field.setHintTextColor(colors.onSurfaceVariant.copy(alpha = .55f).toArgb())
-            field.hint = if (state.chinese) "长按语音输入" else "Hold to speak"
-            val desired = if (voiceMode) (if (state.chinese) "按住说话" else "Hold to talk") else controller.draft
+            field.typingHint = if (state.chinese) "输入消息" else "Type a message"
+            field.speechHint = if (state.chinese) "按住说话" else "Hold to speak"
+            val desired = controller.draft
             if (field.text.toString() != desired) { field.setText(desired); field.setSelection(desired.length) }
+            field.refreshHint()
             field.background = GradientDrawable().apply {
                 cornerRadius = 12 * field.resources.displayMetrics.density
                 setColor(if (state.dark) BrandColors.darkInput else BrandColors.lightInput)

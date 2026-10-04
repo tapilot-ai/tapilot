@@ -6,8 +6,10 @@ Experimental on-device Android client powered by `AccessibilityService`. It
 does not require ADB, Shizuku, or root while running.
 
 The chat screen uses Kotlin and Jetpack Compose with a native Android text editor,
-hold-to-record gestures, release-to-cancel after sliding up, and photo, camera,
-PDF, and text attachments. A structured state/command interface connects the
+hold-to-record on an empty, unfocused editor (with a “Hold to speak” hint), native
+editing menus while focused or populated (including whitespace), and photo, camera,
+PDF, and text attachments. Recording releases insert a transcript by default; slide
+left to cancel or right to send explicitly. A structured state/command interface connects the
 native UI to the existing conversation agent and preserves private history and
 API configuration. The agent currently runs in a hidden WebView host; Midscene
 runs in the embedded Node.js process. Settings, advanced YAML editing, and HTML
@@ -118,8 +120,12 @@ guarantee of uninterrupted effects on every device or page.
 Voice input supports the official Volcengine Seed ASR 2.0 API and Deepgram Nova-3
 (Simplified Chinese or US English, following the app language). Choose a provider in model settings and save its API Key. Volcengine uses
 an API Key from the new Doubao Speech console and the fixed resource ID
-`volc.seedasr.sauc.duration`. Hold the microphone beside the composer to speak;
-release to finish transcription and send. The first recording requires microphone
+`volc.seedasr.sauc.duration`. Hold an empty, unfocused composer to speak; the keyboard
+stays closed and a speech bubble with Cancel / Send controls appears. Release normally
+to insert text; release over Cancel or Send for that action, or move back to insert.
+Focused or populated editors retain native editing menus, including whitespace-only drafts.
+Cancellation remains available during transcription and rejects late results. Chat,
+the global assistant and WebView share these rules and retain Tapilot colors. The first recording requires microphone
 permission. Audio streams through the selected provider's WebSocket API without
 creating a recording file. Each provider's key is encrypted separately with Android
 Keystore. Android speech recognition is not used.

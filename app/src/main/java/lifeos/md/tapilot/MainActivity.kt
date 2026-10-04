@@ -288,6 +288,11 @@ class MainActivity : ComponentActivity() {
         accessibilityStateHandler.post(accessibilityStatePoll)
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (!hasFocus && ::chatController.isInitialized && (chatController.recording || chatController.transcribing)) chatController.cancelRecording()
+    }
+
     override fun onStop() {
         if (::chatController.isInitialized && (chatController.recording || chatController.transcribing)) chatController.cancelRecording()
         accessibilityStateHandler.removeCallbacks(accessibilityStatePoll)

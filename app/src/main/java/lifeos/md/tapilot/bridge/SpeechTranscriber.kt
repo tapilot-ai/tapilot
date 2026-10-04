@@ -23,7 +23,7 @@ import okio.ByteString
 import okio.ByteString.Companion.toByteString
 
 /** Streams 16 kHz mono PCM to the two API providers supported by Doubao Say. */
-internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable {
+internal class SpeechTranscriber(private val activity: Activity) : SpeechRecognition {
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(0, TimeUnit.MILLISECONDS)
@@ -35,7 +35,7 @@ internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable
     private var lastFailure: Throwable? = null
     private data class Retained(val provider: String, val language: String, val pcm: ByteArray, val attempts: Int)
     private var retained: Retained? = null
-    val canRetry: Boolean @Synchronized get() = retained?.let { it.attempts < 2 && it.pcm.isNotEmpty() } == true
+    override val canRetry: Boolean @Synchronized get() = retained?.let { it.attempts < 2 && it.pcm.isNotEmpty() } == true
 
     private class Session(
         val provider: String,
@@ -44,6 +44,7 @@ internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable
         val attempts: Int = 0,
         val onLevel: (Float) -> Unit = {},
         val onError: (Throwable) -> Unit = {},
+        val onTranscript: (String) -> Unit = {},
         var startCallback: ((Result<Unit>) -> Unit)?,
     ) {
         val recording = AtomicBoolean(true)
@@ -65,8 +66,8 @@ internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable
     }
 
     @Synchronized
-    fun start(provider: String, apiKey: String, language: String,
-        onLevel: (Float) -> Unit = {}, onError: (Throwable) -> Unit = {}, callback: (Result<Unit>) -> Unit) {
+    override fun start(provider: String, apiKey: String, language: String,
+        onLevel: (Float) -> Unit, onError: (Throwable) -> Unit, onTranscript: (String) -> Unit, callback: (Result<Unit>) -> Unit) {
         require(provider == VOLCENGINE || provider == DEEPGRAM) { "Unsupported speech provider" }
         require(language == "zh-CN" || language == "en-US") { "Unsupported speech language" }
         require(apiKey.isNotBlank() && apiKey.length <= 4096 &&
@@ -88,7 +89,7 @@ internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable
             AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSize,
         )
         check(audio.state == AudioRecord.STATE_INITIALIZED) { "Microphone is unavailable" }
-        val session = Session(provider, audio, language, onLevel = onLevel, onError = onError, startCallback = callback)
+        val session = Session(provider, audio, language, onLevel = onLevel, onError = onError, onTranscript = onTranscript, startCallback = callback)
         try {
             audio.startRecording()
             active = session
@@ -168,7 +169,7 @@ internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable
     }
 
     @Synchronized
-    fun retry(apiKey: String, callback: (Result<String>) -> Unit) {
+    override fun retry(apiKey: String, callback: (Result<String>) -> Unit) {
         check(active == null) { "Transcription is already in progress" }
         val saved = retained?.takeIf { it.attempts < 2 } ?: error("No recording available to retry")
         require(apiKey.isNotBlank() && apiKey.length <= 4096 &&
@@ -188,7 +189,7 @@ internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable
     }
 
     @Synchronized
-    fun finish(callback: (Result<String>) -> Unit) {
+    override fun finish(callback: (Result<String>) -> Unit) {
         val session = active ?: throw (lastFailure ?: IllegalStateException("No recording is in progress"))
         synchronized(session) {
             check(!session.finishing) { "Transcription is already finishing" }
@@ -215,7 +216,7 @@ internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable
     }
 
     @Synchronized
-    fun cancel() {
+    override fun cancel() {
         retained = null
         val session = active ?: return
         active = null
@@ -273,6 +274,7 @@ internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable
                 if (session.cancelled) return
                 if (!session.ready) ready(session)
                 synchronized(session) { if (response.text.isNotBlank()) session.transcript = response.text }
+                session.onTranscript(session.transcript)
                 if (response.last) complete(session, session.transcript)
             } catch (error: Throwable) { fail(session, error) }
         }
@@ -284,6 +286,7 @@ internal class SpeechTranscriber(private val activity: Activity) : AutoCloseable
                 synchronized(session) {
                     if (session.cancelled) return
                     session.finalSegments.add(transcript)
+                    session.onTranscript(session.finalSegments.joinToString(" "))
                 }
             } catch (error: Throwable) { fail(session, error) }
         }

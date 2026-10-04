@@ -1,0 +1,7 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity android:name=".SpeechChatVerificationActivity" android:exported="true" android:windowSoftInputMode="adjustResize" />
+        <activity android:name=".SpeechPanelVerificationActivity" android:exported="true" android:windowSoftInputMode="adjustResize" />
+        <activity android:name=".SpeechWebVerificationActivity" android:exported="true" android:windowSoftInputMode="adjustResize" />
+    </application>
+</manifest>

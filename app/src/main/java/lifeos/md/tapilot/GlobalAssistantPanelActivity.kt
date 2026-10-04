@@ -1,6 +1,19 @@
 package lifeos.md.tapilot
 
-import android.app.Activity
+import androidx.activity.ComponentActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.material3.MaterialTheme
+import androidx.core.view.WindowCompat
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
+import lifeos.md.tapilot.chat.RecordingFeedback
+import lifeos.md.tapilot.bridge.SpeechRecognition
+import androidx.core.widget.doAfterTextChanged
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
@@ -26,23 +39,41 @@ import lifeos.md.tapilot.bridge.SpeechTranscriber
 import org.json.JSONObject
 
 /** Compact entry over the app the user was using. The conversation continues in MainActivity. */
-class GlobalAssistantPanelActivity : Activity() {
-    private lateinit var transcriber: SpeechTranscriber
+open class GlobalAssistantPanelActivity : ComponentActivity() {
+    private lateinit var transcriber: SpeechRecognition
     private lateinit var input: EditText
     private lateinit var status: TextView
-    private var recording = false
-    private var transcribing = false
+    private var recording by mutableStateOf(false)
+    private var transcribing by mutableStateOf(false)
     private var sent = false
-    private var cancelledOnRelease = false
-    private var transcribeOnRelease = false
+    private var cancelledOnRelease by mutableStateOf(false)
+    private var sendOnRelease by mutableStateOf(false)
     private var voiceGeneration = 0
     private lateinit var launchContext: JSONObject
     private var includeScreen = true
-    private var voiceStartY = 0f
+    private var levels by mutableStateOf(List(24) { 0f })
+    private var transcript by mutableStateOf("")
+    private var seconds by mutableStateOf(0)
+    private val handler = Handler(Looper.getMainLooper())
+    private var startedAt = 0L
+    private val clock = object : Runnable {
+        override fun run() {
+            if (!recording) return
+            seconds = ((SystemClock.elapsedRealtime() - startedAt) / 1000).toInt()
+            if (seconds >= 60) cancelVoice() else handler.postDelayed(this, 250)
+        }
+    }
+    protected open fun createRecognition(): SpeechRecognition = SpeechTranscriber(this)
+    protected open fun recognitionCredentials(): Pair<String, String?> {
+        val provider = getSharedPreferences("tapilot-speech", 0).getString("provider", "volcengine") ?: "volcengine"
+        return provider to ModelCredentialStore(this).getAll()["speech-$provider"]
+    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        transcriber = SpeechTranscriber(this)
+        transcriber = createRecognition()
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         launchContext = LaunchContext.consumePanel() ?: JSONObject().put("kind", "panel")
         window.setBackgroundDrawableResource(android.R.color.transparent)
         window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
@@ -54,6 +85,8 @@ class GlobalAssistantPanelActivity : Activity() {
         }
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
+            isFocusableInTouchMode = true
+            requestFocus()
             setPadding(dp(18), dp(16), dp(18), dp(20))
             background = GradientDrawable().apply {
                 setColor(getColor(if (AppTheme.isDark(this@GlobalAssistantPanelActivity)) R.color.brand_dark_surface else R.color.brand_surface))
@@ -93,12 +126,15 @@ class GlobalAssistantPanelActivity : Activity() {
             onHold = { startVoice() }
             onMove = { gesture ->
                 cancelledOnRelease = gesture == RecordingGesture.Cancel
-                transcribeOnRelease = gesture == RecordingGesture.Transcribe
-                if (recording) status.text = if (cancelledOnRelease) "松开取消" else "松开转文字"
+                sendOnRelease = gesture == RecordingGesture.Send
+                if (recording) status.text = if (cancelledOnRelease) "松开取消" else if (sendOnRelease) "松开发送" else "松开转文字"
             }
-            onRelease = { if (cancelledOnRelease) cancelVoice() else finishVoice(false) }
+            onRelease = { if (cancelledOnRelease) cancelVoice() else finishVoice(sendOnRelease) }
             onCancel = { cancelVoice() }
-            hint = "长按语音输入"
+            typingHint = "输入消息"
+            speechHint = "按住说话"
+            refreshHint()
+            doAfterTextChanged { refreshHint() }
             setTextColor(getColor(if (AppTheme.isDark(this@GlobalAssistantPanelActivity)) R.color.brand_dark_text else R.color.brand_text))
             setHintTextColor(getColor(if (AppTheme.isDark(this@GlobalAssistantPanelActivity)) R.color.brand_dark_muted else R.color.brand_muted))
             minLines = 1
@@ -127,14 +163,14 @@ class GlobalAssistantPanelActivity : Activity() {
             }
             setOnTouchListener { _, event ->
                 when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> { voiceStartY = event.rawY; startVoice(); true }
-                    MotionEvent.ACTION_UP -> { if (cancelledOnRelease) cancelVoice() else finishVoice(!transcribeOnRelease); true }
+                    MotionEvent.ACTION_DOWN -> { startVoice(); true }
+                    MotionEvent.ACTION_UP -> { if (cancelledOnRelease) cancelVoice() else finishVoice(sendOnRelease); true }
                     MotionEvent.ACTION_MOVE -> {
-                        val gesture = lifeos.md.tapilot.chat.recordingGesture(voiceStartY, event.rawX, event.rawY,
-                            resources.displayMetrics.widthPixels.toFloat(), resources.displayMetrics.density)
+                        val gesture = lifeos.md.tapilot.chat.recordingGesture(event.rawX, event.rawY, window.decorView.width.toFloat(),
+                            window.decorView.height.toFloat(), resources.displayMetrics.density)
                         cancelledOnRelease = gesture == RecordingGesture.Cancel
-                        transcribeOnRelease = gesture == RecordingGesture.Transcribe
-                        if (recording) status.text = if (cancelledOnRelease) "松开取消" else "正在录音 · 松开发送"
+                        sendOnRelease = gesture == RecordingGesture.Send
+                        if (recording) status.text = if (cancelledOnRelease) "松开取消" else if (sendOnRelease) "松开发送" else "松开转文字"
                         true
                     }
                     MotionEvent.ACTION_CANCEL -> { cancelVoice(); true }
@@ -164,7 +200,7 @@ class GlobalAssistantPanelActivity : Activity() {
             )
             addView(root, panelParams)
             setOnApplyWindowInsetsListener { _, insets ->
-                val keyboard = insets.getInsets(WindowInsets.Type.ime()).bottom
+                val keyboard = maxOf(insets.getInsets(WindowInsets.Type.ime()).bottom, insets.getInsets(WindowInsets.Type.systemBars()).bottom)
                 if (panelParams.bottomMargin != keyboard) {
                     panelParams.bottomMargin = keyboard
                     root.layoutParams = panelParams
@@ -172,31 +208,53 @@ class GlobalAssistantPanelActivity : Activity() {
                 insets
             }
         }
+        container.addView(ComposeView(this).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                if (recording || transcribing) MaterialTheme {
+                    RecordingFeedback(cancelledOnRelease, sendOnRelease,
+                        if (transcribing) "正在转文字…" else if (cancelledOnRelease) "松手 取消"
+                        else if (sendOnRelease) "松手 发送" else "松手 填入输入框",
+                        "取消", "发送", levels, seconds, transcript, transcribing,
+                        onCancel = ::cancelVoice, onSend = { finishVoice(true) })
+                }
+            }
+        }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
         root.setOnClickListener { }
         setContentView(container)
     }
 
     private fun startVoice() {
         if (recording || transcribing || sent) return
-        val provider = getSharedPreferences("tapilot-speech", 0).getString("provider", "volcengine") ?: "volcengine"
-        val key = ModelCredentialStore(this).getAll()["speech-$provider"]
+        val (provider, key) = recognitionCredentials()
         if (key.isNullOrBlank()) { status.text = "请先在 Tapilot 设置页填写语音 API Key"; return }
         val generation = ++voiceGeneration
         recording = true
+        transcript = ""
+        levels = List(24) { 0f }
+        seconds = 0
+        startedAt = SystemClock.elapsedRealtime()
+        handler.post(clock)
         cancelledOnRelease = false
-        transcribeOnRelease = false
-        status.text = "正在录音 · 上滑后松开取消"
+        sendOnRelease = false
+        input.clearFocus()
+        getSystemService(android.view.inputmethod.InputMethodManager::class.java).hideSoftInputFromWindow(input.windowToken, 0)
+        status.text = "正在录音 · 松开转文字 · 左侧取消 / 右侧发送"
         runCatching {
-            transcriber.start(provider, key, "zh-CN", onError = { error -> runOnUiThread {
-                if (generation == voiceGeneration) { recording = false; status.text = error.message ?: "录音失败" }
+            transcriber.start(provider, key, "zh-CN",
+                onLevel = { level -> runOnUiThread { if (generation == voiceGeneration && recording) levels = levels.drop(1) + level } },
+                onTranscript = { text -> runOnUiThread { if (generation == voiceGeneration && (recording || transcribing)) transcript = text } },
+                onError = { error -> runOnUiThread {
+                if (generation == voiceGeneration) { cancelVoice(); status.text = error.message ?: "录音失败" }
             } }) { result -> runOnUiThread {
-                if (generation == voiceGeneration) result.onFailure { recording = false; status.text = it.message ?: "录音失败" }
+                if (generation == voiceGeneration) result.onFailure { cancelVoice(); status.text = it.message ?: "录音失败" }
             } }
-        }.onFailure { recording = false; status.text = it.message ?: "录音未启动" }
+        }.onFailure { cancelVoice(); status.text = it.message ?: "录音未启动" }
     }
 
     private fun finishVoice(sendOnRelease: Boolean) {
         if (!recording) return
+        handler.removeCallbacks(clock)
         recording = false
         transcribing = true
         val generation = voiceGeneration
@@ -207,13 +265,19 @@ class GlobalAssistantPanelActivity : Activity() {
                 transcribing = false
                 result.onSuccess { text ->
                     input.setText(listOf(input.text.toString().trim(), text.trim()).filter { it.isNotBlank() }.joinToString(" "))
-                    status.text = "转写完成"; if (sendOnRelease) send()
+                    status.text = "转写完成"
+                    if (sendOnRelease) send() else {
+                        input.setSelection(input.text.length)
+                        input.requestFocus()
+                        getSystemService(android.view.inputmethod.InputMethodManager::class.java).showSoftInput(input, 0)
+                    }
                 }.onFailure { transcribing = false; status.text = it.message ?: "转写失败" }
             } }
         }.onFailure { transcribing = false; status.text = it.message ?: "转写失败" }
     }
 
     private fun cancelVoice() {
+        handler.removeCallbacks(clock)
         voiceGeneration++
         transcriber.cancel()
         recording = false
@@ -227,13 +291,27 @@ class GlobalAssistantPanelActivity : Activity() {
         val context = JSONObject(launchContext.toString())
         if (!includeScreen) context.remove("dataUrl")
         context.put("text", text).put("autoSend", true).put("fromPanel", true)
-        LaunchContext.put(context)
         sent = true
+        deliverQuestion(context)
+    }
+
+    protected open fun deliverQuestion(context: JSONObject) {
+        LaunchContext.put(context)
         status.text = "正在打开会话…"
         startActivity(Intent(this, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         })
         finish()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (!hasFocus && ::transcriber.isInitialized && (recording || transcribing)) cancelVoice()
+    }
+
+    override fun onStop() {
+        if (recording || transcribing) cancelVoice()
+        super.onStop()
     }
 
     override fun onDestroy() {

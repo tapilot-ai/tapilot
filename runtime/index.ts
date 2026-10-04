@@ -1,3 +1,4 @@
+import { installVoiceInput } from './voice-input';
 import {
   WebViewNativeBridge,
   type NativeAttachment,
@@ -24,7 +25,6 @@ import {
 import { resolveRunResultMessage } from './final-response';
 import { conversationEntries } from './conversation';
 import { attachmentReference, loadHistoryAttachments } from './chat-attachments';
-import { recordingFeedback, voiceGesture } from './voice-feedback';
 import { conversationView } from './native-chat-state';
 import { installNativeChat, publishNativeChat } from './native-chat-runtime';
 import { PHONE_TOOL, runChatAgent, type ChatMessage, type ChatCompletion } from './chat-agent';
@@ -54,6 +54,7 @@ import {
   resolveThemePreference,
 } from './theme';
 import './style.css';
+import './voice-input.css';
 import './brand.generated.css';
 import chatGlmIcon from '@lobehub/icons-static-svg/icons/zhipu-color.svg';
 import deepSeekIcon from '@lobehub/icons-static-svg/icons/deepseek-color.svg';
@@ -89,7 +90,7 @@ const translations = {
     backToChat: '返回聊天',
     generalSettings: '通用设置',
     speechConfig: '语音转写 API',
-    speechConfigHint: '选择语音服务并填写 API Key。长按文字输入框可语音转写，按住麦克风则松开发送。',
+    speechConfigHint: '选择语音服务并填写 API Key。未聚焦的空框按住说话，松开转文字；左侧取消，右侧发送。',
     speechProvider: '语音服务',
     volcengineProvider: '火山引擎 Seed ASR 2.0',
     deepgramProvider: 'Deepgram Nova-3',
@@ -161,7 +162,7 @@ const translations = {
     taskInstruction: '想做的事',
     expandEditor: '全屏编辑',
     collapseEditor: '退出全屏',
-    taskPlaceholder: '长按语音输入',
+    taskPlaceholder: '输入消息',
     yamlHint: '支持 aiAct、aiTap、aiAssert、aiAsk、launch、home、back 等节点',
     start: '开始执行',
     runYaml: '执行 YAML',
@@ -296,7 +297,7 @@ const translations = {
     backToChat: 'Back to chat',
     generalSettings: 'General',
     speechConfig: 'Speech transcription API',
-    speechConfigHint: 'Choose a speech service and enter its API Key. Hold the text box to transcribe, or hold the microphone and release to send.',
+    speechConfigHint: 'Choose a speech service and enter its API Key. Hold an empty, unfocused text box to speak. Release to insert text; slide right to send.',
     speechProvider: 'Speech service',
     volcengineProvider: 'Volcengine Seed ASR 2.0',
     deepgramProvider: 'Deepgram Nova-3',
@@ -377,7 +378,7 @@ const translations = {
     taskInstruction: 'What you want done',
     expandEditor: 'Fullscreen',
     collapseEditor: 'Exit fullscreen',
-    taskPlaceholder: 'Hold to speak',
+    taskPlaceholder: 'Type a message',
     yamlHint:
       'Supports aiAct, aiTap, aiAssert, aiAsk, launch, home, back, and more',
     start: 'Start',
@@ -1068,7 +1069,7 @@ function applyLanguage(): void {
   setRunKind(runKind);
   voiceModeToggle.setAttribute('aria-label', t(taskPanel.classList.contains('is-voice-mode')
     ? 'switchToTextInput' : 'switchToVoiceInput'));
-  if (!voicePointerActive) voiceRecordLabel.textContent = t('holdToTalk');
+  voiceRecordLabel.textContent = t('holdToTalk');
   languageValue.textContent =
     languagePreference === 'system'
       ? t('followSystem')
@@ -3010,7 +3011,7 @@ for (const option of Array.from(attachmentMenu.querySelectorAll<HTMLButtonElemen
     const kind = option.dataset.attachmentKind as 'photo' | 'camera' | 'file';
     attachmentMenu.hidden = true;
     attachmentTrigger.setAttribute('aria-expanded', 'false');
-    voiceFeedback('');
+    voiceControls.notify('');
     leaveEditorFocusMode();
     attachmentTrigger.disabled = true;
     const bridge = new WebViewNativeBridge();
@@ -3021,8 +3022,8 @@ for (const option of Array.from(attachmentMenu.querySelectorAll<HTMLButtonElemen
         renderPendingAttachment();
       }
     } catch (error) {
-      voiceFeedback(error instanceof Error ? error.message : String(error));
-      window.setTimeout(() => voiceFeedback(''), 5000);
+      voiceControls.notify(error instanceof Error ? error.message : String(error));
+      window.setTimeout(() => voiceControls.notify(''), 5000);
     } finally {
       bridge.destroy();
       attachmentTrigger.disabled = running;
@@ -3130,177 +3131,17 @@ speechCheck.addEventListener('click', async () => {
 });
 void refreshSpeechProvider();
 
-let voicePointerActive = false;
-let voicePointerStartY = 0;
-let voiceCancelOnRelease = false;
-let voiceTranscribeOnRelease = false;
-let voiceBridge: WebViewNativeBridge | undefined;
-let voiceStart: Promise<void> | undefined;
-let voiceCaptureTarget: HTMLElement | undefined;
-let textVoiceHoldTimer: number | undefined;
-let textVoiceHoldPointer: number | undefined;
-let textVoiceHoldX = 0;
-let textVoiceHoldY = 0;
-function setVoiceMode(enabled: boolean): void {
-  if (voicePointerActive || running) return;
-  taskPanel.classList.toggle('is-voice-mode', enabled);
-  localStorage.setItem('tapilot.inputMode', enabled ? 'voice' : 'text');
-  voiceModeToggle.setAttribute('aria-pressed', String(enabled));
-  voiceModeToggle.setAttribute('aria-label', t(enabled ? 'switchToTextInput' : 'switchToVoiceInput'));
-  voiceRecord.hidden = !enabled;
-  if (enabled) fields.task.blur();
-  else fields.task.focus();
-}
-voiceModeToggle.addEventListener('click', () =>
-  setVoiceMode(!taskPanel.classList.contains('is-voice-mode')),
-);
-function voiceFeedback(message: string, recording = false): void {
-  document.body.classList.toggle('voice-recording', recording);
-  if (recording) {
-    const zh = resolveLanguage(languagePreference) === 'zh';
-    const hint = voiceCancelOnRelease ? t('releaseToCancelHint')
-      : voiceTranscribeOnRelease || voiceCaptureTarget === fields.task ? (zh ? '松开转文字' : 'Release to transcribe')
-      : (zh ? '松开发送' : 'Release to send');
-    recordingFeedback(voiceState, hint, zh ? '取消' : 'Cancel', zh ? '滑到这里 转文字' : 'Slide here to transcribe');
-  } else voiceState.textContent = message;
-  voiceState.hidden = !message;
-  voiceState.classList.toggle('is-recording', recording);
-  voiceState.classList.toggle('will-cancel', recording && voiceCancelOnRelease);
-  voiceState.classList.toggle('will-transcribe', recording && voiceTranscribeOnRelease);
-}
-function beginVoiceRecording(event: PointerEvent, target: HTMLElement): void {
-  if (running || voicePointerActive || voiceBridge) return;
-  event.preventDefault();
-  voicePointerActive = true;
-  voiceCaptureTarget = target;
-  voicePointerStartY = event.clientY;
-  voiceCancelOnRelease = false;
-  voiceTranscribeOnRelease = false;
-  target.setPointerCapture(event.pointerId);
-  target.classList.add('is-recording');
-  if (target === fields.task) fields.task.blur();
-  voiceRecordLabel.textContent = t('releaseToSend');
-  voiceFeedback(`${t('voiceListening')}\n${t(target === fields.task ? 'releaseToTranscribe' : 'releaseToSendHint')}`, true);
-  const bridge = new WebViewNativeBridge();
-  voiceBridge = bridge;
-  voiceStart = (async () => {
-    const provider = selectedSpeechProvider();
-    const { configured } = await bridge.hasSpeechCredential(provider);
-    if (!configured) {
-      openSettings();
-      requestAnimationFrame(() => speechProvider.scrollIntoView({ block: 'center' }));
-      throw new Error(resolveLanguage(languagePreference) === 'zh' ? '请先保存语音转写 API 配置' : 'Save speech API settings first');
-    }
-    await bridge.startSpeech(provider, resolveLanguage(languagePreference) === 'zh' ? 'zh-CN' : 'en-US');
-  })().catch(error => {
-    voicePointerActive = false;
-    target.classList.remove('is-recording');
-    voiceRecordLabel.textContent = t('holdToTalk');
-    voiceFeedback(error instanceof Error ? error.message : String(error));
-    window.setTimeout(() => { if (!voicePointerActive) voiceFeedback(''); }, 5000);
-    bridge.destroy();
-    voiceBridge = undefined;
-    throw error;
-  });
-  void voiceStart.catch(() => undefined);
-}
-function moveVoiceRecording(event: PointerEvent): void {
-  if (!voicePointerActive) return;
-  const gesture = voiceGesture(voicePointerStartY, event.clientX, event.clientY, window.innerWidth);
-  const cancel = gesture === 'cancel';
-  const transcribe = gesture === 'transcribe';
-  if (cancel === voiceCancelOnRelease && transcribe === voiceTranscribeOnRelease) return;
-  voiceCancelOnRelease = cancel;
-  voiceTranscribeOnRelease = transcribe;
-  voiceCaptureTarget?.classList.toggle('will-cancel', cancel);
-  voiceRecordLabel.textContent = t(cancel ? 'releaseToCancel' : 'releaseToSend');
-  voiceFeedback(`${t('voiceListening')}\n${t(cancel ? 'releaseToCancelHint' : voiceCaptureTarget === fields.task ? 'releaseToTranscribe' : 'releaseToSendHint')}`, true);
-}
-async function finishVoiceRecording(): Promise<void> {
-  if (!voicePointerActive || !voiceBridge) return;
-  voicePointerActive = false;
-  const target = voiceCaptureTarget;
-  voiceFeedback('');
-  target?.classList.remove('is-recording', 'will-cancel');
-  voiceCaptureTarget = undefined;
-  voiceRecordLabel.textContent = t('holdToTalk');
-  voiceRecord.disabled = true;
-  const bridge = voiceBridge;
-  try {
-    await voiceStart;
-    if (voiceCancelOnRelease) {
-      await bridge.cancelSpeech();
-      voiceFeedback('');
-      return;
-    }
-    voiceFeedback(t('transcribing'));
-    const { text } = await bridge.finishSpeech();
-    voiceFeedback('');
-    if (target === fields.task || voiceTranscribeOnRelease) {
-      fields.task.value = [fields.task.value.trim(), text].filter(Boolean).join(' ');
-      fields.task.dispatchEvent(new Event('input', { bubbles: true }));
-      fields.task.focus();
-    } else {
-      fields.task.value = text;
-      setRunKind('task');
-      await execute();
-    }
-  } catch (error) {
-    voiceFeedback(error instanceof Error ? error.message : String(error));
-    window.setTimeout(() => voiceFeedback(''), 5000);
-  } finally {
-    bridge.destroy();
-    voiceBridge = undefined;
-    voiceRecord.disabled = running;
-  }
-}
-async function cancelVoiceRecording(): Promise<void> {
-  voicePointerActive = false;
-  voiceCaptureTarget?.classList.remove('is-recording', 'will-cancel');
-  voiceCaptureTarget = undefined;
-  voiceRecordLabel.textContent = t('holdToTalk');
-  const bridge = voiceBridge;
-  if (!bridge) return;
-  await voiceStart?.catch(() => undefined);
-  await bridge.cancelSpeech().catch(() => undefined);
-  bridge.destroy();
-  if (voiceBridge === bridge) voiceBridge = undefined;
-  voiceFeedback('');
-}
-voiceRecord.addEventListener('pointerdown', event => beginVoiceRecording(event, voiceRecord));
-voiceRecord.addEventListener('pointermove', moveVoiceRecording);
-voiceRecord.addEventListener('pointerup', () => void finishVoiceRecording());
-voiceRecord.addEventListener('pointercancel', () => void cancelVoiceRecording());
-fields.task.addEventListener('pointerdown', event => {
-  if (event.pointerType === 'mouse' || running || taskPanel.classList.contains('is-voice-mode')) return;
-  textVoiceHoldPointer = event.pointerId;
-  textVoiceHoldX = event.clientX;
-  textVoiceHoldY = event.clientY;
-  textVoiceHoldTimer = window.setTimeout(() => {
-    textVoiceHoldTimer = undefined;
-    if (textVoiceHoldPointer === event.pointerId) beginVoiceRecording(event, fields.task);
-  }, 480);
-});
-fields.task.addEventListener('pointermove', event => {
-  if (textVoiceHoldPointer !== event.pointerId) return;
-  if (textVoiceHoldTimer !== undefined &&
-      Math.hypot(event.clientX - textVoiceHoldX, event.clientY - textVoiceHoldY) > 12) {
-    window.clearTimeout(textVoiceHoldTimer);
-    textVoiceHoldTimer = undefined;
-  }
-  moveVoiceRecording(event);
-});
-for (const eventName of ['pointerup', 'pointercancel'] as const) {
-  fields.task.addEventListener(eventName, () => {
-    if (textVoiceHoldTimer !== undefined) window.clearTimeout(textVoiceHoldTimer);
-    textVoiceHoldTimer = undefined;
-    textVoiceHoldPointer = undefined;
-    if (eventName === 'pointercancel') void cancelVoiceRecording();
-    else void finishVoiceRecording();
-  });
-}
-fields.task.addEventListener('contextmenu', event => {
-  if (voicePointerActive || textVoiceHoldTimer !== undefined) event.preventDefault();
+const voiceControls = installVoiceInput({
+  input: fields.task, toggle: voiceModeToggle, record: voiceRecord, recordLabel: voiceRecordLabel,
+  feedback: voiceState, panel: taskPanel,
+  enabled: () => !running, chinese: () => resolveLanguage(languagePreference) === 'zh',
+  provider: selectedSpeechProvider,
+  requireSettings: () => { openSettings(); requestAnimationFrame(() => speechProvider.scrollIntoView({ block: 'center' })); },
+  insert: text => {
+    fields.task.value = [fields.task.value, text].filter(Boolean).join(' ');
+    fields.task.dispatchEvent(new Event('input', { bubbles: true }));
+  },
+  send: async text => { fields.task.value = text; setRunKind('task'); await execute(); },
 });
 
 openReportButton.addEventListener('click', (event) => {

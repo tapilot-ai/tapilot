@@ -11,6 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "lifeos.md.tapilot"
+        if (providers.gradleProperty("speechVerification").isPresent) applicationIdSuffix = ".speechverify"
         minSdk = 30
         targetSdk = 35
         versionCode = 1
@@ -34,6 +35,10 @@ android {
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true }
 
+    if (providers.gradleProperty("speechVerification").isPresent) {
+        sourceSets["debug"].java.srcDir("src/speechVerification/java")
+        sourceSets["debug"].manifest.srcFile("src/speechVerification/AndroidManifest.xml")
+    }
     sourceSets["main"].assets.srcDir("../dist/runtime")
     sourceSets["main"].jniLibs.srcDir("../.cache/native")
 

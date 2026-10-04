@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import lifeos.md.tapilot.bridge.ModelCredentialStore
 import lifeos.md.tapilot.bridge.SpeechTranscriber
+import lifeos.md.tapilot.bridge.SpeechRecognition
 import org.json.JSONObject
 
 /** Native UI state and microphone lifecycle. The existing conversation agent owns task context. */
@@ -20,6 +21,8 @@ class ChatController(
     private val engine: WebView,
     private val onSurfaceChanged: (Boolean) -> Unit,
     private val picker: (String, (Result<JSONObject?>) -> Unit) -> Unit,
+    private val speech: SpeechRecognition = SpeechTranscriber(activity),
+    private val speechKey: (String) -> String? = { provider -> ModelCredentialStore(activity).getAll()["speech-$provider"] },
 ) : AutoCloseable {
     var state by mutableStateOf(ChatState())
         private set
@@ -29,9 +32,11 @@ class ChatController(
         private set
     var willCancel by mutableStateOf(false)
         private set
-    var willTranscribe by mutableStateOf(false)
+    var willSend by mutableStateOf(false)
         private set
     var transcribing by mutableStateOf(false)
+        private set
+    var liveTranscript by mutableStateOf("")
         private set
     var recordingSeconds by mutableStateOf(0)
         private set
@@ -46,11 +51,8 @@ class ChatController(
     var focusRequest by mutableStateOf(0)
         private set
     private val handler = Handler(Looper.getMainLooper())
-    private val speech = SpeechTranscriber(activity)
-    private val credentials = ModelCredentialStore(activity)
     private var closed = false
     private var speechGeneration = 0
-    private var voiceSend = false
     private var recordingStarted = 0L
     private var lastLevelUpdate = 0L
     private var retryProvider = ""
@@ -59,10 +61,9 @@ class ChatController(
         override fun run() {
             if (!recording || closed) return
             recordingSeconds = ((SystemClock.elapsedRealtime() - recordingStarted) / 1000).toInt()
-            if (recordingSeconds >= 60) releaseRecording() else handler.postDelayed(this, 250)
+            if (recordingSeconds >= 60) cancelRecording() else handler.postDelayed(this, 250)
         }
     }
-    val sendOnRelease: Boolean get() = voiceSend
 
     @JavascriptInterface
     fun update(payload: String) {
@@ -129,10 +130,10 @@ class ChatController(
         } }
     }
 
-    fun startRecording(sendOnRelease: Boolean) {
+    fun startRecording() {
         if (!state.ready || state.running || recording || transcribing || picking) return
         error = ""
-        val key = runCatching { credentials.getAll()["speech-${state.speechProvider}"] }.getOrNull()
+        val key = runCatching { speechKey(state.speechProvider) }.getOrNull()
         if (key.isNullOrBlank()) {
             showError(if (state.chinese) "请先填写语音转写 API 配置" else "Configure speech API first")
             command("settings")
@@ -140,7 +141,8 @@ class ChatController(
         }
         canRetrySpeech = false
         retryProvider = state.speechProvider
-        retrySend = sendOnRelease
+        retrySend = false
+        liveTranscript = ""
         recordingSeconds = 0
         audioLevels = List(24) { 0f }
         recordingStarted = SystemClock.elapsedRealtime()
@@ -148,9 +150,8 @@ class ChatController(
         handler.post(recordingClock)
         speechGeneration++
         val generation = speechGeneration
-        voiceSend = sendOnRelease
         willCancel = false
-        willTranscribe = false
+        willSend = false
         recording = true
         runCatching {
             speech.start(state.speechProvider, key, if (state.chinese) "zh-CN" else "en-US",
@@ -160,6 +161,8 @@ class ChatController(
                         audioLevels = audioLevels.drop(1) + level
                         lastLevelUpdate = now
                     }
+                } }, onTranscript = { text -> handler.post {
+                    if (!closed && generation == speechGeneration && (recording || transcribing)) liveTranscript = text
                 } }, onError = { failure -> handler.post {
                     if (!closed && generation == speechGeneration) speechFailure(failure)
                 } }) { result ->
@@ -175,14 +178,14 @@ class ChatController(
     fun moveRecording(gesture: RecordingGesture) {
         if (!recording) return
         willCancel = gesture == RecordingGesture.Cancel
-        willTranscribe = gesture == RecordingGesture.Transcribe
+        willSend = gesture == RecordingGesture.Send
     }
 
     fun releaseRecording() {
         if (!recording) return
         if (willCancel) { cancelRecording(); return }
         handler.removeCallbacks(recordingClock)
-        val shouldSend = voiceSend && !willTranscribe
+        val shouldSend = willSend
         retrySend = shouldSend
         recording = false
         transcribing = true
@@ -200,7 +203,7 @@ class ChatController(
     }
 
     private fun speechFailure(failure: Throwable) {
-        if (recording) retrySend = voiceSend && !willTranscribe
+        if (recording) retrySend = false
         recording = false
         transcribing = false
         handler.removeCallbacks(recordingClock)
@@ -213,7 +216,7 @@ class ChatController(
 
     fun retrySpeech() {
         if (!canRetrySpeech || recording || transcribing || state.running || picking) return
-        val key = credentials.getAll()["speech-$retryProvider"].orEmpty()
+        val key = speechKey(retryProvider).orEmpty()
         error = ""
         canRetrySpeech = false
         transcribing = true
@@ -238,7 +241,7 @@ class ChatController(
         recording = false
         transcribing = false
         willCancel = false
-        willTranscribe = false
+        willSend = false
     }
 
     fun showError(message: String) { error = message }

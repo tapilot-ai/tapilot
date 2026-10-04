@@ -1,15 +1,12 @@
-import { describe, expect, it } from '@rstest/core';
-import { voiceGesture } from './voice-feedback';
-
-describe('voice recording slide targets', () => {
-  it('keeps recording until a deliberate upward slide', () => {
-    expect(voiceGesture(800, 350, 750, 400)).toBe('recording');
-  });
-  it('arms cancellation above the input and returns to recording when moved back', () => {
-    expect(voiceGesture(800, 200, 650, 400)).toBe('cancel');
-    expect(voiceGesture(800, 200, 790, 400)).toBe('recording');
-  });
-  it('selects a transcript draft when sliding into the right target', () => {
-    expect(voiceGesture(800, 350, 650, 400)).toBe('transcribe');
-  });
+import { expect, it } from '@rstest/core';
+import { voiceGesture, voiceLayout } from './voice-feedback';
+it('only the visible rotated controls select cancellation or sending', () => {
+  for (const [width, height] of [[360, 740], [393, 873], [430, 932]]) {
+    const layout = voiceLayout(width, height), y = layout.actionTop + 36;
+    expect(voiceGesture(layout.cancelLeft + layout.actionWidth / 2, y, width, height)).toBe('cancel');
+    expect(voiceGesture(layout.sendLeft + layout.actionWidth / 2, y, width, height)).toBe('send');
+    expect(voiceGesture(width / 2, y, width, height)).toBe('recording');
+    expect(voiceGesture(width * .9, height * .4, width, height)).toBe('recording');
+    expect(voiceGesture(width / 2, height - 40, width, height)).toBe('recording');
+  }
 });
