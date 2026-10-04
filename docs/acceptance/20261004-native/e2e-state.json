@@ -1,0 +1,173 @@
+{
+  "originalHistoryCount": 20,
+  "originalHistoryPreserved": true,
+  "credentialsRestored": true,
+  "credentialHashNormalization": "trim whitespace",
+  "modelRestored": true,
+  "activeRestored": true,
+  "draftRestored": true,
+  "speechProviderRestored": true,
+  "confirmPreferenceRestored": true,
+  "entries": [
+    {
+      "id": "8f09a336-a4eb-4cb1-a851-660d99eea53c",
+      "conversationId": "chat-033cf1a0-3084-4007-9f4d-a2fe3859136e",
+      "source": "实际操作手机计算器：清空现有输入，输入 3+4 并点击等于号，确认最终屏幕显示 7。",
+      "status": "succeeded",
+      "reply": "操作已完成，计算器屏幕显示结果为 7。",
+      "reports": [
+        {
+          "reportId": "1791119249778-d72542f8-166f-47db-b6f6-f262c8e57288",
+          "kind": "agent",
+          "title": "Tapilot verified phone operation",
+          "projectName": "android-accessibility",
+          "caseName": "Tapilot verified phone operation",
+          "attempt": 1
+        },
+        {
+          "reportId": "1791119249873-015d842d-a843-40f0-9987-7d0809d7ffd3",
+          "kind": "test-runner",
+          "title": "Test Runner summary"
+        }
+      ]
+    },
+    {
+      "id": "3437b0d8-2dab-45d8-b434-ba055bc43d23",
+      "conversationId": "chat-033cf1a0-3084-4007-9f4d-a2fe3859136e",
+      "source": "先清空计算器并计算 3+4，确认显示 7；完成后只回复之前文本文件的项目名称。",
+      "status": "succeeded",
+      "reply": "松果",
+      "reports": []
+    },
+    {
+      "id": "a5794aa4-2442-4997-9cc9-e37312cc0ad3",
+      "conversationId": "chat-033cf1a0-3084-4007-9f4d-a2fe3859136e",
+      "source": "先清空计算器并计算 3+4，确认显示 7；完成后只回复之前文本文件的项目名称。",
+      "status": "succeeded",
+      "reply": "松果",
+      "reports": []
+    },
+    {
+      "id": "2db568f8-7f96-48fe-b70f-53f465679406",
+      "conversationId": "chat-033cf1a0-3084-4007-9f4d-a2fe3859136e",
+      "source": "先清空计算器并计算 3+4，确认显示 7；完成后只回复之前文本文件的项目名称。",
+      "status": "stopped",
+      "detail": "应用中断，任务已停止",
+      "attachment": {
+        "id": "6ff44719-e98f-4daa-8795-d995c7bc2ab4",
+        "name": "当前屏幕",
+        "kind": "image"
+      },
+      "reports": []
+    },
+    {
+      "id": "fdcc3b27-bb35-4b8b-a8ab-2404f01dd102",
+      "conversationId": "chat-033cf1a0-3084-4007-9f4d-a2fe3859136e",
+      "source": "只回复附件中的项目名称，不操作手机。",
+      "status": "succeeded",
+      "reply": "松果",
+      "attachment": {
+        "id": "7eb1edfb-75c2-46bd-9916-247c70a46f2b",
+        "name": "tapilot-native-note.txt",
+        "kind": "text"
+      },
+      "reports": []
+    },
+    {
+      "id": "1adf852f-ae99-4977-9c10-c43683cc1fa7",
+      "conversationId": "chat-033cf1a0-3084-4007-9f4d-a2fe3859136e",
+      "source": "只回复附件中的项目名称，不操作手机。",
+      "status": "succeeded",
+      "reply": "松果",
+      "attachment": {
+        "id": "7eb1edfb-75c2-46bd-9916-247c70a46f2b",
+        "name": "tapilot-native-note.txt",
+        "kind": "text"
+      },
+      "reports": []
+    },
+    {
+      "id": "0ebc1b5c-08b6-4acc-892f-7f46823cd118",
+      "conversationId": "chat-033cf1a0-3084-4007-9f4d-a2fe3859136e",
+      "source": "打开手机计算器，计算 2+3，确认屏幕显示结果 5，然后告诉我结果。",
+      "status": "stopped",
+      "detail": "任务已停止",
+      "reports": []
+    },
+    {
+      "id": "2ba77360-0e49-47c5-81c5-f9e35e1aea00",
+      "conversationId": "chat-d088848b-7518-4fe2-98e7-9e982f16066e",
+      "source": "之前文件的项目名称是什么？如果本对话没提供文件就说明无法知道，不操作手机。",
+      "status": "succeeded",
+      "reply": "本对话中没有提供文件，因此无法知道之前文件的项目名称。",
+      "reports": []
+    },
+    {
+      "id": "59f5c9e1-5ad4-4657-b2dd-d78088ce8564",
+      "conversationId": "chat-033cf1a0-3084-4007-9f4d-a2fe3859136e",
+      "source": "请写一篇约2000字的长文解释安卓原生应用的生命周期，不操作手机。",
+      "status": "stopped",
+      "detail": "任务已停止",
+      "reports": []
+    },
+    {
+      "id": "2652ad98-eefd-4a95-bc5d-beabc6059aec",
+      "conversationId": "chat-033cf1a0-3084-4007-9f4d-a2fe3859136e",
+      "source": "打开手机计算器，计算 2+3，确认屏幕显示结果 5，然后告诉我结果。",
+      "status": "succeeded",
+      "reply": "计算结果是 5。",
+      "reports": [
+        {
+          "reportId": "1791117276547-7759c622-341c-4957-9471-b885d6be988e",
+          "kind": "agent",
+          "title": "Tapilot verified phone operation",
+          "projectName": "android-accessibility",
+          "caseName": "Tapilot verified phone operation",
+          "attempt": 1
+        },
+        {
+          "reportId": "1791117276654-c8306e5d-4ef7-41b1-b4cf-020b1fc37e64",
+          "kind": "test-runner",
+          "title": "Test Runner summary"
+        }
+      ]
+    },
+    {
+      "id": "5c22dbf0-693c-4a3b-a262-4efbc8abe81f",
+      "conversationId": "chat-033cf1a0-3084-4007-9f4d-a2fe3859136e",
+      "source": "之前文件的项目名称是什么？只回复名称，不操作手机。",
+      "status": "succeeded",
+      "reply": "松果",
+      "reports": []
+    },
+    {
+      "id": "028e8757-f083-4151-8080-2babdfc76037",
+      "conversationId": "chat-033cf1a0-3084-4007-9f4d-a2fe3859136e",
+      "source": "只回复文件中的编号，不操作手机。",
+      "status": "succeeded",
+      "reply": "TP-NATIVE-1047",
+      "attachment": {
+        "id": "7eb1edfb-75c2-46bd-9916-247c70a46f2b",
+        "name": "tapilot-native-note.txt",
+        "kind": "text"
+      },
+      "reports": []
+    },
+    {
+      "id": "57341cf5-b782-4810-baa6-5732c1d3cbc8",
+      "conversationId": "chat-033cf1a0-3084-4007-9f4d-a2fe3859136e",
+      "source": "只回复 3+4 的答案，不操作手机。",
+      "status": "succeeded",
+      "reply": "7",
+      "reports": []
+    },
+    {
+      "id": "12a6a2c7-c9da-40f5-9889-15cad8488245",
+      "conversationId": "chat-033cf1a0-3084-4007-9f4d-a2fe3859136e",
+      "source": "只回复 3+4 的答案，不操作手机。",
+      "status": "failed",
+      "detail": "模型 API Key 鉴权失败，请检查配置 · HTTP 401",
+      "reports": []
+    }
+  ]
+}
