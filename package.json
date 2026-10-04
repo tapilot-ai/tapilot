@@ -25,7 +25,7 @@
   "scripts": {
     "build": "pnpm run theme:check && rsbuild build",
     "build:adapter": "pnpm --filter @tapilot/android-accessibility build",
-    "build:android": "pnpm run build:adapter && pnpm run build && pnpm run runtime:bundle && pnpm run runtime:node && ./gradlew assembleDebug",
+    "build:android": "pnpm run build:adapter && pnpm run runtime:bundle && pnpm run runtime:node && ./gradlew assembleDebug",
     "runtime:bundle": "node scripts/bundle-node-runtime.mjs",
     "runtime:doctor": "node build/node-runtime-bundle/runner.mjs doctor",
     "runtime:node": "bash scripts/fetch-node-runtime.sh",

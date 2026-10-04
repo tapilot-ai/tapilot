@@ -7,9 +7,7 @@ ADB、Shizuku 或 root。
 
 聊天页和输入区使用 Kotlin + Jetpack Compose，文字输入使用 Android 原生编辑控件。
 输入框未聚焦且完全空时显示“按住说话”，支持长按录音；聚焦或已有文字（含空格）时长按使用系统编辑菜单。录音默认松手转文字填入输入框，左侧取消、右侧发送；保留原有配色。支持照片、拍摄、PDF 和文本附件。
-原生界面通过结构化的会话状态与命令接口连接现有对话 Agent；已有聊天记录和 API 配置沿用
-应用私有存储。对话 Agent 暂由不显示的 WebView 宿主运行，Midscene 在设备内 Node.js 中执行。
-设置、高级 YAML 编辑和 HTML 报告仍使用 WebView，后续可以继续逐页迁移。
+聊天、设置页和高级 YAML 编辑界面均为原生实现。对话 Agent、会话历史、重试及全局请求排队由 Kotlin 管理，Midscene 在设备内 Node.js 中执行。升级时只用一次临时 WebView 导入旧存储，导入后销毁；日常聊天不再运行隐藏 WebView。HTML 报告仍由独立 WebView 显示，API Key 继续使用原有 Android Keystore 加密存储。
 
 每次任务开始时，原生服务会查询可见应用的名称、包名和启动组件，以及设备可用的系统动作。
 应用清单会放进模型的 Launch 动作描述，帮助它识别中英文应用名称，避免猜包名。
@@ -45,7 +43,7 @@ Tapilot 采用 `lifeos.md.tapilot` 应用 ID。使用相同签名密钥打出的
 
 ```sh
 pnpm install
-pnpm run build
+pnpm run build:adapter
 pnpm run runtime:bundle
 pnpm run runtime:node
 ./gradlew assembleDebug
@@ -58,6 +56,7 @@ pnpm run build:android
 ```
 
 Debug APK 输出到 `app/build/outputs/apk/debug/app-debug.apk`。
+普通 Android 构建不再编译旧网页。使用可选的 `-PspeechVerification` 调试入口时，先运行 `pnpm run build`。
 `runtime:bundle` 会生成不含符号链接的自包含 Node 依赖包，并在打包前真实执行一个
 `@midscene/test` YAML 冒烟项目。`runtime:node` 会下载锁定版本的 Termux arm64 包、
 校验 SHA-256，并修补 ELF 依赖以便 APK 加载。生成的依赖包和原生二进制均属于构建产物，
@@ -65,8 +64,8 @@ Debug APK 输出到 `app/build/outputs/apk/debug/app-debug.apk`。
 `packages/android-accessibility`（以
 [`@tapilot/android-accessibility`](https://www.npmjs.com/package/@tapilot/android-accessibility)
 名义发布）是本社区项目自行维护、可独立构建的设备适配包
-（`pnpm run build:adapter`）。它只包含设备动作和原生设备协议；WebView 宿主、
-模型请求、报告管理和应用设置留在 `runtime/`。Core、Shared、Test 直接使用兼容的
+（`pnpm run build:adapter`）。它只包含设备动作和原生设备协议；手机操作执行器运行在设备内 Node.js，
+应用界面、对话和配置由 `app/src/main/java/` 中的 Kotlin 管理。`runtime/` 保留旧网页实现及可选语音验证入口，不打入普通 APK。Core、Shared、Test 直接使用兼容的
 Midscene 上游正式发布版本，独立仓库不再保存或修改这些包的源码快照。
 
 ## 内嵌 Node 运行时
@@ -96,12 +95,12 @@ API Key，资源 ID 固定为 `volc.seedasr.sauc.duration`；Deepgram 使用自�
 未聚焦且完全空白的输入框提示“按住说话”，长按时收起键盘并显示录音气泡、左侧取消与右侧发送。
 默认松手只转文字填入草稿；滑到取消或发送按钮再松手才执行对应动作，移回中间恢复填入草稿。
 聚焦或已有任何文本（包括空格）时保持系统编辑菜单。转写期间仍可点取消，取消会丢弃迟到结果。
-聊天、全局助手及 WebView 入口遵循相同规则，并保留 Tapilot 配色。
+聊天和全局助手遵循相同规则，并保留 Tapilot 配色；可选 WebView 验证入口用于旧交互回归。
 首次录音需授予麦克风权限。音频通过所选服务的 WebSocket API 流式发送，不保存录音文件；
 两家服务的密钥分别由 Android Keystore 加密保存，不使用系统语音识别。
 
 界面语言默认跟随 Android 系统，也可从 App 统一风格的自绘弹层中固定为简体中文或
-English。语言选择会同时作用于 WebView 设置页、原生辅助功能引导和任务状态通知，
+English。语言选择会同时作用于原生设置页、原生辅助功能引导和任务状态通知，
 并在应用重启后保留。自然语言输入框默认保持紧凑，聚焦后会自动增高。YAML 和 Test
 Runner 相关能力只有开启“高级模式”后才出现，YAML 编辑框仍可展开为全屏。
 辅助服务的连接和断开会实时通知设置页；系统重启服务或服务稍晚完成连接时，无需重新进入
@@ -125,7 +124,7 @@ Runner 相关能力只有开启“高级模式”后才出现，YAML 编辑框�
 屏幕前，原生层会先隐藏光效，等待窗口刷新后再截图，因此光效不会进入 Midscene 的模型
 输入。开始、成功、失败和停止状态也会通过
 Toast、无障碍播报和前台服务通知提示。前台服务会在任务运行期间提高进程优先级，降低
-切换到目标应用后 WebView runtime 被系统回收的概率。
+切换到目标应用后任务进程被系统回收的概率。
 
 ## 调试报告
 
@@ -157,12 +156,9 @@ Export Video 会将 WebM 视频保存到系统视频库的 **Movies/Tapilot** �
 因此无 Shizuku、ADB 或 root 模式下不提供 `RunAdbShell` 和 `Terminate`。
 
 每个模型预设分别维护自己的配置。API Key 会先使用 Android Keystore 密钥加密，再写入
-应用私有配置；其他非敏感模型字段保存在 WebView 的应用私有存储中。任务完成或应用重启
+应用私有配置；其他非敏感模型字段和会话历史原子保存到应用私有文件中。任务完成或应用重启
 不会清空配置。“恢复默认”会清除当前预设的 API Key，清除应用数据或卸载应用则会删除
-全部预设。模型请求由 Android
-原生层发送。模型请求使用独立的 165 秒 Bridge 超时（覆盖原生 30 秒连接和 120 秒读取
-超时），任务中止时会同时断开对应的原生网络连接。当前传输层会先完整缓冲流式响应，
-再转交 JavaScript runtime；增量原生流式传输属于后续优化项。
+全部预设。模型请求由 Android 原生层发送，对话使用非流式响应。任务中止会断开对应网络连接，并阻止迟到结果调用工具。增量原生流式输出属于后续优化项。
 
 手机操作和 YAML 都复用设备内 Node.js 中现有的 Midscene Agent、Test Runner 与标准报告
 能力。对话 Agent 负责上下文、工具调用和最终回复；Android 侧提供模型传输、device

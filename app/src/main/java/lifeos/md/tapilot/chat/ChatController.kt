@@ -15,14 +15,15 @@ import lifeos.md.tapilot.bridge.SpeechTranscriber
 import lifeos.md.tapilot.bridge.SpeechRecognition
 import org.json.JSONObject
 
-/** Native UI state and microphone lifecycle. The existing conversation agent owns task context. */
+/** Native UI state and microphone lifecycle; production commands go directly to Kotlin. */
 class ChatController(
     private val activity: Activity,
-    private val engine: WebView,
+    private val engine: WebView? = null,
     private val onSurfaceChanged: (Boolean) -> Unit,
     private val picker: (String, (Result<JSONObject?>) -> Unit) -> Unit,
     private val speech: SpeechRecognition = SpeechTranscriber(activity),
     private val speechKey: (String) -> String? = { provider -> ModelCredentialStore(activity).getAll()["speech-$provider"] },
+    private val nativeCommand: ((JSONObject) -> Unit)? = null,
 ) : AutoCloseable {
     var state by mutableStateOf(ChatState())
         private set
@@ -68,6 +69,10 @@ class ChatController(
     @JavascriptInterface
     fun update(payload: String) {
         val next = runCatching { ChatState.parse(payload) }.getOrNull() ?: return
+        accept(next)
+    }
+
+    fun accept(next: ChatState) {
         handler.post {
             if (closed) return@post
             if (state.activeConversationId != next.activeConversationId && canRetrySpeech) {
@@ -95,7 +100,8 @@ class ChatController(
 
     private fun dispatch(payload: JSONObject) {
         if (closed) return
-        engine.evaluateJavascript("window.__tapilotNativeChatCommand?.($payload)", null)
+        if (nativeCommand != null) nativeCommand.invoke(payload)
+        else engine?.evaluateJavascript("window.__tapilotNativeChatCommand?.($payload)", null)
     }
 
     fun edit(text: String) {

@@ -10,7 +10,7 @@ data class ChatAttachment(val name: String, val kind: String, val preview: Strin
     companion object {
         fun parse(value: JSONObject?): ChatAttachment? = value?.let { data ->
             val images = data.optJSONArray("images")
-            ChatAttachment(data.optString("name"), data.optString("kind"), data.optString("preview"),
+            ChatAttachment(data.optString("name"), data.optString("kind"), data.optString("preview").ifBlank { images?.optString(0).orEmpty() },
                 data.optString("id"), data.optString("text"),
                 if (images == null) emptyList() else List(images.length()) { images.getString(it) }, data.optInt("pageCount"))
         }

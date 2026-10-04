@@ -9,11 +9,11 @@ The chat screen uses Kotlin and Jetpack Compose with a native Android text edito
 hold-to-record on an empty, unfocused editor (with a “Hold to speak” hint), native
 editing menus while focused or populated (including whitespace), and photo, camera,
 PDF, and text attachments. Recording releases insert a transcript by default; slide
-left to cancel or right to send explicitly. A structured state/command interface connects the
-native UI to the existing conversation agent and preserves private history and
-API configuration. The agent currently runs in a hidden WebView host; Midscene
-runs in the embedded Node.js process. Settings, advanced YAML editing, and HTML
-reports remain WebView screens during this incremental migration.
+left to cancel or right to send explicitly. Chat, settings and advanced YAML editing are native. Kotlin owns the conversation
+agent, private history, retries and global request queue; Midscene runs in the
+embedded Node.js process. A one-time temporary WebView imports legacy storage
+and is destroyed afterward. Daily chat no longer requires a hidden WebView.
+HTML reports retain their dedicated WebView, and API keys retain Android Keystore encryption.
 
 Tapilot ships under the `lifeos.md.tapilot` application ID. An APK signed with
 the same key can update an existing installation without clearing its app data;
@@ -31,7 +31,7 @@ From this directory:
 
 ```sh
 pnpm install
-pnpm run build
+pnpm run build:adapter
 pnpm run runtime:bundle
 pnpm run runtime:node
 ./gradlew assembleDebug
@@ -44,6 +44,8 @@ pnpm run build:android
 ```
 
 The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
+Ordinary Android builds do not build the legacy web UI. For the optional
+`-PspeechVerification` debug entry, run `pnpm run build` first.
 `runtime:bundle` creates a self-contained, symlink-free Node module bundle and
 runs a real `@midscene/test` YAML smoke project before packaging it.
 `runtime:node` downloads pinned Termux arm64 packages, verifies their SHA-256
@@ -53,8 +55,9 @@ and native binaries are build artifacts and are not committed.
 [`@tapilot/android-accessibility`](https://www.npmjs.com/package/@tapilot/android-accessibility))
 is this community project's independently buildable device adapter
 (`pnpm run build:adapter`). Its public package contains
-the device actions and native device protocol; the WebView host, model requests,
-report management, and app settings live in `runtime/`. Core, Shared, and Test
+the device actions and native device protocol. Kotlin in `app/src/main/java/` owns
+app UI, conversation and configuration. `runtime/` retains the legacy web UI and
+optional speech verification entries, excluded from ordinary APKs. Core, Shared, and Test
 are consumed directly from the compatible upstream Midscene release. The
 standalone repository does not carry or patch snapshots of those packages.
 
@@ -125,14 +128,14 @@ stays closed and a speech bubble with Cancel / Send controls appears. Release no
 to insert text; release over Cancel or Send for that action, or move back to insert.
 Focused or populated editors retain native editing menus, including whitespace-only drafts.
 Cancellation remains available during transcription and rejects late results. Chat,
-the global assistant and WebView share these rules and retain Tapilot colors. The first recording requires microphone
+the global assistant share these rules and retain Tapilot colors. The optional legacy WebView verification entry follows the same rules. The first recording requires microphone
 permission. Audio streams through the selected provider's WebSocket API without
 creating a recording file. Each provider's key is encrypted separately with Android
 Keystore. Android speech recognition is not used.
 
 The interface follows the Android system language by default. Simplified
 Chinese and English can also be selected explicitly from the app-styled
-language sheet. The choice applies to the WebView settings, native accessibility
+language sheet. The choice applies to the native settings, native accessibility
 setup, and task notifications, and is retained across app restarts. The natural
 language editor starts compact and grows when focused. YAML and Test Runner
 controls are available only when Advanced mode is enabled; the YAML editor can
@@ -169,7 +172,7 @@ visual input. Start, success, failure, and cancellation are also
 reported through toasts and accessibility announcements. They are also
 reflected in a foreground-service notification. The foreground service raises
 the process priority while a task is active, reducing the chance that Android
-reclaims the WebView runtime after switching to the target app.
+reclaims the task process after switching to the target app.
 
 ## Debug reports
 
@@ -211,14 +214,12 @@ and `Terminate` are intentionally unavailable without Shizuku, ADB, or root.
 
 Each model preset keeps its own configuration. API Keys are encrypted with an
 Android Keystore key before being written to app-private preferences; non-secret
-model fields remain in app-private WebView storage. They remain available after
+model fields and conversation history are atomically saved in app-private files. They remain available after
 tasks and app restarts. **Restore defaults** clears the selected preset's API
 Key, while clearing app data or uninstalling removes every preset.
-Model HTTP requests are sent by the native Android layer. They use a separate
-165-second bridge budget over the native 30-second connect and 120-second read
-timeouts, and aborting a task disconnects its active native request. The current
-transport buffers a complete streaming response before forwarding it to the JavaScript runtime;
-incremental native streaming is a follow-up optimization.
+Model HTTP requests are sent by native Android code and conversation replies are
+non-streaming. Stopping a task disconnects its active request and prevents late
+results from calling tools. Incremental native streaming is a follow-up optimization.
 
 Phone operations and YAML runs reuse the existing Midscene Agent, Test Runner,
 and standard reporter inside on-device Node.js. The conversation agent owns

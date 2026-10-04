@@ -34,33 +34,53 @@ import java.util.concurrent.Executors
 import androidx.core.content.FileProvider
 
 class NativeJavascriptBridge(
-    private val webView: WebView,
+    private val webView: WebView? = null,
+    private val activity: Activity = webView?.context as Activity,
+    private val onProgress: (String) -> Unit = {},
     private val onLanguageChanged: (String) -> Unit = {},
     private val onThemeChanged: (String) -> Unit = {},
     private val onPickAttachment: (String, (Result<JSONObject?>) -> Unit) -> Unit = { _, callback ->
         callback(Result.failure(UnsupportedOperationException("Attachment picker unavailable")))
     },
 ) : AutoCloseable {
-    private val attachments = AttachmentStore(File(webView.context.filesDir, "chat-attachments"))
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val callbacks = java.util.concurrent.ConcurrentHashMap<String, (Result<Any?>) -> Unit>()
+    private var closed = false
+
+    /** Native callers use the same services directly, without JavaScript or a WebView. */
+    fun call(method: String, params: JSONObject = JSONObject(), sessionId: String = "native",
+             callback: (Result<Any?>) -> Unit) {
+        val id = java.util.UUID.randomUUID().toString()
+        handler.post {
+            if (closed) { callback(Result.failure(IllegalStateException("Service closed"))); return@post }
+            callbacks[id] = callback
+            runCatching { handle(JSONObject().put("protocolVersion", 1).put("requestId", id)
+                .put("sessionId", sessionId).put("method", method).put("params", params)) }
+                .onFailure { respondError(id, it) }
+        }
+    }
+
+    private val attachments = AttachmentStore(File(activity.filesDir, "chat-attachments"))
     private val modelTransport = ModelTransport()
-    private val modelCredentialStore = ModelCredentialStore(webView.context)
-    private val speechTranscriber = SpeechTranscriber(webView.context as Activity)
-    private val reportRepository = ReportRepository(File(webView.context.filesDir, "reports")).apply {
+    private val modelCredentialStore = ModelCredentialStore(activity)
+    private val speechTranscriber = SpeechTranscriber(activity as Activity)
+    private val reportRepository = ReportRepository(File(activity.filesDir, "reports")).apply {
         cleanupStaleDrafts()
     }
     private val nodeRuntimeSupervisor = NodeRuntimeProcessSupervisor()
     private val nodeTestRunCoordinator = NodeTestRunCoordinator(
-        webView.context,
+        activity,
         reportRepository,
         nodeRuntimeSupervisor,
-        onProgress = { method -> webView.post {
-            webView.evaluateJavascript("window.__tapilotPhoneProgress?.(${JSONObject.quote(method)})", null)
+        onProgress = { method -> handler.post {
+            onProgress(method)
+            webView?.evaluateJavascript("window.__tapilotPhoneProgress?.(${JSONObject.quote(method)})", null)
         } },
     )
 
     @JavascriptInterface
     fun postMessage(payload: String) {
-        webView.post {
+        handler.post {
             runCatching { handle(JSONObject(payload)) }
                 .onFailure { error ->
                     val requestId = runCatching { JSONObject(payload).optString("requestId") }
@@ -111,19 +131,19 @@ class NativeJavascriptBridge(
             }
             "app.getAssistantRole" -> {
                 val manager = if (Build.VERSION.SDK_INT >= 29)
-                    webView.context.getSystemService(RoleManager::class.java) else null
+                    activity.getSystemService(RoleManager::class.java) else null
                 respondSuccess(requestId, JSONObject()
                     .put("available", manager?.isRoleAvailable(RoleManager.ROLE_ASSISTANT) == true)
                     .put("held", manager?.isRoleHeld(RoleManager.ROLE_ASSISTANT) == true))
             }
             "app.requestAssistantRole" -> {
                 val manager = if (Build.VERSION.SDK_INT >= 29)
-                    webView.context.getSystemService(RoleManager::class.java) else null
+                    activity.getSystemService(RoleManager::class.java) else null
                 check(manager?.isRoleAvailable(RoleManager.ROLE_ASSISTANT) == true) {
                     "Assistant role is unavailable on this device"
                 }
                 if (!manager.isRoleHeld(RoleManager.ROLE_ASSISTANT)) {
-                    (webView.context as Activity).startActivityForResult(
+                    (activity as Activity).startActivityForResult(
                         manager.createRequestRoleIntent(RoleManager.ROLE_ASSISTANT), 2110,
                     )
                 }
@@ -141,7 +161,7 @@ class NativeJavascriptBridge(
                     .put("canInputText", service != null),
             )
             "device.getSize" -> {
-                val bounds = webView.context.resources.displayMetrics
+                val bounds = activity.resources.displayMetrics
                 respondSuccess(
                     requestId,
                     JSONObject().put("width", bounds.widthPixels).put("height", bounds.heightPixels),
@@ -199,7 +219,7 @@ class NativeJavascriptBridge(
                     status,
                     params.optString("detail").takeIf { it.isNotBlank() },
                 )
-                runCatching { TaskRuntimeService.report(webView.context, status) }
+                runCatching { TaskRuntimeService.report(activity, status) }
                     .onFailure { Log.w(LOG_TAG, "Unable to update task notification", it) }
                 respondSuccess(requestId, JSONObject.NULL)
             }
@@ -239,7 +259,7 @@ class NativeJavascriptBridge(
             "speech.setProvider" -> {
                 val provider = request.getJSONObject("params").getString("provider")
                 require(provider == "volcengine" || provider == "deepgram")
-                webView.context.getSharedPreferences("tapilot-speech", 0).edit()
+                activity.getSharedPreferences("tapilot-speech", 0).edit()
                     .putString("provider", provider).apply()
                 respondSuccess(requestId, JSONObject.NULL)
             }
@@ -302,8 +322,8 @@ class NativeJavascriptBridge(
                 check(reportRepository.reportFile(reportId).isFile) {
                     "Report does not exist: $reportId"
                 }
-                webView.context.startActivity(
-                    Intent(webView.context, ReportActivity::class.java)
+                activity.startActivity(
+                    Intent(activity, ReportActivity::class.java)
                         .putExtra(ReportActivity.EXTRA_REPORT_ID, reportId),
                 )
                 respondSuccess(requestId, JSONObject.NULL)
@@ -314,7 +334,7 @@ class NativeJavascriptBridge(
                     setDataAndType(reportUri(report), "text/html")
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-                webView.context.startActivity(Intent.createChooser(intent, report.name))
+                activity.startActivity(Intent.createChooser(intent, report.name))
                 respondSuccess(requestId, JSONObject.NULL)
             }
             "report.share" -> {
@@ -324,7 +344,7 @@ class NativeJavascriptBridge(
                     putExtra(Intent.EXTRA_STREAM, reportUri(report))
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-                webView.context.startActivity(Intent.createChooser(intent, report.name))
+                activity.startActivity(Intent.createChooser(intent, report.name))
                 respondSuccess(requestId, JSONObject.NULL)
             }
             "report.export" -> executeReportOperation(requestId) {
@@ -335,7 +355,7 @@ class NativeJavascriptBridge(
                     put(MediaStore.Downloads.MIME_TYPE, "text/html")
                     put(MediaStore.Downloads.IS_PENDING, 1)
                 }
-                val resolver = webView.context.contentResolver
+                val resolver = activity.contentResolver
                 val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
                     ?: error("Unable to create Downloads report")
                 try {
@@ -362,7 +382,7 @@ class NativeJavascriptBridge(
                 JSONObject().put("stopped", nodeTestRunCoordinator.stop()),
             )
             "app.getVersion" -> {
-                val context = webView.context
+                val context = activity
                 val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
                 respondSuccess(
                     requestId,
@@ -382,12 +402,12 @@ class NativeJavascriptBridge(
             "app.getFloatingBallState" -> respondSuccess(
                 requestId,
                 JSONObject()
-                    .put("enabled", FloatingBallPreferences.isEnabled(webView.context))
+                    .put("enabled", FloatingBallPreferences.isEnabled(activity))
                     .put("available", service != null),
             )
             "app.setFloatingBallEnabled" -> {
                 val enabled = request.getJSONObject("params").getBoolean("enabled")
-                FloatingBallPreferences.setEnabled(webView.context, enabled)
+                FloatingBallPreferences.setEnabled(activity, enabled)
                 service?.setFloatingBallEnabled(enabled)
                 respondSuccess(
                     requestId,
@@ -396,7 +416,7 @@ class NativeJavascriptBridge(
             }
             "app.getEdgeEffectSettings" -> respondSuccess(
                 requestId,
-                EdgeEffectPreferences.describe(webView.context),
+                EdgeEffectPreferences.describe(activity),
             )
             "app.setEdgeEffectSettings" -> {
                 val params = request.getJSONObject("params")
@@ -405,15 +425,15 @@ class NativeJavascriptBridge(
                     cornerRadiusDp = params.getDouble("cornerRadiusDp").toFloat(),
                     insetDp = params.getDouble("insetDp").toFloat(),
                 )
-                EdgeEffectPreferences.set(webView.context, settings)
+                EdgeEffectPreferences.set(activity, settings)
                 service?.previewEdgeEffect(settings)
-                respondSuccess(requestId, EdgeEffectPreferences.describe(webView.context))
+                respondSuccess(requestId, EdgeEffectPreferences.describe(activity))
             }
             "app.goHome" -> {
                 respondSuccess(requestId, JSONObject.NULL)
-                webView.postDelayed(
+                handler.postDelayed(
                     {
-                        webView.context.startActivity(
+                        activity.startActivity(
                             Intent(Intent.ACTION_MAIN)
                                 .addCategory(Intent.CATEGORY_HOME)
                                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
@@ -424,7 +444,7 @@ class NativeJavascriptBridge(
             }
             "app.returnToPreviousApp" -> {
                 respondSuccess(requestId, JSONObject.NULL)
-                webView.postDelayed({ (webView.context as Activity).moveTaskToBack(true) },
+                handler.postDelayed({ (activity as Activity).moveTaskToBack(true) },
                     GO_HOME_RESPONSE_DELAY_MILLIS)
             }
             "app.showGlobalResult" -> {
@@ -433,10 +453,10 @@ class NativeJavascriptBridge(
             }
             "app.bringToFront" -> {
                 respondSuccess(requestId, JSONObject.NULL)
-                webView.postDelayed(
+                handler.postDelayed(
                     {
-                        webView.context.startActivity(
-                            Intent(webView.context, lifeos.md.tapilot.MainActivity::class.java)
+                        activity.startActivity(
+                            Intent(activity, lifeos.md.tapilot.MainActivity::class.java)
                                 .addFlags(
                                     Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
                                         Intent.FLAG_ACTIVITY_SINGLE_TOP,
@@ -447,13 +467,13 @@ class NativeJavascriptBridge(
                 )
             }
             "app.openAccessibilitySettings" -> {
-                webView.context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                activity.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                 respondSuccess(requestId, JSONObject.NULL)
             }
             "app.openBatterySettings" -> {
-                webView.context.startActivity(
+                activity.startActivity(
                     Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                        data = Uri.parse("package:${webView.context.packageName}")
+                        data = Uri.parse("package:${activity.packageName}")
                     },
                 )
                 respondSuccess(requestId, JSONObject.NULL)
@@ -497,14 +517,14 @@ class NativeJavascriptBridge(
     }
 
     private fun reportUri(report: File) = FileProvider.getUriForFile(
-        webView.context,
-        "${webView.context.packageName}.reports",
+        activity,
+        "${activity.packageName}.reports",
         report,
     )
 
     private fun executeNodeRuntimeDoctor(requestId: String) {
         nodeRuntimeExecutor.execute {
-            runCatching { NodeRuntimeProvisioner(webView.context).install() }.fold(
+            runCatching { NodeRuntimeProvisioner(activity).install() }.fold(
                 onSuccess = { runtime -> runNodeRuntimeDoctor(requestId, runtime) },
                 onFailure = { respondError(requestId, it) },
             )
@@ -595,9 +615,15 @@ class NativeJavascriptBridge(
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun respond(response: JSONObject) {
-        val quoted = JSONObject.quote(response.toString())
-        webView.post {
-            webView.evaluateJavascript("window.__midsceneNativeResolve?.($quoted)", null)
+        handler.post {
+            val callback = callbacks.remove(response.getString("requestId"))
+            if (callback != null) {
+                if (response.optBoolean("ok")) callback(Result.success(response.opt("result").takeUnless { it == JSONObject.NULL }))
+                else callback(Result.failure(IllegalStateException(response.getJSONObject("error").optString("message"))))
+            } else if (!closed) {
+                val quoted = JSONObject.quote(response.toString())
+                webView?.evaluateJavascript("window.__midsceneNativeResolve?.($quoted)", null)
+            }
         }
     }
 
@@ -605,6 +631,9 @@ class NativeJavascriptBridge(
         IllegalStateException("Enable Tapilot device control in Accessibility settings")
 
     override fun close() {
+        closed = true
+        callbacks.values.toList().forEach { it(Result.failure(IllegalStateException("Service closed"))) }
+        callbacks.clear()
         speechTranscriber.close()
         modelTransport.close()
         nodeTestRunCoordinator.close()

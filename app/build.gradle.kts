@@ -1,3 +1,5 @@
+import java.util.zip.ZipFile
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -36,10 +38,13 @@ android {
     buildFeatures { compose = true }
 
     if (providers.gradleProperty("speechVerification").isPresent) {
+        sourceSets["debug"].assets.srcDir("../dist/runtime")
         sourceSets["debug"].java.srcDir("src/speechVerification/java")
         sourceSets["debug"].manifest.srcFile("src/speechVerification/AndroidManifest.xml")
+    } else {
+        // Offline reports still need their export helper and branding assets.
+        sourceSets["main"].assets.srcDir("../public")
     }
-    sourceSets["main"].assets.srcDir("../dist/runtime")
     sourceSets["main"].jniLibs.srcDir("../.cache/native")
 
     packaging {
@@ -80,6 +85,12 @@ val verifyRuntimeAssets by tasks.registering {
     }
 }
 
+val verifyReportAssets by tasks.registering {
+    val reportFiles = listOf("report-export.js", "tapilot-icon.png").map { rootProject.file("public/$it") }
+    inputs.files(reportFiles)
+    doLast { check(reportFiles.all { it.isFile }) { "Missing offline report assets" } }
+}
+
 val verifyNodeRuntimeAssets by tasks.registering {
     val nodeBundle = rootProject.file("app/src/main/assets/node-runtime-bundle.zip")
     val nodeManifest = rootProject.file("app/src/main/assets/node-runtime-manifest.json")
@@ -93,11 +104,25 @@ val verifyNodeRuntimeAssets by tasks.registering {
 }
 
 tasks.named("preBuild") {
-    dependsOn(verifyRuntimeAssets, verifyBrandTheme)
+    dependsOn(verifyBrandTheme, verifyReportAssets)
+    if (providers.gradleProperty("speechVerification").isPresent) dependsOn(verifyRuntimeAssets)
 }
 
 tasks.configureEach {
     if (name == "packageDebug" || name == "packageRelease") {
         dependsOn(verifyNodeRuntimeAssets)
+    }
+    if (name == "assembleDebug" && !providers.gradleProperty("speechVerification").isPresent) {
+        doLast {
+            ZipFile(layout.buildDirectory.file("outputs/apk/debug/app-debug.apk").get().asFile).use { apk ->
+                val names = apk.entries().asSequence().map { it.name }.toSet()
+                check("assets/report-export.js" in names && "assets/tapilot-icon.png" in names) {
+                    "Native APK is missing offline report assets"
+                }
+                check("assets/index.html" !in names && names.none { it.startsWith("assets/static/") }) {
+                    "Native APK must not include the legacy web UI"
+                }
+            }
+        }
     }
 }

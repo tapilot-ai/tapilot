@@ -1,230 +1,115 @@
 package lifeos.md.tapilot
 
 import android.Manifest
-import android.annotation.SuppressLint
-import android.app.Activity
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.Color
-import android.os.Bundle
+import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.net.Uri
+import android.provider.MediaStore
 import android.util.Base64
 import android.util.Log
-import android.provider.Settings
-import android.provider.MediaStore
 import android.view.View
-import android.view.inputmethod.InputMethodManager
-import android.webkit.WebResourceRequest
-import android.webkit.WebResourceResponse
-import android.webkit.WebView
-import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
-import lifeos.md.tapilot.chat.ChatController
-import lifeos.md.tapilot.chat.ChatScreen
-import androidx.webkit.WebViewAssetLoader
-import androidx.webkit.WebViewClientCompat
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.core.content.FileProvider
-import lifeos.md.tapilot.accessibility.MidsceneAccessibilityService
+import androidx.core.view.WindowCompat
 import lifeos.md.tapilot.bridge.AttachmentReader
 import lifeos.md.tapilot.bridge.NativeJavascriptBridge
+import lifeos.md.tapilot.chat.ChatController
+import lifeos.md.tapilot.chat.ChatScreen
+import lifeos.md.tapilot.conversation.ConversationStore
+import lifeos.md.tapilot.conversation.LegacyConversationImport
+import lifeos.md.tapilot.conversation.NativeConversationCoordinator
 import lifeos.md.tapilot.report.DeletedReportStore
-import org.json.JSONArray
+import lifeos.md.tapilot.settings.NativeSettingsScreen
+import lifeos.md.tapilot.settings.NativeAdvancedScreen
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.concurrent.Executors
 
 class MainActivity : ComponentActivity() {
-    override fun attachBaseContext(newBase: Context) {
-        super.attachBaseContext(AppLanguage.wrap(newBase))
-    }
-
-    private lateinit var webView: WebView
-    private lateinit var rootView: View
-    private lateinit var nativeBridge: NativeJavascriptBridge
+    override fun attachBaseContext(newBase: Context) { super.attachBaseContext(AppLanguage.wrap(newBase)) }
+    private lateinit var rootView: ComposeView
     private lateinit var chatController: ChatController
-    private lateinit var chatView: ComposeView
+    private lateinit var coordinator: NativeConversationCoordinator
+    private lateinit var nativeBridge: NativeJavascriptBridge
+    private var importer: LegacyConversationImport? = null
     private val attachmentWorker = Executors.newSingleThreadExecutor()
     private var attachmentCallback: ((Result<JSONObject?>) -> Unit)? = null
     private var cameraOutput: Uri? = null
     private var cameraFile: File? = null
-    private var statusBarInsetCssPx = 0
-    private var navigationBarInsetCssPx = 0
-    private var pageReady = false
-    private var pendingTaskInputFocus = false
-    private val accessibilityStateHandler = Handler(Looper.getMainLooper())
-    private var lastAccessibilityState: Pair<Boolean, Boolean>? = null
-    private val accessibilityStatePoll = object : Runnable {
-        override fun run() {
-            refreshAccessibilityState()
-            accessibilityStateHandler.postDelayed(this, 2_000L)
-        }
-    }
-    private val accessibilityConnectionListener: (Boolean) -> Unit = { _ ->
-        runOnUiThread {
-            if (!isFinishing && !isDestroyed) {
-                refreshAccessibilityState()
-            }
-        }
+    private val handler = Handler(Looper.getMainLooper())
+    private val refresh = object : Runnable {
+        override fun run() { if (::coordinator.isInitialized) coordinator.publish(); handler.postDelayed(this, 2_000) }
     }
 
-    private fun refreshAccessibilityState(force: Boolean = false) {
-        val state = Pair(
-            MidsceneAccessibilityService.current() != null,
-            isAccessibilityServiceEnabled(),
-        )
-        if (!force && state == lastAccessibilityState) return
-        lastAccessibilityState = state
-        if (::webView.isInitialized) {
-            webView.evaluateJavascript(
-                "window.__midsceneSetAccessibilityState?.(${state.first}, ${state.second})",
-                null,
-            )
-            webView.evaluateJavascript("window.__midsceneRefreshCapabilities?.()", null)
-        }
-    }
-
-    @SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        pendingTaskInputFocus = intent.getBooleanExtra(EXTRA_FOCUS_TASK_INPUT, false)
-        receiveExternalIntent(intent)
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
-            WebView.setWebContentsDebuggingEnabled(true)
-        }
-
-        val root = FrameLayout(this)
-        rootView = root
-        applyWindowTheme(root)
-        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            val keyboardBottom = if (insets.isVisible(WindowInsetsCompat.Type.ime()))
-                insets.getInsets(WindowInsetsCompat.Type.ime()).bottom else 0
-            val bottom = if (::chatController.isInitialized && chatController.state.webSurfaceOpen) keyboardBottom else 0
-            if (root.paddingBottom != bottom) root.setPadding(0, 0, 0, bottom)
-            val layout = SystemBarInsetsLayout.fromPixels(
-                topInsetPx = systemBars.top,
-                bottomInsetPx = systemBars.bottom,
-                density = resources.displayMetrics.density,
-            )
-            statusBarInsetCssPx = layout.topInsetCssPx
-            navigationBarInsetCssPx = layout.bottomInsetCssPx
-            applySystemBarInsets()
-            insets
-        }
-
-        webView = WebView(this).apply {
-            setBackgroundColor(Color.TRANSPARENT)
-            isVerticalScrollBarEnabled = false
-            isHorizontalScrollBarEnabled = false
-            settings.javaScriptEnabled = true
-            settings.domStorageEnabled = true
-            settings.allowFileAccess = false
-            settings.allowContentAccess = false
-            val assetLoader = WebViewAssetLoader.Builder()
-                .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this@MainActivity))
-                .build()
-            webViewClient = object : WebViewClientCompat() {
-                override fun shouldInterceptRequest(
-                    view: WebView,
-                    request: WebResourceRequest,
-                ): WebResourceResponse? = assetLoader.shouldInterceptRequest(request.url)
-
-                override fun shouldOverrideUrlLoading(
-                    view: WebView,
-                    request: WebResourceRequest,
-                ): Boolean = request.url.host != "appassets.androidplatform.net"
-
-                override fun onPageFinished(view: WebView, url: String) {
-                    super.onPageFinished(view, url)
-                    pageReady = true
-                    applySystemBarInsets()
-                    refreshAccessibilityState(force = true)
-                    syncThemePreference()
-                    notifyDeletedReports()
-                    focusTaskInputIfRequested()
-                    deliverLaunchContext()
-                }
+        rootView = ComposeView(this).apply { setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed) }
+        applyWindowTheme(rootView)
+        nativeBridge = NativeJavascriptBridge(activity = this, onProgress = { method -> if (::coordinator.isInitialized) coordinator.phoneProgress(method) }, onPickAttachment = ::pickAttachment)
+        chatController = ChatController(this, onSurfaceChanged = {}, picker = ::pickAttachment,
+            nativeCommand = { coordinator.command(it) })
+        val store = ConversationStore(File(filesDir, "native-conversation.json"))
+        coordinator = NativeConversationCoordinator(this, nativeBridge, store, chatController::accept, chatController::requestFocus)
+        rootView.setContent {
+            when {
+                coordinator.settingsOpen -> NativeSettingsScreen(coordinator, this, nativeBridge,
+                    onThemeChanged = { applyWindowTheme(rootView); coordinator.publish() }, onLanguageChanged = { recreate() })
+                coordinator.advancedOpen -> NativeAdvancedScreen(coordinator)
+                else -> ChatScreen(chatController)
             }
-            nativeBridge = NativeJavascriptBridge(
-                webView = this,
-                onLanguageChanged = { language ->
-                    if (AppLanguage.set(this@MainActivity, language)) recreate()
-                },
-                onThemeChanged = { theme ->
-                    AppTheme.set(this@MainActivity, theme)
-                    applyWindowTheme(root)
-                },
-                onPickAttachment = ::pickAttachment,
-            )
-            addJavascriptInterface(nativeBridge, "MidsceneNative")
-            chatController = ChatController(this@MainActivity, this, ::showSettingsSurface, ::pickAttachment)
-            addJavascriptInterface(chatController, "TapilotChat")
-            visibility = View.INVISIBLE
-            loadUrl("https://appassets.androidplatform.net/assets/index.html")
         }
-        root.addView(
-            webView,
-            FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT),
-        )
-        chatView = ComposeView(this).apply {
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-            setContent { ChatScreen(chatController) }
-        }
-        root.addView(chatView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
-        setContentView(root)
+        setContentView(rootView)
+        receiveExternalIntent(intent)
+        importer = LegacyConversationImport(this, store).also { loader -> loader.start { result ->
+            result.fold(onSuccess = { coordinator.initialize() }, onFailure = { chatController.showError(it.message ?: "无法导入旧数据，请重新打开应用") })
+        } }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (chatController.recording || chatController.transcribing) {
-                    chatController.cancelRecording()
-                    return
-                }
-                handleChatBack {
-                    isEnabled = false
-                    onBackPressedDispatcher.onBackPressed()
-                    isEnabled = true
-                }
+                if (chatController.recording || chatController.transcribing) { chatController.cancelRecording(); return }
+                if (!coordinator.back()) { isEnabled = false; onBackPressedDispatcher.onBackPressed(); isEnabled = true }
             }
         })
         requestNotificationPermissionIfNeeded()
     }
-
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent); setIntent(intent); receiveExternalIntent(intent)
+        coordinator.receiveLaunchContext()
+        if (intent.getBooleanExtra(EXTRA_FOCUS_TASK_INPUT, false)) chatController.requestFocus()
+    }
     override fun onResume() {
         super.onResume()
-        if (::rootView.isInitialized) applyWindowTheme(rootView)
-        syncThemePreference()
-        refreshAccessibilityState(force = true)
-        notifyDeletedReports()
-        focusTaskInputIfRequested()
-        deliverLaunchContext()
-        if (pageReady) webView.evaluateJavascript("window.__tapilotRefreshAssistantRole?.()", null)
-    }
-
-    override fun onNewIntent(intent: android.content.Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        receiveExternalIntent(intent)
-        deliverLaunchContext()
-        if (intent.getBooleanExtra(EXTRA_FOCUS_TASK_INPUT, false)) {
-            pendingTaskInputFocus = true
-            focusTaskInputIfRequested()
+        if (::coordinator.isInitialized) {
+            coordinator.publish(); coordinator.receiveLaunchContext()
+            if (coordinator.ready) coordinator.removeReports(DeletedReportStore.consume(this))
         }
     }
-
-    @Suppress("DEPRECATION")
+    override fun onStart() { super.onStart(); handler.post(refresh) }
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (!hasFocus && ::chatController.isInitialized && (chatController.recording || chatController.transcribing)) chatController.cancelRecording()
+    }
+    override fun onStop() {
+        if (::chatController.isInitialized && (chatController.recording || chatController.transcribing)) chatController.cancelRecording()
+        handler.removeCallbacks(refresh); super.onStop()
+    }
+    override fun onDestroy() {
+        importer?.close(); attachmentCallback = null; attachmentWorker.shutdown()
+        if (::chatController.isInitialized) chatController.close()
+        if (::coordinator.isInitialized) coordinator.close()
+        if (::nativeBridge.isInitialized) nativeBridge.close()
+        handler.removeCallbacksAndMessages(null); super.onDestroy()
+    }
     private fun pickAttachment(kind: String, callback: (Result<JSONObject?>) -> Unit) {
         if (attachmentCallback != null) {
             callback(Result.failure(IllegalStateException("An attachment picker is already open")))
@@ -282,81 +167,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-        MidsceneAccessibilityService.addConnectionListener(accessibilityConnectionListener)
-        accessibilityStateHandler.post(accessibilityStatePoll)
-    }
-
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-        if (!hasFocus && ::chatController.isInitialized && (chatController.recording || chatController.transcribing)) chatController.cancelRecording()
-    }
-
-    override fun onStop() {
-        if (::chatController.isInitialized && (chatController.recording || chatController.transcribing)) chatController.cancelRecording()
-        accessibilityStateHandler.removeCallbacks(accessibilityStatePoll)
-        MidsceneAccessibilityService.removeConnectionListener(accessibilityConnectionListener)
-        super.onStop()
-    }
-
-    override fun onDestroy() {
-        attachmentCallback = null
-        attachmentWorker.shutdown()
-        webView.removeJavascriptInterface("MidsceneNative")
-        webView.removeJavascriptInterface("TapilotChat")
-        if (::chatController.isInitialized) chatController.close()
-        if (::nativeBridge.isInitialized) nativeBridge.close()
-        webView.destroy()
-        super.onDestroy()
-    }
-
-    private fun handleChatBack(exit: () -> Unit) {
-        if (!::webView.isInitialized || !pageReady) {
-            exit()
-            return
-        }
-        webView.evaluateJavascript("window.__tapilotHandleBack?.() === true") { handled ->
-            if (handled != "true" && !isFinishing && !isDestroyed) {
-                exit()
-            }
-        }
-    }
-
-    private fun applySystemBarInsets() {
-        if (!::webView.isInitialized) return
-        webView.evaluateJavascript(
-            "document.documentElement.style.setProperty(" +
-                "'--native-safe-area-top', '${statusBarInsetCssPx}px');" +
-                "document.documentElement.style.setProperty(" +
-                "'--native-safe-area-bottom', '${navigationBarInsetCssPx}px')",
-            null,
-        )
-    }
-
-    private fun syncThemePreference() {
-        if (!pageReady || !::webView.isInitialized) return
-        webView.evaluateJavascript(
-            "window.__tapilotSetThemePreference?.('${AppTheme.preference(this)}')",
-            null,
-        )
-    }
-
-    private fun focusTaskInputIfRequested() {
-        if (!pendingTaskInputFocus || !pageReady || !::webView.isInitialized) return
-        pendingTaskInputFocus = false
-        intent.removeExtra(EXTRA_FOCUS_TASK_INPUT)
-        chatController.requestFocus()
-    }
-
-    private fun showSettingsSurface(settings: Boolean) {
-        getSystemService(InputMethodManager::class.java).hideSoftInputFromWindow(rootView.windowToken, 0)
-        chatView.visibility = if (settings) View.GONE else View.VISIBLE
-        webView.visibility = if (settings) View.VISIBLE else View.INVISIBLE
-        if (!settings) rootView.setPadding(0, 0, 0, 0)
-        ViewCompat.requestApplyInsets(rootView)
-    }
-
     private fun receiveExternalIntent(incoming: Intent) {
         val action = incoming.action
         if (action != Intent.ACTION_SEND && action != Intent.ACTION_PROCESS_TEXT &&
@@ -394,24 +204,8 @@ class MainActivity : ComponentActivity() {
         }
         if (text.isNotBlank() || context.has("dataUrl") || action == Intent.ACTION_ASSIST) {
             LaunchContext.put(context)
-            pendingTaskInputFocus = true
+            if (::chatController.isInitialized) chatController.requestFocus()
         }
-    }
-
-    private fun deliverLaunchContext() {
-        if (!pageReady || !::webView.isInitialized) return
-        // The bridge consumes the payload on the Web side; this event only triggers retrieval.
-        webView.evaluateJavascript("window.__tapilotReceiveLaunchContext?.()", null)
-    }
-
-    private fun notifyDeletedReports() {
-        if (!pageReady || !::webView.isInitialized) return
-        val reportIds = DeletedReportStore.consume(this)
-        if (reportIds.isEmpty()) return
-        webView.evaluateJavascript(
-            "window.__tapilotReportsDeleted?.(${JSONArray(reportIds.toList())})",
-            null,
-        )
     }
 
     @Suppress("DEPRECATION")
@@ -426,17 +220,6 @@ class MainActivity : ComponentActivity() {
         WindowCompat.getInsetsController(window, window.decorView).apply {
             isAppearanceLightStatusBars = !dark
             isAppearanceLightNavigationBars = !dark
-        }
-    }
-
-    private fun isAccessibilityServiceEnabled(): Boolean {
-        val enabledServices = Settings.Secure.getString(
-            contentResolver,
-            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
-        ) ?: return false
-        val component = ComponentName(this, MidsceneAccessibilityService::class.java)
-        return enabledServices.split(':').any { service ->
-            ComponentName.unflattenFromString(service) == component
         }
     }
 
