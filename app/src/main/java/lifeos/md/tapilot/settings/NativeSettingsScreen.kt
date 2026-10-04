@@ -30,10 +30,10 @@ import org.json.JSONObject
 
 @Composable
 private fun NativeTheme(dark: Boolean, content: @Composable () -> Unit) {
-    val colors = if (dark) darkColorScheme(primary = Color(BrandColors.darkPrimary), background = Color(BrandColors.darkBackground),
+    val colors = if (dark) darkColorScheme(primary = Color(BrandColors.darkPrimary), onPrimary = Color(BrandColors.darkBackground), background = Color(BrandColors.darkBackground),
         surface = Color(BrandColors.darkSurface), onSurface = Color(BrandColors.darkText), onBackground = Color(BrandColors.darkText),
         onSurfaceVariant = Color(BrandColors.darkMuted), outline = Color(BrandColors.darkLine))
-        else lightColorScheme(primary = Color(BrandColors.lightPrimary), background = Color(BrandColors.lightBackground),
+        else lightColorScheme(primary = Color(BrandColors.lightPrimary), onPrimary = Color.White, background = Color(BrandColors.lightBackground),
             surface = Color.White, onSurface = Color(BrandColors.lightText), onBackground = Color(BrandColors.lightText),
             onSurfaceVariant = Color(BrandColors.lightMuted), outline = Color(BrandColors.lightLine))
     MaterialTheme(colorScheme = colors) { content() }
@@ -166,7 +166,7 @@ private fun saveEdge(services: NativeJavascriptBridge, value: EdgeEffectGeometry
 @Composable private fun Header(title: String, back: () -> Unit) {
     Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).statusBarsPadding().height(56.dp).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         TextButton(onClick = back) { Text("‹", fontSize = 26.sp) }
-        Text(title, fontSize = 18.sp)
+        Text(title, fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 @Composable private fun Group(title: String, content: @Composable ColumnScope.() -> Unit) {
