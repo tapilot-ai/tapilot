@@ -55,7 +55,7 @@ class HoldToRecordEditor(context: Context) : EditText(context) {
                 startX = event.rawX
                 startY = event.rawY
                 pending = true
-                postDelayed(begin, 480L)
+                postDelayed(begin, 280L)
                 return true
             }
             MotionEvent.ACTION_MOVE -> {

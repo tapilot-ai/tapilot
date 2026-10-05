@@ -56,8 +56,9 @@ internal class SpeechTranscriber(private val activity: Activity) : SpeechRecogni
         var socket: WebSocket? = null
         var captureThread: Thread? = null
         var ready = false
-        var finishing = false
-        var finalSent = false
+        val boundary = SpeechCaptureBoundary(audio == null)
+        val finishing get() = boundary.finishing
+        val finalSent get() = boundary.finalSent
         var cancelled = false
         var sequence = 2
         var transcript = ""
@@ -177,7 +178,7 @@ internal class SpeechTranscriber(private val activity: Activity) : SpeechRecogni
         val session = Session(saved.provider, null, saved.language, attempts = saved.attempts + 1, startCallback = null)
         session.pcm.append(saved.pcm)
         session.totalBytes = saved.pcm.size
-        session.finishing = true
+        session.boundary.requestFinish()
         session.finishCallback = callback
         for (offset in saved.pcm.indices step 3200) {
             session.pending.addLast(saved.pcm.copyOfRange(offset, minOf(offset + 3200, saved.pcm.size)))
@@ -192,27 +193,29 @@ internal class SpeechTranscriber(private val activity: Activity) : SpeechRecogni
     override fun finish(callback: (Result<String>) -> Unit) {
         val session = active ?: throw (lastFailure ?: IllegalStateException("No recording is in progress"))
         synchronized(session) {
-            check(!session.finishing) { "Transcription is already finishing" }
-            session.finishing = true
+            session.boundary.requestFinish()
             session.finishCallback = callback
         }
-        stopCapture(session)
-        if (session.totalBytes < RATE / 5) {
-            fail(session, IllegalArgumentException("Recording is too short"))
-            return
-        }
-        // One-shot fault injection is restricted to debug APKs for real-device recovery testing.
-        if ((activity.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0 &&
-            activity.intent.getBooleanExtra("tapilot.debug.failSpeechOnce", false)) {
-            activity.intent.removeExtra("tapilot.debug.failSpeechOnce")
-            fail(session, IOException("Injected speech response failure for E2E"))
-            return
-        }
-        runCatching { synchronized(session) { flush(session) } }
-            .onFailure { fail(session, it) }
+        // Keep one microphone-buffer window after release, while the host already shows transcription.
         timeouts.schedule({
-            fail(session, IOException("Speech service response timed out"))
-        }, 25, TimeUnit.SECONDS)
+            if (session.cancelled) return@schedule
+            runCatching {
+                stopCapture(session)
+                check(session.captureThread?.isAlive != true) { "Microphone capture did not stop" }
+                synchronized(session) {
+                    session.boundary.captureDrained()
+                    require(session.totalBytes >= RATE / 5) { "Recording is too short" }
+                    // Preserve the existing debug-only recovery test hook.
+                    if ((activity.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0 &&
+                        activity.intent.getBooleanExtra("tapilot.debug.failSpeechOnce", false)) {
+                        activity.intent.removeExtra("tapilot.debug.failSpeechOnce")
+                        throw IOException("Injected speech response failure for E2E")
+                    }
+                    flush(session)
+                }
+            }.onFailure { fail(session, it) }
+        }, 320, TimeUnit.MILLISECONDS)
+        timeouts.schedule({ fail(session, IOException("Speech service response timed out")) }, 25, TimeUnit.SECONDS)
     }
 
     @Synchronized
@@ -234,7 +237,7 @@ internal class SpeechTranscriber(private val activity: Activity) : SpeechRecogni
                 if (count == 0) continue
                 val chunk = buffer.copyOf(minOf(count, MAX_PCM_BYTES - session.totalBytes))
                 synchronized(session) {
-                    if (session.cancelled || session.finishing) return
+                    if (session.cancelled || !session.boundary.acceptsAudio()) return
                     session.totalBytes += chunk.size
                     session.pcm.append(chunk)
                     session.onLevel(SpeechAudio.level(chunk))
@@ -296,7 +299,7 @@ internal class SpeechTranscriber(private val activity: Activity) : SpeechRecogni
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-            if (session.finishing && !session.cancelled) {
+            if (session.finishing && session.finalSent && !session.cancelled && code == 1000 && session.provider == DEEPGRAM) {
                 val text = if (session.provider == VOLCENGINE) session.transcript
                     else session.finalSegments.joinToString(" ")
                 complete(session, text)
@@ -340,8 +343,7 @@ internal class SpeechTranscriber(private val activity: Activity) : SpeechRecogni
             session.pendingBytes -= chunk.size
             sendAudio(session, chunk)
         }
-        if (session.finishing && !session.finalSent) {
-            session.finalSent = true
+        if (session.boundary.claimFinal()) {
             val sent = if (session.provider == VOLCENGINE) {
                 session.socket?.send(
                     SeedAsrProtocol.audioRequest(session.sequence++, byteArrayOf(), last = true).toByteString(),
