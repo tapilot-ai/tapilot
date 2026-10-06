@@ -1,0 +1,63 @@
+{
+  "capturedAt": "2026-10-05T15:54:41.067Z",
+  "sourceRevision": "eae679447bf81dd72cbe5780fc296a38693cab27",
+  "sourceDirty": true,
+  "device": "Xiaomi M2006J10C / MIUI 14",
+  "themeSha256": "54c103d1be28911ecf39008b6d95093209355d93bbd30f36e91a360552adf28e",
+  "screenshots": [
+    {
+      "state": "settings",
+      "file": "settings.png",
+      "width": 1080,
+      "height": 2400,
+      "sha256": "e0913d091051946343bac01612d9486e4fd8cdaa93ccdde2730f99b246b2fdc3"
+    },
+    {
+      "state": "settings-dark",
+      "file": "settings-dark.png",
+      "width": 1080,
+      "height": 2400,
+      "sha256": "7798aa69e5fee6cac875c132894b2afab2ca93c629cc1f3690aaff96761aea26"
+    },
+    {
+      "state": "minimal-settings-light",
+      "file": "minimal-settings-light.png",
+      "width": 1080,
+      "height": 2400,
+      "sha256": "9265dd47918032f6bcc83bfbc278bd2b44483c43ad84b79040a8df0cfff35376"
+    },
+    {
+      "state": "minimal-settings-dark",
+      "file": "minimal-settings-dark.png",
+      "width": 1080,
+      "height": 2400,
+      "sha256": "bda6eaf69a3fb9c682b44a99b5bfe1e1d5a17ec2805be931764109916c4b6f4d"
+    },
+    {
+      "state": "minimal-chat-dark",
+      "file": "minimal-chat-dark.png",
+      "width": 1080,
+      "height": 2400,
+      "sha256": "30866be0016269151979993fc9e585d3cabf4176b23e21b259ddb0595707cc2b"
+    },
+    {
+      "state": "minimal-report-dark",
+      "file": "minimal-report-dark.png",
+      "width": 1080,
+      "height": 2400,
+      "sha256": "5b66948782e522fc75e84303bc07c4e32e68179b45548f1bcacd4394e65235e7"
+    },
+    {
+      "state": "minimal-panel-dark",
+      "file": "minimal-panel-dark.png",
+      "width": 1080,
+      "height": 2400,
+      "sha256": "615c83870208f47ad4cdcaba74f0fd7edc6210d535a320bc7d867e2a376b8d94"
+    }
+  ],
+  "apkSha256": "5a3b6f60dcaab2a6cef9b937d415211290e4f778ea501c4e293375f4b5b85fd1",
+  "installedApkMatches": true,
+  "reference": "studio/packages/mobile-theme/src/{classic,palettes,store,ThemePicker}",
+  "paletteValueChecks": 100,
+  "themeConfigurationTests": 4
+}

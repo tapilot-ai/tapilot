@@ -1,6 +1,8 @@
 package lifeos.md.tapilot.chat
 
-import lifeos.md.tapilot.theme.BrandColors
+import lifeos.md.tapilot.theme.LocalThemePalette
+import lifeos.md.tapilot.theme.TapilotTheme
+import lifeos.md.tapilot.theme.tapilotColors
 import android.graphics.drawable.GradientDrawable
 import android.text.Editable
 import android.text.TextWatcher
@@ -36,20 +38,12 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 
-internal val Blue = Color(BrandColors.blue)
-internal val Purple = Color(BrandColors.violet)
-internal val Brand = Brush.horizontalGradient(listOf(Blue, Color(BrandColors.middle), Purple))
 
 @Composable
 fun ChatScreen(controller: ChatController) {
     val state = controller.state
-    val colors = if (state.dark) darkColorScheme(primary = Color(BrandColors.darkPrimary), secondary = Purple,
-        background = Color(BrandColors.darkBackground), surface = Color(BrandColors.darkSurface), onBackground = Color(BrandColors.darkText), onSurface = Color(BrandColors.darkText), onSurfaceVariant = Color(BrandColors.darkMuted), error = Color(BrandColors.darkDanger), surfaceContainerHigh = Color(BrandColors.darkSurface),
-        surfaceContainer = Color(BrandColors.darkSurface), surfaceVariant = Color(BrandColors.darkSoft), outline = Color(BrandColors.darkLine)) else lightColorScheme(
-        primary = Color(BrandColors.lightPrimary), secondary = Purple, background = Color(BrandColors.lightBackground), surface = Color.White, onBackground = Color(BrandColors.lightText),
-        onSurface = Color(BrandColors.lightText), onSurfaceVariant = Color(BrandColors.lightMuted), error = Color(BrandColors.lightDanger), surfaceContainerHigh = Color(BrandColors.lightSurface),
-        surfaceContainer = Color(BrandColors.lightSurface), surfaceVariant = Color(BrandColors.lightSoft), outline = Color(BrandColors.lightLine))
-    MaterialTheme(colorScheme = colors) {
+    val colors = tapilotColors(state.dark, state.paletteId)
+    TapilotTheme(state.dark, state.paletteId) {
       CompositionLocalProvider(LocalContentColor provides colors.onBackground) {
         var sessions by remember { mutableStateOf(false) }
         var attachments by remember { mutableStateOf(false) }
@@ -62,13 +56,13 @@ fun ChatScreen(controller: ChatController) {
         }
         BoxWithConstraints(Modifier.fillMaxSize().background(colors.background)) {
             Column(Modifier.fillMaxSize().navigationBarsPadding().imePadding()) {
-                Row(Modifier.fillMaxWidth().background(colors.surface).statusBarsPadding().height(56.dp).padding(horizontal = 12.dp),
+                Row(Modifier.fillMaxWidth().background(colors.surfaceContainerLow).statusBarsPadding().height(56.dp).padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     Row(Modifier.weight(1f).clickable(enabled = !busy) { sessions = true }.padding(8.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(state.conversations.find { it.id == state.activeConversationId }?.title ?: "Tapilot",
-                                fontSize = 17.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             if (state.running) Text(label("正在处理…", "Working…"),
                                 color = colors.onSurfaceVariant, fontSize = 12.sp)
                         }
@@ -101,7 +95,7 @@ fun ChatScreen(controller: ChatController) {
                     }
                 } else {
                     LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = list,
-                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(state.messages, key = { it.id }) { message ->
                             MessageBubble(message, zh, controller, state.running)
                         }
@@ -133,10 +127,10 @@ fun ChatScreen(controller: ChatController) {
                         TextButton(onClick = { controller.command("removeAttachment") }, enabled = !busy) { Text(label("移除", "Remove")) }
                     }
                 }
-                HorizontalDivider(color = colors.outline.copy(alpha = .6f))
+                HorizontalDivider(color = colors.outlineVariant)
                 ChatComposer(controller, onAttachments = { attachments = true })
             }
-            if (controller.recording || controller.transcribing) {
+            run {
                 RecordingFeedback(controller.willCancel, controller.willSend,
                     if (controller.transcribing) label("正在转文字…", "Transcribing…")
                     else if (controller.willCancel) label("松开取消", "Release to cancel")
@@ -144,6 +138,7 @@ fun ChatScreen(controller: ChatController) {
                     else label("松开发送", "Release to send"),
                     label("取消", "Cancel"), label("发送", "Send"),
                     controller.audioLevels, controller.recordingSeconds, controller.liveTranscript, controller.transcribing,
+                    visible = controller.recording || controller.transcribing,
                     onCancel = controller::cancelRecording,
                     onSend = { controller.moveRecording(RecordingGesture.Send); controller.releaseRecording() })
             }
@@ -154,7 +149,7 @@ fun ChatScreen(controller: ChatController) {
                     items(state.conversations, key = { it.id }) { conversation ->
                         Text(conversation.title, Modifier.fillMaxWidth().clickable {
                             controller.command("select", id = conversation.id); sessions = false
-                        }.padding(vertical = 14.dp), color = if (conversation.id == state.activeConversationId) Blue else colors.onSurface)
+                        }.padding(vertical = 14.dp), color = if (conversation.id == state.activeConversationId) colors.primary else colors.onSurface)
                     }
                 }
             }, confirmButton = { Row {
@@ -193,7 +188,7 @@ private fun ChatComposer(controller: ChatController, onAttachments: () -> Unit) 
                 .showSoftInput(field, InputMethodManager.SHOW_IMPLICIT) } }
         }
     }
-    Row(Modifier.fillMaxWidth().background(colors.surface).padding(horizontal = 8.dp, vertical = 8.dp),
+    Row(Modifier.fillMaxWidth().background(colors.surfaceContainerLow).padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         IconButton(onClick = { voiceMode = controller.draft.isEmpty() && !voiceMode; if (voiceMode) editor?.let { field ->
             field.clearFocus(); field.context.getSystemService(InputMethodManager::class.java).hideSoftInputFromWindow(field.windowToken, 0)
@@ -203,7 +198,7 @@ private fun ChatComposer(controller: ChatController, onAttachments: () -> Unit) 
         AndroidView(modifier = Modifier.weight(1f).heightIn(min = 48.dp, max = 136.dp), factory = { context ->
             HoldToRecordEditor(context).apply {
                 editor = this
-                setTextSize(16f)
+                setTextSize(15f)
                 setPadding((12 * resources.displayMetrics.density).toInt(), (10 * resources.displayMetrics.density).toInt(),
                     (12 * resources.displayMetrics.density).toInt(), (10 * resources.displayMetrics.density).toInt())
                 gravity = Gravity.CENTER_VERTICAL
@@ -245,10 +240,11 @@ private fun ChatComposer(controller: ChatController, onAttachments: () -> Unit) 
             if (field.text.toString() != desired) { field.setText(desired); field.setSelection(desired.length) }
             field.refreshHint()
             field.background = GradientDrawable().apply {
-                cornerRadius = 12 * field.resources.displayMetrics.density
-                setColor(if (state.dark) BrandColors.darkInput else BrandColors.lightInput)
+                cornerRadius = 18 * field.resources.displayMetrics.density
+                setColor(lifeos.md.tapilot.theme.ThemePalettes.get(state.paletteId, state.dark).input)
                 if (controller.recording) setStroke((field.resources.displayMetrics.density * 2).toInt(),
-                    if (controller.willCancel) (if (state.dark) BrandColors.darkDanger else BrandColors.lightDanger) else Blue.toArgb())
+                    if (controller.willCancel) colors.error.toArgb() else colors.primary.toArgb())
+                else setStroke(field.resources.displayMetrics.density.toInt().coerceAtLeast(1), colors.outline.toArgb())
             }
         })
         IconButton(onClick = onAttachments, enabled = enabled && !controller.recording, modifier = Modifier.size(48.dp)) {
@@ -257,8 +253,8 @@ private fun ChatComposer(controller: ChatController, onAttachments: () -> Unit) 
         val canSend = state.running || (enabled && !controller.recording && (controller.draft.isNotBlank() || state.attachment != null))
         IconButton(onClick = { if (state.running) controller.command("stop") else controller.send() },
             enabled = canSend,
-            modifier = Modifier.size(48.dp).background(if (canSend) Blue else colors.surfaceVariant, RoundedCornerShape(12.dp))) {
-            ChatIcon(if (state.running) "stop" else "send", if (canSend) Color.White else colors.onSurfaceVariant.copy(alpha = .5f), if (state.running) "停止" else "发送")
+            modifier = Modifier.size(48.dp).background(if (canSend) colors.primary else colors.surfaceVariant, RoundedCornerShape(18.dp))) {
+            ChatIcon(if (state.running) "stop" else "send", if (canSend) colors.onPrimary else colors.onSurfaceVariant.copy(alpha = .5f), if (state.running) "停止" else "发送")
         }
     }
 }

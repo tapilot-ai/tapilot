@@ -2,11 +2,11 @@ import {readFileSync,writeFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {resolve} from 'node:path';
-const folder=resolve(process.argv.slice(2).find(arg=>!arg.startsWith('--'))||'docs/visual-baseline/20261003-refined');
+const folder=resolve(process.argv.slice(2).find(arg=>!arg.startsWith('--'))||'docs/visual-baseline/20261005-theme-config');
 const palette=JSON.parse(readFileSync('theme/brand.json','utf8')).light;
-const allStates=['chat','keyboard','recording','cancel','transcribe','attachment','settings','report','chat-dark','settings-dark','report-dark','empty','speech-error'];
+const allStates=['chat','keyboard','recording','cancel','transcribe','attachment','settings','report','chat-dark','settings-dark','report-dark','empty','speech-error','minimal-settings-light','minimal-settings-dark','minimal-chat-dark','minimal-report-dark','minimal-panel-dark'];
 const selectedStates=process.argv.find(arg=>arg.startsWith('--states='))?.slice('--states='.length);
-const states=selectedStates ? selectedStates.split(',') : allStates.slice(0,8);
+const states=selectedStates ? selectedStates.split(',') : ['settings', 'settings-dark', 'minimal-settings-light', 'minimal-settings-dark', 'minimal-chat-dark', 'minimal-report-dark', 'minimal-panel-dark'];
 if(states.length===0 || states.some(state=>!allStates.includes(state)) || new Set(states).size!==states.length) {
  throw Error('Choose unique supported visual states with --states=chat,keyboard,...');
 }

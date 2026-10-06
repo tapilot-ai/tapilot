@@ -40,6 +40,19 @@ class FloatingBallController(
     private var statusView: View? = null
     private var resultView: View? = null
 
+    private val themePreferences = service.getSharedPreferences("midscene-preferences", 0)
+    private val themeListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == "theme" || key == "theme.palette") mainHandler.post { refreshTheme() }
+    }
+
+    init { themePreferences.registerOnSharedPreferenceChangeListener(themeListener) }
+
+    fun refreshTheme() {
+        val result = (resultView as? LinearLayout)?.let { panel -> (panel.getChildAt(1) as? TextView)?.text?.toString() }
+        hide(); hideStatus(); updateVisibility()
+        if (result != null) showResult(result)
+    }
+
     fun setAppForeground(foreground: Boolean) {
         appForeground = foreground
         if (foreground) hideResult()
@@ -66,8 +79,8 @@ class FloatingBallController(
             setPadding(dp(16), dp(12), dp(16), dp(12))
             background = GradientDrawable().apply {
                 cornerRadius = dp(16).toFloat()
-                setColor(service.getColor(if (AppTheme.isDark(service)) R.color.brand_dark_surface else R.color.brand_surface))
-                setStroke(dp(1), service.getColor(if (AppTheme.isDark(service)) R.color.brand_dark_line else R.color.brand_line))
+                setColor(AppTheme.color(service, if (AppTheme.isDark(service)) R.color.brand_dark_surface else R.color.brand_surface))
+                setStroke(dp(1), AppTheme.color(service, if (AppTheme.isDark(service)) R.color.brand_dark_line else R.color.brand_line))
             }
             elevation = dp(3).toFloat()
             addView(LinearLayout(service).apply {
@@ -75,21 +88,21 @@ class FloatingBallController(
                 addView(TextView(service).apply {
                     text = "Tapilot 已回复 · 查看对话"
                     textSize = 14f
-                    setTextColor(service.getColor(R.color.brand_blue))
+                    setTextColor(AppTheme.color(service, if (AppTheme.isDark(service)) R.color.brand_dark_primary else R.color.brand_primary))
                 }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
                 addView(TextView(service).apply {
                     text = "关闭"
                     textSize = 13f
                     gravity = Gravity.CENTER
                     minWidth = dp(48); minHeight = dp(48)
-                    setTextColor(service.getColor(if (AppTheme.isDark(service)) R.color.brand_dark_muted else R.color.brand_muted))
+                    setTextColor(AppTheme.color(service, if (AppTheme.isDark(service)) R.color.brand_dark_muted else R.color.brand_muted))
                     setOnClickListener { hideResult() }
                 })
             })
             addView(TextView(service).apply {
                 text = message.take(260)
                 textSize = 14f
-                setTextColor(service.getColor(if (AppTheme.isDark(service)) R.color.brand_dark_text else R.color.brand_text))
+                setTextColor(AppTheme.color(service, if (AppTheme.isDark(service)) R.color.brand_dark_text else R.color.brand_text))
                 maxLines = 5
             })
             setOnClickListener {
@@ -142,11 +155,11 @@ class FloatingBallController(
         val label = TextView(service).apply {
             text = "Tapilot 正在处理…"
             textSize = 13f
-            setTextColor(Color.WHITE)
+            setTextColor(AppTheme.colors(service).contrast)
             setPadding(dp(16), dp(9), dp(16), dp(9))
             background = GradientDrawable().apply {
                 cornerRadius = dp(10).toFloat()
-                setColor(service.getColor(R.color.brand_blue))
+                setColor(AppTheme.color(service, if (AppTheme.isDark(service)) R.color.brand_dark_primary else R.color.brand_primary))
             }
         }
         val params = WindowManager.LayoutParams(
@@ -184,8 +197,8 @@ class FloatingBallController(
             setPadding(dp(5), dp(5), dp(5), dp(5))
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(service.getColor(if (AppTheme.isDark(service)) R.color.brand_dark_soft else R.color.brand_soft))
-                setStroke(dp(1), service.getColor(if (AppTheme.isDark(service)) R.color.brand_dark_line else R.color.brand_line))
+                setColor(AppTheme.color(service, if (AppTheme.isDark(service)) R.color.brand_dark_soft else R.color.brand_soft))
+                setStroke(dp(1), AppTheme.color(service, if (AppTheme.isDark(service)) R.color.brand_dark_line else R.color.brand_line))
             }
             elevation = dp(8).toFloat()
             setOnClickListener { openTaskInput() }
@@ -280,6 +293,7 @@ class FloatingBallController(
     }
 
     override fun close() {
+        themePreferences.unregisterOnSharedPreferenceChangeListener(themeListener)
         hide()
         hideStatus()
         hideResult()

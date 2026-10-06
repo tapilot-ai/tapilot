@@ -89,6 +89,7 @@ class MainActivity : ComponentActivity() {
     }
     override fun onResume() {
         super.onResume()
+        if (::rootView.isInitialized) applyWindowTheme(rootView)
         if (::coordinator.isInitialized) {
             coordinator.publish(); coordinator.receiveLaunchContext()
             if (coordinator.ready) coordinator.removeReports(DeletedReportStore.consume(this))
@@ -211,7 +212,7 @@ class MainActivity : ComponentActivity() {
     @Suppress("DEPRECATION")
     private fun applyWindowTheme(root: View) {
         val dark = AppTheme.isDark(this)
-        val background = if (dark) getColor(R.color.brand_dark_surface) else getColor(R.color.brand_surface)
+        val background = if (dark) AppTheme.color(this, R.color.brand_dark_header) else AppTheme.color(this, R.color.brand_header)
         root.setBackgroundColor(background)
         window.statusBarColor = Color.TRANSPARENT
         window.isStatusBarContrastEnforced = false

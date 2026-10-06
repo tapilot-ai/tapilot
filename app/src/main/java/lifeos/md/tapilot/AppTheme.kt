@@ -9,10 +9,15 @@ object AppTheme {
     private val supported = setOf("system", "light", "dark")
 
     fun preference(context: Context): String =
-        context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
-            .getString(THEME_KEY, "system")
-            ?.takeIf { it in supported }
-            ?: "system"
+        parsePreference(context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).getString(THEME_KEY, null))
+
+    fun parsePreference(value: String?): String = value?.takeIf { it in supported } ?: "system"
+
+    fun resolveDark(preference: String, systemDark: Boolean): Boolean = when (parsePreference(preference)) {
+        "dark" -> true
+        "light" -> false
+        else -> systemDark
+    }
 
     fun set(context: Context, theme: String) {
         require(theme in supported) { "Unsupported app theme: $theme" }
@@ -22,10 +27,24 @@ object AppTheme {
             .apply()
     }
 
-    fun isDark(context: Context): Boolean = when (preference(context)) {
-        "dark" -> true
-        "light" -> false
-        else -> context.resources.configuration.uiMode and
-            Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+    fun paletteId(context: Context): String = parsePaletteId(
+        context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).getString("theme.palette", null))
+
+    fun parsePaletteId(value: String?): String = if (value == "minimal") "minimal" else "classic"
+
+    fun setPalette(context: Context, id: String) {
+        require(id == "classic" || id == "minimal") { "Unsupported palette: $id" }
+        context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+            .edit().putString("theme.palette", id).apply()
     }
+
+    internal fun colors(context: Context, dark: Boolean = isDark(context)) =
+        lifeos.md.tapilot.theme.ThemePalettes.get(paletteId(context), dark)
+
+    fun color(context: Context, resource: Int): Int =
+        lifeos.md.tapilot.theme.ThemePalettes.resource(paletteId(context), isDark(context), resource)
+            ?: context.getColor(resource)
+
+    fun isDark(context: Context): Boolean = resolveDark(preference(context),
+        context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES)
 }

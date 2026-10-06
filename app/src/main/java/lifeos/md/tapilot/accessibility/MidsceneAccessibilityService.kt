@@ -154,7 +154,7 @@ class MidsceneAccessibilityService : AccessibilityService() {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        if (::floatingBall.isInitialized) floatingBall.updatePosition()
+        if (::floatingBall.isInitialized) { floatingBall.updatePosition(); floatingBall.refreshTheme() }
     }
 
     fun capture(sessionId: String, callback: (Result<CapturePayload>) -> Unit) {

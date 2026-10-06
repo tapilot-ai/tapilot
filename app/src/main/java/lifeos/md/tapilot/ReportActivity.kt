@@ -172,7 +172,7 @@ class ReportActivity : Activity() {
                 override fun onPageFinished(view: WebView, url: String) {
                     view.evaluateJavascript(assets.open("report-export.js").bufferedReader().use { it.readText() }, null)
                     view.evaluateJavascript(
-                        mobileCompatibilityScript(initialDarkTheme),
+                        mobileCompatibilityScript(initialDarkTheme, AppTheme.paletteId(this@ReportActivity)),
                         null,
                     )
                     probeReportReady()
@@ -539,16 +539,16 @@ class ReportActivity : Activity() {
     }
 
     private fun reportBackgroundColor(dark: Boolean): Int =
-        if (dark) getColor(R.color.brand_dark_background) else getColor(R.color.brand_background)
+        if (dark) AppTheme.color(this, R.color.brand_dark_background) else AppTheme.color(this, R.color.brand_background)
 
     private fun reportChromeColor(dark: Boolean): Int =
-        if (dark) getColor(R.color.brand_dark_surface) else getColor(R.color.brand_surface)
+        if (dark) AppTheme.color(this, R.color.brand_dark_header) else AppTheme.color(this, R.color.brand_header)
 
     private fun reportPrimaryTextColor(dark: Boolean): Int =
-        if (dark) getColor(R.color.brand_dark_text) else getColor(R.color.brand_text)
+        if (dark) AppTheme.color(this, R.color.brand_dark_text) else AppTheme.color(this, R.color.brand_text)
 
     private fun reportSecondaryTextColor(dark: Boolean): Int =
-        if (dark) getColor(R.color.brand_dark_muted) else getColor(R.color.brand_muted)
+        if (dark) AppTheme.color(this, R.color.brand_dark_muted) else AppTheme.color(this, R.color.brand_muted)
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
@@ -574,9 +574,10 @@ class ReportActivity : Activity() {
         private fun initialReportThemeScript(dark: Boolean) =
             "localStorage.setItem('midscene-dark-mode','${dark}');"
 
-        private fun mobileCompatibilityScript(dark: Boolean) = """
+        private fun mobileCompatibilityScript(dark: Boolean, paletteId: String) = """
             (function() {
               localStorage.setItem('midscene-dark-mode', '${dark}');
+              document.documentElement.dataset.palette = '$paletteId';
               document.documentElement.dataset.theme = '${if (dark) "dark" else "light"}';
 
               var id = 'midscene-android-mobile-fixes';
@@ -589,13 +590,15 @@ class ReportActivity : Activity() {
                   '.mobile-player-fullscreen-button{display:none!important}' +
                   '.main-right .main-content{box-sizing:border-box!important;' +
                   'padding-bottom:max(20px,env(safe-area-inset-bottom))!important}' +
-                  '.page-nav{background:var(--surface)!important}' +
-                  '.mobile-report-tabs{padding:4px!important;border-radius:8px!important;box-shadow:none!important;background:var(--input)!important}' +
-                  '.mobile-report-tabs button{border-radius:6px!important;min-height:40px!important;font-size:14px!important;box-shadow:none!important}' +
+                  'body,#root,.page-container,.ant-layout,.main,.main-right{background:var(--background)!important;color:var(--text)!important}' +
+                  '.main-content,.main-left{background:var(--surface)!important;color:var(--text)!important}' +
+                  '.page-nav{background:var(--header)!important;color:var(--text)!important}' +
+                  '.mobile-report-tabs{padding:4px!important;border:1px solid var(--line)!important;border-radius:18px!important;box-shadow:none!important;background:var(--input)!important}' +
+                  '.mobile-report-tabs button{border-radius:14px!important;min-height:40px!important;font-size:14px!important;box-shadow:none!important}' +
                   'html:not([data-theme="dark"]) .mobile-report-tabs button.is-active{' +
                   'color:var(--primary-dark)!important;background:var(--surface)!important}' +
                   'html[data-theme="dark"] .mobile-report-tabs button{' +
-                  'color:rgba(248,250,253,.62)!important}' +
+                  'color:var(--text-secondary)!important}' +
                   'html[data-theme="dark"] .mobile-report-tabs button.is-active{' +
                   'color:var(--text)!important;background:var(--primary-soft)!important;' +
                   'box-shadow:none!important}' +

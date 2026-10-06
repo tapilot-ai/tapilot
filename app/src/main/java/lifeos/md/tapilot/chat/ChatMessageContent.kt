@@ -7,6 +7,8 @@ import android.util.Base64
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import lifeos.md.tapilot.theme.LocalThemePalette
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -34,6 +36,10 @@ import kotlinx.coroutines.withContext
 internal fun MessageBubble(message: ChatMessage, zh: Boolean, controller: ChatController, busy: Boolean) {
     val user = message.role == "user"
     val colors = MaterialTheme.colorScheme
+    val palette = LocalThemePalette.current
+    val bubbleColor = Color(if (user) palette.bubbleStart else palette.assistantBubble)
+    val bubbleShape = if (user) RoundedCornerShape(20.dp, 20.dp, 8.dp, 20.dp)
+        else RoundedCornerShape(20.dp, 20.dp, 20.dp, 8.dp)
     val context = LocalContext.current
     var menu by remember(message.id) { mutableStateOf(false) }
     var details by remember(message.id) { mutableStateOf(false) }
@@ -43,20 +49,23 @@ internal fun MessageBubble(message: ChatMessage, zh: Boolean, controller: ChatCo
     fun copy() {
         context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("Tapilot", message.text))
     }
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+    val bubbleWidth = maxWidth * if (user) .82f else .92f
     Row(Modifier.fillMaxWidth(), horizontalArrangement = if (user) Arrangement.End else Arrangement.Start) {
-        Column(Modifier.widthIn(max = if (user) 300.dp else 560.dp)
-            .background(if (user) colors.surfaceVariant else Color.Transparent, RoundedCornerShape(16.dp))
+        Column(Modifier.widthIn(max = bubbleWidth)
+            .background(bubbleColor, bubbleShape)
+            .border(1.dp, colors.outlineVariant, bubbleShape)
             .combinedClickable(onClick = {}, onLongClick = { menu = true })
-            .padding(horizontal = if (user) 14.dp else 0.dp, vertical = if (user) 12.dp else 4.dp)) {
+            .padding(horizontal = 14.dp, vertical = 12.dp)) {
             val text = if (!user && message.status == "running") (if (zh) "正在处理…" else "Working…")
                 else if (!user && message.status == "stopped") (if (zh) "任务已停止" else "Task stopped")
                 else if (quotaFailure && !details) (if (zh) "模型账户欠费，请充值或在设置中选择可用的模型 API。" else "The model account is overdue. Check your model settings.")
                 else message.text.ifBlank { if (zh) "任务已结束" else "Task finished" }
-            if (user) Text(text, fontSize = 16.sp, lineHeight = 24.sp)
-            else SelectionContainer { Text(text, fontSize = 16.sp, lineHeight = 24.sp) }
+            if (user) Text(text, color = Color(palette.bubbleText), fontSize = 15.sp, lineHeight = 22.sp)
+            else SelectionContainer { Text(text, fontSize = 15.sp, lineHeight = 22.sp) }
             message.attachment?.let {
                 TextButton(onClick = { controller.command("preview", id = message.entryId) }) {
-                    Text((if (it.name == "当前屏幕") "引用：" else "附件：") + it.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text((if (it.name == "当前屏幕") "引用：" else "附件：") + it.name, color = if (user) Color(palette.bubbleText) else colors.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             if (!user && message.status != "running") {
@@ -80,6 +89,7 @@ internal fun MessageBubble(message: ChatMessage, zh: Boolean, controller: ChatCo
                     onClick = { menu = false; controller.command("editMessage", id = message.entryId) })
             }
         }
+    }
     }
     if (rerun) AlertDialog(onDismissRequest = { rerun = false }, title = { Text(if (zh) "重新执行？" else "Run again?") },
         text = { Text(if (zh) "将重新发送原消息和附件，手机操作可能再次执行。" else "Resend the original message and attachment. Phone actions may run again.") },

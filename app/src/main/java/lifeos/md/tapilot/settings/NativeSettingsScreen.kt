@@ -25,26 +25,24 @@ import lifeos.md.tapilot.accessibility.FloatingBallPreferences
 import lifeos.md.tapilot.bridge.NativeJavascriptBridge
 import lifeos.md.tapilot.conversation.ModelProfiles
 import lifeos.md.tapilot.conversation.NativeConversationCoordinator
-import lifeos.md.tapilot.theme.BrandColors
+import lifeos.md.tapilot.theme.ThemePalettes
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import lifeos.md.tapilot.theme.TapilotTheme
+import lifeos.md.tapilot.theme.ThemeBackdrop
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.text.font.FontWeight
 import org.json.JSONObject
-
-@Composable
-private fun NativeTheme(dark: Boolean, content: @Composable () -> Unit) {
-    val colors = if (dark) darkColorScheme(primary = Color(BrandColors.darkPrimary), onPrimary = Color(BrandColors.darkBackground), background = Color(BrandColors.darkBackground),
-        surface = Color(BrandColors.darkSurface), onSurface = Color(BrandColors.darkText), onBackground = Color(BrandColors.darkText),
-        onSurfaceVariant = Color(BrandColors.darkMuted), outline = Color(BrandColors.darkLine))
-        else lightColorScheme(primary = Color(BrandColors.lightPrimary), onPrimary = Color.White, background = Color(BrandColors.lightBackground),
-            surface = Color.White, onSurface = Color(BrandColors.lightText), onBackground = Color(BrandColors.lightText),
-            onSurfaceVariant = Color(BrandColors.lightMuted), outline = Color(BrandColors.lightLine))
-    MaterialTheme(colorScheme = colors) { content() }
-}
 
 @Composable
 fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: Activity, services: NativeJavascriptBridge,
                          onThemeChanged: () -> Unit, onLanguageChanged: () -> Unit) {
     val zh = AppLanguage.resolved(activity) == "zh"
     fun label(a: String, b: String) = if (zh) a else b
-    var dark by remember { mutableStateOf(AppTheme.isDark(activity)) }
+    var paletteId by remember { mutableStateOf(AppTheme.paletteId(activity)) }
+    var mode by remember { mutableStateOf(AppTheme.preference(activity)) }
+    val dark = AppTheme.resolveDark(mode, androidx.compose.foundation.isSystemInDarkTheme())
     var model by remember(coordinator.preset, coordinator.data) { mutableStateOf(coordinator.profile()) }
     var apiKey by remember(coordinator.preset) { mutableStateOf("") }
     var speechKey by remember { mutableStateOf("") }
@@ -55,23 +53,24 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
     var floating by remember { mutableStateOf(FloatingBallPreferences.isEnabled(activity)) }
     var edge by remember { mutableStateOf(EdgeEffectPreferences.get(activity)) }
     val busy = coordinator.settingsBusy
-    NativeTheme(dark) {
-        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).navigationBarsPadding().imePadding()) {
+    TapilotTheme(dark, paletteId) {
+        ThemeBackdrop(dark) {
+        Column(Modifier.fillMaxSize().navigationBarsPadding().imePadding()) {
             Header(label("设置", "Settings")) { coordinator.back() }
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Group(label("模型 API", "Model API")) {
                     SettingRow(label("服务商", "Provider"), coordinator.preset) { if (!busy) picker = "model" }
                     listOf("baseUrl" to "API 地址", "modelName" to "模型名称", "modelFamily" to "模型系列").forEach { (field, title) ->
                         val en = when (field) { "baseUrl" -> "API URL"; "modelName" -> "Model name"; else -> "Model family" }
                         OutlinedTextField(value = model.optString(field), onValueChange = { model = JSONObject(model.toString()).put(field, it) },
-                            label = { Text(label(title, en)) }, singleLine = true, enabled = !busy, modifier = Modifier.fillMaxWidth())
+                            label = { Text(label(title, en)) }, singleLine = true, enabled = !busy, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium)
                     }
                     OutlinedTextField(apiKey, { apiKey = it }, label = { Text("API Key") },
                         placeholder = { Text(if (coordinator.hasKey(coordinator.preset)) label("已保存；留空保留", "Saved; leave empty to retain") else label("输入 API Key", "Enter API Key")) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        visualTransformation = PasswordVisualTransformation(), singleLine = true, enabled = !busy, modifier = Modifier.fillMaxWidth())
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { coordinator.saveModel(model, apiKey); apiKey = "" }, enabled = !busy) { Text(label("保存", "Save")) }
+                        visualTransformation = PasswordVisualTransformation(), singleLine = true, enabled = !busy, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        CompactPrimaryAction(label("保存", "Save"), enabled = !busy) { coordinator.saveModel(model, apiKey); apiKey = "" }
                         TextButton(onClick = { coordinator.saveModel(model, apiKey); apiKey = ""; coordinator.testModel() }, enabled = !busy) { Text(label("检查连接", "Check connection")) }
                         TextButton(onClick = { resetModel = true }, enabled = !busy) { Text(label("重置", "Reset")) }
                     }
@@ -83,16 +82,21 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
                     OutlinedTextField(speechKey, { speechKey = it }, label = { Text("API Key") },
                         placeholder = { Text(if (coordinator.hasKey("speech-$provider")) label("已保存；留空保留", "Saved; leave empty to retain") else label("输入 API Key", "Enter API Key")) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        visualTransformation = PasswordVisualTransformation(), singleLine = true, enabled = !busy, modifier = Modifier.fillMaxWidth())
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { coordinator.saveSpeech(provider, speechKey); speechKey = "" }, enabled = !busy) { Text(label("保存", "Save")) }
+                        visualTransformation = PasswordVisualTransformation(), singleLine = true, enabled = !busy, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        CompactPrimaryAction(label("保存", "Save"), enabled = !busy) { coordinator.saveSpeech(provider, speechKey); speechKey = "" }
                         TextButton(onClick = { coordinator.saveSpeech(provider, speechKey); speechKey = ""; coordinator.checkSpeech(provider) }, enabled = !busy) { Text(label("检查连接", "Check connection")) }
                     }
                     if (coordinator.settingsSection == "speech") Status(coordinator.settingsStatus)
                 }
                 if (coordinator.settingsSection == "general") Status(coordinator.settingsStatus)
                 Group(label("外观与语言", "Appearance & language")) {
-                    SettingRow(label("主题", "Theme"), AppTheme.preference(activity)) { picker = "theme" }
+                    ThemePalettePicker(paletteId, zh) { id ->
+                        AppTheme.setPalette(activity, id); paletteId = id; onThemeChanged()
+                    }
+                    SettingRow(label("明暗模式", "Appearance"), when (mode) {
+                        "light" -> label("浅色", "Light"); "dark" -> label("深色", "Dark"); else -> label("跟随系统", "System")
+                    }) { picker = "theme" }
                     SettingRow(label("语言", "Language"), activity.getSharedPreferences("midscene-preferences", 0).getString("language", "system").orEmpty()) { picker = "language" }
                 }
                 Group(label("全局助手", "Global assistant")) {
@@ -123,6 +127,7 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
                 Text("Tapilot $version", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.align(Alignment.CenterHorizontally))
             }
         }
+        }
         if (picker.isNotEmpty()) {
             val choices = when (picker) {
                 "model" -> ModelProfiles.ids
@@ -143,7 +148,7 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
                         when (picker) {
                             "model" -> { coordinator.selectPreset(choice); apiKey = "" }
                             "speech" -> { provider = choice; speechKey = "" }
-                            "theme" -> { AppTheme.set(activity, choice); dark = AppTheme.isDark(activity); onThemeChanged() }
+                            "theme" -> { AppTheme.set(activity, choice); mode = choice; onThemeChanged() }
                             "language" -> if (AppLanguage.set(activity, choice)) onLanguageChanged()
                             "edge" -> { edge = edge.copy(mode = EdgeEffectGeometryMode.fromWireValue(choice)); saveEdge(services, edge) }
                         }; picker = ""
@@ -164,33 +169,34 @@ private fun saveEdge(services: NativeJavascriptBridge, value: EdgeEffectGeometry
 }
 
 @Composable private fun Header(title: String, back: () -> Unit) {
-    Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).statusBarsPadding().height(56.dp).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        TextButton(onClick = back) { Text("‹", fontSize = 26.sp) }
-        Text(title, fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurface)
+    Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainerLow).statusBarsPadding().height(56.dp).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        TextButton(onClick = back) { Text("‹", fontSize = 26.sp, color = MaterialTheme.colorScheme.onSurface) }
+        Text(title, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 @Composable private fun Group(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(title, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-        Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surface) {
-            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+        Text(title, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
+        Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), shadowElevation = 2.dp) {
+            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
         }
     }
 }
 @Composable private fun SettingRow(title: String, value: String, click: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = click).heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, Modifier.weight(1f), fontSize = 14.sp)
-        Text(value, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Row(Modifier.fillMaxWidth().clickable(onClick = click).heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(title, Modifier.weight(1f), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Text(value, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(" ›", color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 @Composable private fun ToggleRow(title: String, value: Boolean, changed: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Text(title, Modifier.weight(1f), fontSize = 14.sp); Switch(value, changed) }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Text(title, Modifier.weight(1f), fontSize = 16.sp, fontWeight = FontWeight.SemiBold); Switch(value, changed) }
 }
 
 @Composable fun NativeAdvancedScreen(coordinator: NativeConversationCoordinator) {
     var source by remember { mutableStateOf(coordinator.data.optString("yaml").ifBlank { "cases:\n  - name: Tapilot\n    steps:\n      - aiAct: 打开计算器\n" }) }
-    NativeTheme(coordinator.dark) {
+    TapilotTheme(coordinator.dark) {
         Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).navigationBarsPadding().imePadding()) {
             Header("YAML") { coordinator.back() }
             OutlinedTextField(source, { source = it; coordinator.preference("yaml", it) }, modifier = Modifier.weight(1f).fillMaxWidth().padding(20.dp), label = { Text("YAML") })
@@ -201,4 +207,49 @@ private fun saveEdge(services: NativeJavascriptBridge, value: EdgeEffectGeometry
 
 @Composable private fun Status(text: String) {
     if (text.isNotBlank()) Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+}
+
+/** Compact inline actions retain a 48 dp touch row without filling it with accent color. */
+@Composable
+private fun CompactPrimaryAction(title: String, enabled: Boolean, click: () -> Unit) {
+    Box(Modifier.heightIn(min = 48.dp), contentAlignment = Alignment.Center) {
+        Button(onClick = click, enabled = enabled, modifier = Modifier.height(36.dp),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)) {
+            Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+
+@Composable
+private fun ThemePalettePicker(selected: String, zh: Boolean, changed: (String) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(if (zh) "主题" else "Theme", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = colors.onSurfaceVariant)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            listOf("classic", "minimal").forEach { id ->
+                val light = ThemePalettes.get(id, false)
+                val dark = ThemePalettes.get(id, true)
+                val active = selected == id
+                Surface(modifier = Modifier.weight(1f).selectable(active, role = Role.RadioButton, onClick = { changed(id) }),
+                    shape = RoundedCornerShape(16.dp), color = colors.surface,
+                    border = BorderStroke(1.dp, if (active) colors.primary else colors.outlineVariant)) {
+                    Column(Modifier.heightIn(min = 86.dp).padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listOf(light.background, light.primary, dark.background, dark.primary).forEach { color ->
+                                Surface(Modifier.size(20.dp), shape = RoundedCornerShape(6.dp), color = Color(color),
+                                    border = BorderStroke(.5.dp, colors.outlineVariant)) {}
+                            }
+                        }
+                        val title = if (id == "classic") { if (zh) "经典" else "Classic" } else { if (zh) "素雅" else "Minimal" }
+                        Text(title + if (active) " ✓" else "", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+        Text(if (selected == "minimal") { if (zh) "纯白底色，淡蓝点缀。" else "White surfaces with soft blue accents." }
+            else { if (zh) "柔和纸色，淡紫点缀。" else "Warm paper tones with lavender accents." },
+            fontSize = 12.sp, lineHeight = 18.sp, color = colors.onSurfaceVariant)
+    }
 }

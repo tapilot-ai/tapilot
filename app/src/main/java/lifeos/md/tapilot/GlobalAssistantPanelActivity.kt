@@ -6,7 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
-import androidx.compose.material3.MaterialTheme
+import lifeos.md.tapilot.theme.TapilotTheme
 import androidx.core.view.WindowCompat
 import android.os.Handler
 import android.os.Looper
@@ -89,26 +89,27 @@ open class GlobalAssistantPanelActivity : ComponentActivity() {
             requestFocus()
             setPadding(dp(18), dp(16), dp(18), dp(20))
             background = GradientDrawable().apply {
-                setColor(getColor(if (AppTheme.isDark(this@GlobalAssistantPanelActivity)) R.color.brand_dark_surface else R.color.brand_surface))
+                setColor(AppTheme.color(this@GlobalAssistantPanelActivity, if (AppTheme.isDark(this@GlobalAssistantPanelActivity)) R.color.brand_dark_surface else R.color.brand_surface))
                 cornerRadii = floatArrayOf(dp(22f), dp(22f), dp(22f), dp(22f), 0f, 0f, 0f, 0f)
             }
         }
         root.addView(TextView(this).apply {
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
             text = "问 Tapilot"
             textSize = 18f
-            setTextColor(getColor(if (AppTheme.isDark(this@GlobalAssistantPanelActivity)) R.color.brand_dark_text else R.color.brand_text))
+            setTextColor(AppTheme.color(this@GlobalAssistantPanelActivity, if (AppTheme.isDark(this@GlobalAssistantPanelActivity)) R.color.brand_dark_text else R.color.brand_text))
         })
         status = TextView(this).apply {
             text = "按住说话或输入，发送后继续处理"
             textSize = 12f
-            setTextColor(getColor(if (AppTheme.isDark(this@GlobalAssistantPanelActivity)) R.color.brand_dark_muted else R.color.brand_muted))
+            setTextColor(AppTheme.color(this@GlobalAssistantPanelActivity, if (AppTheme.isDark(this@GlobalAssistantPanelActivity)) R.color.brand_dark_muted else R.color.brand_muted))
         }
         root.addView(status)
         if (launchContext.has("dataUrl")) {
             val reference = CheckBox(this).apply {
                 text = "引用当前屏幕"; isChecked = true; minHeight = dp(48)
-                buttonTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.brand_blue))
-                setTextColor(getColor(if (AppTheme.isDark(this@GlobalAssistantPanelActivity)) R.color.brand_dark_text else R.color.brand_text))
+                buttonTintList = android.content.res.ColorStateList.valueOf(AppTheme.color(this@GlobalAssistantPanelActivity, if (AppTheme.isDark(this@GlobalAssistantPanelActivity)) R.color.brand_dark_primary else R.color.brand_primary))
+                setTextColor(AppTheme.color(this@GlobalAssistantPanelActivity, if (AppTheme.isDark(this@GlobalAssistantPanelActivity)) R.color.brand_dark_text else R.color.brand_text))
                 setOnCheckedChangeListener { _, checked -> includeScreen = checked }
             }
             root.addView(reference)
@@ -135,8 +136,8 @@ open class GlobalAssistantPanelActivity : ComponentActivity() {
             speechHint = "按住说话"
             refreshHint()
             doAfterTextChanged { refreshHint() }
-            setTextColor(getColor(if (AppTheme.isDark(this@GlobalAssistantPanelActivity)) R.color.brand_dark_text else R.color.brand_text))
-            setHintTextColor(getColor(if (AppTheme.isDark(this@GlobalAssistantPanelActivity)) R.color.brand_dark_muted else R.color.brand_muted))
+            setTextColor(AppTheme.color(this@GlobalAssistantPanelActivity, if (AppTheme.isDark(this@GlobalAssistantPanelActivity)) R.color.brand_dark_text else R.color.brand_text))
+            setHintTextColor(AppTheme.color(this@GlobalAssistantPanelActivity, if (AppTheme.isDark(this@GlobalAssistantPanelActivity)) R.color.brand_dark_muted else R.color.brand_muted))
             minLines = 1
             maxLines = 3
             setSingleLine(false)
@@ -148,6 +149,12 @@ open class GlobalAssistantPanelActivity : ComponentActivity() {
                 } else false
             }
         }
+        input.background = GradientDrawable().apply {
+            cornerRadius = dp(18f)
+            setColor(AppTheme.color(this@GlobalAssistantPanelActivity, if (AppTheme.isDark(this@GlobalAssistantPanelActivity)) R.color.brand_dark_input else R.color.brand_input))
+            setStroke(dp(1), AppTheme.color(this@GlobalAssistantPanelActivity, if (AppTheme.isDark(this@GlobalAssistantPanelActivity)) R.color.brand_dark_strong_line else R.color.brand_strong_line))
+        }
+        input.setPadding(dp(16), dp(12), dp(16), dp(12))
         root.addView(input)
         val actions = LinearLayout(this).apply {
             gravity = Gravity.END
@@ -156,10 +163,10 @@ open class GlobalAssistantPanelActivity : ComponentActivity() {
         val voice = Button(this).apply {
             text = "按住说话"
             stateListAnimator = null
-            setTextColor(getColor(R.color.brand_blue))
+            setTextColor(AppTheme.color(this@GlobalAssistantPanelActivity, if (AppTheme.isDark(this@GlobalAssistantPanelActivity)) R.color.brand_dark_primary else R.color.brand_primary))
             background = GradientDrawable().apply {
-                cornerRadius = dp(12f)
-                setColor(getColor(if (AppTheme.isDark(this@GlobalAssistantPanelActivity)) R.color.brand_dark_soft else R.color.brand_soft))
+                cornerRadius = dp(18f)
+                setColor(AppTheme.color(this@GlobalAssistantPanelActivity, if (AppTheme.isDark(this@GlobalAssistantPanelActivity)) R.color.brand_dark_soft else R.color.brand_soft))
             }
             setOnTouchListener { _, event ->
                 when (event.actionMasked) {
@@ -183,10 +190,10 @@ open class GlobalAssistantPanelActivity : ComponentActivity() {
             text = "发送"
             stateListAnimator = null
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { leftMargin = dp(8) }
-            setTextColor(Color.WHITE)
+            setTextColor(AppTheme.colors(this@GlobalAssistantPanelActivity).contrast)
             background = GradientDrawable().apply {
-                setColor(getColor(R.color.brand_blue))
-                cornerRadius = dp(10f)
+                setColor(AppTheme.color(this@GlobalAssistantPanelActivity, if (AppTheme.isDark(this@GlobalAssistantPanelActivity)) R.color.brand_dark_primary else R.color.brand_primary))
+                cornerRadius = dp(18f)
             }
             setOnClickListener { send() }
         })
@@ -211,11 +218,12 @@ open class GlobalAssistantPanelActivity : ComponentActivity() {
         container.addView(ComposeView(this).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
-                if (recording || transcribing) MaterialTheme {
+                TapilotTheme(AppTheme.isDark(this@GlobalAssistantPanelActivity)) {
                     RecordingFeedback(cancelledOnRelease, sendOnRelease,
                         if (transcribing) "正在转文字…" else if (cancelledOnRelease) "松手 取消"
                         else if (sendOnRelease) "松手 发送" else "松手 填入输入框",
                         "取消", "发送", levels, seconds, transcript, transcribing,
+                        visible = recording || transcribing,
                         onCancel = ::cancelVoice, onSend = { finishVoice(true) })
                 }
             }
