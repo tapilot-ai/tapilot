@@ -8,5 +8,12 @@
   "signing": "Android Debug",
   "document": "https://my.feishu.cn/docx/TiXgdjtJ5oYSEZxIVzncWI0Kn4g",
   "fileToken": "RTKbbBsFkonD6OxzkxTcozPMn7c",
-  "deviceInstall": "blocked-adb-unauthorized"
+  "deviceInstall": "blocked-adb-unauthorized",
+  "websiteSource": "../studio/apps/tapilot-site",
+  "websiteArchive": {
+    "name": "Tapilot-website-20261008.zip",
+    "size": 293211,
+    "sha256": "9b7338e72b7dd312c9f7fe13537ffa46cd33b86f2a2923fee8e6a6b6f9dc07e1",
+    "fileToken": "JCjPbPBBGoUNL1xTGyIcC2CKnmd"
+  }
 }
