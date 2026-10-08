@@ -1,0 +1,70 @@
+{
+  "date": "2026-10-07",
+  "sourceBase": "7a003f8de81e485730990007a92c5316ff76522f",
+  "workingTreeChanges": true,
+  "device": "owned Android 35 ARM64 emulator-5584",
+  "realDevicePassed": false,
+  "realServicePassed": true,
+  "unitTests": {
+    "tests": 116,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "artifacts": {
+    "verificationPipeline": {
+      "sha256": "8f91bb95735e3c978408756f9a62c6f077411cc869a4b4bbd88f4b5a56ac1501"
+    },
+    "chat-fallback.png": {
+      "sha256": "4290a9f91f0ce0147baee1c2a1667dde8990df96bff52c240085926f520f1942",
+      "apk": "verificationPipeline"
+    },
+    "chat-cancelled.png": {
+      "sha256": "37316ccd1baeb1dcc7ac038c8b1bded146a2721329e7b75e134e02c2f066e7fb",
+      "apk": "verificationPipeline"
+    },
+    "settings-saved.png": {
+      "sha256": "291746832aa9213c735e503fc6d7ab802c5c7b4148314f56ebf2569c30068483",
+      "apk": "productionSettingsBeforeQwenFix"
+    },
+    "panel-polished.png": {
+      "sha256": "f473051bf4f47a24ae94e982d06d616d02ea061c73bcce055b5eb94637479e8b",
+      "apk": "verificationPipeline"
+    },
+    "chat-polished.png": {
+      "sha256": "ac779722fb83382000e97ffc9a2d398b05fa2c672e788c4262396052151ea73e",
+      "apk": "verificationPipeline"
+    },
+    "settings-invalid-disabled.png": {
+      "sha256": "1974e0f5d351518dce38eb98745fda1df87248e1d0b6955cfe771054080ada98",
+      "apk": "productionSettingsBeforeQwenFix"
+    },
+    "productionSettingsBeforeQwenFix": {
+      "sha256": "5e4392bc3f47564e8a56ab93cf9453c21a72f620c9af623a810e799e4535d2ab"
+    },
+    "productionFinal": {
+      "sha256": "dc0bb9afc3b626d7e88f96379e24e0e7f1a7a42aa1a976218267fd40522a4f06"
+    },
+    "device-settings.png": {
+      "sha256": "38c2754897bbbc555ad0408ee7535b0c4dc26990673a81e713775906bcdd2dfb",
+      "apk": "productionSettingsBeforeQwenFix",
+      "device": "Redmi K30 Ultra"
+    },
+    "device-voice-result.png": {
+      "sha256": "6cfc6575e922ee1825c7df42d34fe8d16ac78eec53597673d3bee150f72150d6",
+      "apk": "productionFinal",
+      "device": "Redmi K30 Ultra"
+    },
+    "device-configured.png": {
+      "sha256": "c4e0595760a38a569e847cdb294bb44afed151ffaf8d158220d66533e0b093fa",
+      "apk": "productionFinal",
+      "device": "Redmi K30 Ultra"
+    },
+    "device-cleanup.png": {
+      "sha256": "8b631f97d63afcf57f4e95dd836cd9a7a07f2f72187994e202aa3b5f4a397433",
+      "apk": "productionFinal",
+      "device": "Redmi K30 Ultra"
+    }
+  },
+  "realDeviceInstalled": true
+}

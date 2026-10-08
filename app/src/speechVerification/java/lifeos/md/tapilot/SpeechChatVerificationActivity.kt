@@ -26,7 +26,8 @@ class SpeechChatVerificationActivity : ComponentActivity() {
                 if (payload?.optString("action") == "send") { sends++; counter.text = "验证发送次数 $sends" }
             }
         }
-        val recognition = VerificationRecognition(intent.getLongExtra("startDelay", 0), intent.getBooleanExtra("failStart", false))
+        val rawRecognition = VerificationRecognition(intent.getLongExtra("startDelay", 0), intent.getBooleanExtra("failStart", false))
+        val recognition = if (intent.getBooleanExtra("polish", false)) verificationPolishing(this, rawRecognition) else rawRecognition
         controller = ChatController(this, engine, {}, { _, done -> done(Result.success(null)) }, recognition, { "synthetic" })
         controller.update(JSONObject().put("protocolVersion", 1).put("ready", true).put("configured", true)
             .put("messages", org.json.JSONArray()).put("conversations", org.json.JSONArray()).put("language", "zh")

@@ -1,0 +1,10 @@
+{
+  "enabled": false,
+  "baseUrl": "https://example.com/v1",
+  "model": "synthetic-polish-model",
+  "encryptedKeyStored": true,
+  "syntheticValuesOnly": true,
+  "autosavePassed": true,
+  "restartRetentionPassed": true,
+  "invalidUrlDisablePassed": true
+}

@@ -11,7 +11,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import lifeos.md.tapilot.bridge.ModelCredentialStore
-import lifeos.md.tapilot.bridge.SpeechTranscriber
 import lifeos.md.tapilot.bridge.SpeechRecognition
 import org.json.JSONObject
 
@@ -21,7 +20,7 @@ class ChatController(
     private val engine: WebView? = null,
     private val onSurfaceChanged: (Boolean) -> Unit,
     private val picker: (String, (Result<JSONObject?>) -> Unit) -> Unit,
-    private val speech: SpeechRecognition = SpeechTranscriber(activity),
+    private val speech: SpeechRecognition = lifeos.md.tapilot.speech.PolishingSpeechRecognition(activity),
     private val speechKey: (String) -> String? = { provider -> ModelCredentialStore(activity).getAll()["speech-$provider"] },
     private val nativeCommand: ((JSONObject) -> Unit)? = null,
 ) : AutoCloseable {
@@ -75,9 +74,8 @@ class ChatController(
     fun accept(next: ChatState) {
         handler.post {
             if (closed) return@post
-            if (state.activeConversationId != next.activeConversationId && canRetrySpeech) {
-                speech.cancel()
-                canRetrySpeech = false
+            if (state.activeConversationId != next.activeConversationId && (recording || transcribing || canRetrySpeech)) {
+                cancelRecording()
                 error = ""
             }
             if (!state.ready || next.draftEpoch != state.draftEpoch) draft = next.draft
@@ -201,7 +199,7 @@ class ChatController(
                 if (closed || generation != speechGeneration) return@post
                 transcribing = false
                 result.fold(onSuccess = { text ->
-                    edit(listOf(draft.trim(), text.trim()).filter { it.isNotBlank() }.joinToString(" "))
+                    edit(lifeos.md.tapilot.speech.appendSpeechTranscript(draft, text))
                     if (shouldSend) send() else focusRequest++
                 }, onFailure = { speechFailure(it) })
             } }
@@ -232,7 +230,7 @@ class ChatController(
                 if (closed || generation != speechGeneration) return@post
                 transcribing = false
                 result.fold(onSuccess = { text ->
-                    edit(listOf(draft.trim(), text.trim()).filter { it.isNotBlank() }.joinToString(" "))
+                    edit(lifeos.md.tapilot.speech.appendSpeechTranscript(draft, text))
                     if (retrySend) send() else focusRequest++
                 }, onFailure = { speechFailure(it) })
             } }

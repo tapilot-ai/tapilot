@@ -1,0 +1,17 @@
+{
+  "device": "Redmi K30 Ultra",
+  "serial": "s4ey59ytbitot4yp",
+  "productionApkInstalled": true,
+  "polishSettingsUiPassed": true,
+  "realSpeechChainPassed": false,
+  "asrHttpStatus": 403,
+  "asrResource": "volc.seedasr.sauc.duration",
+  "historyUnchanged": true,
+  "draftLengthBefore": 0,
+  "draftLengthAfter": 0,
+  "historyEntriesBefore": 43,
+  "historyEntriesAfter": 43,
+  "audioFixture": "Synthetic Mandarin TTS played through Mac default output; ASR rejected key before transcript was returned",
+  "testPolishCredentialCleanup": "passed: key removed and polishing disabled",
+  "cleanupHistoryUnchanged": true
+}

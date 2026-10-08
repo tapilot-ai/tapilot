@@ -35,7 +35,6 @@ import android.util.Base64
 import lifeos.md.tapilot.chat.HoldToRecordEditor
 import lifeos.md.tapilot.chat.RecordingGesture
 import lifeos.md.tapilot.bridge.ModelCredentialStore
-import lifeos.md.tapilot.bridge.SpeechTranscriber
 import org.json.JSONObject
 
 /** Compact entry over the app the user was using. The conversation continues in MainActivity. */
@@ -63,7 +62,7 @@ open class GlobalAssistantPanelActivity : ComponentActivity() {
             if (seconds >= 60) cancelVoice() else handler.postDelayed(this, 250)
         }
     }
-    protected open fun createRecognition(): SpeechRecognition = SpeechTranscriber(this)
+    protected open fun createRecognition(): SpeechRecognition = lifeos.md.tapilot.speech.PolishingSpeechRecognition(this)
     protected open fun recognitionCredentials(): Pair<String, String?> {
         val provider = getSharedPreferences("tapilot-speech", 0).getString("provider", "volcengine") ?: "volcengine"
         return provider to ModelCredentialStore(this).getAll()["speech-$provider"]
@@ -272,7 +271,7 @@ open class GlobalAssistantPanelActivity : ComponentActivity() {
                 if (generation != voiceGeneration || isFinishing || isDestroyed) return@runOnUiThread
                 transcribing = false
                 result.onSuccess { text ->
-                    input.setText(listOf(input.text.toString().trim(), text.trim()).filter { it.isNotBlank() }.joinToString(" "))
+                    input.setText(lifeos.md.tapilot.speech.appendSpeechTranscript(input.text.toString(), text))
                     status.text = "转写完成"
                     if (sendOnRelease) send() else {
                         input.setSelection(input.text.length)

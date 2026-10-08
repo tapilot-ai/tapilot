@@ -64,6 +64,7 @@ class NativeJavascriptBridge(
     private val modelTransport = ModelTransport()
     private val modelCredentialStore = ModelCredentialStore(activity)
     private val speechTranscriber = SpeechTranscriber(activity as Activity)
+    private val speechRecognition = lifeos.md.tapilot.speech.PolishingSpeechRecognition(activity as Activity, speechTranscriber)
     private val reportRepository = ReportRepository(File(activity.filesDir, "reports")).apply {
         cleanupStaleDrafts()
     }
@@ -272,7 +273,7 @@ class NativeJavascriptBridge(
                 val provider = params.getString("provider")
                 val language = params.optString("language", "en-US")
                 val key = modelCredentialStore.getAll()[speechPreset(request)] ?: error("Speech API Key is missing")
-                speechTranscriber.start(provider, key, language) { outcome ->
+                speechRecognition.start(provider, key, language) { outcome ->
                     outcome.fold(
                         onSuccess = { respondSuccess(requestId, JSONObject.NULL) },
                         onFailure = { respondError(requestId, it) },
@@ -280,19 +281,19 @@ class NativeJavascriptBridge(
                 }
             }
             "speech.cancel" -> {
-                speechTranscriber.cancel()
+                speechRecognition.cancel()
                 respondSuccess(requestId, JSONObject.NULL)
             }
             "speech.finish" -> {
                 try {
-                    speechTranscriber.finish { outcome ->
+                    speechRecognition.finish { outcome ->
                         outcome.fold(
                             onSuccess = { respondSuccess(requestId, JSONObject().put("text", it)) },
                             onFailure = { respondError(requestId, it) },
                         )
                     }
                 } catch (error: Throwable) {
-                    speechTranscriber.cancel()
+                    speechRecognition.cancel()
                     throw error
                 }
             }
@@ -634,7 +635,7 @@ class NativeJavascriptBridge(
         closed = true
         callbacks.values.toList().forEach { it(Result.failure(IllegalStateException("Service closed"))) }
         callbacks.clear()
-        speechTranscriber.close()
+        speechRecognition.close()
         modelTransport.close()
         nodeTestRunCoordinator.close()
         reportRepository.close()
