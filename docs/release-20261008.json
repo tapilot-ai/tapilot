@@ -17,11 +17,14 @@
     "fileToken": "JCjPbPBBGoUNL1xTGyIcC2CKnmd"
   },
   "website": {
-    "url": "https://tapilot-site.pages.dev/",
+    "url": "https://tapilot.lifeos.md/",
     "sourceCommit": "5cd8fa092e7fd930904240645776fe99e2e833b3",
     "deploymentId": "c81ad8ae-c6db-46d6-9795-a5545d415c55",
-    "status": "git-retry-queued-not-live",
+    "status": "live-https-verified",
     "attestationRun": "2026-10-08T041625-887Z",
-    "artifactSha256": "8dc23de3158a66849d3e46c01922e1c85a791441af34e34f40c80caa8fa0a088"
+    "artifactSha256": "8dc23de3158a66849d3e46c01922e1c85a791441af34e34f40c80caa8fa0a088",
+    "pagesUrl": "https://tapilot-site.pages.dev/",
+    "verifiedAt": "2026-10-08T06:47:05.822815+00:00",
+    "artifactSha256Scope": "local attested build; remote Git build is independently generated from the same source commit"
   }
 }
