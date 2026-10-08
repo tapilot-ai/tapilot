@@ -11,10 +11,10 @@
   "deviceInstall": "blocked-adb-unauthorized",
   "websiteSource": "../studio/apps/tapilot-site",
   "websiteArchive": {
-    "name": "Tapilot-website-20261008.zip",
-    "size": 293211,
-    "sha256": "9b7338e72b7dd312c9f7fe13537ffa46cd33b86f2a2923fee8e6a6b6f9dc07e1",
-    "fileToken": "JCjPbPBBGoUNL1xTGyIcC2CKnmd"
+    "name": "Tapilot-website-20261008-proprietary.zip",
+    "size": 292137,
+    "sha256": "bc659b3999a68219a37773473a6435b8d72ebc9193d94f2637f525551054098f",
+    "fileToken": "YauJbY5nZoUZUVxUQXRcvTbgnYd"
   },
   "website": {
     "url": "https://tapilot.lifeos.md/",
@@ -25,6 +25,8 @@
     "artifactSha256": "8dc23de3158a66849d3e46c01922e1c85a791441af34e34f40c80caa8fa0a088",
     "pagesUrl": "https://tapilot-site.pages.dev/",
     "verifiedAt": "2026-10-08T06:47:05.822815+00:00",
-    "artifactSha256Scope": "local attested build; remote Git build is independently generated from the same source commit"
-  }
+    "artifactSha256Scope": "local attested build; remote Git build is independently generated from the same source commit",
+    "pendingSourceCommit": "c4683d04be92fdf7ccde4db953367931b30ab3de"
+  },
+  "license": "proprietary"
 }
