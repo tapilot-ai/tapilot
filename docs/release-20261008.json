@@ -15,5 +15,13 @@
     "size": 293211,
     "sha256": "9b7338e72b7dd312c9f7fe13537ffa46cd33b86f2a2923fee8e6a6b6f9dc07e1",
     "fileToken": "JCjPbPBBGoUNL1xTGyIcC2CKnmd"
+  },
+  "website": {
+    "url": "https://tapilot-site.pages.dev/",
+    "sourceCommit": "5cd8fa092e7fd930904240645776fe99e2e833b3",
+    "deploymentId": "c81ad8ae-c6db-46d6-9795-a5545d415c55",
+    "status": "git-retry-queued-not-live",
+    "attestationRun": "2026-10-08T041625-887Z",
+    "artifactSha256": "8dc23de3158a66849d3e46c01922e1c85a791441af34e34f40c80caa8fa0a088"
   }
 }
