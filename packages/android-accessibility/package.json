@@ -2,7 +2,7 @@
   "name": "@tapilot/android-accessibility",
   "version": "0.1.0",
   "description": "Android AccessibilityService device adapter for Midscene",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "author": "quanru (https://github.com/quanru)",
   "homepage": "https://github.com/quanru/tapilot/tree/main/packages/android-accessibility#readme",
   "repository": {
@@ -13,14 +13,13 @@
   "bugs": {
     "url": "https://github.com/quanru/tapilot/issues"
   },
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
-  },
   "main": "./dist/lib/index.js",
   "module": "./dist/es/index.mjs",
   "types": "./dist/types/src/index.d.ts",
-  "files": ["dist", "README.md"],
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "exports": {
     ".": {
       "types": "./dist/types/src/index.d.ts",
@@ -35,7 +34,9 @@
   },
   "typesVersions": {
     "*": {
-      "protocol": ["./dist/types/src/protocol.d.ts"]
+      "protocol": [
+        "./dist/types/src/protocol.d.ts"
+      ]
     }
   },
   "scripts": {
@@ -52,5 +53,5 @@
     "@types/node": "^18.0.0",
     "typescript": "^5.8.3"
   },
-  "license": "MIT"
+  "private": true
 }

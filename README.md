@@ -232,13 +232,14 @@ Text input requires the target control to expose an editable accessibility
 node. Canvas, game, and custom-rendered inputs may reject it. This is an
 experimental build and requires Android 11 or newer.
 
-## Contributing
+## Internal development
 
-Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) for
+For authorized development, please read [CONTRIBUTING.md](CONTRIBUTING.md) for
 the development setup, testing expectations, and pull request process, and
 note the [Code of Conduct](CODE_OF_CONDUCT.md). For vulnerability reports,
 follow [SECURITY.md](SECURITY.md) instead of opening a public issue.
 
 ## License
 
-[MIT](LICENSE)
+Tapilot is proprietary software. All rights reserved. See [LICENSE](LICENSE).
+Third-party components remain subject to their respective licenses.

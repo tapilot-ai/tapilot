@@ -1,7 +1,7 @@
-# Contributing to Tapilot
+# Internal development of Tapilot
 
-Thanks for your interest in Tapilot! This document covers the development
-setup, testing expectations, and the pull request process.
+Tapilot is proprietary software. This document is for authorized developers and
+covers the development setup, testing expectations, and the internal review process.
 
 ## Development setup
 

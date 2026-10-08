@@ -3,7 +3,7 @@
   "version": "0.1.1",
   "private": true,
   "description": "On-device Android visual automation client powered by AccessibilityService and Midscene.",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "author": "quanru (https://github.com/quanru)",
   "homepage": "https://github.com/quanru/tapilot#readme",
   "repository": {

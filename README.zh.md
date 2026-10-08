@@ -169,12 +169,13 @@ YAML 支持 Test Runner 通用节点，以及 `launch`、`home`、`back`、`rece
 文本输入依赖目标控件提供可编辑无障碍节点；Canvas、游戏或自绘输入控件可能拒绝输入。
 这是实验性版本，需要 Android 11 或更高版本。
 
-## 参与贡献
+## 内部开发
 
-欢迎参与贡献。开发环境、测试要求与提交流程请见 [CONTRIBUTING.md](CONTRIBUTING.md)，
+供已获授权的开发者使用。开发环境、测试要求与提交流程请见 [CONTRIBUTING.md](CONTRIBUTING.md)，
 参与即表示同意遵守[行为准则](CODE_OF_CONDUCT.md)。安全漏洞请按
 [SECURITY.md](SECURITY.md) 私下报告，不要提交公开 issue。
 
 ## 许可证
 
-[MIT](LICENSE)
+Tapilot 为非开源软件，保留所有权利。参见 [LICENSE](LICENSE)。
+第三方组件遵循各自的许可证。
