@@ -1,0 +1,12 @@
+{
+  "version": "0.1.1",
+  "versionCode": 2,
+  "channel": "beta",
+  "sourceCommit": "0b359cec451d81f51814e51fa3fdc55e6a50599e",
+  "apkSha256": "b0833fe2cd581ba2ac37765c1a2919a4953dc4b03716a8873928036b63e4622a",
+  "size": 88508887,
+  "signing": "Android Debug",
+  "document": "https://my.feishu.cn/docx/TiXgdjtJ5oYSEZxIVzncWI0Kn4g",
+  "fileToken": "RTKbbBsFkonD6OxzkxTcozPMn7c",
+  "deviceInstall": "blocked-adb-unauthorized"
+}
