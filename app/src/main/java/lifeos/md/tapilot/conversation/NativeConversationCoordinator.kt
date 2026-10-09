@@ -289,7 +289,7 @@ class NativeConversationCoordinator(
         progress = progress?.copy(operation = if (method == "device.capture") local("正在查看屏幕", "Viewing screen") else if (method == "device.execute") local("正在执行屏幕操作", "Performing action") else progress!!.operation); publish()
     }
     private fun confirmOperation(text: String, stopped: AtomicBoolean): String {
-        if (!data.optBoolean("confirmEveryStep") && !Regex("发送|转账|付款|支付|购买|下单|删除|清空|卸载|发布|提交|授权|分享给|send|transfer|pay|purchase|delete|uninstall|publish|submit", RegexOption.IGNORE_CASE).containsMatchIn(text)) return text
+        if (!ExecutionMode.from(data).requiresConfirmation(text)) return text
         val promise = CompletableFuture<String>()
         onMain { confirmation = promise; confirmationText = text; publish() }
         return waitFor(promise, stopped, 600)

@@ -1,15 +1,7 @@
 package lifeos.md.tapilot.chat
 
-import lifeos.md.tapilot.theme.LocalThemePalette
 import lifeos.md.tapilot.theme.TapilotTheme
 import lifeos.md.tapilot.theme.tapilotColors
-import android.graphics.drawable.GradientDrawable
-import android.text.Editable
-import android.text.TextWatcher
-import android.text.InputType
-import android.view.Gravity
-import android.view.inputmethod.EditorInfo
-import android.view.inputmethod.InputMethodManager
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,24 +9,19 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 
@@ -46,7 +33,6 @@ fun ChatScreen(controller: ChatController) {
     TapilotTheme(state.dark, state.paletteId) {
       CompositionLocalProvider(LocalContentColor provides colors.onBackground) {
         var sessions by remember { mutableStateOf(false) }
-        var attachments by remember { mutableStateOf(false) }
         val list = rememberLazyListState()
         val busy = state.running || controller.recording || controller.transcribing || controller.picking
         val zh = state.chinese
@@ -58,21 +44,19 @@ fun ChatScreen(controller: ChatController) {
             Column(Modifier.fillMaxSize().navigationBarsPadding().imePadding()) {
                 Row(Modifier.fillMaxWidth().background(colors.surfaceContainerLow).statusBarsPadding().height(56.dp).padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    Row(Modifier.weight(1f).clickable(enabled = !busy) { sessions = true }.padding(8.dp),
-                        verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(state.conversations.find { it.id == state.activeConversationId }?.title ?: "Tapilot",
-                                fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            if (state.running) Text(label("正在处理…", "Working…"),
-                                color = colors.onSurfaceVariant, fontSize = 12.sp)
-                        }
-                        ChatIcon("down", colors.onSurfaceVariant)
+                    Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
+                        Text(state.conversations.find { it.id == state.activeConversationId }?.title ?: "Tapilot",
+                            fontSize = 17.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        if (state.running) Text(label("正在处理…", "Working…"), color = colors.onSurfaceVariant, fontSize = 12.sp)
                     }
                     IconButton(onClick = { controller.command("settings") }, enabled = !busy) {
-                        ChatIcon("settings", colors.onSurface, label("设置", "Settings"))
+                        ChatIcon("settings", colors.onSurfaceVariant, label("设置", "Settings"))
                     }
-                    IconButton(onClick = { controller.command("new") }, enabled = state.ready && !busy) {
-                        ChatIcon("plus", colors.onSurface, label("新对话", "New conversation"))
+                    Box {
+                        IconButton(onClick = { sessions = true }, enabled = !busy) {
+                            ChatIcon("history", colors.onSurfaceVariant, label("对话列表", "Conversations"))
+                        }
+                        ConversationDropdown(controller, sessions, onDismiss = { sessions = false })
                     }
                 }
                 if (state.needsAccessibility) {
@@ -127,8 +111,7 @@ fun ChatScreen(controller: ChatController) {
                         TextButton(onClick = { controller.command("removeAttachment") }, enabled = !busy) { Text(label("移除", "Remove")) }
                     }
                 }
-                HorizontalDivider(color = colors.outlineVariant)
-                ChatComposer(controller, onAttachments = { attachments = true })
+                ChatComposer(controller)
             }
             run {
                 RecordingFeedback(controller.willCancel, controller.willSend,
@@ -143,25 +126,6 @@ fun ChatScreen(controller: ChatController) {
                     onSend = { controller.moveRecording(RecordingGesture.Send); controller.releaseRecording() })
             }
         }
-        if (sessions) AlertDialog(onDismissRequest = { sessions = false },
-            title = { Text(label("对话", "Conversations")) }, text = {
-                LazyColumn(Modifier.heightIn(max = 400.dp)) {
-                    items(state.conversations, key = { it.id }) { conversation ->
-                        Text(conversation.title, Modifier.fillMaxWidth().clickable {
-                            controller.command("select", id = conversation.id); sessions = false
-                        }.padding(vertical = 14.dp), color = if (conversation.id == state.activeConversationId) colors.primary else colors.onSurface)
-                    }
-                }
-            }, confirmButton = { Row {
-                if (state.advancedMode) TextButton(onClick = { sessions = false; controller.command("advanced") }) { Text("YAML") }
-                TextButton(onClick = { sessions = false }) { Text(label("关闭", "Close")) }
-            } })
-        if (attachments) AlertDialog(onDismissRequest = { attachments = false }, title = { Text(label("添加附件", "Add attachment")) },
-            text = { Column {
-                listOf("photo" to label("照片", "Photos"), "camera" to label("拍摄", "Camera"), "file" to label("文件", "Files")).forEach { (kind, title) ->
-                    TextButton(onClick = { attachments = false; controller.pick(kind) }, modifier = Modifier.fillMaxWidth()) { Text(title) }
-                }
-            } }, confirmButton = { TextButton(onClick = { attachments = false }) { Text(label("取消", "Cancel")) } })
         state.preview?.let { AttachmentPreview(it, zh) { controller.command("closePreview") } }
         state.confirmation?.let { instruction ->
             var revised by remember(instruction) { mutableStateOf(instruction) }
@@ -175,97 +139,13 @@ fun ChatScreen(controller: ChatController) {
 }
 
 @Composable
-private fun ChatComposer(controller: ChatController, onAttachments: () -> Unit) {
-    val state = controller.state
-    val colors = MaterialTheme.colorScheme
-    var voiceMode by rememberSaveable { mutableStateOf(false) }
-    var editor by remember { mutableStateOf<HoldToRecordEditor?>(null) }
-    val enabled = state.ready && !state.running && !controller.transcribing && !controller.picking
-    LaunchedEffect(controller.focusRequest) {
-        if (controller.focusRequest > 0) {
-            voiceMode = false
-            editor?.post { editor?.let { field -> field.requestFocus(); field.context.getSystemService(InputMethodManager::class.java)
-                .showSoftInput(field, InputMethodManager.SHOW_IMPLICIT) } }
-        }
-    }
-    Row(Modifier.fillMaxWidth().background(colors.surfaceContainerLow).padding(horizontal = 8.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        IconButton(onClick = { voiceMode = controller.draft.isEmpty() && !voiceMode; if (voiceMode) editor?.let { field ->
-            field.clearFocus(); field.context.getSystemService(InputMethodManager::class.java).hideSoftInputFromWindow(field.windowToken, 0)
-        } }, enabled = enabled && !controller.recording, modifier = Modifier.size(48.dp)) {
-            ChatIcon(if (voiceMode) "keyboard" else "mic", colors.onSurfaceVariant, if (state.chinese) "切换输入方式" else "Switch input mode")
-        }
-        AndroidView(modifier = Modifier.weight(1f).heightIn(min = 48.dp, max = 136.dp), factory = { context ->
-            HoldToRecordEditor(context).apply {
-                editor = this
-                setTextSize(15f)
-                setPadding((12 * resources.displayMetrics.density).toInt(), (10 * resources.displayMetrics.density).toInt(),
-                    (12 * resources.displayMetrics.density).toInt(), (10 * resources.displayMetrics.density).toInt())
-                gravity = Gravity.CENTER_VERTICAL
-                minLines = 1
-                maxLines = 5
-                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
-                imeOptions = EditorInfo.IME_ACTION_SEND
-                isLongClickable = true
-                onHold = { _ ->
-                    clearFocus()
-                    context.getSystemService(InputMethodManager::class.java).hideSoftInputFromWindow(windowToken, 0)
-                    controller.startRecording()
-                }
-                onMove = controller::moveRecording
-                onRelease = controller::releaseRecording
-                onCancel = controller::cancelRecording
-                addTextChangedListener(object : TextWatcher {
-                    override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
-                    override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                        if (!voiceMode && s.toString() != controller.draft) controller.edit(s.toString())
-                    }
-                    override fun afterTextChanged(s: Editable?) = Unit
-                })
-                setOnEditorActionListener { _, action, _ ->
-                    if (action == EditorInfo.IME_ACTION_SEND) { controller.send(); true } else false
-                }
-            }
-        }, update = { field ->
-            field.holdEnabled = enabled
-            field.isEnabled = enabled || controller.recording
-            field.voiceMode = voiceMode
-            field.isFocusableInTouchMode = !voiceMode
-            field.isFocusable = !voiceMode
-            field.setTextColor(colors.onSurface.toArgb())
-            field.setHintTextColor(colors.onSurfaceVariant.copy(alpha = .55f).toArgb())
-            field.typingHint = if (state.chinese) "输入消息" else "Type a message"
-            field.speechHint = if (state.chinese) "按住说话" else "Hold to speak"
-            val desired = controller.draft
-            if (field.text.toString() != desired) { field.setText(desired); field.setSelection(desired.length) }
-            field.refreshHint()
-            field.background = GradientDrawable().apply {
-                cornerRadius = 18 * field.resources.displayMetrics.density
-                setColor(lifeos.md.tapilot.theme.ThemePalettes.get(state.paletteId, state.dark).input)
-                if (controller.recording) setStroke((field.resources.displayMetrics.density * 2).toInt(),
-                    if (controller.willCancel) colors.error.toArgb() else colors.primary.toArgb())
-                else setStroke(field.resources.displayMetrics.density.toInt().coerceAtLeast(1), colors.outline.toArgb())
-            }
-        })
-        IconButton(onClick = onAttachments, enabled = enabled && !controller.recording, modifier = Modifier.size(48.dp)) {
-            ChatIcon("plus", colors.onSurfaceVariant, if (state.chinese) "添加附件" else "Add attachment")
-        }
-        val canSend = state.running || (enabled && !controller.recording && (controller.draft.isNotBlank() || state.attachment != null))
-        IconButton(onClick = { if (state.running) controller.command("stop") else controller.send() },
-            enabled = canSend,
-            modifier = Modifier.size(48.dp).background(if (canSend) colors.primary else colors.surfaceVariant, RoundedCornerShape(18.dp))) {
-            ChatIcon(if (state.running) "stop" else "send", if (canSend) colors.onPrimary else colors.onSurfaceVariant.copy(alpha = .5f), if (state.running) "停止" else "发送")
-        }
-    }
-}
-
-@Composable
-private fun ChatIcon(kind: String, color: Color, description: String? = null, modifier: Modifier = Modifier.size(24.dp)) {
+internal fun ChatIcon(kind: String, color: Color, description: String? = null, modifier: Modifier = Modifier.size(24.dp)) {
     Canvas(modifier.then(if (description != null) Modifier.semantics { contentDescription = description } else Modifier)) {
         val unit = size.width / 24f
         fun point(x: Float, y: Float) = Offset(x * unit, y * unit)
         fun line(x: Float, y: Float, x2: Float, y2: Float) = drawLine(color, point(x, y), point(x2, y2), 2f * unit, StrokeCap.Round)
         when (kind) {
+            "history" -> { line(4f, 6f, 20f, 6f); line(4f, 12f, 20f, 12f); line(4f, 18f, 14f, 18f) }
             "plus" -> { line(12f, 5f, 12f, 19f); line(5f, 12f, 19f, 12f) }
             "send" -> { line(12f, 19f, 12f, 5f); line(6f, 11f, 12f, 5f); line(18f, 11f, 12f, 5f) }
             "stop" -> drawRect(color, point(6f, 6f), androidx.compose.ui.geometry.Size(12 * unit, 12 * unit))

@@ -28,5 +28,12 @@
     "artifactSha256Scope": "local attested build; remote Git build is independently generated from the same source commit",
     "pendingSourceCommit": "c4683d04be92fdf7ccde4db953367931b30ab3de"
   },
-  "license": "proprietary"
+  "license": "proprietary",
+  "downloadAccess": {
+    "linkShare": "anyone_readable",
+    "download": "allowed-through-public-document",
+    "verifiedAt": "2026-10-09",
+    "unauthenticatedDownload": true,
+    "downloadedSha256": "b0833fe2cd581ba2ac37765c1a2919a4953dc4b03716a8873928036b63e4622a"
+  }
 }

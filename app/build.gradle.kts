@@ -16,8 +16,11 @@ android {
         if (providers.gradleProperty("speechVerification").isPresent) applicationIdSuffix = ".speechverify"
         minSdk = 30
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.1.1"
+        // An older local build exercises the available-update UI against the real published feed.
+        // This verification package is never distributed as a release.
+        val updateVerification = providers.gradleProperty("updateVerification").isPresent
+        versionCode = if (updateVerification) 1 else 3
+        versionName = if (updateVerification) "0.1.0-update-test" else "0.1.2"
     }
 
     buildTypes {

@@ -1,6 +1,6 @@
 {
   "name": "tapilot",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "On-device Android visual automation client powered by AccessibilityService and Midscene.",
   "license": "UNLICENSED",
