@@ -1,0 +1,23 @@
+{
+  "environment": "LifeOS Backup Pixel 7 Android emulator",
+  "recognition": "synthetic; production native editor and controller",
+  "apkSha256": "a0bf03dc22f2371f28e848c6977f03f881d2b6a1cc843c488d8ebb2ca4c13dd1",
+  "assertions": {
+    "hold": {
+      "preparations": 1,
+      "discards": 0,
+      "starts": 1,
+      "sends": 0,
+      "draft": "开头两个字，保留最后两个字"
+    },
+    "shortTap": {
+      "durationMs": 100,
+      "preparations": 1,
+      "discards": 1,
+      "starts": 0,
+      "sends": 0,
+      "draft": "",
+      "keyboardVisible": true
+    }
+  }
+}

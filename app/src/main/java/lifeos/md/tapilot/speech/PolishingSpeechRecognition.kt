@@ -15,6 +15,8 @@ internal class PolishingSpeechRecognition(
         SpeechPolishSession(polisher::polish, display, polisher::cancel)
     })
     private var session: SpeechPolishSession? = null
+    override fun prepare() = recognition.prepare()
+    override fun cancelPreparation() = recognition.cancelPreparation()
     override val canRetry get() = recognition.canRetry
     override fun start(provider: String, apiKey: String, language: String, onLevel: (Float) -> Unit,
         onError: (Throwable) -> Unit, onTranscript: (String) -> Unit, callback: (Result<Unit>) -> Unit) {

@@ -32,6 +32,7 @@ internal class SpeechTranscriber(private val activity: Activity) : SpeechRecogni
     private val timeouts = Executors.newSingleThreadScheduledExecutor()
     private val probes = ConcurrentHashMap.newKeySet<WebSocket>()
     private var active: Session? = null
+    private var preparedAudio: AudioRecord? = null
     private var lastFailure: Throwable? = null
     private data class Retained(val provider: String, val language: String, val pcm: ByteArray, val attempts: Int)
     private var retained: Retained? = null
@@ -80,19 +81,11 @@ internal class SpeechTranscriber(private val activity: Activity) : SpeechRecogni
             activity.requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), MICROPHONE_REQUEST)
             error("Microphone permission requested. Tap the microphone again after allowing access.")
         }
-        val minimum = AudioRecord.getMinBufferSize(
-            RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT,
-        )
-        check(minimum > 0) { "Microphone audio format is unavailable" }
-        val bufferSize = maxOf(minimum, 3200)
-        val audio = AudioRecord(
-            MediaRecorder.AudioSource.MIC, RATE,
-            AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSize,
-        )
-        check(audio.state == AudioRecord.STATE_INITIALIZED) { "Microphone is unavailable" }
+        val bufferSize = 3200
+        val audio = preparedAudio?.also { preparedAudio = null } ?: createMicrophone()
         val session = Session(provider, audio, language, onLevel = onLevel, onError = onError, onTranscript = onTranscript, startCallback = callback)
         try {
-            audio.startRecording()
+            if (audio.recordingState != AudioRecord.RECORDSTATE_RECORDING) audio.startRecording()
             active = session
             session.captureThread = Thread(
                 { capture(session, bufferSize) }, "tapilot-speech-capture",
@@ -108,6 +101,32 @@ internal class SpeechTranscriber(private val activity: Activity) : SpeechRecogni
                 callback(Result.failure(error))
             }
         }
+    }
+
+    private fun createMicrophone(): AudioRecord {
+        val minimum = AudioRecord.getMinBufferSize(RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
+        check(minimum > 0) { "Microphone audio format is unavailable" }
+        // AudioRecord retains the opening PCM until the confirmed hold starts the reader.
+        return AudioRecord(MediaRecorder.AudioSource.MIC, RATE, AudioFormat.CHANNEL_IN_MONO,
+            AudioFormat.ENCODING_PCM_16BIT, maxOf(minimum, 32768)).also {
+            if (it.state != AudioRecord.STATE_INITIALIZED) { it.release(); error("Microphone is unavailable") }
+        }
+    }
+
+    @Synchronized override fun prepare() {
+        if (active != null || preparedAudio != null ||
+            activity.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) return
+        runCatching {
+            val audio = createMicrophone()
+            try { audio.startRecording(); preparedAudio = audio }
+            catch (failure: Throwable) { audio.release(); throw failure }
+            timeouts.schedule({ synchronized(this) { if (preparedAudio === audio) cancelPreparation() } }, 700, TimeUnit.MILLISECONDS)
+        }
+    }
+
+    @Synchronized override fun cancelPreparation() {
+        preparedAudio?.let { audio -> runCatching { audio.stop() }; audio.release() }
+        preparedAudio = null
     }
 
     /** Validate API access without opening the microphone or sending user audio. */
@@ -220,6 +239,7 @@ internal class SpeechTranscriber(private val activity: Activity) : SpeechRecogni
 
     @Synchronized
     override fun cancel() {
+        cancelPreparation()
         retained = null
         val session = active ?: return
         active = null

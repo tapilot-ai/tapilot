@@ -134,6 +134,11 @@ class ChatController(
         } }
     }
 
+    fun prepareRecording() {
+        if (state.ready && !state.running && !recording && !transcribing && !picking && draft.isEmpty()) speech.prepare()
+    }
+    fun discardPreparedRecording() = speech.cancelPreparation()
+
     fun startRecording() {
         if (!state.ready || state.running || recording || transcribing || picking) return
         error = ""
@@ -238,6 +243,7 @@ class ChatController(
     }
 
     fun cancelRecording() {
+        speech.cancelPreparation()
         handler.removeCallbacks(recordingClock)
         canRetrySpeech = false
         speechGeneration++

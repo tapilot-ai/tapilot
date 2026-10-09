@@ -123,6 +123,8 @@ open class GlobalAssistantPanelActivity : ComponentActivity() {
             root.addView(preview, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(100)))
         } else status.text = "未引用屏幕 · 可直接提问"
         input = HoldToRecordEditor(this).apply {
+            onPrepare = { transcriber.prepare() }
+            onDiscardPreparation = { transcriber.cancelPreparation() }
             onHold = { startVoice() }
             onMove = { gesture ->
                 cancelledOnRelease = gesture == RecordingGesture.Cancel

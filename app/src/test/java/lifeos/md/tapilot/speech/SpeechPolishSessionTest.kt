@@ -10,12 +10,12 @@ class SpeechPolishSessionTest {
     private fun await(latch: CountDownLatch) { assertTrue("Timed out", latch.await(2, TimeUnit.SECONDS)) }
     @Test fun finalPolishWaitsForPreviewAndIncludesCompleteTail() {
         val started = CountDownLatch(1); val release = CountDownLatch(1); val done = CountDownLatch(1)
-        val requests = CopyOnWriteArrayList<String>(); var final = ""
-        val session = SpeechPolishSession({ text -> requests.add(text); if (text == "开头") { started.countDown(); release.await(2, TimeUnit.SECONDS) }; "整理$text" }, {}, pauseMs = 1, intervalMs = 10)
+        val requests = CopyOnWriteArrayList<String>(); val displays = CopyOnWriteArrayList<String>(); var final = ""
+        val session = SpeechPolishSession({ text -> requests.add(text); if (text == "开头") { started.countDown(); release.await(2, TimeUnit.SECONDS) }; "整理$text" }, displays::add, pauseMs = 1, intervalMs = 10)
         try {
             session.update("开头"); await(started)
-            session.update("开头最后一个字")
             session.finish("开头最后一个字") { final = it; done.countDown() }
+            assertEquals("开头最后一个字", displays.last())
             assertEquals(listOf("开头"), requests.toList())
             release.countDown(); await(done)
             assertEquals(listOf("开头", "开头最后一个字"), requests.toList())
@@ -37,7 +37,23 @@ class SpeechPolishSessionTest {
         val session = SpeechPolishSession({ started.countDown(); try { release.await(2, TimeUnit.SECONDS) } catch (_: InterruptedException) {} ; ended.countDown(); "late" }, displays::add)
         session.finish("original") { committed = true }
         await(started); session.cancel(); release.countDown(); await(ended)
-        assertFalse(committed); assertTrue(displays.isEmpty())
+        assertFalse(committed); assertEquals(listOf("original"), displays.toList())
+    }
+    @Test fun finalBubbleStaysVisibleAndCanStillBeCancelled() {
+        val displayed = CountDownLatch(1); val committed = CountDownLatch(1)
+        val displays = CopyOnWriteArrayList<String>()
+        val session = SpeechPolishSession({ "整理后的完整文字" }, {
+            displays.add(it)
+            if (it == "整理后的完整文字") displayed.countDown()
+        }, completionDisplayMs = 150)
+        try {
+            session.finish("完整文字") { committed.countDown() }
+            await(displayed)
+            assertEquals(1L, committed.count)
+            session.cancel()
+            assertFalse(committed.await(250, TimeUnit.MILLISECONDS))
+            assertEquals(listOf("完整文字", "整理后的完整文字"), displays.toList())
+        } finally { session.cancel() }
     }
     @Test fun polishFailureCommitsRawOnce() {
         val done = CountDownLatch(1); var committed = ""; var count = 0

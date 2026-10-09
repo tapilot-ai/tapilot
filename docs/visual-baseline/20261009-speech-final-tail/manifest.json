@@ -1,0 +1,24 @@
+{
+  "environment": "Android 35 ARM64 backup simulator emulator-5580",
+  "transport": "synthetic ASR and deterministic slow polish; production Kotlin UI and polish session",
+  "tests": {
+    "passed": 126,
+    "skipped": 1,
+    "failed": 0
+  },
+  "apkSha256": "1bfe6035038204fbc974fd115ec905534f8610fdcdd3c27de96385d84fa412b3",
+  "assertions": {
+    "chatCompleteTailInserted": true,
+    "panelCompleteTailInserted": true,
+    "defaultDidNotSend": true,
+    "cancelledLateResultDidNotInsertOrSend": true
+  },
+  "screenshots": {
+    "chat-final.png": "c7e9d82d324caa67d73c94fad1b3d057d2d4fad9225b4866dd165af79fb23508",
+    "chat-raw-tail.png": "2cfb7ec5d59ed5caca76725458d22be8ce868c3ce1241b938afa871725f22b6f",
+    "panel-final.png": "2e6703af204aa88eb8702f42d54ed4ee072ee120bab3439ba93069a944a0c15b",
+    "chat-cancelled.png": "48b8b077a43334482c826c075f2da0355083fe42983f50f5d1e6012b1799edbf",
+    "panel-inserted.png": "ca4aa050138c43572dadd065c6ac7bbe430f4093bde069c72b08c31da7ed4b39",
+    "chat-inserted.png": "c67cd7c99ba0b1fe025d7d806619b88cc4f052e1ab4a1b9b8268942fbcaba3d3"
+  }
+}

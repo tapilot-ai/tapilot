@@ -14,6 +14,7 @@ import lifeos.md.tapilot.chat.ChatScreen
 import org.json.JSONObject
 
 class SpeechChatVerificationActivity : ComponentActivity() {
+    private val verificationHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private lateinit var controller: ChatController
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,7 +27,7 @@ class SpeechChatVerificationActivity : ComponentActivity() {
                 if (payload?.optString("action") == "send") { sends++; counter.text = "验证发送次数 $sends" }
             }
         }
-        val rawRecognition = VerificationRecognition(intent.getLongExtra("startDelay", 0), intent.getBooleanExtra("failStart", false))
+        val rawRecognition = VerificationRecognition(intent.getLongExtra("startDelay", 0), intent.getBooleanExtra("failStart", false), intent.getBooleanExtra("preCaptureCheck", false))
         val recognition = if (intent.getBooleanExtra("polish", false)) verificationPolishing(this, rawRecognition) else rawRecognition
         controller = ChatController(this, engine, {}, { _, done -> done(Result.success(null)) }, recognition, { "synthetic" })
         controller.update(JSONObject().put("protocolVersion", 1).put("ready", true).put("configured", true)
@@ -36,8 +37,16 @@ class SpeechChatVerificationActivity : ComponentActivity() {
         root.addView(ComposeView(this).apply { setContent { ChatScreen(controller) } })
         root.addView(counter, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT,
             Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply { topMargin = 80 })
+        if (intent.getBooleanExtra("preCaptureCheck", false)) {
+            verificationHandler.post(object : Runnable {
+                override fun run() {
+                    counter.text = "预采集 ${rawRecognition.preparations} · 丢弃 ${rawRecognition.discards} · 录音 ${rawRecognition.starts} · 发送 $sends"
+                    verificationHandler.postDelayed(this, 100)
+                }
+            })
+        }
         setContentView(root)
     }
     override fun onStop() { controller.cancelRecording(); super.onStop() }
-    override fun onDestroy() { controller.close(); super.onDestroy() }
+    override fun onDestroy() { verificationHandler.removeCallbacksAndMessages(null); controller.close(); super.onDestroy() }
 }

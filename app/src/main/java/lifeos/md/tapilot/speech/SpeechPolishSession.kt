@@ -11,6 +11,7 @@ internal class SpeechPolishSession(
     private val abort: () -> Unit = {},
     private val pauseMs: Long = 800,
     private val intervalMs: Long = 3000,
+    private val completionDisplayMs: Long = 650,
 ) {
     private val executor = Executors.newSingleThreadScheduledExecutor()
     private var raw = ""
@@ -56,11 +57,23 @@ internal class SpeechPolishSession(
     @Synchronized fun finish(text: String, callback: (String) -> Unit) {
         if (cancelled || finishing) return
         finishing = true; scheduled?.cancel(false)
+        raw = text
+        display(render())
         executor.execute {
             val cached = synchronized(this) { if (cancelled) return@execute; if (text == processed) polished else "" }
             val result = cached.ifBlank { runCatching { polish(text) }.getOrDefault(text).ifBlank { text } }
-            synchronized(this) { if (!cancelled) { display(result); callback(result) } }
-            abort(); executor.shutdown()
+            synchronized(this) {
+                if (cancelled) return@execute
+                display(result)
+                // Let the complete bubble paint before the host closes it and fills the composer.
+                scheduled = executor.schedule({
+                    synchronized(this) {
+                        if (!cancelled) {
+                            try { callback(result) } finally { abort(); executor.shutdown() }
+                        }
+                    }
+                }, completionDisplayMs, TimeUnit.MILLISECONDS)
+            }
         }
     }
     @Synchronized fun cancel() {

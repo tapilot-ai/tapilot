@@ -16,6 +16,8 @@ class HoldToRecordEditor(context: Context) : EditText(context) {
         outAttrs.imeOptions = outAttrs.imeOptions and EditorInfo.IME_FLAG_NO_ENTER_ACTION.inv()
         return connection
     }
+    var onPrepare: () -> Unit = {}
+    var onDiscardPreparation: () -> Unit = {}
     var onHold: (Boolean) -> Unit = {}
     var onMove: (RecordingGesture) -> Unit = {}
     var onRelease: () -> Unit = {}
@@ -32,7 +34,7 @@ class HoldToRecordEditor(context: Context) : EditText(context) {
 
     override fun onFocusChanged(focused: Boolean, direction: Int, previouslyFocusedRect: android.graphics.Rect?) {
         super.onFocusChanged(focused, direction, previouslyFocusedRect)
-        if (focused && !holding) { removeCallbacks(begin); pending = false }
+        if (focused && !holding) { removeCallbacks(begin); if (pending) onDiscardPreparation(); pending = false }
         refreshHint()
     }
 
@@ -55,6 +57,7 @@ class HoldToRecordEditor(context: Context) : EditText(context) {
                 startX = event.rawX
                 startY = event.rawY
                 pending = true
+                onPrepare()
                 postDelayed(begin, 280L)
                 return true
             }
@@ -64,6 +67,7 @@ class HoldToRecordEditor(context: Context) : EditText(context) {
                         rootView.height.toFloat(), resources.displayMetrics.density))
                 } else if (pending && hypot(event.rawX - startX, event.rawY - startY) > ViewConfiguration.get(context).scaledTouchSlop) {
                     removeCallbacks(begin)
+                    onDiscardPreparation()
                     pending = false
                 }
                 return true
@@ -71,6 +75,7 @@ class HoldToRecordEditor(context: Context) : EditText(context) {
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 removeCallbacks(begin)
                 val tap = pending
+                if (pending) onDiscardPreparation()
                 pending = false
                 if (holding) {
                     holding = false
@@ -95,6 +100,7 @@ class HoldToRecordEditor(context: Context) : EditText(context) {
 
     private fun cancelGesture() {
         removeCallbacks(begin)
+        if (pending) onDiscardPreparation()
         if (holding) onCancel()
         holding = false
         pending = false

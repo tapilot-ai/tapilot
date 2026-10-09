@@ -45,8 +45,8 @@ fun RecordingFeedback(cancel: Boolean, send: Boolean, hint: String, cancelLabel:
     visible: Boolean = true, onCancel: () -> Unit, onSend: () -> Unit) {
     val scroll = rememberScrollState()
     LaunchedEffect(transcript) { scroll.scrollTo(scroll.maxValue) }
-    val danger = MaterialTheme.colorScheme.error
-    val accent = MaterialTheme.colorScheme.primary
+    val danger = MaterialTheme.colorScheme.error.copy(alpha = .8f)
+    val accent = MaterialTheme.colorScheme.primary.copy(alpha = .8f)
     val bubbleScale by animateFloatAsState(if (transcribing) .97f else 1f, tween(160), label = "speech-phase")
     val cancelScale by animateFloatAsState(if (cancel && visible) 1.05f else 1f, tween(120), label = "speech-cancel")
     val sendScale by animateFloatAsState(if (send && visible) 1.05f else 1f, tween(120), label = "speech-send")

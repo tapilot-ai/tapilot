@@ -64,6 +64,8 @@ internal fun ChatComposer(controller: ChatController) {
                 inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
                 imeOptions = EditorInfo.IME_ACTION_SEND
                 isLongClickable = true
+                onPrepare = controller::prepareRecording
+                onDiscardPreparation = controller::discardPreparedRecording
                 onHold = { _ ->
                     clearFocus()
                     context.getSystemService(InputMethodManager::class.java).hideSoftInputFromWindow(windowToken, 0)
