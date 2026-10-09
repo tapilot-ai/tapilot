@@ -1,0 +1,25 @@
+{
+  "version": "0.1.2",
+  "versionCode": 3,
+  "channel": "beta",
+  "sourceCommit": "a48e966cde7d07e28df23a13b1fb1b39af8cc52c",
+  "apkSha256": "2554cb726206b97452bf0514deff4e81efb19f93b8e091cff6714b6f469ca90f",
+  "size": 88540081,
+  "tests": 126,
+  "signing": "Android Debug",
+  "document": "https://my.feishu.cn/docx/TiXgdjtJ5oYSEZxIVzncWI0Kn4g",
+  "deviceInstall": "installed-public-apk-preserving-data",
+  "publicDownload": "anonymous-download-sha256-verified",
+  "website": {
+    "sourceCommit": "282fae8908979875508b3655e48a34c262d19a05",
+    "deploymentId": "9b08b0d2-b772-43d1-8fcb-82e4d1749804",
+    "status": "queued",
+    "attestationRun": "2026-10-09T054312-709Z"
+  },
+  "license": "proprietary",
+  "fileToken": "JgsdbJ8UwoMY4vxse3VcEFbFn5f",
+  "device": "Redmi K30 Ultra s4ey59ytbitot4yp",
+  "installedVersion": "0.1.2",
+  "installedVersionCode": 3,
+  "userDataAndYoloRetained": true
+}
