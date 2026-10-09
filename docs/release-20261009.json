@@ -14,7 +14,14 @@
     "sourceCommit": "282fae8908979875508b3655e48a34c262d19a05",
     "deploymentId": "9b08b0d2-b772-43d1-8fcb-82e4d1749804",
     "status": "queued",
-    "attestationRun": "2026-10-09T054312-709Z"
+    "attestationRun": "2026-10-09T054312-709Z",
+    "manualDeployment": {
+      "status": "failed-before-upload",
+      "attemptedAt": "2026-10-09T06:10:18Z",
+      "attestationRun": "2026-10-09T060958-182Z",
+      "authorization": "user-continued-after-specific-manual-deploy-proposal",
+      "error": "TLS connection to api.cloudflare.com failed; curl SSL_ERROR_SYSCALL; no Mac network changes performed"
+    }
   },
   "license": "proprietary",
   "fileToken": "JgsdbJ8UwoMY4vxse3VcEFbFn5f",
