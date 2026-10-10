@@ -21,5 +21,18 @@
     "deploymentId": "68542ea3-23b0-4aea-8adc-4166c4be3176",
     "prePushVerification": "build-and-typecheck-passed-8.2s"
   },
-  "deviceUpdateCheck": "request-completed-latest-version-shown; remote-feed-still-0.1.2"
+  "deviceUpdateCheck": "request-completed-latest-version-shown; remote-feed-still-0.1.2",
+  "fixedFileCorrection": {
+    "version": "0.1.3",
+    "versionCode": 4,
+    "sourceCommit": "ec4533c9ce8564e7d698b773e8299f40588ca69d",
+    "apkSha256": "fbabe1af29b98147647bd4fdf60dbe374fca9f41e0a3e29cef1545424abcde99",
+    "sizeBytes": 89071463,
+    "tests": 138,
+    "fixedFileToken": "Ig0KbUKlJoADozxRbOocm5iqnXf",
+    "url": "https://www.feishu.cn/file/Ig0KbUKlJoADozxRbOocm5iqnXf",
+    "publicDownload": "anonymous-sha256-verified",
+    "websiteCommit": "4c34e695c4",
+    "reason": "Replace document download with fixed APK file; retain same 0.1.3 Beta version."
+  }
 }
