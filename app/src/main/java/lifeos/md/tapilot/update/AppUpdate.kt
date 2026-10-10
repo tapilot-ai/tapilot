@@ -30,7 +30,7 @@ data class AppRelease(val version: String, val versionCode: Long, val downloadUr
 object AppUpdate {
     const val MANIFEST_URL = "https://tapilot.lifeos.md/releases/android/latest.json"
     const val BACKUP_MANIFEST_URL = "https://tapilot-site.pages.dev/releases/android/latest.json"
-    const val DOWNLOAD_PAGE = "https://my.feishu.cn/docx/TiXgdjtJ5oYSEZxIVzncWI0Kn4g"
+    const val DOWNLOAD_PAGE = "https://www.feishu.cn/file/Ig0KbUKlJoADozxRbOocm5iqnXf"
     private val client = OkHttpClient.Builder().connectTimeout(5, TimeUnit.SECONDS)
         .readTimeout(10, TimeUnit.SECONDS).callTimeout(15, TimeUnit.SECONDS).build()
 
