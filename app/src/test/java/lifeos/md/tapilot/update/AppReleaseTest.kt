@@ -16,6 +16,16 @@ class AppReleaseTest {
         assertEquals(AppUpdate.DOWNLOAD_PAGE, release.downloadUrl)
     }
 
+    @Test fun prefersFixedFileAndKeepsLegacyManifestSupport() {
+        val legacy = "https://my.feishu.cn/docx/TiXgdjtJ5oYSEZxIVzncWI0Kn4g"
+        val value = manifest().put("downloadUrl", legacy)
+        assertEquals(legacy, AppRelease.parse(value.toString()).downloadUrl)
+        value.put("fileUrl", AppUpdate.DOWNLOAD_PAGE)
+        assertEquals(AppUpdate.DOWNLOAD_PAGE, AppRelease.parse(value.toString()).downloadUrl)
+        value.put("fileUrl", "https://evil.test/file/Test")
+        assertThrows(IllegalArgumentException::class.java) { AppRelease.parse(value.toString()) }
+    }
+
     @Test fun usesVersionCodeInsteadOfVersionName() {
         assertTrue(AppRelease.parse(manifest().put("version", "0.0.1").toString()).isNewerThan(1))
         assertFalse(AppRelease.parse(manifest().put("version", "99.0.0").toString()).isNewerThan(2))

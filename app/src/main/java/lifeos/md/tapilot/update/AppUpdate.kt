@@ -17,11 +17,11 @@ data class AppRelease(val version: String, val versionCode: Long, val downloadUr
             val version = value.getString("version").trim()
             val code = value.get("versionCode").toString().toLongOrNull()
             require(version.isNotEmpty() && code != null && code > 0)
-            val url = value.getString("downloadUrl")
+            val url = if (value.has("fileUrl")) value.getString("fileUrl") else value.getString("downloadUrl")
             val uri = URI(url)
             require(uri.scheme == "https" && uri.userInfo == null && uri.port in listOf(-1, 443))
             require(uri.host == "feishu.cn" || uri.host?.endsWith(".feishu.cn") == true)
-            require(Regex("/(docx|wiki)/[a-zA-Z0-9]+/?").matches(uri.path.orEmpty()))
+            require(Regex("/(file|docx|wiki)/[a-zA-Z0-9]+/?").matches(uri.path.orEmpty()))
             return AppRelease(version, code, url)
         }
     }
