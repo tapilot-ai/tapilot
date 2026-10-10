@@ -179,3 +179,7 @@ YAML 支持 Test Runner 通用节点，以及 `launch`、`home`、`back`、`rece
 
 Tapilot 为非开源软件，保留所有权利。参见 [LICENSE](LICENSE)。
 第三方组件遵循各自的许可证。
+
+## Android Beta 下载发布
+
+公开下载使用固定文件 https://www.feishu.cn/file/Ig0KbUKlJoADozxRbOocm5iqnXf，文件名 `Tapilot_Android_beta.apk`；后续版本原位替换文件，不新增发布说明文档作为下载页。studio 的 `scripts/lark-drive-release-downloads.mjs` 已登记 `tapilot-android-beta`。匿名下载校验后再更新官网清单：`fileUrl` 指向固定文件；旧 `downloadUrl` 仅供旧客户端兼容，旧文档只保留 APK 附件，不写构建报告或说明。
