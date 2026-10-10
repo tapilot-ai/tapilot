@@ -1,0 +1,25 @@
+{
+  "version": "0.1.3",
+  "versionCode": 4,
+  "sourceCommit": "2b4c5b637061c7f4425c20a551245900e43ebecf",
+  "apkSha256": "d2bc8333f9939048e802d0a3390d8865d9f31847cf5ffe432839a609452f25f8",
+  "sizeBytes": 88578877,
+  "tests": 137,
+  "signing": "Android Debug",
+  "channel": "beta",
+  "document": "https://my.feishu.cn/docx/TiXgdjtJ5oYSEZxIVzncWI0Kn4g",
+  "fileToken": "LKbebFRCCoy8i6xguA5ct6FKnMe",
+  "license": "proprietary",
+  "publicDownload": "anonymous-download-sha256-verified",
+  "deviceInstall": "installed-public-apk-preserving-data",
+  "website": {
+    "status": "cloudflare-git-deployment-queued",
+    "sourceCommit": "991421e354",
+    "publicUrl": "https://tapilot.lifeos.md/releases/android/latest.json",
+    "localVerification": "passed",
+    "attestationRun": "2026-10-10T082907-630Z",
+    "deploymentId": "68542ea3-23b0-4aea-8adc-4166c4be3176",
+    "prePushVerification": "build-and-typecheck-passed-8.2s"
+  },
+  "deviceUpdateCheck": "request-completed-latest-version-shown; remote-feed-still-0.1.2"
+}
