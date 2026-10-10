@@ -182,4 +182,4 @@ Tapilot 为非开源软件，保留所有权利。参见 [LICENSE](LICENSE)。
 
 ## Android Beta 下载发布
 
-公开下载使用固定文件 https://www.feishu.cn/file/Ig0KbUKlJoADozxRbOocm5iqnXf，文件名 `Tapilot_Android_beta.apk`；后续版本原位替换文件，不新增发布说明文档作为下载页。studio 的 `scripts/lark-drive-release-downloads.mjs` 已登记 `tapilot-android-beta`。匿名下载校验后再更新官网清单：`fileUrl` 指向固定文件；旧 `downloadUrl` 仅供旧客户端兼容，旧文档只保留 APK 附件，不写构建报告或说明。
+公开下载使用固定文件 https://www.feishu.cn/file/Ig0KbUKlJoADozxRbOocm5iqnXf，文件名包含版本、渠道与架构，例如 `Tapilot-0.1.3-beta-arm64.apk`；后续版本原位替换文件，并使用新 APK 的实际文件名，不新增发布说明文档作为下载页。studio 的 `scripts/lark-drive-release-downloads.mjs` 已登记 `tapilot-android-beta`。匿名下载校验后再更新官网清单：`fileUrl` 指向固定文件；旧 `downloadUrl` 仅供旧客户端兼容，旧文档只保留 APK 附件，不写构建报告或说明。
