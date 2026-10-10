@@ -194,16 +194,19 @@ class NativeConversationCoordinator(
         session = UUID.randomUUID().toString(); val runSession = session
         val cid = active()
         val id = UUID.randomUUID().toString()
+        val startedAt = System.currentTimeMillis()
+        val limits = AgentLimits.from(data)
         val before = history().map { JSONObject(it.toString()) }
         val retry = before.find { it.optString("id") == retryOf }
         val prior = before.filter { conversation(it) == cid && (retry == null || (it.optString("id") != retryOf && it.optLong("createdAt") <= retry.optLong("createdAt"))) }
         val source = text.trim().ifBlank { local("请查看附件", "Please inspect the attachment") }
-        val entry = JSONObject().put("id", id).put("conversationId", cid).put("createdAt", System.currentTimeMillis())
+        val entry = JSONObject().put("id", id).put("conversationId", cid).put("createdAt", startedAt)
             .put("source", source).put("inputText", text).put("kind", kind).put("modelName", model.getString("modelName"))
             .put("status", "running").put("reports", JSONArray())
+        retryOf?.let { entry.put("retryOf", it) }
         data.put("history", JSONArray(listOf(entry) + before).let { all -> JSONArray(all.objects().take(200)) })
         data.put("draft", ""); pendingAttachment = null; draftEpoch++; save()
-        progress = ChatProgress(local("正在理解任务", "Understanding task"), "", "", System.currentTimeMillis(), 0)
+        progress = ChatProgress(local("正在理解任务", "Understanding task"), "", "", startedAt, 0)
         publish()
         worker.execute {
             val reports = JSONArray()
@@ -253,7 +256,7 @@ class NativeConversationCoordinator(
                         run.optJSONArray("reports")?.objects()?.forEach { reports.put(it) }
                         val success = run.optInt("exitCode", 1) == 0
                         PhoneResult(success, run.optString(if (success) "finalResponse" else "failure").ifBlank { run.optJSONArray("output")?.strings()?.takeLast(10)?.joinToString("\n").orEmpty().ifBlank { if (success) "手机操作已完成" else "手机操作失败" } })
-                    })
+                    }, limits = limits)
                     check(reply.lastPhoneResult?.success != false) { "手机操作未通过最终画面验证：${reply.lastPhoneResult?.result}" }
                     reply.reply
                 }

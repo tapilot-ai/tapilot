@@ -126,6 +126,7 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
                         ExecutionMode.CRITICAL -> label("发送、付款、删除等操作前确认。", "Confirm before sending, paying, deleting, and similar operations.")
                         ExecutionMode.ALWAYS -> label("每次调用手机操作前确认。", "Confirm before each phone operation.")
                     }, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    AgentLimitSettings(coordinator, zh)
                     ToggleRow(label("高级 YAML 模式", "Advanced YAML mode"), coordinator.data.optBoolean("advanced")) { coordinator.preference("advanced", it) }
                     SettingRow(label("清空聊天记录", "Clear chat history"), "") { clearHistory = true }
                     SettingRow(label("检查执行引擎", "Check execution engine"), "") { coordinator.settingsCall("runtime.doctor") }

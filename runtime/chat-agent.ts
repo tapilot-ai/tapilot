@@ -84,6 +84,9 @@ export function conversationMessages(
   return messages;
 }
 
+// Match the native agent's default limits.
+export const MAX_PHONE_OPERATIONS = 100;
+
 export async function runChatAgent(options: ChatAgentOptions): Promise<ChatAgentResult> {
   const messages = conversationMessages(
     options.history, options.conversationId, options.source, options.language, options.historyAttachments,
@@ -101,7 +104,7 @@ export async function runChatAgent(options: ChatAgentOptions): Promise<ChatAgent
   }
   let toolCalls = 0;
   let lastPhoneResult: PhoneToolResult | undefined;
-  for (let turn = 0; turn < 8; turn += 1) {
+  for (let turn = 0; turn < MAX_PHONE_OPERATIONS; turn += 1) {
     if (options.isStopped?.()) throw new Error('Task stopped');
     const completion = await options.complete(messages);
     if (options.isStopped?.()) throw new Error('Task stopped');
@@ -113,7 +116,8 @@ export async function runChatAgent(options: ChatAgentOptions): Promise<ChatAgent
       if (!content) throw new Error('Conversation model returned an empty reply');
       return { reply: content, lastPhoneResult };
     }
-    if (toolCalls + calls.length > 4) throw new Error('Phone operation limit reached');
+    if (calls.length > MAX_PHONE_OPERATIONS - toolCalls)
+      throw new Error(`Task reached the emergency ceiling of ${MAX_PHONE_OPERATIONS} phone tool calls. Start a new task to continue.`);
     messages.push({ role: 'assistant', content: message.content ?? null, tool_calls: calls });
     for (const call of calls) {
       if (options.isStopped?.()) throw new Error('Task stopped');

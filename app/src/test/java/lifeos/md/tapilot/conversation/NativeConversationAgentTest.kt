@@ -46,9 +46,38 @@ class NativeConversationAgentTest {
     @Test fun toolLimitStopsBeforeOperating() {
         var count = 0
         assertThrows(IllegalStateException::class.java) {
-            NativeConversationAgent.run(JSONArray(), { false }, { calls(5) }, { _, _ -> count++; PhoneResult(true, "") })
+            NativeConversationAgent.run(JSONArray(), { false }, { calls(NativeConversationAgent.MAX_PHONE_OPERATIONS + 1) }, { _, _ -> count++; PhoneResult(true, "") })
         }
         assertEquals(0, count)
+    }
+    @Test fun longTaskCanCompleteAfterMoreThanEightModelTurns() {
+        var requests = 0
+        var operations = 0
+        val reply = NativeConversationAgent.run(JSONArray(), { false }, {
+            if (requests++ < NativeConversationAgent.MAX_PHONE_OPERATIONS) calls() else answer("长任务已完成")
+        }, { _, _ -> operations++; PhoneResult(true, "成功") }, AgentLimits(modelTurns = 101))
+        assertEquals(NativeConversationAgent.MAX_PHONE_OPERATIONS, operations)
+        assertEquals(NativeConversationAgent.MAX_PHONE_OPERATIONS + 1, requests)
+        assertEquals("长任务已完成", reply.reply)
+    }
+    @Test fun batchCanExceedOldFourOperationLimit() {
+        var requests = 0
+        var operations = 0
+        val reply = NativeConversationAgent.run(JSONArray(), { false }, {
+            if (requests++ == 0) calls(5) else answer("已完成")
+        }, { _, _ -> operations++; PhoneResult(true, "成功") })
+        assertEquals(5, operations)
+        assertEquals("已完成", reply.reply)
+    }
+    @Test fun repeatedToolRequestsStopAtEmergencyCeiling() {
+        var operations = 0
+        val error = assertThrows(IllegalStateException::class.java) {
+            NativeConversationAgent.run(JSONArray(), { false }, { calls() }, { _, _ ->
+                operations++; PhoneResult(true, "成功")
+            })
+        }
+        assertEquals(NativeConversationAgent.MAX_PHONE_OPERATIONS, operations)
+        assertTrue(error.message!!.contains("100"))
     }
     @Test fun generatedTaskKeepsUntrustedTextAsData() {
         val source = NativeConversationAgent.verifiedTask("点击\n\"删除\"", "显示：确认")

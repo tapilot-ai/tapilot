@@ -10,6 +10,8 @@ data class AgentReply(val reply: String, val lastPhoneResult: PhoneResult?)
 
 /** Owns all context; Midscene receives only a concrete instruction and a visible assertion. */
 object NativeConversationAgent {
+    // A tool call is a complete Midscene operation, not an individual tap.
+    internal const val MAX_PHONE_OPERATIONS = 100
     val tool: JSONObject get() = JSONObject("""{"type":"function","function":{"name":"operate_phone","description":"Execute one concrete phone operation through Midscene and verify a visible success condition. Do not include conversation history.","parameters":{"type":"object","properties":{"instruction":{"type":"string"},"success_condition":{"type":"string"}},"required":["instruction","success_condition"],"additionalProperties":false}}}""")
     fun messages(history: List<JSONObject>, source: String, chinese: Boolean,
                  attachments: Map<String, JSONObject> = emptyMap(), images: List<String> = emptyList()): JSONArray {
@@ -27,12 +29,17 @@ object NativeConversationAgent {
         return list.put(user(source, images))
     }
     fun run(messages: JSONArray, stopped: () -> Boolean, complete: (JSONArray) -> JSONObject,
-            phone: (String, String) -> PhoneResult): AgentReply {
-        var count = 0
+            phone: (String, String) -> PhoneResult, limits: AgentLimits = AgentLimits()): AgentReply {
+        var count = 0L
+        var turns = 0L
         var last: PhoneResult? = null
         fun check() { check(!stopped()) { "任务已停止" } }
-        repeat(8) {
+        while (true) {
             check()
+            check(limits.modelTurns == null || turns < limits.modelTurns) {
+                "本次任务已达到对话轮次上限（${limits.modelTurns} 轮），可重试或在设置中调整上限"
+            }
+            turns++
             val message = complete(messages).optJSONArray("choices")?.optJSONObject(0)?.optJSONObject("message")
                 ?: error("模型未返回消息")
             check()
@@ -42,7 +49,9 @@ object NativeConversationAgent {
                 check(reply.isNotBlank() && reply != "null") { "模型返回了空回复" }
                 return AgentReply(reply, last)
             }
-            check(count + calls.length() <= 4) { "已达到手机操作次数限制" }
+            check(limits.phoneOperations == null || calls.length() <= limits.phoneOperations - count) {
+                "本次任务已达到手机操作上限（${limits.phoneOperations} 次工具调用），可重试或在设置中调整上限"
+            }
             messages.put(JSONObject().put("role", "assistant").put("content", message.opt("content") ?: JSONObject.NULL).put("tool_calls", calls))
             for (i in 0 until calls.length()) {
                 check(); count++
@@ -60,7 +69,6 @@ object NativeConversationAgent {
                 messages.put(JSONObject().put("role", "tool").put("tool_call_id", call.getString("id")).put("content", outcome.json().toString()))
             }
         }
-        error("已达到对话轮次限制")
     }
     fun verifiedTask(instruction: String, condition: String) = JSONObject().put("cases", JSONArray().put(
         JSONObject().put("name", "Tapilot verified phone operation").put("steps", JSONArray()
