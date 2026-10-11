@@ -13,6 +13,11 @@ import android.os.Looper
 import android.provider.MediaStore
 import android.util.Base64
 import android.util.Log
+import android.view.Gravity
+import android.view.WindowManager
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
@@ -37,6 +42,7 @@ import java.util.concurrent.Executors
 
 class MainActivity : ComponentActivity() {
     override fun attachBaseContext(newBase: Context) { super.attachBaseContext(AppLanguage.wrap(newBase)) }
+    private var globalPanel by mutableStateOf(false)
     private lateinit var rootView: ComposeView
     private lateinit var chatController: ChatController
     private lateinit var coordinator: NativeConversationCoordinator
@@ -55,18 +61,24 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         rootView = ComposeView(this).apply { setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed) }
-        applyWindowTheme(rootView)
+        configureGlobalPanel(savedInstanceState?.takeIf { it.containsKey(EXTRA_GLOBAL_PANEL) }?.getBoolean(EXTRA_GLOBAL_PANEL)
+            ?: (intent.getBooleanExtra(EXTRA_GLOBAL_PANEL, false) || intent.action == Intent.ACTION_ASSIST))
         nativeBridge = NativeJavascriptBridge(activity = this, onProgress = { method -> if (::coordinator.isInitialized) coordinator.phoneProgress(method) }, onPickAttachment = ::pickAttachment)
         chatController = ChatController(this, onSurfaceChanged = {}, picker = ::pickAttachment,
-            nativeCommand = { coordinator.command(it) })
+            nativeCommand = {
+                if (it.optString("action") == "settings" && globalPanel) configureGlobalPanel(false)
+                coordinator.command(it)
+            })
         val store = ConversationStore(File(filesDir, "native-conversation.json"))
         coordinator = NativeConversationCoordinator(this, nativeBridge, store, chatController::accept, chatController::requestFocus)
+        coordinator.globalMode = globalPanel
         rootView.setContent {
             when {
                 coordinator.settingsOpen -> NativeSettingsScreen(coordinator, this, nativeBridge,
                     onThemeChanged = { applyWindowTheme(rootView); coordinator.publish() }, onLanguageChanged = { recreate() })
                 coordinator.advancedOpen -> NativeAdvancedScreen(coordinator)
-                else -> ChatScreen(chatController)
+                else -> ChatScreen(chatController, compact = globalPanel,
+                    onExpand = { configureGlobalPanel(false) }, onDismiss = { moveTaskToBack(true) })
             }
         }
         setContentView(rootView)
@@ -77,15 +89,25 @@ class MainActivity : ComponentActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (chatController.recording || chatController.transcribing) { chatController.cancelRecording(); return }
-                if (!coordinator.back()) { isEnabled = false; onBackPressedDispatcher.onBackPressed(); isEnabled = true }
+                val handled = coordinator.back()
+                if (!handled && globalPanel) { moveTaskToBack(true); return }
+                if (!handled) { isEnabled = false; onBackPressedDispatcher.onBackPressed(); isEnabled = true }
             }
         })
         requestNotificationPermissionIfNeeded()
     }
     override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent); setIntent(intent); receiveExternalIntent(intent)
+        super.onNewIntent(intent); setIntent(intent)
+        val panel = intent.getBooleanExtra(EXTRA_GLOBAL_PANEL, false) || intent.action == Intent.ACTION_ASSIST
+        configureGlobalPanel(panel)
+        if (panel) coordinator.openGlobalConversation()
+        receiveExternalIntent(intent)
         coordinator.receiveLaunchContext()
         if (intent.getBooleanExtra(EXTRA_FOCUS_TASK_INPUT, false)) chatController.requestFocus()
+    }
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putBoolean(EXTRA_GLOBAL_PANEL, globalPanel)
+        super.onSaveInstanceState(outState)
     }
     override fun onResume() {
         super.onResume()
@@ -210,10 +232,24 @@ class MainActivity : ComponentActivity() {
     }
 
     @Suppress("DEPRECATION")
+    private fun configureGlobalPanel(panel: Boolean) {
+        globalPanel = panel
+        if (::coordinator.isInitialized) coordinator.globalMode = panel
+        window.setBackgroundDrawableResource(android.R.color.transparent)
+        window.attributes = window.attributes.apply {
+            gravity = if (panel) Gravity.BOTTOM else Gravity.TOP
+            width = WindowManager.LayoutParams.MATCH_PARENT
+            height = if (panel) (resources.displayMetrics.heightPixels * .72f).toInt() else WindowManager.LayoutParams.MATCH_PARENT
+            dimAmount = if (panel) .16f else 0f
+        }
+        if (panel) window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+        else window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+        if (::rootView.isInitialized) applyWindowTheme(rootView)
+    }
     private fun applyWindowTheme(root: View) {
         val dark = AppTheme.isDark(this)
         val background = if (dark) AppTheme.color(this, R.color.brand_dark_header) else AppTheme.color(this, R.color.brand_header)
-        root.setBackgroundColor(background)
+        root.setBackgroundColor(if (globalPanel) Color.TRANSPARENT else background)
         window.statusBarColor = Color.TRANSPARENT
         window.isStatusBarContrastEnforced = false
         window.navigationBarColor = Color.TRANSPARENT
@@ -233,6 +269,7 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
+        const val EXTRA_GLOBAL_PANEL = "lifeos.md.tapilot.extra.GLOBAL_PANEL"
         const val EXTRA_FOCUS_TASK_INPUT = "lifeos.md.tapilot.extra.FOCUS_TASK_INPUT"
         private const val NOTIFICATION_PERMISSION_REQUEST = 2108
         private const val ATTACHMENT_REQUEST = 2112

@@ -3,7 +3,7 @@ package lifeos.md.tapilot.chat
 import org.json.JSONObject
 
 data class ChatMessage(val id: String, val role: String, val text: String, val status: String, val reportId: String,
-    val entryId: String = "", val attachment: ChatAttachment? = null)
+    val entryId: String = "", val attachment: ChatAttachment? = null, val task: ChatTask? = null)
 data class ChatConversation(val id: String, val title: String)
 data class ChatAttachment(val name: String, val kind: String, val preview: String = "",
     val id: String = "", val text: String = "", val images: List<String> = emptyList(), val pageCount: Int = 0) {
@@ -16,6 +16,8 @@ data class ChatAttachment(val name: String, val kind: String, val preview: Strin
         }
     }
 }
+data class ChatTask(val phase: String, val plan: List<String>, val currentStep: Int,
+    val modelTurns: Int, val phoneOperations: Int, val attempt: Int, val operations: List<Pair<String, Boolean>>)
 data class ChatProgress(val title: String, val detail: String, val operation: String, val startedAt: Long, val step: Int)
 
 data class ChatState(

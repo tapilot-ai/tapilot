@@ -16,6 +16,8 @@ import lifeos.md.tapilot.runtime.NodeTestRunRequest
 import java.io.File
 import java.util.UUID
 import java.util.concurrent.Executors
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import org.json.JSONArray
 import org.json.JSONObject
@@ -29,6 +31,7 @@ class NodeTestRunCoordinator(
     private val appContext = context.applicationContext
     private val executor = Executors.newSingleThreadExecutor()
     private val stopRequested = AtomicBoolean(false)
+    @Volatile private var completion = CompletableFuture.completedFuture(Unit)
     @Volatile private var activeSessionId: String? = null
     @Volatile private var stopRegistration: ActiveTaskStopRegistry.Registration? = null
 
@@ -41,7 +44,8 @@ class NodeTestRunCoordinator(
         require(source.isNotBlank()) { "YAML or task source must not be blank" }
         require(source.length <= MAX_SOURCE_CHARACTERS) { "YAML source is too large" }
         require(kind == "task" || kind == "yaml") { "Unsupported Node run kind: $kind" }
-        check(!supervisor.isRunning()) { "A Node runtime task is already running" }
+        check(completion.isDone && !supervisor.isRunning()) { "A Node runtime task is already running" }
+        completion = CompletableFuture()
         stopRequested.set(false)
         stopRegistration = ActiveTaskStopRegistry.register(::stop)
         updateStatus(TaskExecutionStatus.STARTING)
@@ -63,6 +67,7 @@ class NodeTestRunCoordinator(
                     finalError.message,
                 )
                 clearStopRegistration()
+                completion.complete(Unit)
                 callback(Result.failure(finalError))
             }
         }
@@ -73,6 +78,14 @@ class NodeTestRunCoordinator(
         stopRequested.set(true)
         activeSessionId?.let { MidsceneAccessibilityService.current()?.cancelSession(it) }
         return supervisor.stop() || taskWasActive
+    }
+
+    /** Called off the UI thread; includes cancellation during runtime preparation. */
+    fun stopAndWait(): Boolean {
+        val finished = completion
+        val stopped = stop()
+        finished.get(8, TimeUnit.SECONDS)
+        return stopped
     }
 
     private fun throwIfStopRequested() {
@@ -115,6 +128,7 @@ class NodeTestRunCoordinator(
             activeSessionId?.let { MidsceneAccessibilityService.current()?.completeSession(it) }
             activeSessionId = null
             clearStopRegistration()
+            completion.complete(Unit)
             callback(result)
         }
 

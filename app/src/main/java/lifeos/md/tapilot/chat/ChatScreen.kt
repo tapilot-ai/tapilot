@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -27,7 +28,7 @@ import androidx.compose.ui.semantics.contentDescription
 
 
 @Composable
-fun ChatScreen(controller: ChatController) {
+fun ChatScreen(controller: ChatController, compact: Boolean = false, onExpand: () -> Unit = {}, onDismiss: () -> Unit = {}) {
     val state = controller.state
     val colors = tapilotColors(state.dark, state.paletteId)
     TapilotTheme(state.dark, state.paletteId) {
@@ -37,18 +38,23 @@ fun ChatScreen(controller: ChatController) {
         val busy = state.running || controller.recording || controller.transcribing || controller.picking
         val zh = state.chinese
         fun label(chinese: String, english: String) = if (zh) chinese else english
-        LaunchedEffect(state.activeConversationId, state.messages.size, state.messages.lastOrNull()?.text) {
+        val imeBottom = WindowInsets.ime.getBottom(LocalDensity.current)
+        LaunchedEffect(state.activeConversationId, state.messages.size, state.messages.lastOrNull()?.text, compact, imeBottom) {
             if (state.messages.isNotEmpty()) list.animateScrollToItem(state.messages.lastIndex)
         }
         BoxWithConstraints(Modifier.fillMaxSize().background(colors.background)) {
             Column(Modifier.fillMaxSize().navigationBarsPadding().imePadding()) {
-                Row(Modifier.fillMaxWidth().background(colors.surfaceContainerLow).statusBarsPadding().height(56.dp).padding(horizontal = 12.dp),
+                Row(Modifier.fillMaxWidth().background(colors.surfaceContainerLow).then(if (compact) Modifier else Modifier.statusBarsPadding()).height(56.dp).padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
                         Text(state.conversations.find { it.id == state.activeConversationId }?.title ?: "Tapilot",
                             fontSize = 17.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         if (state.running) Text(label("正在处理…", "Working…"), color = colors.onSurfaceVariant, fontSize = 12.sp)
                     }
+                    if (compact) {
+                        TextButton(onClick = onExpand) { Text(label("展开", "Expand")) }
+                        TextButton(onClick = onDismiss) { Text(label("收起", "Dismiss")) }
+                    } else {
                     IconButton(onClick = { controller.command("settings") }, enabled = !busy) {
                         ChatIcon("settings", colors.onSurfaceVariant, label("设置", "Settings"))
                     }
@@ -57,6 +63,7 @@ fun ChatScreen(controller: ChatController) {
                             ChatIcon("history", colors.onSurfaceVariant, label("对话列表", "Conversations"))
                         }
                         ConversationDropdown(controller, sessions, onDismiss = { sessions = false })
+                    }
                     }
                 }
                 if (state.needsAccessibility) {

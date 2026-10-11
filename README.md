@@ -120,6 +120,34 @@ guarantee of uninterrupted effects on every device or page.
 3. Configure an HTTPS OpenAI-compatible vision model.
 4. Send a message. Tapilot shows the result in the current conversation; you can follow up or start a new chat.
 
+### Global conversation and interruption
+
+Tap the floating assistant from another app to open the conversation above the
+current screen. The panel and full-screen chat share one conversation agent and
+saved context. Expand opens the same conversation; Dismiss returns to the app
+underneath, and reopening the assistant keeps the conversation.
+
+The composer remains available during a task, including voice input and
+attachments. Text sent during execution steers the same Pi agent task at the
+next safe turn, after the current phone operation finishes. Explicit Stop cancels
+both the agent and phone runner; attachments can interrupt and start a new turn.
+With an empty composer, the send button becomes Stop. While phone
+automation is running, tap the floating task status to interrupt and reopen the
+conversation. Interrupted turns remain marked as stopped; only returned phone
+operation results are supplied as verified progress to the next turn.
+
+### Task agent
+
+Pi agent-core owns the model/tool loop and transcript in a separate on-device
+Node process. API credentials and HTTP requests stay in Android. The native
+coordinator stores task goals, plans, tool results, context checkpoints and input
+updates atomically. Tasks can wait for clarification, be stopped, or resume from
+saved progress after an explicit retry/continue. Restarting the app never runs
+phone actions automatically. Each attempt gets fresh counters from the existing
+limits settings (100 phone operations and 100 model turns by default; zero
+disables a limit). Midscene receives only the current concrete instruction and
+visible success condition, and phone actions always execute sequentially.
+
 Voice input supports the official Volcengine Seed ASR 2.0 API and Deepgram Nova-3
 (Simplified Chinese or US English, following the app language). Choose a provider in model settings and save its API Key. Volcengine uses
 an API Key from the new Doubao Speech console and the fixed resource ID
@@ -243,3 +271,5 @@ follow [SECURITY.md](SECURITY.md) instead of opening a public issue.
 
 Tapilot is proprietary software. All rights reserved. See [LICENSE](LICENSE).
 Third-party components remain subject to their respective licenses.
+
+Task messages expose expandable plan and verified operation results. Explicit “new task” instructions stop the current task before switching. Opening the global panel safely pauses phone actions; the next amendment resumes the saved task. Long model requests compact old logs without discarding user constraints or changing saved checkpoints.

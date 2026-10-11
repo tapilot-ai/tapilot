@@ -6,10 +6,10 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 object NativeModelRequest {
-    fun params(model: JSONObject, key: String, messages: JSONArray): JSONObject {
+    fun params(model: JSONObject, key: String, messages: JSONArray, tools: JSONArray = JSONArray().put(NativeConversationAgent.tool)): JSONObject {
         val endpoint = ModelProfiles.endpoint(model.getString("baseUrl"))
         val body = JSONObject().put("model", model.getString("modelName")).put("messages", messages)
-            .put("tools", JSONArray().put(NativeConversationAgent.tool)).put("tool_choice", "auto").put("stream", false).put("max_tokens", 2048)
+            .put("tools", tools).put("tool_choice", "auto").put("stream", false).put("max_tokens", 2048)
         // DashScope hybrid Qwen models default to reasoning; use a fast, non-streaming reply.
         val host = URI(endpoint).host
         if ((host == "dashscope.aliyuncs.com" || host.endsWith(".maas.aliyuncs.com")) && model.getString("modelName").startsWith("qwen3"))

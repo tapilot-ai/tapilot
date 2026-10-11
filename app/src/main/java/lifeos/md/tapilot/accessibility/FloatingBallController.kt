@@ -17,7 +17,6 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import lifeos.md.tapilot.AppTheme
 import lifeos.md.tapilot.MainActivity
-import lifeos.md.tapilot.GlobalAssistantPanelActivity
 import lifeos.md.tapilot.LaunchContext
 import lifeos.md.tapilot.R
 import org.json.JSONObject
@@ -72,6 +71,7 @@ class FloatingBallController(
     }
 
     fun showResult(message: String) {
+        if (appForeground) return
         hideStatus()
         hideResult()
         val panel = LinearLayout(service).apply {
@@ -107,7 +107,7 @@ class FloatingBallController(
             })
             setOnClickListener {
                 hideResult()
-                openMainActivity()
+                openAssistantPanel()
             }
         }
         val params = WindowManager.LayoutParams(
@@ -153,7 +153,8 @@ class FloatingBallController(
     private fun showStatus() {
         if (statusView != null) return
         val label = TextView(service).apply {
-            text = "Tapilot 正在处理…"
+            text = "Tapilot 正在处理 · 点击打断"
+            setOnClickListener { openAssistantPanel() }
             textSize = 13f
             setTextColor(AppTheme.colors(service).contrast)
             setPadding(dp(16), dp(9), dp(16), dp(9))
@@ -273,17 +274,10 @@ class FloatingBallController(
     }
 
     private fun openAssistantPanel() {
-        service.startActivity(
-            Intent(service, GlobalAssistantPanelActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            },
-        )
-    }
-
-    private fun openMainActivity() {
+        LaunchContext.consumePanel()?.let { LaunchContext.put(it.put("fromPanel", true)) }
         service.startActivity(Intent(service, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            putExtra(MainActivity.EXTRA_FOCUS_TASK_INPUT, true)
+            putExtra(MainActivity.EXTRA_GLOBAL_PANEL, true)
         })
     }
 

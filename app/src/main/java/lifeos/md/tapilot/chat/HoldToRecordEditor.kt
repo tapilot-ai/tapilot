@@ -28,6 +28,7 @@ class HoldToRecordEditor(context: Context) : EditText(context) {
     private var startY = 0f
     private var holding = false
     private var pending = false
+    var appliedDraftEpoch = -1
     var typingHint = ""
     var speechHint = "Hold to speak"
     fun refreshHint() { hint = if (canHoldToSpeak(holdEnabled, hasFocus(), text)) speechHint else typingHint }

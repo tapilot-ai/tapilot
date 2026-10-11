@@ -60,6 +60,39 @@ class NodeRuntimeProcessSupervisorTest {
         supervisor.close()
     }
 
+    @Test
+    fun completionReleasesRuntimeBeforeStartingNextTask() {
+        val supervisor = NodeRuntimeProcessSupervisor { _, _, _ -> object : Process() {
+            override fun getInputStream() = ByteArrayInputStream(byteArrayOf())
+            override fun getErrorStream() = ByteArrayInputStream(byteArrayOf())
+            override fun getOutputStream() = java.io.ByteArrayOutputStream()
+            override fun waitFor() = 0
+            override fun exitValue() = 0
+            override fun destroy() = Unit
+        } }
+        val runtime = InstalledNodeRuntime(File(".", "node"), File("."), File("runner.mjs"), File("."), File("."),
+            NodeRuntimeManifest(1, "test", "runner.mjs", 20))
+        val completed = CountDownLatch(2)
+        val failure = java.util.concurrent.atomic.AtomicReference<Throwable>()
+        val listener = object : NodeRuntimeListener {
+            override fun onLog(line: String) = Unit
+            override fun onEvent(event: NodeRuntimeEvent) = Unit
+            override fun onComplete(exitCode: Int) {
+                try {
+                    assertTrue("Completed runtime must release its slot", !supervisor.isRunning())
+                    if (completed.count == 2L) supervisor.runDoctor(runtime, this)
+                } catch (error: Throwable) { failure.set(error) }
+                completed.countDown()
+            }
+            override fun onFailure(error: Throwable) { failure.set(error); completed.countDown() }
+        }
+        try {
+            supervisor.runDoctor(runtime, listener)
+            assertTrue("Both tasks should finish", completed.await(2, TimeUnit.SECONDS))
+            failure.get()?.let { throw it }
+        } finally { supervisor.close() }
+    }
+
     private class BlockingInputProcess : Process() {
         val writeStarted = CountDownLatch(1)
         private val destroyed = CountDownLatch(1)

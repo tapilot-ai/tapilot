@@ -90,7 +90,7 @@ class NodeRuntimeProcessSupervisor(
             activeProcess = process
             activeInput = process.outputStream.bufferedWriter()
             executor.execute {
-                try {
+                val result = runCatching {
                     process.inputStream.bufferedReader().useLines { lines ->
                         lines.forEach { line ->
                             val event = runCatching { NodeRuntimeEvent.parse(line) }
@@ -98,16 +98,16 @@ class NodeRuntimeProcessSupervisor(
                             if (event == null) listener.onLog(line) else listener.onEvent(event)
                         }
                     }
-                    listener.onComplete(process.waitFor())
-                } catch (error: Throwable) {
-                    listener.onFailure(error)
-                } finally {
-                    synchronized(lock) {
-                        if (activeProcess === process) activeProcess = null
+                    process.waitFor()
+                }
+                synchronized(lock) {
+                    if (activeProcess === process) {
+                        activeProcess = null
                         activeInput?.let { writer -> runCatching { writer.close() } }
                         activeInput = null
                     }
                 }
+                result.fold(listener::onComplete, listener::onFailure)
             }
         }
     }

@@ -19,8 +19,8 @@ android {
         // An older local build exercises the available-update UI against the real published feed.
         // This verification package is never distributed as a release.
         val updateVerification = providers.gradleProperty("updateVerification").isPresent
-        versionCode = if (updateVerification) 1 else 4
-        versionName = if (updateVerification) "0.1.0-update-test" else "0.1.3"
+        versionCode = if (updateVerification) 1 else 5
+        versionName = if (updateVerification) "0.1.0-update-test" else "0.1.4"
     }
 
     buildTypes {

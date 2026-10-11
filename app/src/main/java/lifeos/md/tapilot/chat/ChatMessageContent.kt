@@ -63,6 +63,7 @@ internal fun MessageBubble(message: ChatMessage, zh: Boolean, controller: ChatCo
                 else message.text.ifBlank { if (zh) "任务已结束" else "Task finished" }
             if (user) Text(text, color = Color(palette.bubbleText), fontSize = 15.sp, lineHeight = 22.sp)
             else SelectionContainer { Text(text, fontSize = 15.sp, lineHeight = 22.sp) }
+            if (!user) message.task?.let { TaskDetailsView(it, zh) }
             message.attachment?.let {
                 TextButton(onClick = { controller.command("preview", id = message.entryId) }) {
                     Text((if (it.name == "当前屏幕") "引用：" else "附件：") + it.name, color = if (user) Color(palette.bubbleText) else colors.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -110,6 +111,8 @@ internal fun TaskProgressView(progress: ChatProgress, controller: ChatController
                 Text(if (zh) "停止" else "Stop", fontSize = 13.sp)
             }
         }
+        Text(if (zh) "继续输入或长按说话可补充要求；切换请说“换个任务”" else "Type or hold to add instructions; say “new task” to switch",
+            fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (progress.detail.isNotBlank()) Text(progress.detail, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
         if (progress.operation.isNotBlank()) Text("操作 ${progress.step} · ${progress.operation}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }

@@ -17,6 +17,9 @@ const bundleAsset = path.join(assetRoot, 'node-runtime-bundle.zip');
 const manifestAsset = path.join(assetRoot, 'node-runtime-manifest.json');
 const runtimeFiles = [
   'runner.mjs',
+  'pi-runner.mjs',
+  'pi-conversation.mjs',
+  'pi-context.mjs',
   'run-result.mjs',
   'stdio-native-bridge.mjs',
   'android.config.mjs',
@@ -219,6 +222,8 @@ fs.writeFileSync(
   `${JSON.stringify(manifest, null, 2)}\n`,
 );
 
+fs.copyFileSync(path.join(sourceRoot, 'assets/node-runtime/pi-conversation.test.mjs'), path.join(stagingRoot, 'pi-conversation.test.mjs'));
+run(process.execPath, ['--test', '--test-timeout=10000', 'pi-conversation.test.mjs'], stagingRoot);
 run(process.execPath, ['runner.mjs', 'doctor'], stagingRoot);
 run(
   process.execPath,

@@ -108,7 +108,7 @@ class ChatController(
     }
 
     fun send() {
-        if (!state.ready || state.running || recording || transcribing || picking) return
+        if (!state.ready || recording || transcribing || picking) return
         if (draft.isBlank() && state.attachment == null) return
         error = ""
         activity.currentFocus?.let {
@@ -123,7 +123,7 @@ class ChatController(
     }
 
     fun pick(kind: String) {
-        if (state.running || recording || transcribing || picking) return
+        if (recording || transcribing || picking) return
         picking = true
         picker(kind) { result -> handler.post {
             if (closed) return@post
@@ -135,12 +135,12 @@ class ChatController(
     }
 
     fun prepareRecording() {
-        if (state.ready && !state.running && !recording && !transcribing && !picking && draft.isEmpty()) speech.prepare()
+        if (state.ready && !recording && !transcribing && !picking && draft.isEmpty()) speech.prepare()
     }
     fun discardPreparedRecording() = speech.cancelPreparation()
 
     fun startRecording() {
-        if (!state.ready || state.running || recording || transcribing || picking) return
+        if (!state.ready || recording || transcribing || picking) return
         error = ""
         val key = runCatching { speechKey(state.speechProvider) }.getOrNull()
         if (key.isNullOrBlank()) {
@@ -224,7 +224,7 @@ class ChatController(
     }
 
     fun retrySpeech() {
-        if (!canRetrySpeech || recording || transcribing || state.running || picking) return
+        if (!canRetrySpeech || recording || transcribing || picking) return
         val key = speechKey(retryProvider).orEmpty()
         error = ""
         canRetrySpeech = false

@@ -33,7 +33,7 @@ internal fun ChatComposer(controller: ChatController) {
         // Return an empty editor to hold-to-record when the keyboard is dismissed.
         if (!keyboardVisible && controller.draft.isEmpty()) editor?.clearFocus()
     }
-    val enabled = state.ready && !state.running && !controller.transcribing && !controller.picking
+    val enabled = state.ready && !controller.transcribing && !controller.picking
     LaunchedEffect(controller.focusRequest) {
         if (controller.focusRequest > 0) {
             editor?.post { editor?.let { field -> field.requestFocus(); field.context.getSystemService(InputMethodManager::class.java)
@@ -96,7 +96,12 @@ internal fun ChatComposer(controller: ChatController) {
             field.typingHint = if (state.chinese) "输入消息" else "Type a message"
             field.speechHint = if (state.chinese) "长按语音输入" else "Hold to speak"
             val desired = controller.draft
-            if (field.text.toString() != desired) { field.setText(desired); field.setSelection(desired.length) }
+            // Local typing already lives in EditText. A delayed composition must not
+            // replace in-flight IME input with an earlier draft snapshot.
+            if (field.appliedDraftEpoch != state.draftEpoch || (!field.hasFocus() && field.text.toString() != desired)) {
+                field.appliedDraftEpoch = state.draftEpoch
+                if (field.text.toString() != desired) { field.setText(desired); field.setSelection(desired.length) }
+            }
             field.refreshHint()
             field.background = GradientDrawable().apply {
                 cornerRadius = 18 * field.resources.displayMetrics.density
@@ -105,12 +110,13 @@ internal fun ChatComposer(controller: ChatController) {
                     if (controller.willCancel) colors.error.toArgb() else colors.primary.toArgb())
             }
         })
-        val canSend = state.running || (enabled && !controller.recording && (controller.draft.isNotBlank() || state.attachment != null))
+        val interrupt = state.running && controller.draft.isBlank() && state.attachment == null
+        val canSend = (state.running && !controller.recording && !controller.transcribing) || (enabled && !controller.recording && (controller.draft.isNotBlank() || state.attachment != null))
         if (canSend) {
-            IconButton(onClick = { if (state.running) controller.command("stop") else controller.send() },
+            IconButton(onClick = { if (interrupt) controller.command("stop") else controller.send() },
                 modifier = Modifier.size(44.dp)) {
-                ChatIcon(if (state.running) "stop" else "send", colors.onSurface,
-                    if (state.chinese) (if (state.running) "停止" else "发送") else (if (state.running) "Stop" else "Send"), Modifier.size(20.dp))
+                ChatIcon(if (interrupt) "stop" else "send", colors.onSurface,
+                    if (state.chinese) (if (interrupt) "停止" else "发送") else (if (interrupt) "Stop" else "Send"), Modifier.size(20.dp))
             }
         }
     }

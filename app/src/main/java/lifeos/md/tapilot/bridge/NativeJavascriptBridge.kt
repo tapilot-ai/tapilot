@@ -46,6 +46,7 @@ class NativeJavascriptBridge(
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
     private val callbacks = java.util.concurrent.ConcurrentHashMap<String, (Result<Any?>) -> Unit>()
     private var closed = false
+    private var navigationEpoch = 0
 
     /** Native callers use the same services directly, without JavaScript or a WebView. */
     fun call(method: String, params: JSONObject = JSONObject(), sessionId: String = "native",
@@ -202,6 +203,7 @@ class NativeJavascriptBridge(
                 }
             }
             "task.cancel" -> {
+                navigationEpoch++
                 service?.cancelSession(sessionId)
                 modelTransport.cancelSession(sessionId)
                 respondSuccess(requestId, JSONObject.NULL)
@@ -378,10 +380,12 @@ class NativeJavascriptBridge(
             }
             "runtime.doctor" -> executeNodeRuntimeDoctor(requestId)
             "runtime.runTest" -> executeNodeTestRun(requestId, request.getJSONObject("params"))
-            "runtime.stop" -> respondSuccess(
-                requestId,
-                JSONObject().put("stopped", nodeTestRunCoordinator.stop()),
-            )
+            "runtime.stop" -> nodeRuntimeExecutor.execute {
+                runCatching { nodeTestRunCoordinator.stopAndWait() }.fold(
+                    onSuccess = { respondSuccess(requestId, JSONObject().put("stopped", it)) },
+                    onFailure = { respondError(requestId, it) },
+                )
+            }
             "app.getVersion" -> {
                 val context = activity
                 val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
@@ -432,21 +436,17 @@ class NativeJavascriptBridge(
             }
             "app.goHome" -> {
                 respondSuccess(requestId, JSONObject.NULL)
-                handler.postDelayed(
-                    {
-                        activity.startActivity(
-                            Intent(Intent.ACTION_MAIN)
-                                .addCategory(Intent.CATEGORY_HOME)
-                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                        )
-                    },
-                    GO_HOME_RESPONSE_DELAY_MILLIS,
-                )
+                navigateAfter(GO_HOME_RESPONSE_DELAY_MILLIS) {
+                    activity.startActivity(
+                        Intent(Intent.ACTION_MAIN)
+                            .addCategory(Intent.CATEGORY_HOME)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    )
+                }
             }
             "app.returnToPreviousApp" -> {
                 respondSuccess(requestId, JSONObject.NULL)
-                handler.postDelayed({ (activity as Activity).moveTaskToBack(true) },
-                    GO_HOME_RESPONSE_DELAY_MILLIS)
+                navigateAfter(GO_HOME_RESPONSE_DELAY_MILLIS) { (activity as Activity).moveTaskToBack(true) }
             }
             "app.showGlobalResult" -> {
                 service?.showGlobalResult(request.getJSONObject("params").getString("message"))
@@ -454,18 +454,12 @@ class NativeJavascriptBridge(
             }
             "app.bringToFront" -> {
                 respondSuccess(requestId, JSONObject.NULL)
-                handler.postDelayed(
-                    {
-                        activity.startActivity(
-                            Intent(activity, lifeos.md.tapilot.MainActivity::class.java)
-                                .addFlags(
-                                    Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
-                                        Intent.FLAG_ACTIVITY_SINGLE_TOP,
-                                ),
-                        )
-                    },
-                    BRING_TO_FRONT_RESPONSE_DELAY_MILLIS,
-                )
+                navigateAfter(BRING_TO_FRONT_RESPONSE_DELAY_MILLIS) {
+                    activity.startActivity(
+                        Intent(activity, lifeos.md.tapilot.MainActivity::class.java)
+                            .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                    )
+                }
             }
             "app.openAccessibilitySettings" -> {
                 activity.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
@@ -481,6 +475,11 @@ class NativeJavascriptBridge(
             }
             else -> throw UnsupportedOperationException("Unsupported bridge method: $method")
         }
+    }
+
+    private fun navigateAfter(delayMillis: Long, action: () -> Unit) {
+        val epoch = navigationEpoch
+        handler.postDelayed({ if (!closed && epoch == navigationEpoch) action() }, delayMillis)
     }
 
     private fun speechPreset(request: JSONObject): String = when (
