@@ -16,4 +16,4 @@
 - 初次 harness 调用遗漏站点独立 manifest，路由阶段退出，没有开始构建；补齐 --manifest apps/tapilot-site/harness.json 后通过。不把首轮失败写成成功，不重跑已通过的 APK 构建。
 - Studio 远端新增 4 个提交，本次推送的部分克隆自动抓取尝试补全大包历史，已仅停止本次拥有的推送进程。改用有既有基线参与协商的定向 fetch 后很快完成；正常合并 origin/main，最终提交 11e7a78778c2693b72aa759a24edc175fdf9cf99。其他应用的 6 个未提交文件保持原样。
 - 合并后重新签发官网 attestation: studio/.harness/runs/2026-10-11T125716-089Z/attestation.json，套件耗时 2.3 秒。pre-push 必需站点构建和类型检查通过，约 28 秒；11e7a7877 已推送。
-- Cloudflare 自动部署待线上核验。
+- Cloudflare Git 自动部署 dd1afb84-0d38-4821-a4bd-557246e8758b 成功；线上更新清单 HTTPS 200，版本 0.1.5 / versionCode 6，APK SHA-256 与构建、真机安装和飞书匿名下载一致。官网主页面 HTTPS 200。验收时间 2026-10-11T13:31:56.007606+00:00。远端 Git 构建独立执行，不宣称与本地产物逐字节相同。

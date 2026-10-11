@@ -19,8 +19,11 @@
     "taskId": "e7f5a496-298b-4e44-b9ef-10b5dcc93936",
     "result": "calculator 8+9=17; launch and taps verified in original report"
   },
-  "websiteStatus": "cloudflare-git-queued",
+  "websiteStatus": "git-deployment-success-https-verified",
   "websiteSourceCommit": "11e7a78778c2693b72aa759a24edc175fdf9cf99",
   "websiteAttestation": "../studio/.harness/runs/2026-10-11T125716-089Z/attestation.json",
-  "websiteDeploymentId": "dd1afb84-0d38-4821-a4bd-557246e8758b"
+  "websiteDeploymentId": "dd1afb84-0d38-4821-a4bd-557246e8758b",
+  "websiteVerifiedAt": "2026-10-11T13:31:56.007606+00:00",
+  "websiteUrl": "https://tapilot.lifeos.md/",
+  "finishedAt": "2026-10-11T13:31:56.007606+00:00"
 }
