@@ -9,4 +9,4 @@
 
 Android 11+, ARM64. This beta uses a debug signing certificate.
 
-Known verification limitation: microphone transcription could not complete with the configured Volcengine account because its ASR resource returned HTTP 403. Deepgram was not configured on the test device.
+Follow-up verification: an authorized Volcengine key passed on-device connection checks and actual API audio transcription. The original key returned a resource-permission HTTP 403. Deepgram was not configured on the test device.
