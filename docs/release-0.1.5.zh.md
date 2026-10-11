@@ -7,4 +7,13 @@
 ## 阶段记录
 
 - 发布开始：2026-10-11。Token 未计量。
-- 尚待执行：构建、安装、飞书上传和官网部署。
+- 源码提交 f4a12aa 已推送；Gradle 原生构建成功，耗时 17 秒，无重复构建。
+- APK 原生身份为 lifeos.md.tapilot / 0.1.5 / versionCode 6，调试签名与原版兼容。25 个 dex、Node 运行时与原生库条目逐字节匹配 0.1.4，复用其真实语音任务 E2E 证据，不宣称重新执行了整套测试。
+- Redmi K30 Ultra 已覆盖安装，保留会话与配置；已安装 APK 哈希与构建产物一致，启动聊天页可用。额外设置连接检查遇到另一项应用任务正在运行，已停止本次检查，不标为通过。
+- 飞书固定文件原位更新为 Tapilot-0.1.5-beta-arm64.apk；公开阅读权限核验通过，未登录 Ego Lite 实际下载成功，SHA-256 与本地及已安装 APK 完全一致。
+- SHA-256: 04d515f16f313b58e2288bc6814c8b8a197bc456748a7c1b10564c5d19a0db3d；大小 103822045 字节。
+- 官网提交 d72c92b21，独立站点 harness 完成类型检查、构建与产物检查，套件耗时 3 秒，attestation: studio/.harness/runs/2026-10-11T125223-165Z/attestation.json。
+- 初次 harness 调用遗漏站点独立 manifest，路由阶段退出，没有开始构建；补齐 --manifest apps/tapilot-site/harness.json 后通过。不把首轮失败写成成功，不重跑已通过的 APK 构建。
+- Studio 远端新增 4 个提交，本次推送的部分克隆自动抓取尝试补全大包历史，已仅停止本次拥有的推送进程。改用有既有基线参与协商的定向 fetch 后很快完成；正常合并 origin/main，最终提交 11e7a78778c2693b72aa759a24edc175fdf9cf99。其他应用的 6 个未提交文件保持原样。
+- 合并后重新签发官网 attestation: studio/.harness/runs/2026-10-11T125716-089Z/attestation.json，套件耗时 2.3 秒。pre-push 必需站点构建和类型检查通过，约 28 秒；11e7a7877 已推送。
+- Cloudflare 自动部署待线上核验。
