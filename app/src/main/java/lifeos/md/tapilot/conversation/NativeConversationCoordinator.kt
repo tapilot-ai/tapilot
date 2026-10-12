@@ -72,7 +72,10 @@ class NativeConversationCoordinator(
     val preset: String get() = data.optString("preset", "doubao")
     fun profile(id: String = preset): JSONObject = JSONObject((data.optJSONObject("profiles")?.optJSONObject(id) ?: ModelProfiles.defaults(id)).toString())
     fun hasKey(id: String) = credentials.getAll()[id]?.isNotBlank() == true
+    private var initializing = false
     fun initialize() {
+        if (ready || initializing || closed) return
+        initializing = true
         worker.execute {
             val loaded = runCatching { store.read().also { state ->
                 TaskLifecycle.recover(state)
@@ -80,6 +83,7 @@ class NativeConversationCoordinator(
             } }
             handler.post {
                 if (closed) return@post
+                initializing = false
                 loaded.fold(onSuccess = { data = it
                     // Recover queued input into the composer; restarting never triggers phone actions.
                     val recovered = it.optJSONArray("pendingTurns")?.objects().orEmpty()
@@ -143,7 +147,11 @@ class NativeConversationCoordinator(
         runCatching {
             val action = value.getString("action")
             when (action) {
-                "send" -> submit(value.optString("text", data.optString("draft")))
+                "send" -> {
+                    val preservedDraft = if (value.optBoolean("preserveDraft")) data.optString("draft") else null
+                    submit(value.optString("text", data.optString("draft")))
+                    if (preservedDraft != null) { data.put("draft", preservedDraft); draftEpoch++; save() }
+                }
                 "stop" -> stop()
                 "settings" -> if (!running) { settingsOpen = true; settingsStatus = "" }
                 "advanced" -> if (!running && data.optBoolean("advanced")) advancedOpen = true
@@ -257,7 +265,8 @@ class NativeConversationCoordinator(
             start(text, file, global = context.optBoolean("fromPanel"), restoreDraft = previousDraft, restoreAttachment = previousAttachment)
         } else {
             data.put("draft", listOf(data.optString("draft"), text).filter { it.isNotBlank() }.joinToString("\n"))
-            pendingAttachment = file; draftEpoch++; save(); publish(); focus()
+            pendingAttachment = file; draftEpoch++; save(); publish()
+            if (!context.optBoolean("voice")) focus()
         }
     }
     private fun start(text: String, file: JSONObject? = pendingAttachment, retryOf: String? = null, global: Boolean = globalMode,

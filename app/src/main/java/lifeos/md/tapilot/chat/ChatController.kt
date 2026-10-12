@@ -60,8 +60,9 @@ class ChatController(
         if (speakingId == message.id) runtime.stopSpeech()
         else runtime.read(VoiceReply(message.id, message.text, true))
     }
-    fun startVoiceConversation() {
-        if (!state.ready || !state.configured || runtime.startingVoice || recording || transcribing || picking || draft.isNotBlank() || state.attachment != null) return
+    fun startVoiceConversation(allowExistingInput: Boolean = false) {
+        if (allowExistingInput && state.ready && !state.configured) { showError(if (state.chinese) "请先配置模型 API" else "Configure model API first"); command("settings"); return }
+        if (!state.ready || !state.configured || runtime.startingVoice || recording || transcribing || picking || (!allowExistingInput && (draft.isNotBlank() || state.attachment != null))) return
         val key = runCatching { speechKey(state.speechProvider) }.getOrNull()
         if (key.isNullOrBlank()) { showError(if (state.chinese) "请先填写语音 API 配置" else "Configure speech API first"); command("settings"); return }
         if (activity.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {

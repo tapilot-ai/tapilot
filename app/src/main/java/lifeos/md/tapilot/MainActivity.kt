@@ -43,6 +43,7 @@ import java.util.concurrent.Executors
 class MainActivity : ComponentActivity() {
     override fun attachBaseContext(newBase: Context) { super.attachBaseContext(AppLanguage.wrap(newBase)) }
     private var globalPanel by mutableStateOf(false)
+    private var pendingVoiceLaunch by mutableStateOf(false)
     private lateinit var rootView: ComposeView
     private lateinit var chatController: ChatController
     private lateinit var coordinator: NativeConversationCoordinator
@@ -63,6 +64,8 @@ class MainActivity : ComponentActivity() {
         rootView = ComposeView(this).apply { setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed) }
         configureGlobalPanel(savedInstanceState?.takeIf { it.containsKey(EXTRA_GLOBAL_PANEL) }?.getBoolean(EXTRA_GLOBAL_PANEL)
             ?: (intent.getBooleanExtra(EXTRA_GLOBAL_PANEL, false) || intent.action == Intent.ACTION_ASSIST))
+        pendingVoiceLaunch = savedInstanceState?.getBoolean(EXTRA_START_VOICE) ?: intent.getBooleanExtra(EXTRA_START_VOICE, false)
+        intent.removeExtra(EXTRA_START_VOICE)
         val runtime = (application as TapilotApplication).assistant
         runtime.attach(this)
         nativeBridge = runtime.bridge
@@ -72,8 +75,8 @@ class MainActivity : ComponentActivity() {
                 runtime.command(it)
             })
         coordinator = runtime.coordinator
-        runtime.observe = chatController::accept
-        runtime.focus = chatController::requestFocus
+        runtime.observe = { chatController.accept(it); startPendingVoice() }
+        runtime.focus = { if (!pendingVoiceLaunch && !runtime.startingVoice && !runtime.voiceState.active) chatController.requestFocus() }
         runtime.picker = ::pickAttachment
         val store = ConversationStore(File(filesDir, "native-conversation.json"))
         coordinator.globalMode = globalPanel
@@ -82,7 +85,7 @@ class MainActivity : ComponentActivity() {
                 coordinator.settingsOpen -> NativeSettingsScreen(coordinator, this, nativeBridge,
                     onThemeChanged = { applyWindowTheme(rootView); coordinator.publish() }, onLanguageChanged = { recreate() })
                 coordinator.advancedOpen -> NativeAdvancedScreen(coordinator)
-                else -> ChatScreen(chatController, compact = globalPanel,
+                else -> ChatScreen(chatController, dismissible = globalPanel, voiceConnecting = pendingVoiceLaunch || runtime.startingVoice,
                     onExpand = { configureGlobalPanel(false) }, onDismiss = { moveTaskToBack(true) })
             }
         }
@@ -106,14 +109,18 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent); setIntent(intent)
         val panel = intent.getBooleanExtra(EXTRA_GLOBAL_PANEL, false) || intent.action == Intent.ACTION_ASSIST
+        pendingVoiceLaunch = intent.getBooleanExtra(EXTRA_START_VOICE, false)
+        intent.removeExtra(EXTRA_START_VOICE)
         configureGlobalPanel(panel)
-        if (panel) coordinator.openGlobalConversation()
+        if (panel && !(application as TapilotApplication).assistant.voiceEntryPending) coordinator.openGlobalConversation()
         receiveExternalIntent(intent)
         coordinator.receiveLaunchContext()
-        if (intent.getBooleanExtra(EXTRA_FOCUS_TASK_INPUT, false)) chatController.requestFocus()
+        if (intent.getBooleanExtra(EXTRA_FOCUS_TASK_INPUT, false) && !pendingVoiceLaunch) chatController.requestFocus()
+        startPendingVoice()
     }
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putBoolean(EXTRA_GLOBAL_PANEL, globalPanel)
+        outState.putBoolean(EXTRA_START_VOICE, pendingVoiceLaunch)
         super.onSaveInstanceState(outState)
     }
     override fun onResume() {
@@ -121,12 +128,35 @@ class MainActivity : ComponentActivity() {
         if (::rootView.isInitialized) applyWindowTheme(rootView)
         if (::coordinator.isInitialized) {
             coordinator.publish(); coordinator.receiveLaunchContext()
-            if (coordinator.ready) coordinator.removeReports(DeletedReportStore.consume(this))
+            if (coordinator.ready) {
+                coordinator.removeReports(DeletedReportStore.consume(this))
+                (application as TapilotApplication).assistant.finishVoiceEntry()
+            }
+        }
+    }
+    override fun onPostResume() { super.onPostResume(); startPendingVoice() }
+    private fun startPendingVoice() {
+        if (!pendingVoiceLaunch || !::chatController.isInitialized || !coordinator.ready || chatController.state.running ||
+            !lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) return
+        pendingVoiceLaunch = false
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
+        if (!chatController.voiceState.active) chatController.startVoiceConversation(allowExistingInput = true)
+        else if (chatController.voiceState.phase in listOf(lifeos.md.tapilot.voice.VoicePhase.Paused, lifeos.md.tapilot.voice.VoicePhase.Error)) chatController.resumeVoice()
+    }
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 7102 && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
+            pendingVoiceLaunch = true; handler.post { startPendingVoice() }
+        } else if (requestCode == 7102) {
+            chatController.showError(if (chatController.state.chinese) "麦克风权限未开启，允许后可开始语音对答" else "Allow microphone access to start voice chat")
         }
     }
     override fun onStart() { super.onStart(); handler.post(refresh) }
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && globalPanel && ::chatController.isInitialized && chatController.voiceState.active &&
+            applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0)
+            Log.d("TapilotVoice", "Voice chat window focused")
         if (!hasFocus && ::chatController.isInitialized && (chatController.recording || chatController.transcribing)) chatController.cancelRecording()
     }
     override fun onStop() {
@@ -243,19 +273,18 @@ class MainActivity : ComponentActivity() {
         if (::coordinator.isInitialized) coordinator.globalMode = panel
         window.setBackgroundDrawableResource(android.R.color.transparent)
         window.attributes = window.attributes.apply {
-            gravity = if (panel) Gravity.BOTTOM else Gravity.TOP
+            gravity = Gravity.TOP
             width = WindowManager.LayoutParams.MATCH_PARENT
-            height = if (panel) (resources.displayMetrics.heightPixels * .72f).toInt() else WindowManager.LayoutParams.MATCH_PARENT
-            dimAmount = if (panel) .16f else 0f
+            height = WindowManager.LayoutParams.MATCH_PARENT
+            dimAmount = 0f
         }
-        if (panel) window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-        else window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+        window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
         if (::rootView.isInitialized) applyWindowTheme(rootView)
     }
     private fun applyWindowTheme(root: View) {
         val dark = AppTheme.isDark(this)
         val background = if (dark) AppTheme.color(this, R.color.brand_dark_header) else AppTheme.color(this, R.color.brand_header)
-        root.setBackgroundColor(if (globalPanel) Color.TRANSPARENT else background)
+        root.setBackgroundColor(background)
         window.statusBarColor = Color.TRANSPARENT
         window.isStatusBarContrastEnforced = false
         window.navigationBarColor = Color.TRANSPARENT
@@ -275,6 +304,7 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
+        const val EXTRA_START_VOICE = "lifeos.md.tapilot.extra.START_VOICE"
         const val EXTRA_GLOBAL_PANEL = "lifeos.md.tapilot.extra.GLOBAL_PANEL"
         const val EXTRA_FOCUS_TASK_INPUT = "lifeos.md.tapilot.extra.FOCUS_TASK_INPUT"
         private const val NOTIFICATION_PERMISSION_REQUEST = 2108

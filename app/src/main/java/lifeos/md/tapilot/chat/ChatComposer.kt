@@ -115,7 +115,7 @@ internal fun ChatComposer(controller: ChatController) {
         val interrupt = state.running && controller.draft.isBlank() && state.attachment == null
         val canSend = (state.running && !controller.recording && !controller.transcribing) || (enabled && !controller.recording && (controller.draft.isNotBlank() || state.attachment != null))
         if (!canSend && enabled && !controller.recording && controller.draft.isBlank() && state.attachment == null) {
-            IconButton(onClick = controller::startVoiceConversation, modifier = Modifier.size(44.dp), enabled = state.configured) {
+            IconButton(onClick = { controller.startVoiceConversation() }, modifier = Modifier.size(44.dp), enabled = state.configured) {
                 ChatIcon("waveform", colors.onSurfaceVariant, if (state.chinese) "语音对话" else "Voice conversation", Modifier.size(22.dp))
             }
         }

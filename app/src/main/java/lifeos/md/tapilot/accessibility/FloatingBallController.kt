@@ -38,13 +38,42 @@ class FloatingBallController(
     private var layoutParams: WindowManager.LayoutParams? = null
     private var statusView: View? = null
     private var resultView: View? = null
+    private var longPressAction: Runnable? = null
+    private var voiceHint: View? = null
+    private val runtime get() = (service.application as lifeos.md.tapilot.TapilotApplication).assistant
+    private val holdOverlay = FloatingVoiceHoldOverlay(service, windowManager)
+    private val voiceOverlay = FloatingVoiceOverlay(service, windowManager)
+    private val updateVoice = object : Runnable {
+        override fun run() {
+            if (!runtime.floatingVoice) { voiceOverlay.hide(); holdOverlay.hide(); updateVisibility(); return }
+            hideVoiceHint(); hideStatus(); hideResult()
+            if (runtime.floatingHold) {
+                voiceOverlay.hide()
+                holdOverlay.refresh(runtime)
+            } else {
+                holdOverlay.hide()
+                voiceOverlay.refresh(runtime, appForeground || hiddenForCapture)
+            }
+            mainHandler.postDelayed(this, 150)
+        }
+    }
+    private val dismissVoiceHint = Runnable { hideVoiceHint() }
+    private val openVoice = Runnable {
+        service.startActivity(Intent(service, lifeos.md.tapilot.voice.VoiceEntryActivity::class.java)
+            .putExtra("heldVoice", true)
+            .putExtra("voiceEntryGeneration", runtime.floatingEntryGeneration)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
 
     private val themePreferences = service.getSharedPreferences("midscene-preferences", 0)
     private val themeListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key == "theme" || key == "theme.palette") mainHandler.post { refreshTheme() }
     }
 
-    init { themePreferences.registerOnSharedPreferenceChangeListener(themeListener) }
+    init {
+        themePreferences.registerOnSharedPreferenceChangeListener(themeListener)
+        if (runtime.floatingVoice) mainHandler.post(updateVoice)
+    }
 
     fun refreshTheme() {
         val result = (resultView as? LinearLayout)?.let { panel -> (panel.getChildAt(1) as? TextView)?.text?.toString() }
@@ -54,7 +83,7 @@ class FloatingBallController(
 
     fun setAppForeground(foreground: Boolean) {
         appForeground = foreground
-        if (foreground) hideResult()
+        if (foreground) { hideResult(); hideVoiceHint(); mainHandler.removeCallbacks(openVoice) }
         updateVisibility()
     }
 
@@ -71,7 +100,7 @@ class FloatingBallController(
     }
 
     fun showResult(message: String) {
-        if (appForeground) return
+        if (appForeground || runtime.floatingVoice) return
         hideStatus()
         hideResult()
         val panel = LinearLayout(service).apply {
@@ -126,6 +155,8 @@ class FloatingBallController(
         val wasVisible = view != null
         hiddenForCapture = true
         resultView?.visibility = View.INVISIBLE
+        voiceHint?.visibility = View.INVISIBLE
+        voiceOverlay.hide()
         updateVisibility()
         return wasVisible
     }
@@ -133,6 +164,7 @@ class FloatingBallController(
     fun restoreAfterCapture(wasVisible: Boolean) {
         hiddenForCapture = false
         resultView?.visibility = View.VISIBLE
+        voiceHint?.visibility = View.VISIBLE
         if (wasVisible) updateVisibility()
     }
 
@@ -144,14 +176,14 @@ class FloatingBallController(
     }
 
     private fun updateVisibility() {
-        val shouldShow = FloatingBallPreferences.isEnabled(service) &&
-            !appForeground && !taskRunning && !hiddenForCapture
+        val shouldShow = runtime.floatingHold || (FloatingBallPreferences.isEnabled(service) &&
+            !appForeground && !taskRunning && !hiddenForCapture)
         if (shouldShow && view == null) show() else if (!shouldShow && view != null) hide()
         if (taskRunning && !appForeground) showStatus() else hideStatus()
     }
 
     private fun showStatus() {
-        if (statusView != null) return
+        if (statusView != null || runtime.floatingVoice) return
         val label = TextView(service).apply {
             text = "Tapilot 正在处理 · 点击打断"
             setOnClickListener { openAssistantPanel() }
@@ -191,7 +223,7 @@ class FloatingBallController(
         }
         applySavedPosition(params)
 
-        val ball = ImageView(service).apply {
+        val ball = FloatingBallView(service).apply {
             contentDescription = service.getString(R.string.floating_ball_accessibility_label)
             setImageResource(R.drawable.tapilot_icon_foreground)
             scaleType = ImageView.ScaleType.FIT_CENTER
@@ -203,6 +235,19 @@ class FloatingBallController(
             }
             elevation = dp(8).toFloat()
             setOnClickListener { openTaskInput() }
+            setOnLongClickListener {
+                runtime.floatingEntryGeneration++
+                runtime.floatingHold = true
+                runtime.floatingCancelSelected = false
+                runtime.floatingContextReady = false
+                runtime.floatingVoice = true
+                runtime.floatingVoiceError = ""
+                mainHandler.removeCallbacks(updateVoice)
+                mainHandler.post(updateVoice)
+                // The visible entry starts recording; the conversation remains above the current app.
+                openVoice.run()
+                true
+            }
             setOnTouchListener(DragTouchListener(params))
         }
         runCatching { windowManager.addView(ball, params) }
@@ -213,6 +258,7 @@ class FloatingBallController(
     }
 
     private fun hide() {
+        cancelLongPress()
         val current = view ?: return
         view = null
         layoutParams = null
@@ -249,12 +295,12 @@ class FloatingBallController(
         )
     }
 
-    private fun openTaskInput() {
+    private fun openTaskInput(voice: Boolean = false) {
         val launched = AtomicBoolean(false)
         val fallback = Runnable {
             if (launched.compareAndSet(false, true)) {
                 Log.w("TapilotFloatingBall", "Screen capture timed out; opening panel")
-                openAssistantPanel()
+                openAssistantPanel(voice)
             }
         }
         mainHandler.postDelayed(fallback, 2_200L)
@@ -268,17 +314,45 @@ class FloatingBallController(
                         .put("label", "当前屏幕")
                         .put("dataUrl", capture.dataUrl))
                 }
-                openAssistantPanel()
+                openAssistantPanel(voice)
             }
         }
     }
 
-    private fun openAssistantPanel() {
-        LaunchContext.consumePanel()?.let { LaunchContext.put(it.put("fromPanel", true)) }
+    private fun captureVoiceContext() {
+        val generation = runtime.floatingEntryGeneration
+        val done = AtomicBoolean(false)
+        val complete = Runnable {
+            if (done.compareAndSet(false, true) && runtime.floatingVoice && generation == runtime.floatingEntryGeneration) {
+                runtime.completeFloatingContext()
+            }
+        }
+        mainHandler.postDelayed(complete, 2_200)
+        service.capture("held-voice-${UUID.randomUUID()}") { outcome ->
+            mainHandler.post {
+                if (done.get() || !runtime.floatingVoice || generation != runtime.floatingEntryGeneration) return@post
+                outcome.getOrNull()?.let { capture ->
+                    LaunchContext.put(JSONObject().put("kind", "screen").put("label", "当前屏幕")
+                        .put("dataUrl", capture.dataUrl).put("fromPanel", true).put("voice", true))
+                }
+                complete.run()
+            }
+        }
+    }
+
+    private fun openAssistantPanel(voice: Boolean = false) {
+        LaunchContext.consumePanel()?.let { LaunchContext.put(it.put("fromPanel", true).put("voice", voice)) }
         service.startActivity(Intent(service, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             putExtra(MainActivity.EXTRA_GLOBAL_PANEL, true)
+            putExtra(MainActivity.EXTRA_START_VOICE, voice)
         })
+    }
+
+    private fun hideVoiceHint() {
+        mainHandler.removeCallbacks(dismissVoiceHint)
+        voiceHint?.let { runCatching { windowManager.removeView(it) } }
+        voiceHint = null
     }
 
     private fun hideResult() {
@@ -287,10 +361,20 @@ class FloatingBallController(
     }
 
     override fun close() {
+        mainHandler.removeCallbacks(openVoice)
+        mainHandler.removeCallbacks(updateVoice)
+        voiceOverlay.hide()
+        holdOverlay.hide()
         themePreferences.unregisterOnSharedPreferenceChangeListener(themeListener)
         hide()
         hideStatus()
         hideResult()
+        hideVoiceHint()
+    }
+
+    private fun cancelLongPress() {
+        longPressAction?.let(mainHandler::removeCallbacks)
+        longPressAction = null
     }
 
     private fun dp(value: Int): Int =
@@ -304,6 +388,7 @@ class FloatingBallController(
         private var startX = 0
         private var startY = 0
         private var dragging = false
+        private var longPressed = false
 
         override fun onTouch(target: View, event: MotionEvent): Boolean {
             when (event.actionMasked) {
@@ -313,16 +398,38 @@ class FloatingBallController(
                     startX = params.x
                     startY = params.y
                     dragging = false
+                    longPressed = false
+                    cancelLongPress()
+                    longPressAction = Runnable {
+                        longPressAction = null
+                        if (!dragging && target.isPressed) {
+                            longPressed = true
+                            target.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                            target.performLongClick()
+                        }
+                    }.also { mainHandler.postDelayed(it, ViewConfiguration.getLongPressTimeout().toLong()) }
                     target.isPressed = true
+                    (target as? FloatingBallView)?.beginHold(ViewConfiguration.getLongPressTimeout().toLong())
                     return true
                 }
                 MotionEvent.ACTION_MOVE -> {
+                    if (longPressed) {
+                        val selected = holdOverlay.isCancelTarget(event.rawX, event.rawY)
+                        if (selected != runtime.floatingCancelSelected) {
+                            runtime.floatingCancelSelected = selected
+                            target.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+                            holdOverlay.refresh(runtime)
+                        }
+                        return true
+                    }
                     val deltaX = event.rawX - downRawX
                     val deltaY = event.rawY - downRawY
                     if (!dragging && (kotlin.math.abs(deltaX) > touchSlop ||
                             kotlin.math.abs(deltaY) > touchSlop)
                     ) {
                         dragging = true
+                        cancelLongPress()
+                        (target as? FloatingBallView)?.endHold()
                     }
                     if (dragging) {
                         val bounds = windowManager.currentWindowMetrics.bounds
@@ -335,11 +442,21 @@ class FloatingBallController(
                     return true
                 }
                 MotionEvent.ACTION_UP -> {
+                    cancelLongPress()
+                    (target as? FloatingBallView)?.endHold()
                     target.isPressed = false
-                    if (dragging) persistPosition(params) else target.performClick()
+                    if (longPressed) {
+                        runtime.releaseFloatingHold(holdOverlay.isCancelTarget(event.rawX, event.rawY))
+                        holdOverlay.hide()
+                        if (runtime.floatingVoice) captureVoiceContext()
+                        updateVisibility()
+                    } else if (dragging) persistPosition(params) else target.performClick()
                     return true
                 }
                 MotionEvent.ACTION_CANCEL -> {
+                    if (longPressed && runtime.floatingHold) { runtime.releaseFloatingHold(true); holdOverlay.hide() }
+                    cancelLongPress()
+                    (target as? FloatingBallView)?.endHold()
                     target.isPressed = false
                     return true
                 }

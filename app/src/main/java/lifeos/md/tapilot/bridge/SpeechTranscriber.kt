@@ -88,6 +88,8 @@ internal class SpeechTranscriber(private val activity: Context) : SpeechRecognit
         try {
             if (audio.recordingState != AudioRecord.RECORDSTATE_RECORDING) audio.startRecording()
             active = session
+            if ((activity.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0)
+                android.util.Log.d("TapilotVoice", "Microphone capture started")
             session.captureThread = Thread(
                 { capture(session, bufferSize) }, "tapilot-speech-capture",
             ).apply { start() }

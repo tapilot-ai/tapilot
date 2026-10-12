@@ -31,5 +31,5 @@
     <string name="task_notification_stopped">Tapilot task stopped</string>
     <string name="task_notification_description">Tap to return to task configuration and results</string>
     <string name="task_notification_stop">Stop</string>
-    <string name="floating_ball_accessibility_label">Open Tapilot task input</string>
+    <string name="floating_ball_accessibility_label">Tap to expand the conversation; hold to start voice chat</string>
 </resources>

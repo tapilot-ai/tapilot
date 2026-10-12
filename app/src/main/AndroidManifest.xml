@@ -53,6 +53,8 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        <activity android:name=".voice.VoiceEntryActivity" android:theme="@style/Theme.Tapilot.Panel" android:taskAffinity=""
+            android:excludeFromRecents="true" android:exported="false" />
         <activity
             android:name=".ReportActivity"
             android:exported="false" />

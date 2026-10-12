@@ -28,7 +28,7 @@ import androidx.compose.ui.semantics.contentDescription
 
 
 @Composable
-fun ChatScreen(controller: ChatController, compact: Boolean = false, onExpand: () -> Unit = {}, onDismiss: () -> Unit = {}) {
+fun ChatScreen(controller: ChatController, compact: Boolean = false, dismissible: Boolean = false, voiceConnecting: Boolean = false, onExpand: () -> Unit = {}, onDismiss: () -> Unit = {}) {
     val state = controller.state
     val colors = tapilotColors(state.dark, state.paletteId)
     TapilotTheme(state.dark, state.paletteId) {
@@ -64,6 +64,7 @@ fun ChatScreen(controller: ChatController, compact: Boolean = false, onExpand: (
                         }
                         ConversationDropdown(controller, sessions, onDismiss = { sessions = false })
                     }
+                    if (dismissible) TextButton(onClick = onDismiss) { Text(label("收起", "Dismiss")) }
                     }
                 }
                 if (state.needsAccessibility) {
@@ -118,7 +119,7 @@ fun ChatScreen(controller: ChatController, compact: Boolean = false, onExpand: (
                         TextButton(onClick = { controller.command("removeAttachment") }, enabled = !busy) { Text(label("移除", "Remove")) }
                     }
                 }
-                if (controller.voiceState.active) VoiceConversationPanel(controller) else ChatComposer(controller)
+                if (controller.voiceState.active || voiceConnecting) VoiceConversationPanel(controller, connecting = voiceConnecting) else ChatComposer(controller)
             }
             run {
                 RecordingFeedback(controller.willCancel, controller.willSend,

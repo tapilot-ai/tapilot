@@ -106,6 +106,7 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
                     ToggleRow(label("悬浮球", "Floating assistant"), floating) { value ->
                         services.call("app.setFloatingBallEnabled", JSONObject().put("enabled", value)) { result -> if (result.isSuccess) floating = value }
                     }
+                    Text(label("单击圆点展开对话，长按直接语音对答。", "Tap the floating button to expand chat; hold it to start voice chat."), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     SettingRow(label("设备控制", "Device control"), label("管理权限", "Manage permissions")) { coordinator.settingsCall("app.openAccessibilitySettings") }
                     SettingRow(label("系统默认助手", "Default assistant"), label("设置", "Set up")) { coordinator.settingsCall("app.requestAssistantRole") }
                     SettingRow(label("后台运行", "Background operation"), label("电池设置", "Battery settings")) { coordinator.settingsCall("app.openBatterySettings") }

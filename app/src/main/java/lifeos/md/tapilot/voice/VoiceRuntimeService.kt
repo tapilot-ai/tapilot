@@ -7,7 +7,7 @@ import android.os.IBinder
 import lifeos.md.tapilot.MainActivity
 import lifeos.md.tapilot.TapilotApplication
 
-/** Started by a visible screen; microphone permission is never requested from the background. */
+/** Started by a visible chat screen or transparent voice entry; permission is requested in the UI. */
 class VoiceRuntimeService : Service() {
     private val runtime get() = (application as TapilotApplication).assistant
     private var microphone = false

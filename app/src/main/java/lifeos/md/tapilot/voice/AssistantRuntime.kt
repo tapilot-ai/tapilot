@@ -28,9 +28,19 @@ class AssistantRuntime(context: Context) {
     var voiceState by androidx.compose.runtime.mutableStateOf(VoiceState()); private set
     var speakingId by androidx.compose.runtime.mutableStateOf(""); private set
     var outputError by androidx.compose.runtime.mutableStateOf(""); private set
-    var startingVoice = false; private set
+    var startingVoice by androidx.compose.runtime.mutableStateOf(false); private set
     private var service: VoiceRuntimeService? = null
     private var voiceKey = ""
+    var floatingEntryGeneration = 0
+    var floatingHold = false
+    var floatingCancelSelected = false
+    var floatingContextReady = false
+    private var finishFloatingWhenReady = false
+    var floatingVoice = false
+    var floatingVoiceError = ""
+    var floatingTranscript = ""; private set
+    var voiceEntryPending = false; private set
+    private var openingUtterance: String? = null
     private var mutedUntilNextSend = false
     private val config = VoiceOutputSettings(context)
     val bridge: NativeJavascriptBridge = NativeJavascriptBridge(context = context,
@@ -41,14 +51,22 @@ class AssistantRuntime(context: Context) {
         ConversationStore(File(context.filesDir, "native-conversation.json")), ::accept, { focus?.invoke() })
     private val replies = ReplySpeech(ApiSpeechPlayback(context) { state.speechProvider },
         { handler.post(it) }, { id, error -> speakingId = id; outputError = error; refreshService() })
-    private val voice = VoiceConversation(SpeechTranscriber(context), ApiSpeechPlayback(context) { state.speechProvider },
+    private val voice: VoiceConversation = VoiceConversation(SpeechTranscriber(context), ApiSpeechPlayback(context) { state.speechProvider },
         SystemClock::elapsedRealtime, { handler.post(it) },
-        { text -> if (state.confirmation == null) { feedback(); command(JSONObject().put("action", "send").put("text", text)) } },
-        { next -> voiceState = next; refreshService() })
+        { text -> if (voiceEntryPending) openingUtterance = text else sendSpoken(text) },
+        { next ->
+            voiceState = next
+            if (next.active && next.transcript.isNotBlank()) floatingTranscript = next.transcript
+            refreshService()
+            if (finishFloatingWhenReady && next.phase == VoicePhase.Listening) {
+                finishFloatingWhenReady = false
+                handler.post { if (!floatingHold && voiceState.phase == VoicePhase.Listening) voice.finishUtterance() }
+            }
+        })
     private val clock = object : Runnable {
         override fun run() {
             if (!voiceState.active) return
-            voice.tick(); voice.update(voiceReplies(), state.running, state.confirmation)
+            if (!floatingHold) voice.tick(); voice.update(voiceReplies(), state.running, state.confirmation)
             handler.postDelayed(this, 100)
         }
     }
@@ -57,7 +75,7 @@ class AssistantRuntime(context: Context) {
     private fun hasOutputKey() = runCatching { ModelCredentialStore(context).getAll().let {
         !it["speech-output-${state.speechProvider}"].isNullOrBlank() || !it["speech-${state.speechProvider}"].isNullOrBlank() } }.getOrDefault(false)
     private fun accept(next: ChatState) {
-        if (state.activeConversationId != next.activeConversationId) endVoice()
+        if (state.ready && state.activeConversationId != next.activeConversationId) endVoice()
         state = next
         if (voiceState.active) voice.update(voiceReplies(), next.running, next.confirmation)
         replies.update(next.activeConversationId, voiceReplies(), config.autoRead && !mutedUntilNextSend && !voiceState.active && !startingVoice && hasOutputKey())
@@ -86,6 +104,24 @@ class AssistantRuntime(context: Context) {
             it.startTone(ToneGenerator.TONE_PROP_ACK, 100); handler.postDelayed({ it.release() }, 150)
         } }
     }
+    private fun sendSpoken(text: String) {
+        if (state.confirmation == null) {
+            feedback(); command(JSONObject().put("action", "send").put("text", text).put("preserveDraft", true))
+        }
+    }
+    fun prepareVoiceEntry() {
+        floatingTranscript = ""
+        coordinator.globalMode = true
+        coordinator.openGlobalConversation()
+        voiceEntryPending = true
+        openingUtterance = null
+    }
+    fun finishVoiceEntry() {
+        if (!voiceEntryPending) return
+        voiceEntryPending = false
+        val text = openingUtterance; openingUtterance = null
+        text?.let(::sendSpoken)
+    }
     fun startVoice(key: String) {
         replies.stop(); voiceKey = key; startingVoice = true
         runCatching { ContextCompat.startForegroundService(context,
@@ -108,11 +144,21 @@ class AssistantRuntime(context: Context) {
         if (speakingId.isNotBlank()) replies.stop()
     }
     private fun refreshService() { service?.refresh(voiceState, speakingId.isNotBlank(), state.running && !mutedUntilNextSend && !voiceState.active && config.autoRead && hasOutputKey()) }
-    fun endVoice() { startingVoice = false; voiceKey = ""; if (voiceState.active) voice.stop(); handler.removeCallbacks(clock) }
+    fun endVoice() { floatingEntryGeneration++; floatingHold = false; floatingCancelSelected = false; finishFloatingWhenReady = false; floatingVoice = false; floatingVoiceError = ""; floatingTranscript = ""; voiceEntryPending = false; openingUtterance = null; startingVoice = false; voiceKey = ""; if (voiceState.active) voice.stop(); handler.removeCallbacks(clock) }
     fun pauseVoice() = voice.pause()
     fun resumeVoice() = voice.resume()
     fun interruptVoice() = voice.interrupt()
     fun finishUtterance() = voice.finishUtterance()
+    fun completeFloatingContext() {
+        floatingContextReady = true
+        if (state.ready) { coordinator.receiveLaunchContext(); finishVoiceEntry() }
+    }
+    fun releaseFloatingHold(cancel: Boolean) {
+        floatingHold = false; floatingCancelSelected = false
+        if (cancel) { endVoice(); return }
+        if (voiceState.phase == VoicePhase.Listening) voice.finishUtterance()
+        else finishFloatingWhenReady = true
+    }
     fun stopSpeech() = replies.stop()
     fun read(reply: VoiceReply) {
         endVoice()
