@@ -161,6 +161,22 @@ permission. Audio streams through the selected provider's WebSocket API without
 creating a recording file. Each provider's key is encrypted separately with Android
 Keystore. Android speech recognition is not used.
 
+### 连续语音对话
+
+点击空输入框右侧的声波图标进入语音对话。停顿约 1.2 秒后自动发送，
+助手会用 API 播报回答或追问，然后继续监听；每一轮沿用当前对话的 Pi 上下文。
+点击“打断”停止播报并接着说，“暂停”关闭麦克风，“结束”返回文字输入。
+收到指令后立即给出提示音，并用 API 回应“收到”；任务同时开始处理。
+语音会话由前台服务维持，切到其他应用仍能对答和听结果，通知栏可暂停、继续、打断或结束。
+30 秒没有说话会暂停监听；返回键将界面收起，点击“结束”才退出语音。
+播报期间关闭麦克风，当前采用点击打断，暂不支持说话直接打断或唤醒词。
+
+普通聊天也默认朗读新回答，可在设置关闭自动朗读，或点击单条回答的“朗读 / 停止播报”。
+历史消息不会自动重播。设置中的“语音对话与播报”跟随转写服务，可试听、设置音色和独立播报密钥；
+留空复用转写密钥。火山引擎使用 Seed TTS 2.0，默认音色与 Studio 一致；
+Deepgram 使用 Aura-2，默认音色为英文。TTS 权限与 ASR 权限分别开通。
+密钥使用 Android Keystore 加密保存。模型请求失败会如实播报失败，可通过任务重试按钮重试。
+
 The interface follows the Android system language by default. Simplified
 Chinese and English can also be selected explicitly from the app-styled
 language sheet. The choice applies to the native settings, native accessibility

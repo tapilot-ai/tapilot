@@ -102,6 +102,8 @@ class ModelCredentialStore(context: Context) {
             "speech-volcengine",
             "speech-deepgram",
             "speech-polish",
+            "speech-output-volcengine",
+            "speech-output-deepgram",
         )
     }
 }

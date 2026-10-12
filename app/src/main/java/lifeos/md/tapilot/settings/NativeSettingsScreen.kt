@@ -90,6 +90,7 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
                     }
                     if (coordinator.settingsSection == "speech") Status(coordinator.settingsStatus)
                 }
+                Group(label("语音对话与播报", "Voice conversation & playback")) { VoiceOutputSettingsSection(activity, zh, provider) }
                 Group(label("语音润色", "Voice polishing")) { SpeechPolishSettingsSection(activity, zh) }
                 if (coordinator.settingsSection == "general") Status(coordinator.settingsStatus)
                 Group(label("外观与语言", "Appearance & language")) {

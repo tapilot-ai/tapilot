@@ -2,6 +2,7 @@ package lifeos.md.tapilot.bridge
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.Context
 import android.app.role.RoleManager
 import android.os.Build
 import android.content.Intent
@@ -35,7 +36,7 @@ import androidx.core.content.FileProvider
 
 class NativeJavascriptBridge(
     private val webView: WebView? = null,
-    private val activity: Activity = webView?.context as Activity,
+    context: Context = webView?.context as Activity,
     private val onProgress: (String) -> Unit = {},
     private val onLanguageChanged: (String) -> Unit = {},
     private val onThemeChanged: (String) -> Unit = {},
@@ -43,6 +44,15 @@ class NativeJavascriptBridge(
         callback(Result.failure(UnsupportedOperationException("Attachment picker unavailable")))
     },
 ) : AutoCloseable {
+    private val appContext = context.applicationContext
+    private var host = java.lang.ref.WeakReference(context as? Activity)
+    private val activity: Context get() = host.get() ?: appContext
+    fun attach(activity: Activity?) { host = java.lang.ref.WeakReference(activity) }
+    private fun open(intent: Intent) {
+        val context = activity
+        if (context !is Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+    }
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
     private val callbacks = java.util.concurrent.ConcurrentHashMap<String, (Result<Any?>) -> Unit>()
     private var closed = false
@@ -64,8 +74,8 @@ class NativeJavascriptBridge(
     private val attachments = AttachmentStore(File(activity.filesDir, "chat-attachments"))
     private val modelTransport = ModelTransport()
     private val modelCredentialStore = ModelCredentialStore(activity)
-    private val speechTranscriber = SpeechTranscriber(activity as Activity)
-    private val speechRecognition = lifeos.md.tapilot.speech.PolishingSpeechRecognition(activity as Activity, speechTranscriber)
+    private val speechTranscriber = SpeechTranscriber(appContext)
+    private val speechRecognition = lifeos.md.tapilot.speech.PolishingSpeechRecognition(appContext, speechTranscriber)
     private val reportRepository = ReportRepository(File(activity.filesDir, "reports")).apply {
         cleanupStaleDrafts()
     }
@@ -145,7 +155,7 @@ class NativeJavascriptBridge(
                     "Assistant role is unavailable on this device"
                 }
                 if (!manager.isRoleHeld(RoleManager.ROLE_ASSISTANT)) {
-                    (activity as Activity).startActivityForResult(
+                    (host.get() ?: error("Open Tapilot to grant the assistant role")).startActivityForResult(
                         manager.createRequestRoleIntent(RoleManager.ROLE_ASSISTANT), 2110,
                     )
                 }
@@ -325,7 +335,7 @@ class NativeJavascriptBridge(
                 check(reportRepository.reportFile(reportId).isFile) {
                     "Report does not exist: $reportId"
                 }
-                activity.startActivity(
+                open(
                     Intent(activity, ReportActivity::class.java)
                         .putExtra(ReportActivity.EXTRA_REPORT_ID, reportId),
                 )
@@ -337,7 +347,7 @@ class NativeJavascriptBridge(
                     setDataAndType(reportUri(report), "text/html")
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-                activity.startActivity(Intent.createChooser(intent, report.name))
+                open(Intent.createChooser(intent, report.name))
                 respondSuccess(requestId, JSONObject.NULL)
             }
             "report.share" -> {
@@ -347,7 +357,7 @@ class NativeJavascriptBridge(
                     putExtra(Intent.EXTRA_STREAM, reportUri(report))
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-                activity.startActivity(Intent.createChooser(intent, report.name))
+                open(Intent.createChooser(intent, report.name))
                 respondSuccess(requestId, JSONObject.NULL)
             }
             "report.export" -> executeReportOperation(requestId) {
@@ -437,7 +447,7 @@ class NativeJavascriptBridge(
             "app.goHome" -> {
                 respondSuccess(requestId, JSONObject.NULL)
                 navigateAfter(GO_HOME_RESPONSE_DELAY_MILLIS) {
-                    activity.startActivity(
+                    open(
                         Intent(Intent.ACTION_MAIN)
                             .addCategory(Intent.CATEGORY_HOME)
                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
@@ -446,7 +456,7 @@ class NativeJavascriptBridge(
             }
             "app.returnToPreviousApp" -> {
                 respondSuccess(requestId, JSONObject.NULL)
-                navigateAfter(GO_HOME_RESPONSE_DELAY_MILLIS) { (activity as Activity).moveTaskToBack(true) }
+                navigateAfter(GO_HOME_RESPONSE_DELAY_MILLIS) { host.get()?.moveTaskToBack(true) }
             }
             "app.showGlobalResult" -> {
                 service?.showGlobalResult(request.getJSONObject("params").getString("message"))
@@ -455,18 +465,18 @@ class NativeJavascriptBridge(
             "app.bringToFront" -> {
                 respondSuccess(requestId, JSONObject.NULL)
                 navigateAfter(BRING_TO_FRONT_RESPONSE_DELAY_MILLIS) {
-                    activity.startActivity(
+                    open(
                         Intent(activity, lifeos.md.tapilot.MainActivity::class.java)
                             .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP),
                     )
                 }
             }
             "app.openAccessibilitySettings" -> {
-                activity.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                open(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                 respondSuccess(requestId, JSONObject.NULL)
             }
             "app.openBatterySettings" -> {
-                activity.startActivity(
+                open(
                     Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                         data = Uri.parse("package:${activity.packageName}")
                     },

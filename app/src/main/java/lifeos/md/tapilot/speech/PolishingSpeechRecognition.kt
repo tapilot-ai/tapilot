@@ -1,6 +1,6 @@
 package lifeos.md.tapilot.speech
 
-import android.app.Activity
+import android.content.Context
 import lifeos.md.tapilot.bridge.SpeechRecognition
 import lifeos.md.tapilot.bridge.SpeechTranscriber
 
@@ -9,7 +9,7 @@ internal class PolishingSpeechRecognition(
     private val recognition: SpeechRecognition,
     private val sessionFactory: ((String) -> Unit) -> SpeechPolishSession,
 ) : SpeechRecognition {
-    constructor(activity: Activity, recognition: SpeechRecognition = SpeechTranscriber(activity)) : this(recognition, { display ->
+    constructor(activity: Context, recognition: SpeechRecognition = SpeechTranscriber(activity)) : this(recognition, { display ->
         val store = SpeechPolishStore(activity)
         val polisher = SpeechPolisher(store.load(), kotlin.runCatching { store.key() }.getOrDefault(""))
         SpeechPolishSession(polisher::polish, display, polisher::cancel)

@@ -1,6 +1,6 @@
 package lifeos.md.tapilot.conversation
 
-import android.app.Activity
+import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import androidx.compose.runtime.getValue
@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 /** Main-thread state; blocking model and Node work is confined to one worker. */
 class NativeConversationCoordinator(
-    private val activity: Activity,
+    private val activity: Context,
     private val services: NativeJavascriptBridge,
     private val store: ConversationStore,
     private val emit: (ChatState) -> Unit,
@@ -53,6 +53,7 @@ class NativeConversationCoordinator(
     private var activeTaskId = ""
     @Volatile private var closed = false
     var globalMode = false
+    @Volatile var backgroundReplies = false
     private val pendingTurns = ArrayDeque<JSONObject>()
     private var running = false
     private var error = ""
@@ -365,7 +366,7 @@ class NativeConversationCoordinator(
             runCatching { await("task.status", JSONObject().put("status", status), runSession) }
             runCatching { await("task.complete", sessionId = runSession) }
             if (global) runCatching { await("app.showGlobalResult", JSONObject().put("message", message), runSession) }
-            else if (phoneStarted && !stopped.get()) runCatching { await("app.bringToFront", sessionId = runSession) }
+            else if (phoneStarted && !stopped.get() && !backgroundReplies) runCatching { await("app.bringToFront", sessionId = runSession) }
             handler.post {
                 if (closed) return@post
                 find(id)?.put("status", status)?.put("reports", reports)?.put("completedOperations", completedOperations)?.put(if (status == "succeeded") "reply" else "detail", message)

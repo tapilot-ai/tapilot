@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import lifeos.md.tapilot.bridge.ModelCredentialStore
 import lifeos.md.tapilot.bridge.SpeechRecognition
 import org.json.JSONObject
+import lifeos.md.tapilot.voice.*
 
 /** Native UI state and microphone lifecycle; production commands go directly to Kotlin. */
 class ChatController(
@@ -51,6 +52,32 @@ class ChatController(
     var focusRequest by mutableStateOf(0)
         private set
     private val handler = Handler(Looper.getMainLooper())
+    private val runtime get() = (activity.application as lifeos.md.tapilot.TapilotApplication).assistant
+    val voiceState get() = runtime.voiceState
+    val speakingId get() = runtime.speakingId
+    val playbackError get() = runtime.outputError
+    fun readReply(message: ChatMessage) {
+        if (speakingId == message.id) runtime.stopSpeech()
+        else runtime.read(VoiceReply(message.id, message.text, true))
+    }
+    fun startVoiceConversation() {
+        if (!state.ready || !state.configured || runtime.startingVoice || recording || transcribing || picking || draft.isNotBlank() || state.attachment != null) return
+        val key = runCatching { speechKey(state.speechProvider) }.getOrNull()
+        if (key.isNullOrBlank()) { showError(if (state.chinese) "请先填写语音 API 配置" else "Configure speech API first"); command("settings"); return }
+        if (activity.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            activity.requestPermissions(arrayOf(android.Manifest.permission.RECORD_AUDIO), 7102); return
+        }
+        speech.cancelPreparation()
+        activity.currentFocus?.let {
+            activity.getSystemService(InputMethodManager::class.java).hideSoftInputFromWindow(it.windowToken, 0); it.clearFocus()
+        }
+        error = ""; runtime.startVoice(key)
+    }
+    fun endVoiceConversation() = runtime.stopAudio()
+    fun interruptVoice() = runtime.interruptVoice()
+    fun pauseVoice() = runtime.pauseVoice()
+    fun resumeVoice() = runtime.resumeVoice()
+    fun finishVoiceUtterance() = runtime.finishUtterance()
     private var closed = false
     private var speechGeneration = 0
     private var recordingStarted = 0L
@@ -90,6 +117,7 @@ class ChatController(
     fun requestFocus() { handler.post { if (!closed) focusRequest++ } }
 
     fun command(action: String, text: String? = null, id: String? = null) {
+        if (action in listOf("settings", "new", "select")) endVoiceConversation()
         val payload = JSONObject().put("action", action)
         text?.let { payload.put("text", it) }
         id?.let { payload.put("id", it) }
@@ -135,12 +163,13 @@ class ChatController(
     }
 
     fun prepareRecording() {
-        if (state.ready && !recording && !transcribing && !picking && draft.isEmpty()) speech.prepare()
+        if (state.ready && !voiceState.active && !recording && !transcribing && !picking && draft.isEmpty()) speech.prepare()
     }
     fun discardPreparedRecording() = speech.cancelPreparation()
 
     fun startRecording() {
-        if (!state.ready || recording || transcribing || picking) return
+        if (!state.ready || voiceState.active || recording || transcribing || picking) return
+        runtime.stopSpeech()
         error = ""
         val key = runCatching { speechKey(state.speechProvider) }.getOrNull()
         if (key.isNullOrBlank()) {
@@ -257,6 +286,7 @@ class ChatController(
     fun showError(message: String) { error = message }
     fun dismissError() {
         error = ""
+        runtime.clearOutputError()
         if (canRetrySpeech) { speech.cancel(); canRetrySpeech = false }
     }
 

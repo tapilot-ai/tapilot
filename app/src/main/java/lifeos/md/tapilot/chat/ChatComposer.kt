@@ -52,13 +52,15 @@ internal fun ChatComposer(controller: ChatController) {
             }
             AttachmentDropdown(controller, attachments, onDismiss = { attachments = false })
         }
-        AndroidView(modifier = Modifier.weight(1f).heightIn(min = 34.dp, max = 126.dp), factory = { context ->
+        // Match the adjacent buttons so the empty hint shares their vertical center.
+        AndroidView(modifier = Modifier.weight(1f).heightIn(min = 44.dp, max = 126.dp), factory = { context ->
             HoldToRecordEditor(context).apply {
                 editor = this
                 setTextSize(15f)
                 setPadding((4 * resources.displayMetrics.density).toInt(), (7 * resources.displayMetrics.density).toInt(),
                     (4 * resources.displayMetrics.density).toInt(), (7 * resources.displayMetrics.density).toInt())
-                gravity = Gravity.TOP
+                gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                includeFontPadding = false
                 minLines = 1
                 maxLines = 5
                 inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
@@ -112,6 +114,11 @@ internal fun ChatComposer(controller: ChatController) {
         })
         val interrupt = state.running && controller.draft.isBlank() && state.attachment == null
         val canSend = (state.running && !controller.recording && !controller.transcribing) || (enabled && !controller.recording && (controller.draft.isNotBlank() || state.attachment != null))
+        if (!canSend && enabled && !controller.recording && controller.draft.isBlank() && state.attachment == null) {
+            IconButton(onClick = controller::startVoiceConversation, modifier = Modifier.size(44.dp), enabled = state.configured) {
+                ChatIcon("waveform", colors.onSurfaceVariant, if (state.chinese) "语音对话" else "Voice conversation", Modifier.size(22.dp))
+            }
+        }
         if (canSend) {
             IconButton(onClick = { if (interrupt) controller.command("stop") else controller.send() },
                 modifier = Modifier.size(44.dp)) {

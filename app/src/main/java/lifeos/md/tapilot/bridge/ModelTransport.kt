@@ -44,6 +44,9 @@ class ModelTransport : AutoCloseable {
                     for (name in headers.keys()) {
                         connection.setRequestProperty(name, headers.getString(name))
                     }
+                    // Assistant turns can be separated by minutes. Do not retain an idle
+                    // HTTP/1 connection through a mobile proxy for the next voice turn.
+                    connection.setRequestProperty("Connection", "close")
                     if (params.has("bodyBase64") && !params.isNull("bodyBase64")) {
                         connection.doOutput = true
                         connection.outputStream.use { output ->

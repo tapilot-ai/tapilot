@@ -2,6 +2,7 @@ package lifeos.md.tapilot.bridge
 
 import android.Manifest
 import android.app.Activity
+import android.content.Context
 import android.content.pm.PackageManager
 import android.content.pm.ApplicationInfo
 import android.media.AudioFormat
@@ -23,7 +24,7 @@ import okio.ByteString
 import okio.ByteString.Companion.toByteString
 
 /** Streams 16 kHz mono PCM to the two API providers supported by Doubao Say. */
-internal class SpeechTranscriber(private val activity: Activity) : SpeechRecognition {
+internal class SpeechTranscriber(private val activity: Context) : SpeechRecognition {
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(0, TimeUnit.MILLISECONDS)
@@ -78,8 +79,8 @@ internal class SpeechTranscriber(private val activity: Activity) : SpeechRecogni
         lastFailure = null
         retained = null
         if (activity.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            activity.requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), MICROPHONE_REQUEST)
-            error("Microphone permission requested. Tap the microphone again after allowing access.")
+            (activity as? Activity)?.requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), MICROPHONE_REQUEST)
+            error("Microphone permission required. Open Tapilot and allow microphone access.")
         }
         val bufferSize = 3200
         val audio = preparedAudio?.also { preparedAudio = null } ?: createMicrophone()
@@ -226,8 +227,8 @@ internal class SpeechTranscriber(private val activity: Activity) : SpeechRecogni
                     require(session.totalBytes >= RATE / 5) { "Recording is too short" }
                     // Preserve the existing debug-only recovery test hook.
                     if ((activity.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0 &&
-                        activity.intent.getBooleanExtra("tapilot.debug.failSpeechOnce", false)) {
-                        activity.intent.removeExtra("tapilot.debug.failSpeechOnce")
+                        (activity as? Activity)?.intent?.getBooleanExtra("tapilot.debug.failSpeechOnce", false) == true) {
+                        (activity as? Activity)?.intent?.removeExtra("tapilot.debug.failSpeechOnce")
                         throw IOException("Injected speech response failure for E2E")
                     }
                     flush(session)

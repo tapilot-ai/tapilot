@@ -71,6 +71,10 @@ internal fun MessageBubble(message: ChatMessage, zh: Boolean, controller: ChatCo
             }
             if (!user && message.status != "running") {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (message.text.isNotBlank()) TextButton(onClick = { controller.readReply(message) }, enabled = !controller.voiceState.active && !controller.recording && !controller.transcribing,
+                        contentPadding = PaddingValues(0.dp)) {
+                        Text(if (controller.speakingId == message.id) (if (zh) "停止播报" else "Stop voice") else (if (zh) "朗读" else "Read aloud"), fontSize = 12.sp)
+                    }
                     TextButton(onClick = { copy() }, contentPadding = PaddingValues(0.dp)) {
                         Text(if (zh) "复制" else "Copy", fontSize = 12.sp, color = colors.onSurfaceVariant)
                     }

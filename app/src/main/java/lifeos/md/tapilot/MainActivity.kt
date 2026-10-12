@@ -63,14 +63,19 @@ class MainActivity : ComponentActivity() {
         rootView = ComposeView(this).apply { setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed) }
         configureGlobalPanel(savedInstanceState?.takeIf { it.containsKey(EXTRA_GLOBAL_PANEL) }?.getBoolean(EXTRA_GLOBAL_PANEL)
             ?: (intent.getBooleanExtra(EXTRA_GLOBAL_PANEL, false) || intent.action == Intent.ACTION_ASSIST))
-        nativeBridge = NativeJavascriptBridge(activity = this, onProgress = { method -> if (::coordinator.isInitialized) coordinator.phoneProgress(method) }, onPickAttachment = ::pickAttachment)
+        val runtime = (application as TapilotApplication).assistant
+        runtime.attach(this)
+        nativeBridge = runtime.bridge
         chatController = ChatController(this, onSurfaceChanged = {}, picker = ::pickAttachment,
             nativeCommand = {
                 if (it.optString("action") == "settings" && globalPanel) configureGlobalPanel(false)
-                coordinator.command(it)
+                runtime.command(it)
             })
+        coordinator = runtime.coordinator
+        runtime.observe = chatController::accept
+        runtime.focus = chatController::requestFocus
+        runtime.picker = ::pickAttachment
         val store = ConversationStore(File(filesDir, "native-conversation.json"))
-        coordinator = NativeConversationCoordinator(this, nativeBridge, store, chatController::accept, chatController::requestFocus)
         coordinator.globalMode = globalPanel
         rootView.setContent {
             when {
@@ -83,11 +88,13 @@ class MainActivity : ComponentActivity() {
         }
         setContentView(rootView)
         receiveExternalIntent(intent)
-        importer = LegacyConversationImport(this, store).also { loader -> loader.start { result ->
+        if (coordinator.ready) coordinator.publish()
+        else importer = LegacyConversationImport(this, store).also { loader -> loader.start { result ->
             result.fold(onSuccess = { coordinator.initialize() }, onFailure = { chatController.showError(it.message ?: "无法导入旧数据，请重新打开应用") })
         } }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
+                if (chatController.voiceState.active) { moveTaskToBack(true); return }
                 if (chatController.recording || chatController.transcribing) { chatController.cancelRecording(); return }
                 val handled = coordinator.back()
                 if (!handled && globalPanel) { moveTaskToBack(true); return }
@@ -129,8 +136,7 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         importer?.close(); attachmentCallback = null; attachmentWorker.shutdown()
         if (::chatController.isInitialized) chatController.close()
-        if (::coordinator.isInitialized) coordinator.close()
-        if (::nativeBridge.isInitialized) nativeBridge.close()
+        (application as TapilotApplication).assistant.detach()
         handler.removeCallbacksAndMessages(null); super.onDestroy()
     }
     private fun pickAttachment(kind: String, callback: (Result<JSONObject?>) -> Unit) {

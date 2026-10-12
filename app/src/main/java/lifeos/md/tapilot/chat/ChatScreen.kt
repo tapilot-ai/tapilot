@@ -93,9 +93,9 @@ fun ChatScreen(controller: ChatController, compact: Boolean = false, onExpand: (
                     }
                 }
                 state.progress?.let { TaskProgressView(it, controller, zh) }
-                if (controller.error.isNotBlank()) {
+                if (controller.error.isNotBlank() || controller.playbackError.isNotBlank()) {
                     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                        Text(controller.error, color = colors.error, fontSize = 13.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                        Text(controller.error.ifBlank { controller.playbackError }, color = colors.error, fontSize = 13.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
                         Row {
                             if (controller.canRetrySpeech) TextButton(onClick = { controller.retrySpeech() }, enabled = !busy) {
                                 Text(label("重试转写", "Retry transcription"))
@@ -118,7 +118,7 @@ fun ChatScreen(controller: ChatController, compact: Boolean = false, onExpand: (
                         TextButton(onClick = { controller.command("removeAttachment") }, enabled = !busy) { Text(label("移除", "Remove")) }
                     }
                 }
-                ChatComposer(controller)
+                if (controller.voiceState.active) VoiceConversationPanel(controller) else ChatComposer(controller)
             }
             run {
                 RecordingFeedback(controller.willCancel, controller.willSend,
@@ -157,6 +157,10 @@ internal fun ChatIcon(kind: String, color: Color, description: String? = null, m
             "send" -> { line(12f, 19f, 12f, 5f); line(6f, 11f, 12f, 5f); line(18f, 11f, 12f, 5f) }
             "stop" -> drawRect(color, point(6f, 6f), androidx.compose.ui.geometry.Size(12 * unit, 12 * unit))
             "down" -> { line(7f, 9f, 12f, 14f); line(12f, 14f, 17f, 9f) }
+            "waveform" -> {
+                line(4f, 10f, 4f, 14f); line(8f, 6f, 8f, 18f); line(12f, 3f, 12f, 21f)
+                line(16f, 7f, 16f, 17f); line(20f, 10f, 20f, 14f)
+            }
             "mic" -> {
                 drawRoundRect(color, point(9f, 3f), androidx.compose.ui.geometry.Size(6 * unit, 12 * unit),
                     androidx.compose.ui.geometry.CornerRadius(3 * unit), style = Stroke(2 * unit))
