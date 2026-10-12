@@ -16,7 +16,10 @@
   "passedTests": 157,
   "skippedTests": 1,
   "signerSha256": "698ed83c55d3874e1b9fd5e6fc3d622ad3a5c01cdc0f5a03964b35d4b562d063",
-  "websiteStatus": "git-deployment-running",
+  "websiteStatus": "git-deployment-queued",
   "websiteSourceCommit": "1fdf26667cad896f4abd0f6770ff5efc83991fe1",
-  "websiteAttestation": "../studio/.harness/runs/2026-10-12T050323-878Z/attestation.json"
+  "websiteAttestation": "../studio/.harness/runs/2026-10-12T050323-878Z/attestation.json",
+  "websiteDeploymentId": "898b955b-8c6e-450d-9d76-a74f1b07e9b3",
+  "websiteManifestLastVerifiedVersion": "0.1.5",
+  "websiteManualDeploymentAuthorization": "pending"
 }
