@@ -156,7 +156,7 @@ class FloatingBallController(
         hiddenForCapture = true
         resultView?.visibility = View.INVISIBLE
         voiceHint?.visibility = View.INVISIBLE
-        voiceOverlay.hide()
+        voiceOverlay.setHidden(true)
         updateVisibility()
         return wasVisible
     }
@@ -165,6 +165,7 @@ class FloatingBallController(
         hiddenForCapture = false
         resultView?.visibility = View.VISIBLE
         voiceHint?.visibility = View.VISIBLE
+        voiceOverlay.setHidden(appForeground)
         if (wasVisible || taskRunning) updateVisibility()
     }
 

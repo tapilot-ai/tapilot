@@ -46,8 +46,7 @@ internal class FloatingVoiceOverlay(private val context: Context, private val wi
         if (processing && !wasProcessing) expandedProcessing = false
         wasProcessing = processing
         if (hidden) {
-            panel?.visibility = View.INVISIBLE
-            processingIndicator.setHidden(true)
+            setHidden(true)
             return
         }
         if (processing && !expandedProcessing) {
@@ -153,6 +152,12 @@ internal class FloatingVoiceOverlay(private val context: Context, private val wi
         processingIndicator.hide()
         currentRuntime = null; wasProcessing = false; expandedProcessing = false
         hidePanel()
+    }
+
+    /** Screenshot suppression must preserve the user's expansion state and animation. */
+    fun setHidden(hidden: Boolean) {
+        panel?.visibility = if (hidden) View.INVISIBLE else View.VISIBLE
+        processingIndicator.setHidden(hidden)
     }
 
     private fun hidePanel() {
