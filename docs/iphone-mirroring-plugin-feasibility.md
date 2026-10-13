@@ -96,3 +96,23 @@ can operate the visible mirror on a desktop. A window-only plugin should add a
 device adapter for capture, geometry, input, and reconnect. No Midscene-driven
 iPhone action has been validated in this session; previous successes used Computer
 Use. Chinese input and background focus behavior remain open issues.
+
+## Independent native helper and background requirement
+
+The experimental `experiments/iphone-mirror/MirrorBridge.swift` helper compiled with
+Swift 6.4 and captured actual phone pixels with ScreenCaptureKit while another
+application was frontmost. It selects the main Mirroring window by process and
+exact title, excluding its welcome window. Capture therefore passed independently
+of Computer Use. The helper is a diagnostic prototype, not an installed MCP plugin.
+
+Foreground CGEvent input visibly opened Settings and its Battery page. The user
+subsequently made background operation a hard requirement; foreground activation
+was removed from the prototype and is not an acceptable fallback.
+
+Two background input variants did not visibly navigate back from Battery:
+CGEvent posting to the Mirroring PID with window-target fields, and NSEvent-derived
+CGEvents with a window number posted to that PID. Captures remained on Battery;
+other applications were frontmost. A successful event-post call is not proof of
+phone input. Background capture passed; background interaction, ChatGPT embedding,
+and Midscene-driven control have not passed. No phone screenshots containing app
+usage or identifying information are stored in this repository.
