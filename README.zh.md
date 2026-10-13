@@ -40,7 +40,7 @@ Tapilot 采用 `lifeos.md.tapilot` 应用 ID。使用相同签名密钥打出的
 电脑上的 ChatGPT / Codex 本地插件可以通过 Wi-Fi 截图、点击、输入、滑动和启动应用。
 在 Tapilot 设置中开启无线控制，首次使用时配对电脑。运行时不需要 USB、ADB 或手机端
 模型 API Key。手机需保持解锁；可从手机设置或通知中停止控制。
-安装方法和使用限制见[插件说明](plugins/tapilot/README.md)。
+安装方法和使用限制见[插件说明](plugins/android-use/README.md)。
 
 ## 构建
 

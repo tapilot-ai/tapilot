@@ -3,8 +3,8 @@
 Baseline: `e5dd7bf`. Implementation lives on `feat/wifi-mcp` in an isolated worktree
 so concurrent ChatGPT account integration changes in the original checkout are
 not overwritten. This record distinguishes protocol tests from physical-phone
-acceptance. Cable-free control through the installed MCP artifact passed; native
-ChatGPT tool discovery remains a separate host integration check.
+acceptance. Cable-free control through the installed MCP artifact passed; fresh Codex app-server discovery and direct tool calls also passed. The current
+ChatGPT conversation has not refreshed its own tool inventory.
 
 ## Automated checks
 
@@ -12,7 +12,7 @@ ChatGPT tool discovery remains a separate host integration check.
   speech-provider test skipped, no failures/errors.
 - `:app:assembleDebug`: passed.
 - `:app:assembleDebugAndroidTest`: passed, including pairing-fixture cleanup.
-- `npm test --prefix plugins/tapilot`: six tests passed. These exercise a real
+- `npm test --prefix plugins/android-use`: six tests passed. These exercise a real
   stdio MCP SDK client and a TLS fixture, including screenshot image content,
   pin mismatch (no credential sent), bad credentials, disconnected mutations not
   retried, schema validation, and mode-0600 credential storage.
@@ -91,17 +91,33 @@ no app-data reset and no ADB TCP mode or port forwarding was used.
 
 ## Installed desktop artifact
 
-The local `tapilot-local` marketplace and `tapilot@tapilot-local` plugin were
-registered. CLI inventory reports installed=true, enabled=true, version=0.1.0.
-An already-open ChatGPT/Codex conversation may need a new session or host reload
-before its tool inventory includes this plugin. Installation does not prove
-that this conversation has invoked the plugin through its native tool picker.
+The plugin was renamed **Android Use** at the user's request. The old
+`tapilot@tapilot-local` install was replaced with
+`android-use@android-use-local` version 0.1.0. Plugin root is now
+`plugins/android-use`; the MCP server key is `android_use`. The phone app,
+existing pairing file, and `tapilot_*` tool names are retained for compatibility.
+All six plugin tests passed after the rename.
+
+On October 13, 2026, 12:17–12:19 Asia/Shanghai, a fresh `codex app-server`
+process discovered all eight tools through `mcpServerStatus/list`, reporting
+`pluginId=android-use@android-use-local` and no tools error. This used installed
+plugin discovery, with no manually injected MCP server configuration.
+An ephemeral host thread (no model turn or additional agent) then called
+`mcpServer/tool/call`: screenshot → tap Screen resolution → screenshot. The
+returned image confirmed the phone opened its Screen resolution page with the
+existing FHD+ selection. The test pressed Back and disconnected afterward.
+Samsung serial `R5CN90V1AYP` remained absent from the USB device inventory.
+
+![Android Use host-dispatched tap result](android-use-host-tap.png)
+
+This proves the fresh Codex host's discovery and invocation path. The already
+open ChatGPT conversation still has no Android Use tool in its injected inventory;
+its tool-picker UI and automatic model selection are not claimed as tested.
 
 ## Remaining acceptance
 
-1. Reload the desktop host/open a fresh conversation and verify native plugin
-   tool discovery. This run proves the installed stdio MCP artifact against a
-   real phone, not invocation through ChatGPT's native tool picker.
+1. Open a fresh ChatGPT conversation and verify the visible tool picker and
+   model-selected invocation. Fresh Codex app-server discovery/calls passed above.
 2. Verify local-task exclusion, notification stop, and revocation on the device.
 3. Verify Android 14+ connected-device service behavior and idle/network-change
    behavior on additional OS/device combinations. No always-on Doze guarantee.

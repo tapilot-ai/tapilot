@@ -1,4 +1,4 @@
-# Tapilot wireless plugin
+# Android Use
 
 Control a paired Android phone from a **local** ChatGPT desktop / Codex session.
 ChatGPT sees screenshots and calls individual actions; this path does not call the
@@ -14,9 +14,9 @@ may isolate devices. IPv4 is supported in this first version.
 From the repository root:
 
 ```sh
-npm ci --prefix plugins/tapilot
+npm ci --prefix plugins/android-use
 codex plugin marketplace add .
-codex plugin add tapilot@tapilot-local
+codex plugin add android-use@android-use-local
 ```
 
 On the phone, grant Tapilot accessibility access, keep it unlocked, then open
@@ -24,16 +24,16 @@ Settings → ChatGPT wireless control → Enable wireless control → Copy pairi
 Transfer that link privately to the computer and run:
 
 ```sh
-npm run pair --prefix plugins/tapilot
+npm run pair --prefix plugins/android-use
 ```
 
 Paste the link into the local terminal prompt, **not into ChatGPT**. On macOS,
-`npm run pair --prefix plugins/tapilot -- --clipboard` reads the clipboard without
+`npm run pair --prefix plugins/android-use -- --clipboard` reads the clipboard without
 printing the link. The link expires after five minutes and can be redeemed once.
 Pairing a new computer replaces the previous computer's authorization.
 
 Restart/reload the local plugin host after installation. Ask ChatGPT to use
-Tapilot to inspect the phone. The plugin exposes status, screen, tap, swipe,
+Android Use to inspect the phone. The plugin exposes status, screen, tap, swipe,
 text input, navigation/Enter, app launch, and disconnect tools. One action is
 followed by a fresh screenshot. It does not expose shell, arbitrary URLs, model
 credentials, app-private files, or a generic internal bridge proxy.
@@ -42,11 +42,14 @@ If installing from a local plugin source is unavailable in your client, register
 the same MCP server directly instead (do not install both):
 
 ```sh
-codex mcp add tapilot -- node /absolute/path/to/tapilot/plugins/tapilot/server/index.mjs
+codex mcp add android_use -- node /absolute/path/to/tapilot/plugins/android-use/server/index.mjs
 ```
 
 Cloud-hosted ChatGPT conversations cannot use this local process automatically.
 This is a desktop/local plugin, not a published cloud connector.
+
+The phone app remains Tapilot. Existing pairing credentials and the `tapilot_*`
+tool names are retained for compatibility; the plugin is named **Android Use**.
 
 ## Daily use
 
@@ -93,7 +96,7 @@ unchanged between capture and execution.
 ## Verification
 
 ```sh
-npm test --prefix plugins/tapilot
+npm test --prefix plugins/android-use
 ./gradlew :app:testDebugUnitTest :app:assembleDebug
 ```
 

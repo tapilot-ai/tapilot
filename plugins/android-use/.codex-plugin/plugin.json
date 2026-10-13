@@ -1,5 +1,5 @@
 {
-  "name": "tapilot",
+  "name": "android-use",
   "version": "0.1.0",
   "description": "Control your paired Android phone over Wi-Fi from ChatGPT desktop or Codex. No USB or on-phone model API key required.",
   "author": {
@@ -8,7 +8,7 @@
   "license": "UNLICENSED",
   "mcpServers": "./.mcp.json",
   "interface": {
-    "displayName": "Tapilot",
+    "displayName": "Android Use",
     "shortDescription": "Control Android over Wi-Fi",
     "category": "Productivity",
     "defaultPrompt": [
