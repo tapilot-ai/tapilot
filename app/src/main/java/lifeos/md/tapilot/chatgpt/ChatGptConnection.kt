@@ -12,7 +12,7 @@ import java.util.concurrent.Executors
 
 /** Settings operations are independent of the conversation worker. All UI state is main-thread owned. */
 class ChatGptConnection(private val context: Context, private val changed: () -> Unit) : AutoCloseable {
-    val store = ChatGptAccounts(context.applicationContext)
+    val store = ChatGptAccounts.get(context)
     private val executor = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
     @Volatile private var closed = false

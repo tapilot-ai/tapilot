@@ -30,6 +30,9 @@ class NodeTestRunCoordinator(
 ) : AutoCloseable {
     private val appContext = context.applicationContext
     private val executor = Executors.newSingleThreadExecutor()
+    private val authorizationExecutor = Executors.newSingleThreadExecutor()
+    private val accounts = lifeos.md.tapilot.chatgpt.ChatGptAccounts.get(appContext)
+    @Volatile private var chatGptAccountId: String? = null
     private val stopRequested = AtomicBoolean(false)
     @Volatile private var completion = CompletableFuture.completedFuture(Unit)
     @Volatile private var activeSessionId: String? = null
@@ -45,6 +48,7 @@ class NodeTestRunCoordinator(
         require(source.length <= MAX_SOURCE_CHARACTERS) { "YAML source is too large" }
         require(kind == "task" || kind == "yaml") { "Unsupported Node run kind: $kind" }
         check(completion.isDone && !supervisor.isRunning()) { "A Node runtime task is already running" }
+        chatGptAccountId = environment["MIDSCENE_CHATGPT_ACCOUNT_ID"]?.takeIf { it.isNotBlank() }
         completion = CompletableFuture()
         stopRequested.set(false)
         stopRegistration = ActiveTaskStopRegistry.register(::stop)
@@ -127,6 +131,7 @@ class NodeTestRunCoordinator(
             if (!completed.compareAndSet(false, true)) return
             activeSessionId?.let { MidsceneAccessibilityService.current()?.completeSession(it) }
             activeSessionId = null
+            chatGptAccountId = null
             clearStopRegistration()
             completion.complete(Unit)
             callback(result)
@@ -270,6 +275,19 @@ class NodeTestRunCoordinator(
         val sessionId = request.getString("sessionId")
         activeSessionId = sessionId
         val params = request.optJSONObject("params") ?: JSONObject()
+        if (request.getString("method") == "model.accessToken") {
+            val account = chatGptAccountId
+            authorizationExecutor.execute {
+                runCatching {
+                    throwIfStopRequested()
+                    check(!account.isNullOrBlank()) { "ChatGPT is not enabled for this operation" }
+                    accounts.accessToken(account, forceRefresh = params.optBoolean("forceRefresh"))
+                }.fold({ token ->
+                    if (stopRequested.get()) respondError(requestId, NodeRunStoppedException()) else respondSuccess(requestId, token)
+                }, { respondError(requestId, it) })
+            }
+            return
+        }
         val service = MidsceneAccessibilityService.current()
         appContext.mainExecutor.execute {
             runCatching {
@@ -402,6 +420,7 @@ class NodeTestRunCoordinator(
         clearStopRegistration()
         supervisor.close()
         executor.shutdownNow()
+        authorizationExecutor.shutdownNow()
     }
 
     class NodeRunStoppedException : IllegalStateException("用户停止了任务")

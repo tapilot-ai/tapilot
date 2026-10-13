@@ -1,0 +1,80 @@
+diff --git a/dist/es/cli/index.mjs b/dist/es/cli/index.mjs
+--- a/dist/es/cli/index.mjs
++++ b/dist/es/cli/index.mjs
+@@ -204,7 +204,7 @@
+     return Object.freeze({
+         maxConcurrency: validatePositiveInteger(candidate.maxConcurrency, 1, 'test.maxConcurrency'),
+         bail: validateNonNegativeInteger(candidate.bail, 0, 'test.bail'),
+-        testTimeout: validatePositiveInteger(candidate.testTimeout, 120000, 'test.testTimeout')
++        testTimeout: validateNonNegativeInteger(candidate.testTimeout, 120000, 'test.testTimeout')
+     });
+ };
+ const validateOutputPath = (value, fallback, label)=>{
+@@ -837,6 +837,7 @@
+     return projects.filter((project)=>requested.has(project.name));
+ };
+ async function prepareProject(project, projectRoot, runDir, defaultTimeoutMs, options = {}) {
++    if (defaultTimeoutMs === 0) defaultTimeoutMs = undefined;
+     const platform = options.platform?.trim();
+     const fileSelection = project.files ?? DEFAULT_TEST_FILE_SELECTION;
+     const prerequisiteFile = options.prerequisiteFile ? resolve(options.prerequisiteFile) : void 0;
+diff --git a/dist/es/test-cli.mjs b/dist/es/test-cli.mjs
+--- a/dist/es/test-cli.mjs
++++ b/dist/es/test-cli.mjs
+@@ -426,7 +426,7 @@
+     return Object.freeze({
+         maxConcurrency: validatePositiveInteger(candidate.maxConcurrency, 1, 'test.maxConcurrency'),
+         bail: validateNonNegativeInteger(candidate.bail, 0, 'test.bail'),
+-        testTimeout: validatePositiveInteger(candidate.testTimeout, 120000, 'test.testTimeout')
++        testTimeout: validateNonNegativeInteger(candidate.testTimeout, 120000, 'test.testTimeout')
+     });
+ };
+ const validateOutputPath = (value, fallback, label)=>{
+@@ -1054,6 +1054,7 @@
+     return projects.filter((project)=>requested.has(project.name));
+ };
+ async function prepareProject(project, projectRoot, runDir, defaultTimeoutMs, options = {}) {
++    if (defaultTimeoutMs === 0) defaultTimeoutMs = undefined;
+     const platform = options.platform?.trim();
+     const fileSelection = project.files ?? DEFAULT_TEST_FILE_SELECTION;
+     const prerequisiteFile = options.prerequisiteFile ? (0, external_node_path_.resolve)(options.prerequisiteFile) : void 0;
+diff --git a/dist/lib/cli/index.js b/dist/lib/cli/index.js
+--- a/dist/lib/cli/index.js
++++ b/dist/lib/cli/index.js
+@@ -232,7 +232,7 @@
+     return Object.freeze({
+         maxConcurrency: validatePositiveInteger(candidate.maxConcurrency, 1, 'test.maxConcurrency'),
+         bail: validateNonNegativeInteger(candidate.bail, 0, 'test.bail'),
+-        testTimeout: validatePositiveInteger(candidate.testTimeout, 120000, 'test.testTimeout')
++        testTimeout: validateNonNegativeInteger(candidate.testTimeout, 120000, 'test.testTimeout')
+     });
+ };
+ const validateOutputPath = (value, fallback, label)=>{
+@@ -870,6 +870,7 @@
+     return projects.filter((project)=>requested.has(project.name));
+ };
+ async function prepareProject(project, projectRoot, runDir, defaultTimeoutMs, options = {}) {
++    if (defaultTimeoutMs === 0) defaultTimeoutMs = undefined;
+     const platform = options.platform?.trim();
+     const fileSelection = project.files ?? DEFAULT_TEST_FILE_SELECTION;
+     const prerequisiteFile = options.prerequisiteFile ? (0, external_node_path_namespaceObject.resolve)(options.prerequisiteFile) : void 0;
+diff --git a/dist/lib/test-cli.js b/dist/lib/test-cli.js
+--- a/dist/lib/test-cli.js
++++ b/dist/lib/test-cli.js
+@@ -427,7 +427,7 @@
+         return Object.freeze({
+             maxConcurrency: validatePositiveInteger(candidate.maxConcurrency, 1, 'test.maxConcurrency'),
+             bail: validateNonNegativeInteger(candidate.bail, 0, 'test.bail'),
+-            testTimeout: validatePositiveInteger(candidate.testTimeout, 120000, 'test.testTimeout')
++            testTimeout: validateNonNegativeInteger(candidate.testTimeout, 120000, 'test.testTimeout')
+         });
+     };
+     const validateOutputPath = (value, fallback, label)=>{
+@@ -1059,6 +1059,7 @@
+         return projects.filter((project)=>requested.has(project.name));
+     };
+     async function prepareProject(project, projectRoot, runDir, defaultTimeoutMs, options = {}) {
++    if (defaultTimeoutMs === 0) defaultTimeoutMs = undefined;
+         const platform = options.platform?.trim();
+         const fileSelection = project.files ?? DEFAULT_TEST_FILE_SELECTION;
+         const prerequisiteFile = options.prerequisiteFile ? (0, external_node_path_.resolve)(options.prerequisiteFile) : void 0;

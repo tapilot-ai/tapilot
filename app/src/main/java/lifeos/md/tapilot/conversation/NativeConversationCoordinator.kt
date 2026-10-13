@@ -320,12 +320,12 @@ class NativeConversationCoordinator(
                     if (saved.has("pageCount")) ref.put("pageCount", saved.getInt("pageCount"))
                     find(id)?.put("attachment", ref); save(); publish()
                 }
-                fun environment(): JSONObject = if (useChatGpt) lifeos.md.tapilot.chatgpt.ChatGptMidscene.environment(chatGptModel, chatGpt.store.accessToken(chatGptAccount))
+                fun environment(): JSONObject = if (useChatGpt) lifeos.md.tapilot.chatgpt.ChatGptMidscene.environment(chatGptModel, chatGptAccount)
                     else JSONObject().put("MIDSCENE_MODEL_BASE_URL", model.getString("baseUrl"))
                     .put("MIDSCENE_MODEL_API_KEY", key).put("MIDSCENE_MODEL_NAME", model.getString("modelName")).put("MIDSCENE_MODEL_FAMILY", model.getString("modelFamily"))
                 if (kind == "yaml") {
                     await("app.goHome", sessionId = runSession, stopped = stopped)
-                    val run = await("runtime.runTest", JSONObject().put("source", source).put("kind", "yaml").put("environment", environment()), runSession, stopped, 600) as JSONObject
+                    val run = await("runtime.runTest", JSONObject().put("source", source).put("kind", "yaml").put("environment", environment()), runSession, stopped, 0) as JSONObject
                     run.optJSONArray("reports")?.objects()?.forEach { reports.put(it) }
                     check(run.optInt("exitCode", 1) == 0) { run.optString("failure", "执行失败") }
                     run.optString("finalResponse").ifBlank { "任务已完成" }
@@ -355,7 +355,7 @@ class NativeConversationCoordinator(
                         }
                         updateProgress(local("正在操作手机", "Operating phone"), revised)
                         await("task.status", JSONObject().put("status", "running"), runSession, stopped)
-                        val run = await("runtime.runTest", JSONObject().put("source", NativeConversationAgent.verifiedTask(revised, condition)).put("kind", "yaml").put("environment", environment()), runSession, stopped, 600) as JSONObject
+                        val run = await("runtime.runTest", JSONObject().put("source", NativeConversationAgent.verifiedTask(revised, condition)).put("kind", "yaml").put("environment", environment()), runSession, stopped, 0) as JSONObject
                         run.optJSONArray("reports")?.objects()?.forEach { reports.put(it) }
                         val success = run.optInt("exitCode", 1) == 0
                         PhoneResult(success, run.optString(if (success) "finalResponse" else "failure").ifBlank { run.optJSONArray("output")?.strings()?.takeLast(10)?.joinToString("\n").orEmpty().ifBlank { if (success) "手机操作已完成" else "手机操作失败" } }).also { result ->
@@ -433,7 +433,7 @@ class NativeConversationCoordinator(
         if (!ExecutionMode.from(data).requiresConfirmation(text)) return text
         val promise = CompletableFuture<String>()
         onMain { confirmation = promise; confirmationText = text; publish() }
-        return waitFor(promise, stopped, 600)
+        return waitFor(promise, stopped, 0)
     }
     private fun requestChatGpt(account: String, model: String, messages: JSONArray, tools: JSONArray, sessionId: String, stopped: AtomicBoolean): JSONObject {
         check(!stopped.get()) { "任务已停止" }
@@ -479,11 +479,11 @@ class NativeConversationCoordinator(
         return waitFor(promise, stopped, seconds)
     }
     private fun <T> waitFor(promise: CompletableFuture<T>, stopped: AtomicBoolean, seconds: Long): T {
-        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(seconds)
+        val deadline = if (seconds > 0) System.nanoTime() + TimeUnit.SECONDS.toNanos(seconds) else null
         while (true) {
             check(!stopped.get() && !closed) { "任务已停止" }
             try { return promise.get(100, TimeUnit.MILLISECONDS) } catch (timeout: TimeoutException) {
-                if (System.nanoTime() >= deadline) throw IllegalStateException("请求超时，请稍后重试")
+                if (deadline != null && System.nanoTime() >= deadline) throw IllegalStateException("请求超时，请稍后重试")
             }
         }
     }

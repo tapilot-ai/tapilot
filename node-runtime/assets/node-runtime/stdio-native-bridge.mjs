@@ -22,6 +22,10 @@ export class StdioNativeBridge {
     return this.#request('device.getCapabilities', {});
   }
 
+  accessToken(forceRefresh = false) {
+    return this.#request('model.accessToken', { forceRefresh });
+  }
+
   capture() {
     return this.#request('device.capture', {});
   }

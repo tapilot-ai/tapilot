@@ -9,6 +9,7 @@ import {
 } from './assistant-context.mjs';
 import { withAndroidAiActDefaults } from './execution-policy.mjs';
 import { StdioNativeBridge } from './stdio-native-bridge.mjs';
+import { siwcFetch } from './siwc-fetch.mjs';
 
 let activeAgentProvider;
 const assistantLanguage =
@@ -33,6 +34,11 @@ const setup = defineProjectSetup({
   name: 'android-accessibility',
   async setup({ onTeardown }) {
     const bridge = new StdioNativeBridge();
+    const originalFetch = globalThis.fetch;
+    if (process.env.MIDSCENE_CHATGPT_ACCOUNT_ID) {
+      globalThis.fetch = siwcFetch(originalFetch, force => bridge.accessToken(force));
+    }
+    onTeardown(() => { globalThis.fetch = originalFetch; });
     const capabilities = await bridge.getCapabilities();
     if (!capabilities.canCapture || !capabilities.canPerformGestures) {
       bridge.close();
@@ -122,7 +128,7 @@ const launchNode = defineNode({
 });
 
 export default defineTestProject({
-  test: { maxConcurrency: 1, testTimeout: 10 * 60_000 },
+  test: { maxConcurrency: 1, testTimeout: 0 },
   projects: [
     {
       name: 'android-accessibility',

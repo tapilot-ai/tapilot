@@ -22,6 +22,7 @@ const runtimeFiles = [
   'pi-context.mjs',
   'run-result.mjs',
   'stdio-native-bridge.mjs',
+  'siwc-fetch.mjs',
   'android.config.mjs',
   'assistant-context.mjs',
   'execution-policy.mjs',
@@ -163,13 +164,8 @@ fs.mkdirSync(stagingRoot, { recursive: true });
 for (const file of ['package.json', 'pnpm-lock.yaml']) {
   fs.copyFileSync(path.join(bundleRoot, file), path.join(stagingRoot, file));
 }
-fs.writeFileSync(path.join(stagingRoot, 'pnpm-workspace.yaml'), `packages:
-  - .
-minimumReleaseAgeExclude:
-  - '@midscene/core@1.15.2'
-  - '@midscene/shared@1.15.2'
-  - '@midscene/test@1.15.2'
-`);
+fs.copyFileSync(path.join(bundleRoot, 'pnpm-workspace.yaml'), path.join(stagingRoot, 'pnpm-workspace.yaml'));
+fs.cpSync(path.join(bundleRoot, 'patches'), path.join(stagingRoot, 'patches'), { recursive: true });
 run(
   'pnpm',
   [
@@ -230,6 +226,10 @@ fs.writeFileSync(
 
 fs.copyFileSync(path.join(sourceRoot, 'assets/node-runtime/pi-conversation.test.mjs'), path.join(stagingRoot, 'pi-conversation.test.mjs'));
 run(process.execPath, ['--test', '--test-timeout=10000', 'pi-conversation.test.mjs'], stagingRoot);
+for (const test of ['siwc-fetch.test.mjs', 'unbounded-runtime.test.mjs']) {
+  fs.copyFileSync(path.join(sourceRoot, 'assets/node-runtime', test), path.join(stagingRoot, test));
+  run(process.execPath, ['--test', '--test-timeout=10000', test], stagingRoot);
+}
 run(process.execPath, ['runner.mjs', 'doctor'], stagingRoot);
 run(
   process.execPath,

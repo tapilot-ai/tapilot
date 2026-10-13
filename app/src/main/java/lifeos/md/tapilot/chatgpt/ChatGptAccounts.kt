@@ -11,8 +11,14 @@ import java.net.URI
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
-/** Tokens stay in Keystore-encrypted storage, separate from exported model API keys. */
-class ChatGptAccounts(context: Context) {
+/** Renewable credentials stay in Keystore-encrypted storage, separate from model API keys. */
+class ChatGptAccounts private constructor(context: Context) {
+    companion object {
+        @Volatile private var instance: ChatGptAccounts? = null
+        fun get(context: Context): ChatGptAccounts = instance ?: synchronized(this) {
+            instance ?: ChatGptAccounts(context.applicationContext).also { instance = it }
+        }
+    }
     private val storage = EncryptedPreferences(context, "tapilot-chatgpt", "tapilot-chatgpt-credentials")
     private val stateLock = Any()
     private val refreshLock = Any()
@@ -104,10 +110,10 @@ class ChatGptAccounts(context: Context) {
         require(result.optString("refresh_token").isNotBlank()) { "ChatGPT 未返回可续期授权，请重新登录" }
         return result.put("scope", scope).put("expires_at", System.currentTimeMillis() + tokens.getLong("expires_in") * 1000)
     }
-    fun accessToken(id: String): String = synchronized(refreshLock) {
+    fun accessToken(id: String, forceRefresh: Boolean = false): String = synchronized(refreshLock) {
         val saved = record(id)
         check(saved.optString("access_token").isNotBlank()) { "请先登录 ChatGPT" }
-        if (saved.optLong("expires_at") > System.currentTimeMillis() + 60_000) return@synchronized saved.getString("access_token")
+        if (!forceRefresh && saved.optLong("expires_at") > System.currentTimeMillis() + 60_000) return@synchronized saved.getString("access_token")
         val tokens = post("${ChatGptOAuth.ISSUER}/api/accounts/oauth/token", mapOf("grant_type" to "refresh_token", "client_id" to id,
             "refresh_token" to saved.getString("refresh_token"), "resource" to ChatGptOAuth.RESOURCE))
         if (tokens.optString("id_token").isNotBlank()) {
