@@ -270,6 +270,8 @@ class NativeConversationCoordinator(
     private fun start(text: String, file: JSONObject? = pendingAttachment, retryOf: String? = null, global: Boolean = globalMode,
                       restoreDraft: String? = null, restoreAttachment: JSONObject? = null, kind: String = "task", continueOf: String? = null) {
         if (running || (text.isBlank() && file == null)) return
+        runCatching { lifeos.md.tapilot.wireless.DeviceControlLease.checkAccess("local-conversation") }
+            .onFailure { fail(it); return }
         val model = profile()
         val key = credentials.getAll()[preset].orEmpty()
         if (key.isBlank() || model.optString("modelName").isBlank() || model.optString("modelFamily").isBlank()) {

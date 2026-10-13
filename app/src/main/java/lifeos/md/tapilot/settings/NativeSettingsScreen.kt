@@ -59,6 +59,7 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
         Column(Modifier.fillMaxSize().navigationBarsPadding().imePadding()) {
             Header(label("设置", "Settings")) { coordinator.back() }
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Group(label("ChatGPT 无线控制", "ChatGPT wireless control")) { WirelessControlSettings(activity, zh) }
                 Group(label("模型 API", "Model API")) {
                     SettingRow(label("服务商", "Provider"), coordinator.preset) { if (!busy) picker = "model" }
                     listOf("baseUrl" to "API 地址", "modelName" to "模型名称", "modelFamily" to "模型系列").forEach { (field, title) ->

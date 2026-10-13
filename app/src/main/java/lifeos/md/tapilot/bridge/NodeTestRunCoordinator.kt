@@ -45,9 +45,11 @@ class NodeTestRunCoordinator(
         require(source.length <= MAX_SOURCE_CHARACTERS) { "YAML source is too large" }
         require(kind == "task" || kind == "yaml") { "Unsupported Node run kind: $kind" }
         check(completion.isDone && !supervisor.isRunning()) { "A Node runtime task is already running" }
+        // Acquiring can fail while a wireless controller owns the device. Do not leave
+        // an unfinished completion future behind when the task was never started.
+        stopRegistration = ActiveTaskStopRegistry.register(::stop)
         completion = CompletableFuture()
         stopRequested.set(false)
-        stopRegistration = ActiveTaskStopRegistry.register(::stop)
         updateStatus(TaskExecutionStatus.STARTING)
         executor.execute {
             runCatching {

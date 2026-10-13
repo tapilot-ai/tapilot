@@ -109,6 +109,9 @@ class NativeJavascriptBridge(
         val requestId = request.getString("requestId")
         val sessionId = request.getString("sessionId")
         val method = request.getString("method")
+        if (method.startsWith("device.") || method in setOf("runtime.runTest", "task.status")) {
+            lifeos.md.tapilot.wireless.DeviceControlLease.checkAccess(sessionId)
+        }
         val service = MidsceneAccessibilityService.current()
 
         when (method) {
