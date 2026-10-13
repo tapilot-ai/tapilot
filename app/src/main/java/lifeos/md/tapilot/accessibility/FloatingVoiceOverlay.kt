@@ -17,6 +17,15 @@ import org.json.JSONObject
 
 /** Persistent, non-focusable controls: the original app keeps its keyboard and touch input. */
 internal class FloatingVoiceOverlay(private val context: Context, private val windows: WindowManager) {
+    private var currentRuntime: AssistantRuntime? = null
+    private var wasProcessing = false
+    private var expandedProcessing = false
+    private val processingIndicator: TaskStatusOverlay = TaskStatusOverlay(context, windows) {
+        expandedProcessing = true
+        processingIndicatorHide()
+        currentRuntime?.let { refresh(it, false) }
+    }
+    private fun processingIndicatorHide(): Unit { processingIndicator.hide() }
     private var panel: LinearLayout? = null
     private var title: TextView? = null
     private var detail: TextView? = null
@@ -28,11 +37,27 @@ internal class FloatingVoiceOverlay(private val context: Context, private val wi
     private fun dp(value: Int) = (value * context.resources.displayMetrics.density).toInt()
 
     fun refresh(runtime: AssistantRuntime, hidden: Boolean) {
-        if (hidden) { hide(); return }
-        if (panel == null) show(runtime)
+        currentRuntime = runtime
         val voice = runtime.voiceState
         val confirmation = runtime.state.confirmation
         val error = runtime.floatingVoiceError.ifBlank { voice.error }
+        val processing = error.isBlank() && confirmation == null &&
+            (runtime.state.running || voice.phase in listOf(VoicePhase.Recognizing, VoicePhase.Thinking))
+        if (processing && !wasProcessing) expandedProcessing = false
+        wasProcessing = processing
+        if (hidden) {
+            panel?.visibility = View.INVISIBLE
+            processingIndicator.setHidden(true)
+            return
+        }
+        if (processing && !expandedProcessing) {
+            hidePanel()
+            processingIndicator.show(false, 0)
+            return
+        }
+        processingIndicator.hide()
+        if (panel == null) show(runtime)
+        panel?.visibility = View.VISIBLE
         title?.text = when {
             error.isNotBlank() -> local("语音暂不可用", "Voice unavailable")
             confirmation != null -> local("等待你的确认", "Waiting for confirmation")
@@ -109,6 +134,10 @@ internal class FloatingVoiceOverlay(private val context: Context, private val wi
                 else -> runtime.pauseVoice()
             }
         }
+        controls.addView(button(local("收起", "Collapse")) {
+            expandedProcessing = false
+            if (wasProcessing) { hidePanel(); processingIndicator.show(false, 0) }
+        }.apply { visibility = if (wasProcessing) View.VISIBLE else View.GONE })
         controls.addView(action)
         controls.addView(button(local("结束", "End")) { runtime.endVoice(); hide() })
         container.addView(controls)
@@ -121,6 +150,12 @@ internal class FloatingVoiceOverlay(private val context: Context, private val wi
     }
 
     fun hide() {
+        processingIndicator.hide()
+        currentRuntime = null; wasProcessing = false; expandedProcessing = false
+        hidePanel()
+    }
+
+    private fun hidePanel() {
         panel?.let { runCatching { windows.removeView(it) } }
         panel = null; title = null; detail = null; action = null; transcript = null; transcriptArea = null
     }

@@ -1,6 +1,7 @@
 package lifeos.md.tapilot.accessibility
 
 import android.animation.ValueAnimator
+import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.PixelFormat
@@ -16,7 +17,7 @@ import kotlin.math.roundToInt
 
 /** A task hint that settles into a small, tappable indicator after five seconds. */
 internal class TaskStatusOverlay(
-    private val service: MidsceneAccessibilityService,
+    private val service: Context,
     private val windows: WindowManager,
     private val interrupt: () -> Unit,
 ) {
@@ -25,7 +26,7 @@ internal class TaskStatusOverlay(
     private var animator: ValueAnimator? = null
     private val collapse = Runnable { animateCollapse() }
 
-    fun show(hidden: Boolean) {
+    fun show(hidden: Boolean, collapseDelayMillis: Long = 5_000) {
         view?.let { it.visibility = if (hidden) View.INVISIBLE else View.VISIBLE; return }
         val indicator = Indicator()
         val bounds = windows.currentWindowMetrics.bounds
@@ -40,7 +41,7 @@ internal class TaskStatusOverlay(
         indicator.visibility = if (hidden) View.INVISIBLE else View.VISIBLE
         runCatching { windows.addView(indicator, params) }.onSuccess {
             view = indicator
-            handler.postDelayed(collapse, 5_000)
+            handler.postDelayed(collapse, collapseDelayMillis)
         }
     }
 
@@ -49,6 +50,10 @@ internal class TaskStatusOverlay(
         animator?.cancel(); animator = null
         view?.let { runCatching { windows.removeView(it) } }
         view = null
+    }
+
+    fun setHidden(hidden: Boolean) {
+        view?.visibility = if (hidden) View.INVISIBLE else View.VISIBLE
     }
 
     private fun animateCollapse() {
@@ -76,7 +81,7 @@ internal class TaskStatusOverlay(
     }
 
     private inner class Indicator : View(service) {
-        private val text = if (AppLanguage.resolved(service) == "zh") "Tapilot 正在处理 · 点击打断" else "Tapilot working · Tap to interrupt"
+        private val text = if (AppLanguage.resolved(service) == "zh") "Tapilot 正在处理 · 点击查看" else "Tapilot working · Tap to view"
         private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = AppTheme.colors(service).primary }
         private val ink = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = AppTheme.colors(service).contrast
