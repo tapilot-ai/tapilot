@@ -160,3 +160,34 @@ Validation:
   and verify the actual ChatGPT side-panel renderer. The Samsung was still
   absent from USB inventory after requesting a temporary reconnection. Neither
   live-panel rendering nor real-device unlock interaction is claimed passed.
+
+### Physical follow-up, 13:10–13:13 Asia/Shanghai
+
+The user reconnected and unlocked Samsung `R5CN90V1AYP`. Installed the 0.2.0
+supporting APK above with `adb install -r`, preserving data. Accessibility bound
+normally; wireless mode was enabled through the normal settings UI.
+
+A fresh Codex app-server called the installed plugin over Wi-Fi:
+
+1. Capture model frame `9da0cb95-9037-430c-b235-b3c786c662fa` in Settings.
+2. Read two `tapilot_preview_frame` responses, both `state=live`, with advancing
+   capture timestamps (1791868253397 and 1791868254080).
+3. Tap Display using the original model frame ID after both preview refreshes.
+4. Capture confirmed Display settings opened. Preview did not invalidate the
+   actionable screenshot.
+
+![Tap after independent preview frames](preview-frame-preserves-tap.png)
+
+For lock acceptance, test setup sent Android's sleep key. The next preview
+returned `state=device_locked` without image data. A model screenshot call caused
+Codex app-server to emit `mcpServer/elicitation/request`, mode `form`, with the
+Chinese manual-unlock message and `已完成继续` choice. This is an actual host
+elicitation event, not merely tool instructions. Completion remains pending the
+user's actual unlock response.
+
+An additional observation: a new TLS connection while the phone was dozing timed
+out, despite the Wi-Fi address and foreground wireless service remaining present.
+Waking the screen (without unlocking) restored connectivity and produced the
+correct unlock elicitation again. This version does not guarantee screen-off
+network availability; connection timeouts are not treated as proof of a lock.
+The actual ChatGPT side-panel renderer still requires a refreshed conversation.
