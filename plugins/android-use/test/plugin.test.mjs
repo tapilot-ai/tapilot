@@ -82,11 +82,14 @@ test('real MCP stdio handshake, image content, schema and disconnect', async t =
   });
   const path = join(dir, 'config.json'); await saveConfig(config, path);
   assert.equal((await stat(path)).mode & 0o777, 0o600);
-  const transport = new StdioClientTransport({ command: process.execPath, args: [new URL('../server/index.mjs', import.meta.url).pathname], env: { ...process.env, TAPILOT_CONFIG: path }, stderr: 'pipe' });
+  const transport = new StdioClientTransport({ command: process.execPath, args: [new URL('../server/index.mjs', import.meta.url).pathname], env: { ...process.env, TAPILOT_CONFIG: path, ANDROID_USE_STATE_DIR: join(dir,'state') }, stderr: 'pipe' });
   const client = new Client({ name: 'acceptance', version: '1' });
   t.after(() => client.close());
   await client.connect(transport);
-  assert.equal((await client.listTools()).tools.length, 12);
+  assert.equal((await client.listTools()).tools.length, 13);
+  const settings = await client.callTool({name:'tapilot_midscene',arguments:{action:'settings'}});
+  assert.equal(JSON.parse(settings.content[0].text).mode,'steps');
+  assert.equal(requests.length,0, 'Settings must not connect to the phone');
   const resources = await client.listResources();
   const resource = await client.readResource({ uri: resources.resources[0].uri });
   assert.match(resource.contents[0].text, /Android Use/);
@@ -164,7 +167,7 @@ test('real MCP lock elicits once then returns fresh screen after user completion
     return { action: 'accept', content: { completion: '已完成继续' } };
   });
   t.after(() => client.close());
-  await client.connect(new StdioClientTransport({ command: process.execPath, args: [new URL('../server/index.mjs', import.meta.url).pathname], env: { ...process.env, TAPILOT_CONFIG: path }, stderr: 'pipe' }));
+  await client.connect(new StdioClientTransport({ command: process.execPath, args: [new URL('../server/index.mjs', import.meta.url).pathname], env: { ...process.env, TAPILOT_CONFIG: path, ANDROID_USE_STATE_DIR: join(dir,'state') }, stderr: 'pipe' }));
   const result = await client.callTool({ name: 'tapilot_screen', arguments: {} });
   assert.equal(result.isError, undefined); assert.equal(prompts, 1);
   assert.equal(JSON.parse(result.content[0].text).frameId, 'unlocked');
@@ -179,4 +182,33 @@ test('a newer privacy pause or disconnect wins over an old unlock dialog', async
   } };
   await unlockRequired(server, preview, {}, 'tapilot_screen', async () => { retried = true; });
   assert.equal(retried, false); assert.equal(preview.reason, 'manual');
+});
+
+test('MCP pause interrupts Midscene while a phone action is pending; live frames remain available', async t => {
+  const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==';
+  let signalStarted, completeAction;
+  const started = new Promise(resolve => { signalStarted = resolve; });
+  const {dir,config,requests} = await fixture(t,(request,reply)=>{
+    if(request.method === 'device.capture') reply({dataUrl:`data:image/png;base64,${png}`,geometry:{frameId:'frame',imageWidth:1,imageHeight:1}});
+    else if(request.method === 'device.preview') reply({dataUrl:`data:image/png;base64,${png}`});
+    else if(request.method === 'device.execute') { completeAction = reply; signalStarted(); }
+    else reply({canCapture:true});
+  });
+  const path=join(dir,'config.json');await saveConfig(config,path);
+  const client=new Client({name:'midscene-pause-test',version:'1'});
+  t.after(()=>client.close());
+  await client.connect(new StdioClientTransport({command:process.execPath,args:[new URL('../server/index.mjs',import.meta.url).pathname],env:{...process.env,TAPILOT_CONFIG:path,ANDROID_USE_STATE_DIR:join(dir,'state')},stderr:'pipe'}));
+  await client.callTool({name:'tapilot_status',arguments:{}});
+  const action=client.callTool({name:'tapilot_midscene',arguments:{action:'home'}});
+  await started;
+  const live=await client.callTool({name:'tapilot_preview_frame',arguments:{}});
+  assert.equal(live.structuredContent.state,'live');
+  const pause=await client.callTool({name:'tapilot_preview',arguments:{action:'pause'}});
+  assert.equal(pause.structuredContent.state,'manual');
+  completeAction(null);
+  assert.equal((await action).isError,true);
+  const blocked=await client.callTool({name:'tapilot_midscene',arguments:{action:'home'}});
+  assert.equal(blocked.isError,true);
+  assert.equal(requests.filter(r=>r.method==='device.execute').length,1);
+  assert.equal(requests.filter(r=>r.method==='disconnect').length,0);
 });
