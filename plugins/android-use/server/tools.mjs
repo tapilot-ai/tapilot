@@ -13,7 +13,7 @@ export const tools = [
   tool('tapilot_type_text', 'Enter text into the currently focused editable field. Supports Chinese. Does not press Send. Capture first; replace defaults to true.', { ...frame, text: { type: 'string', maxLength: 10000 }, replace: { type: 'boolean', default: true } }, false, ['frame_id', 'text']),
   tool('tapilot_press', 'Press a navigation button, or submit the focused keyboard action with enter. Only submit when the user requested it.', { button: { type: 'string', enum: ['home', 'back', 'recentApps', 'enter'] } }),
   tool('tapilot_launch_app', 'Launch an app using its exact package name from tapilot_status. Capture afterward to verify the app opened.', { package_name: { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+$' } }),
-  tool('tapilot_disconnect', 'Release the phone after finishing or when the user asks to stop. Wireless mode remains enabled on the phone.', {}, false),
+  tool('tapilot_disconnect', 'Release the phone only when the user explicitly asks to disconnect or release it. Do not call merely because a task is complete; keep the live screen available. Wireless mode remains enabled on the phone.', {}, false),
 ];
 
 const validator = new AjvJsonSchemaValidator();

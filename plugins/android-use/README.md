@@ -62,7 +62,8 @@ The service does not restart at boot or after being killed. If the Wi-Fi address
 changes, enable again and pair again to update the computer's endpoint.
 
 Only one controller owns the phone. Local phone tools cannot run during that
-session; finish with `tapilot_disconnect`. Two minutes without a request closes
+session. Keep the connection and live panel open after completing a task. Use
+`tapilot_disconnect` only when the user explicitly requests disconnect/release. Two minutes without a request closes
 the controller connection. Observation tools may reconnect; mutation tools never
 reconnect or retry automatically. If an operation times out or the connection
 breaks, its outcome may be unknown: capture and inspect before another action.
@@ -92,7 +93,7 @@ Locked/disconnected/paused states clear the displayed image. The panel offers
 `已完成继续` for unlock/authentication and a pause button. Before entering app
 passwords or other private authentication, pause through the panel or
 `tapilot_preview(action=pause)`. This also blocks model phone operations until
-explicit resume. Hidden or closed panels stop polling. Finishing a task with
+explicit resume. Hidden or closed panels stop polling. Task completion does not stop collection. Explicit
 `tapilot_disconnect` stops collection; merely opening an existing panel does not
 clear a manual or lock pause. Live frames go only to the App response, not model
 observations. A supporting desktop host chooses the right-side/fullscreen layout;

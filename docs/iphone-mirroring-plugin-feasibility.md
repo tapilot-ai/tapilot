@@ -1,6 +1,6 @@
 # Embedding iPhone Mirroring in a local MCP plugin
 
-Research date: 2026-10-13. This is a feasibility assessment, not a validated device implementation.
+Research date: 2026-10-13. This includes a partial real-device test; a standalone plugin bridge is not implemented.
 
 ## Conclusion
 
@@ -42,8 +42,9 @@ is capture and input forwarding, not reparenting the native window.
 The Mac reports macOS 27.0.1. Attempting to inspect `com.apple.ScreenContinuity`
 through Computer Use returned `Computer Use was not approved to use iPhone Mirroring`.
 No alternate capture or input path was used to bypass that permission boundary.
-Window capture, phone connection, and input forwarding have therefore NOT been
-validated on this machine.
+That initial attempt did not validate window capture or input. A later authorized
+Computer Use attempt succeeded, as recorded below; a standalone ScreenCaptureKit
+helper and background event delivery remain unverified.
 
 Apple documents wireless mouse/keyboard interaction, a locked nearby phone, one
 Mac/phone session at a time, and automatic pause after inactivity. Camera/microphone
@@ -59,3 +60,39 @@ not a general LAN endpoint on iPhone and not a cloud-only ChatGPT connector.
 
 These APIs support the proposed architecture; they do not prove Mirroring-specific
 capture or background-input compatibility.
+
+## Real-device follow-up, 2026-10-13 13:56–13:58 Asia/Shanghai
+
+Computer Use accessed `com.apple.ScreenContinuity` successfully and the app
+connected to iPhone 15 Pro. Window screenshots showed actual iPhone Settings
+pixels rather than a black surface. Clicking the Wi-Fi page's back button
+visibly returned to the Settings list. Typing `display` in Settings search
+visibly inserted the text and produced the corresponding no-results view.
+
+Chinese input did not pass: direct `typeText` with `显示` left the field unchanged,
+including after selecting the existing English text. Paste opened a Universal
+Clipboard transfer progress dialog and did not complete during observation; it
+was cancelled. Do not interpret successful English entry as Unicode support.
+
+Before scroll acceptance, the app changed to “iPhone 使用中” and explicitly said
+mirroring had ended because the iPhone was being used, asking to lock the phone.
+The attempted scroll therefore did not establish phone scrolling. The user was
+asked to lock the iPhone and keep it nearby. Home/app switcher, scrolling, window
+occlusion/minimization, independent capture, background input, and plugin embedding
+remain pending. Computer Use screenshots/control alone do not prove a reusable
+ScreenCaptureKit/CGEvent plugin implementation.
+
+### Further observation and Midscene route
+
+After reconnecting, Command-1 visibly returned the real iPhone to its Home Screen;
+clicking the Settings icon reopened Settings. Window dimensions then changed, and
+a subsequent coordinate action failed with `windowNotFoundAtPosition`. Reacquiring
+window geometry is required; this is not evidence of stable background input.
+
+The user's preferred controller is now Midscene. The inspected local
+`midscene/packages/computer/src/device.ts` exposes display selection (`displayId`),
+not a dedicated iPhone Mirroring window target. An initial Midscene Computer PoC
+can operate the visible mirror on a desktop. A window-only plugin should add a
+device adapter for capture, geometry, input, and reconnect. No Midscene-driven
+iPhone action has been validated in this session; previous successes used Computer
+Use. Chinese input and background focus behavior remain open issues.

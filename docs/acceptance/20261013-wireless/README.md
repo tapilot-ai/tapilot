@@ -233,3 +233,22 @@ Validation:
   or resolved disconnection claim is made. The Android APK was not changed.
 
 ![Interactive panel browser fixture, not a live phone](interactive-panel-fixture.png)
+
+### Follow-up: fitted screen and persistent preview, 0.3.2
+
+The preview image now sizes to its intrinsic aspect ratio on a transparent stage,
+following iPhone Use's fitted-device layout. A browser measurement found a
+224.0625×480.484375 image for a 1080×2316 source, with a transparent stage; there
+are no wide black side panels. Existing gesture coordinate tests remain valid.
+
+After the user authorized releasing the old connection, the stale 0.2.0 plugin
+process was stopped. The current host successfully captured the actual Samsung
+over Wi-Fi. The production preview/control modules were then exercised through
+a local browser AppBridge test host against the real phone: clicking About phone
+in the preview visibly opened About phone on Galaxy Note20 Ultra 5G. This is real
+phone input through the panel, not the earlier mock fixture. ChatGPT's own sidebar
+renderer remains a separate reload/acceptance step.
+
+Per user instruction, the server instructions and disconnect-tool description
+now keep the screen open on task completion. Disconnect is explicit-user-only;
+phone/network interruption and idle timeout remain possible.

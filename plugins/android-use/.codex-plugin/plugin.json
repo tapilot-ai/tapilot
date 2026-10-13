@@ -1,6 +1,6 @@
 {
   "name": "android-use",
-  "version": "0.3.0",
+  "version": "0.3.2",
   "description": "Control your paired Android phone over Wi-Fi from ChatGPT desktop or Codex. No USB or on-phone model API key required.",
   "author": {
     "name": "quanru"
