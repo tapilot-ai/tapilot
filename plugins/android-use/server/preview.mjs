@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { control, imageSize } from './panel-controls.mjs';
-export const SCREEN_URI = 'ui://android-use/screen-0.4.2.html';
+export const SCREEN_URI = 'ui://android-use/screen-0.4.8.html';
 export const SCREEN_META = { ui: { csp: { connectDomains: [], resourceDomains: [] }, prefersBorder: false }, 'openai/ui': { availableDisplayModes: ['fullscreen'], preferredDisplayMode: 'fullscreen' } };
 export const PANEL_META = { 'openai/widgetSessionId': 'android-use-screen' };
 export const isLocked = error => /^(Unlock the phone first|Phone is locked\. Unlock it on the device\.)$/.test(error.message);
@@ -11,30 +11,38 @@ export class Preview {
   reason = 'disconnected';
   revision = 0;
   lastFrame;
-  invalidate() { this.lastFrame = undefined; }
+  recentFrames = [];
+  invalidate() { this.lastFrame = undefined; this.recentFrames = []; }
   pause(reason = 'manual') { this.reason = reason; this.revision++; this.invalidate(); }
   observe() { if (this.reason === 'disconnected') this.reason = null; }
   async resume(phone) {
     // This probe cannot invalidate the model's last actionable frame.
     await phone.open();
-    await phone.request('device.preview');
+    await phone.request('device.preview', phone.features?.jpegPreview ? {format:'jpeg'} : {});
     this.reason = null;
     return result({ state: 'live' });
   }
   async control(phone, args) {
-    const frame = this.lastFrame;
+    const frame = this.recentFrames.find(frame => frame.id === args.frame_id);
     this.invalidate(); // Every submitted action consumes the visible frame.
     if (this.reason) throw new Error('Screen paused or disconnected. Resume and inspect first.');
+    const start = performance.now();
     await control(phone, frame, args);
-    return result({ state: 'live', action_completed: true });
+    const actionMs = performance.now() - start;
+    // One MCP response includes the next actionable frame; no extra host round trip.
+    const next = await this.frame(phone);
+    return result({...next.structuredContent, action_completed:true, timing:{action_ms:Math.round(actionMs),refresh_ms:Math.round(performance.now()-start-actionMs)}});
   }
   async frame(phone) {
     if (this.reason) return result({ state: this.reason });
     try {
       await phone.open();
-      const frame = await phone.request('device.preview');
+      const frame = await phone.request('device.preview', phone.features?.jpegPreview ? {format:'jpeg'} : {});
       const size = imageSize(frame.dataUrl);
       this.lastFrame = { id: randomUUID(), receivedAt: performance.now(), ...size };
+      // A click may race the one outstanding polling request. Accept the
+      // displayed previous frame too; all mutations still consume both tokens.
+      this.recentFrames = [this.lastFrame, ...this.recentFrames].slice(0, 2);
       return result({ state: 'live', ...frame, frame_id: this.lastFrame.id, ...size });
     } catch (error) {
       if (isLocked(error)) this.pause('device_locked');

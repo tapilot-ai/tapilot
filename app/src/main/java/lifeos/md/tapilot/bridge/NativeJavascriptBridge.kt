@@ -183,7 +183,7 @@ class NativeJavascriptBridge(
                     JSONObject().put("width", bounds.widthPixels).put("height", bounds.heightPixels),
                 )
             }
-            "device.capture" -> requireService(service).capture(sessionId) { result ->
+            "device.capture", "device.prepareAction" -> requireService(service).capture(sessionId, metadataOnly = method == "device.prepareAction") { result ->
                 result.fold(
                     onSuccess = { capture ->
                         val geometry = JSONObject()

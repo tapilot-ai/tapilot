@@ -110,7 +110,7 @@ test('real MCP stdio handshake, image content, schema and disconnect', async t =
   const repeated = await client.callTool({ name: 'tapilot_preview_control', arguments: args });
   assert.equal(repeated.isError, true);
   await client.callTool({ name: 'tapilot_disconnect', arguments: {} });
-  assert.deepEqual(requests.map(r => r.method), ['authenticate', 'device.capture', 'device.preview', 'device.capture', 'device.execute', 'disconnect']);
+  assert.deepEqual(requests.map(r => r.method), ['authenticate', 'device.capture', 'device.preview', 'device.capture', 'device.execute', 'device.preview', 'disconnect']);
 });
 
 test('pairing links validate endpoint and credentials without echoing secrets', () => {

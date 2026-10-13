@@ -53,6 +53,32 @@ This is a desktop/local plugin, not a published cloud connector.
 The phone app remains Tapilot. Existing pairing credentials and the `tapilot_*`
 tool names are retained for compatibility; the plugin is named **Android Use**.
 
+## Preview latency (0.4.3)
+
+With an updated phone app, the TLS handshake advertises JPEG preview and compact
+manual-action frames. Preview images retain native dimensions at JPEG quality 75;
+model screenshots remain PNG. Before a manual action, the phone still captures
+and validates a fresh frame, skips image encoding, and sends only its geometry
+and frame token. Older
+phone builds automatically retain the PNG/full-capture path.
+
+Preview polling does not disable controls. A click racing one pending refresh can
+use the preceding displayed frame; an action consumes both tokens and is never
+replayed automatically. Its response includes the next preview, avoiding another
+host round trip. Live polling waits 250 ms after each completed capture.
+
+The pre-update SM-N9860 Wi-Fi measurement found 28–61 ms action execution but
+2.6–3.1 seconds per complex home-screen PNG transfer (about 5.7 MB base64 payload).
+An initial three-pair home-screen Wi-Fi comparison reduced median action-to-frame
+latency from 4592 ms to 2014 ms and preview transfer from 2234 ms to 257 ms.
+That measurement still encoded a discarded PNG during action preparation. The
+subsequent metadata-only capture build skips that encoding and passes Android
+build/unit tests. Three real-device Wi-Fi pairs then measured action preparation
+at 156–164 ms, execution at 31–45 ms, and action-to-frame at 1046–1162 ms.
+The alternating legacy PNG runs took 9556–11903 ms in that same network session;
+network throughput varied substantially from the earlier run. These direct
+Wi-Fi measurements exclude ChatGPT host overhead and are not sidebar acceptance.
+
 ## Daily use
 
 Enable wireless control on the phone when needed. The paired credential survives
@@ -83,10 +109,11 @@ instructing the agent to use its interactive question tool and wait for the repl
 Never enter the phone passcode in chat. Only a fresh observation may be retried
 once after confirmation; a blocked mutation is never automatically replayed.
 
-`tapilot_preview_open` is the only MCP App panel opener. Call it once per open
-panel; `tapilot_screen` only returns a model screenshot. Pause/resume and captures
+`tapilot_preview_open` is the only MCP App panel opener. Automatically call it at
+the start of a phone viewing/control task if no panel is open; do not require a
+separate user request to display the screen. Call it once per open panel; `tapilot_screen` only returns a model screenshot. Pause/resume and captures
 update the existing panel without declaring another UI entry point.
-The panel polls a separate `device.preview` endpoint about once per second
+The panel polls a separate `device.preview` endpoint every 250 ms
 plus capture latency, over the existing pinned Wi-Fi connection. It does not
 invalidate the model's last action frame. Requires the Android APK built with
 this plugin's 0.2.0 preview support; upgrade older APKs first.
@@ -249,3 +276,25 @@ panels; the iframe never requests fullscreen on load. Existing host tabs are not
 closed by the plugin: MCP Apps provides no host-tab closing API here. Native
 ChatGPT deduplication remains a host validation item; one opener is not a promise
 of global tab exclusivity across conversations or old plugin versions.
+
+Midscene results include `report`, `report_id`, and a clickable Markdown
+`report_link`, plus a `text/html` resource link to the local report. The chat host
+must show that link when reporting the task outcome, including failed verdicts.
+Reports stay on this computer; they are not uploaded. Reuse `report_id` across
+steps of the same task so the link opens the accumulated execution history.
+
+## Guided Midscene AI sign-in
+
+The bundled Android Use skill guides each new user through the steps/AI choice.
+For AI, it saves mode `ai`, checks `auth_status`, opens `auth_login` if needed,
+shows the returned authorization link, waits for the user's browser confirmation,
+and verifies `authorized=true` before proceeding. This is a separate OpenAI
+sign-in for the local plugin; no API key or developer account is required.
+
+Settings return `onboarding_required` for an unconfigured user. Missing AI consent
+or authorization returns structured `code`, `next_action`, `message`, and
+`host_instruction` before touching the phone. Pending login is reused; an existing
+authorization is reused without opening a browser. Cancelled/failed/expired login
+requires a new user choice before retrying. AI tasks are not silently downgraded
+to host-directed steps. The browser sign-in and model-backed AI result still need
+end-user acceptance; fixture tests only verify this routing contract.

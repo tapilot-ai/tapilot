@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MidsceneController } from "../server/midscene.mjs";
@@ -44,7 +45,10 @@ test("default steps and auth status require no device or credentials; mode persi
   assert.equal(await new MidsceneController({ root: c.root }).mode(), "off");
   await assert.rejects(c.run(null, { action: "home" }), /off/);
   await c.configure({ action: "settings", mode: "ai" });
-  await assert.rejects(c.run(null, { action: "act", text: "home" }), /sign-in/);
+  const blocked = await c.run(null, { action: "act", text: "home" });
+  assert.equal(blocked.isError, true);
+  assert.equal(blocked.structuredContent.code, "auth_required");
+  assert.equal(blocked.structuredContent.next_action, "auth_login");
 });
 test("real SDK worker writes native report and borrows one phone session", async (t) => {
   const { controller: c, phone, calls } = await fixture(t);
@@ -62,6 +66,13 @@ test("real SDK worker writes native report and borrows one phone session", async
   });
   const data = metadata(result);
   assert.equal(data.ok, true);
+  assert.equal(result.structuredContent.report_link, data.report_link);
+  assert.match(result.structuredContent.final_response_instruction, /final reply/);
+  assert.equal(data.report_link, `[查看 Midscene HTML 报告](<${data.report}>)`);
+  assert.ok(result.content.some(item => item.type === "text" && item.text === data.report_link));
+  const resource = result.content.find(item => item.type === "resource_link");
+  assert.equal(resource.mimeType, "text/html");
+  assert.equal(fileURLToPath(resource.uri), data.report);
   assert.equal(data.decision_source, "chat_host");
   assert.equal(calls.filter((c) => c.method === "device.execute").length, 1);
   assert.equal(
@@ -90,6 +101,8 @@ test("failed verdict is a failed report, not an independent AI assertion", async
     passed: false,
   });
   assert.equal(r.isError, true);
+  assert.ok(metadata(r).report_link);
+  assert.ok(r.content.some(item => item.type === "resource_link"));
   assert.equal(metadata(r).decision_source, "chat_host");
   assert.match(await readFile(metadata(r).report, "utf8"), /failed/);
 });
@@ -238,4 +251,46 @@ test("real AI SDK uses Responses fixture and wireless adapter for act/assert/wai
     calls.find((x) => x.method === "device.execute").params.action.type,
     "tap",
   );
+});
+
+test("removed plugin worker tells the host to reload before touching the phone", async (t) => {
+  const { controller: original, phone, calls } = await fixture(t);
+  const source = (await readFile(new URL('../server/midscene.mjs', import.meta.url), 'utf8'))
+    .replace('"./midscene/chatgpt-auth.mjs"', JSON.stringify(new URL('../server/midscene/chatgpt-auth.mjs', import.meta.url).href));
+  const modulePath = join(original.root, 'removed-version.mjs');
+  await writeFile(modulePath, source);
+  const { MidsceneController: RemovedController } = await import(pathToFileURL(modulePath).href);
+  let opened = false;
+  phone.open = async () => { opened = true; };
+  await assert.rejects(new RemovedController({ root: original.root }).run(phone, { action: 'screenshot' }), /Reload Android Use or restart ChatGPT/);
+  assert.equal(opened, false);
+  assert.equal(calls.length, 0);
+});
+
+test("new users get a mode choice and AI authorization guidance without phone access", async (t) => {
+  const { controller: c, calls } = await fixture(t);
+  assert.equal(metadata(await c.configure({ action: 'settings' })).onboarding_required, true);
+  const result = await c.run(null, { action: 'act', text: 'Read the screen' });
+  assert.equal(result.structuredContent.code, 'ai_consent_required');
+  assert.equal(result.structuredContent.next_action, 'ask_ai_consent');
+  await c.configure({ action: 'settings', mode: 'ai' });
+  assert.equal(metadata(await c.configure({ action: 'settings' })).onboarding_required, false);
+  const status = metadata(await c.configure({ action: 'auth_status' }));
+  assert.equal(status.authorized, false);
+  assert.equal(status.next_action, 'auth_login');
+  assert.equal(calls.length, 0);
+});
+test("authorization flow reuses pending login and respects cancellation and saved modes", async (t) => {
+  const { controller: c } = await fixture(t);
+  await c.configure({ action: 'settings', mode: 'ai' });
+  const pending = { authorized: false, login: { status: 'pending', url: 'http://127.0.0.1:1234/start/fixture' } };
+  c.auth.status = async () => pending;
+  c.auth.login = () => { throw Error('Must not restart pending login'); };
+  const login = metadata(await c.configure({ action: 'auth_login' }));
+  assert.equal(login.authorization_url, pending.login.url);
+  assert.equal(login.next_action, 'auth_status');
+  assert.equal(c.authGuidance('ai', { authorized: false, login: {status:'cancelled'} }).retry_requires_user_request, true);
+  c.auth.status = async () => ({authorized:true});
+  assert.equal(metadata(await c.configure({action:'auth_login'})).next_action, 'continue_ai_task');
+  assert.equal(c.authGuidance('steps', {authorized:true}).next_action, 'respect_saved_mode');
 });

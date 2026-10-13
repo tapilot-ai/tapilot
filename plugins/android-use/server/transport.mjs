@@ -48,7 +48,9 @@ export class PhoneConnection {
           resolve();
         });
       });
-      return await this.request(pair ? 'pair' : 'authenticate', {}, this.config.token);
+      const result = await this.request(pair ? 'pair' : 'authenticate', {}, this.config.token);
+      this.features = result?.features ?? {};
+      return result;
     } catch (error) { this.close(error); throw error; }
   }
   request(method, params = {}, token) {
@@ -77,7 +79,7 @@ export class PhoneConnection {
     }
   }
   close(error = new Error('Phone connection closed')) {
-    const socket = this.#socket; this.#socket = undefined;
+    const socket = this.#socket; this.#socket = undefined; this.features = {};
     socket?.destroy();
     for (const pending of this.#pending.values()) { clearTimeout(pending.timer); pending.reject(error); }
     this.#pending.clear(); this.#buffer = Buffer.alloc(0);

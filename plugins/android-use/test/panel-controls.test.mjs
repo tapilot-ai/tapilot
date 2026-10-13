@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Preview, connectionState } from '../server/preview.mjs';
-import { control } from '../server/panel-controls.mjs';
+import { control, imageSize } from '../server/panel-controls.mjs';
 import { imagePoint } from '../ui/geometry.mjs';
 const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
 function device() {
@@ -26,13 +26,14 @@ test('letterboxing and scaling map visible image pixels, excluding margins', () 
 test('manual tap captures once then executes once using the native frame, consuming the panel frame', async () => {
   const phone = device(), { preview, frame } = await ready(phone);
   await preview.control(phone, { frame_id: frame.frame_id, action: 'tap', x: .5, y: .5 });
-  assert.deepEqual(phone.calls.map(c => c.method), ['device.preview', 'device.capture', 'device.execute']);
+  assert.deepEqual(phone.calls.map(c => c.method), ['device.preview', 'device.capture', 'device.execute', 'device.preview']);
   assert.deepEqual(phone.calls[2].params, { frameId: 'native-frame', action: { type: 'tap', x: .5, y: .5 } });
   await assert.rejects(preview.control(phone, { frame_id: frame.frame_id, action: 'home' }), /expired/);
-  assert.equal(phone.calls.length, 3);
+  assert.equal(phone.calls.length, 4);
 });
 test('old, invalidated, paused and expired panel frames cannot operate the phone', async () => {
   const phone = device(), { preview, frame } = await ready(phone);
+  await preview.frame(phone);
   await preview.frame(phone);
   await assert.rejects(preview.control(phone, { frame_id: frame.frame_id, action: 'home' }), /expired/);
   await preview.frame(phone); preview.lastFrame.receivedAt -= 11000;
@@ -87,4 +88,56 @@ test('occupied, unpaired and network failures remain distinguishable', async () 
     assert.equal(result.structuredContent.state, state);
     assert.equal(result.structuredContent.dataUrl, undefined);
   }
+});
+
+test('click racing one preview refresh executes once and returns its next frame inline', async () => {
+  const phone=device(),{preview,frame}=await ready(phone);
+  await preview.frame(phone); // In-flight poll finished after the user's pointerdown.
+  const response=await preview.control(phone,{frame_id:frame.frame_id,action:'tap',x:.5,y:.5});
+  assert.equal(response.structuredContent.action_completed,true);
+  assert.ok(response.structuredContent.dataUrl);
+  assert.ok(response.structuredContent.frame_id);
+  await assert.rejects(preview.control(phone,{frame_id:frame.frame_id,action:'tap',x:.5,y:.5}),/expired/);
+  assert.equal(phone.calls.filter(c=>c.method==='device.execute').length,1);
+});
+test('post-action preview failure does not turn a completed mutation into a retryable failure', async () => {
+  const phone=device(),{preview,frame}=await ready(phone),original=phone.request;
+  phone.request=async(method,params)=>{if(method==='device.preview')throw new Error('Phone timed out');return original(method,params);};
+  const r=await preview.control(phone,{frame_id:frame.frame_id,action:'home'});
+  assert.equal(r.structuredContent.action_completed,true);
+  assert.equal(r.structuredContent.state,'unavailable');
+  assert.equal(phone.calls.filter(c=>c.method==='device.execute').length,1);
+});
+
+// Minimal SOF header exercises metadata parsing without a decoder dependency.
+const jpeg = 'data:image/jpeg;base64,' + Buffer.from([255,216,255,192,0,11,8,0,2,0,3,1,1,17,0,255,217]).toString('base64');
+test('JPEG preview dimensions are parsed and malformed segments rejected', () => {
+  assert.deepEqual(imageSize(jpeg), { width: 3, height: 2 });
+  assert.throws(() => imageSize('data:image/jpeg;base64,/9j/wA=='));
+  assert.throws(() => imageSize('data:image/jpeg;base64,'));
+});
+test('negotiated preview uses JPEG and prepares a compact native action frame', async () => {
+  const calls = [];
+  const phone = { connected: true, features: { jpegPreview: true, compactActionFrame: true }, open: async () => {},
+    request: async (method, params) => {
+      calls.push({ method, params });
+      if (method === 'device.preview') return { dataUrl: jpeg, capturedAt: Date.now() };
+      if (method === 'device.prepareAction') return { geometry: { frameId: 'compact-frame', imageWidth: 3, imageHeight: 2 } };
+      if (method === 'device.capture') throw new Error('Full screenshot must not be transferred');
+      return {};
+    }
+  };
+  const { preview, frame } = await ready(phone);
+  const result = await preview.control(phone, { frame_id: frame.frame_id, action: 'tap', x: 1, y: 1 });
+  assert.deepEqual(calls.map(call => call.method), ['device.preview', 'device.prepareAction', 'device.execute', 'device.preview']);
+  assert.deepEqual(calls[0].params, { format: 'jpeg' });
+  assert.equal(calls[2].params.frameId, 'compact-frame');
+  assert.equal(result.structuredContent.dataUrl, jpeg);
+});
+
+test('drag endpoints outside the image clamp to its edge while outside starts remain invalid', () => {
+  const rect = { left: 10, top: 20, width: 100, height: 200 };
+  assert.equal(imagePoint(rect, 100, 200, 60, 0), null);
+  assert.deepEqual(imagePoint(rect, 100, 200, 60, 0, true), { x: 50, y: 0 });
+  assert.deepEqual(imagePoint(rect, 100, 200, 500, 500, true), { x: 99, y: 199 });
 });

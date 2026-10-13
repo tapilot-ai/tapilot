@@ -16,6 +16,7 @@ export const CONTROL_SCHEMA = { type: 'object', oneOf: [
 const validate = new AjvJsonSchemaValidator().getValidator(CONTROL_SCHEMA);
 
 export function imageSize(dataUrl) {
+  if (typeof dataUrl === 'string' && dataUrl.startsWith('data:image/jpeg;base64,')) return jpegSize(Buffer.from(dataUrl.slice(23), 'base64'));
   if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/png;base64,')) throw new Error('Invalid preview frame');
   const png = Buffer.from(dataUrl.slice(22), 'base64');
   if (png.length < 24 || !png.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) || png.toString('ascii', 12, 16) !== 'IHDR') throw new Error('Invalid preview PNG');
@@ -34,11 +35,34 @@ export async function control(phone, frame, args) {
   // Manual input invalidates previous model coordinates. Obtain the phone's
   // action-frame token immediately before sending one user-requested mutation.
   // Neither capture nor mutation is retried after a lost connection.
-  const { geometry } = await phone.request('device.capture');
+  const { geometry } = await phone.request(phone.features?.compactActionFrame ? 'device.prepareAction' : 'device.capture');
   if (geometry.imageWidth !== frame.width || geometry.imageHeight !== frame.height) throw new Error('Screen orientation or size changed. Wait for a fresh frame.');
   const common = { frame_id: geometry.frameId };
   if (args.action === 'tap') return callTool(phone, 'tapilot_tap', { ...common, x: args.x, y: args.y });
   if (args.action === 'swipe') return callTool(phone, 'tapilot_swipe', { ...common, start_x: args.start_x, start_y: args.start_y, end_x: args.end_x, end_y: args.end_y, duration_ms: args.duration_ms });
   if (args.action === 'input') return callTool(phone, 'tapilot_type_text', { ...common, text: args.text, replace: args.replace ?? true });
   return callTool(phone, 'tapilot_press', { button: args.action });
+}
+
+function jpegSize(bytes) {
+  if (bytes[0] !== 255 || bytes[1] !== 216) throw new Error('Invalid preview JPEG');
+  let offset = 2;
+  while (offset + 4 <= bytes.length) {
+    if (bytes[offset++] !== 255) throw new Error('Invalid JPEG marker');
+    while (bytes[offset] === 255) offset++;
+    const marker = bytes[offset++];
+    if (marker === 217 || marker === 218) break;
+    if (marker === 1 || (marker >= 208 && marker <= 215)) continue;
+    if (offset + 2 > bytes.length) throw new Error('Truncated JPEG segment');
+    const length = bytes.readUInt16BE(offset);
+    if (length < 2 || offset + length > bytes.length) throw new Error('Invalid JPEG segment');
+    if ([192, 193, 194].includes(marker)) {
+      if (length < 8) throw new Error('Invalid JPEG dimensions');
+      const height = bytes.readUInt16BE(offset + 3), width = bytes.readUInt16BE(offset + 5);
+      if (!width || !height || width > 16384 || height > 16384) throw new Error('Invalid JPEG dimensions');
+      return { width, height };
+    }
+    offset += length;
+  }
+  throw new Error('JPEG dimensions missing');
 }

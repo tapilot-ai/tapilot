@@ -34,13 +34,13 @@ internal class WirelessDeviceSession(private val context: Context, private val d
     }
 
     fun call(method: String, params: JSONObject): Any? {
-        require(method in setOf("device.getCapabilities", "device.getSize", "device.capture", "device.preview", "device.execute")) { "Unsupported wireless method" }
+        require(method in setOf("device.getCapabilities", "device.getSize", "device.capture", "device.prepareAction", "device.preview", "device.execute")) { "Unsupported wireless method" }
         val prepared = if (method == "device.execute") actionPolicy.prepare(params) else params
         val result = onMain<Any?> { done ->
             check(!context.getSystemService(KeyguardManager::class.java).isDeviceLocked) { "Phone is locked. Unlock it on the device." }
             if (method == "device.preview") {
                 val service = checkNotNull(MidsceneAccessibilityService.current()) { "Enable Tapilot device control in Accessibility settings" }
-                service.capture(id, recordFrame = false) { captured ->
+                service.capture(id, recordFrame = false, jpeg = params.optString("format") == "jpeg") { captured ->
                     done(captured.mapCatching { frame ->
                         check(!context.getSystemService(KeyguardManager::class.java).isDeviceLocked) { "Phone is locked. Unlock it on the device." }
                         JSONObject().put("dataUrl", frame.dataUrl).put("capturedAt", frame.capturedAt)
@@ -50,10 +50,11 @@ internal class WirelessDeviceSession(private val context: Context, private val d
                 (context.applicationContext as TapilotApplication).assistant.bridge.call(method, prepared, id, done)
             }
         }
-        if (method == "device.capture" || method == "device.preview") {
+        if (method in setOf("device.capture", "device.prepareAction", "device.preview")) {
             check(!context.getSystemService(KeyguardManager::class.java).isDeviceLocked) { "Phone is locked. Unlock it on the device." }
         }
-        if (method == "device.capture") actionPolicy.observe((result as JSONObject).getJSONObject("geometry"))
+        if (method == "device.capture" || method == "device.prepareAction") actionPolicy.observe((result as JSONObject).getJSONObject("geometry"))
+        if (method == "device.prepareAction") return JSONObject().put("geometry", (result as JSONObject).getJSONObject("geometry"))
         return result
     }
 

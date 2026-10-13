@@ -1,11 +1,14 @@
+import { existsSync } from "node:fs";
 import { fork, execFile } from "node:child_process";
 import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
+import { pathToFileURL } from "node:url";
 import { ChatGPTAuth } from "./midscene/chatgpt-auth.mjs";
 const text = (value) => ({
   content: [{ type: "text", text: JSON.stringify(value) }],
+  structuredContent: value,
 });
 const fields = {
   screenshot: [],
@@ -32,7 +35,7 @@ const admin = new Set([
 export const midsceneTool = {
   name: "tapilot_midscene",
   description:
-    "Midscene over the existing Wi-Fi connection. Default steps mode: chat host decides explicit actions and gets native reports. AI act/assert/wait require mode=ai and separate ChatGPT consent. Settings/auth need no phone. Reuse report_id per task. Use frame_id from the latest Midscene screenshot for tap/swipe/input. Never replay uncertain actions.",
+    "Midscene over the existing Wi-Fi connection. Default steps mode: chat host decides explicit actions and gets native reports. AI act/assert/wait require mode=ai and separate ChatGPT consent. Settings/auth need no phone. Reuse report_id per task. At task completion, present the returned report_link as a clickable Markdown link to the user, including when the task fails. Use frame_id from the latest Midscene screenshot for tap/swipe/input. Never replay uncertain actions.",
   inputSchema: {
     type: "object",
     properties: {
@@ -157,9 +160,14 @@ export class MidsceneController {
         mode: await this.mode(),
         default_mode: "steps",
         authorization_changes_mode: false,
+        onboarding_required: !existsSync(join(this.root, "midscene.json")),
+        host_instruction: "For a new user, explain that steps uses chat-host decisions and AI uses Midscene planning. Ask which they want. After explicit AI consent set mode=ai and check auth_status; guide sign-in if needed. Do not silently enable AI or omit the choice.",
       });
     }
-    if (action === "auth_status") return text(await this.auth.status());
+    if (action === "auth_status") {
+      const status = await this.auth.status();
+      return text({ ...status, ...this.authGuidance(await this.mode(), status) });
+    }
     if (action === "auth_cancel") return text(await this.auth.cancel());
     if (action === "auth_logout") return text(await this.auth.logout());
     if (action === "models") return text({ models: await this.auth.models() });
@@ -168,8 +176,9 @@ export class MidsceneController {
         throw new Error(
           "Select ai mode only after user consent before signing in",
         );
-      if (this.login)
-        throw new Error("Sign-in already pending; use auth_status");
+      const status = await this.auth.status();
+      if (status.authorized) return text({ ...status, ...this.authGuidance("ai", status) });
+      if (status.login?.status === "pending") return text({ ...status.login, ...this.authGuidance("ai", status) });
       return new Promise((resolve, reject) => {
         this.login = this.auth
           .login((info) => {
@@ -178,7 +187,7 @@ export class MidsceneController {
               [info.url],
               () => {},
             );
-            resolve(text(info));
+            resolve(text({ ...info, ...this.authGuidance("ai", { authorized: false, login: info }) }));
           })
           .catch(reject)
           .finally(() => {
@@ -187,6 +196,27 @@ export class MidsceneController {
       });
     }
     throw new Error("Not a settings or auth action");
+  }
+  authGuidance(mode, status) {
+    if (status.authorized) return { next_action: mode === "ai" ? "continue_ai_task" : "respect_saved_mode", needs_user_input: false };
+    const pending = status.login?.status === "pending";
+    return {
+      code: mode !== "ai" ? "ai_consent_required" : pending ? "auth_pending" : "auth_required",
+      needs_user_input: true,
+      next_action: mode !== "ai" ? "ask_ai_consent" : pending ? "auth_status" : "auth_login",
+      ...(pending ? { authorization_url: status.login.url } : {}),
+      retry_requires_user_request: ["cancelled", "failed", "expired", "signed_out"].includes(status.login?.status),
+      message: mode !== "ai"
+        ? "Midscene AI 可以自动识别和规划操作，需要通过 OpenAI 页面登录授权；也可继续使用当前聊天模型决策的单步模式。请选择后再继续。"
+        : pending
+          ? "请在已打开的 OpenAI 页面完成 Android Use 授权，完成后再检查授权状态。不要在聊天里提供密码、验证码或令牌。"
+          : "Midscene AI 尚未授权。通过 auth_login 打开 OpenAI 登录授权页；聊天窗口的登录不会自动授权给插件，无需填写 API Key。",
+      host_instruction: mode !== "ai"
+        ? "Ask whether the user wants Midscene AI or steps. Explicit AI/login requests already count as consent: set mode=ai then check auth_status. Otherwise wait for their choice."
+        : pending
+          ? "Show the returned authorization_url as a clickable link. Wait for actual user completion, then call auth_status; continue only if authorized=true. Do not restart a pending login or replay a phone mutation."
+          : "Explain sign-in briefly, call auth_login for a user who chose AI, and guide them through the returned link. If the previous login was cancelled/failed/expired or signed out, ask before restarting it. Never silently downgrade to steps.",
+    };
   }
   cancel() {
     this.abort?.();
@@ -200,8 +230,11 @@ export class MidsceneController {
     if (mode === "off")
       throw new Error("Midscene is off; use original tools or enable steps");
     const ai = ["act", "assert", "wait"].includes(args.action);
-    if (ai && (mode !== "ai" || !(await this.auth.status()).authorized))
-      throw new Error("AI mode and separate ChatGPT sign-in required");
+    if (ai) {
+      const status = await this.auth.status();
+      if (mode !== "ai" || !status.authorized)
+        return { ...text(this.authGuidance(mode, status)), isError: true };
+    }
     if (args.frame_id && args.frame_id !== this.observation?.geometry.frameId)
       throw new Error("Stale frame; call Midscene screenshot again");
     const initialFrame = args.frame_id ? this.observation : undefined;
@@ -209,6 +242,8 @@ export class MidsceneController {
     guard();
     if (initialFrame && !phone.connected)
       throw new Error("Disconnected; obtain a new screenshot before acting");
+    const workerUrl = new URL("./midscene/worker.mjs", import.meta.url);
+    if (!existsSync(workerUrl)) throw new Error("Android Use was updated while this session was running. Reload Android Use or restart ChatGPT to load the installed version; restarting Tapilot will not fix this computer-side error. No action was started.");
     await phone.open();
     await mkdir(this.root, { recursive: true, mode: 0o700 });
     const reportId = args.report_id ?? randomUUID();
@@ -217,10 +252,18 @@ export class MidsceneController {
         ([k]) => !k.startsWith("MIDSCENE_") && !k.startsWith("OPENAI_"),
       ),
     );
-    const child = fork(new URL("./midscene/worker.mjs", import.meta.url), [], {
+    const child = fork(workerUrl, [], {
       cwd: this.root,
       env,
-      stdio: ["ignore", "ignore", "ignore", "ipc"],
+      execArgv: [],
+      stdio: ["ignore", "ignore", "pipe", "ipc"],
+    });
+    let workerFailure = "";
+    child.stderr.on("data", chunk => {
+      const diagnostic = chunk.toString();
+      if (/MODULE_NOT_FOUND|ERR_MODULE_NOT_FOUND/.test(diagnostic)) workerFailure = "Worker files or dependencies are missing. Reload Android Use to load the installed version.";
+      else if (/ERR_INPUT_TYPE_NOT_ALLOWED/.test(diagnostic)) workerFailure = "Worker was started with incompatible Node options.";
+      // Drain stderr, but never echo provider responses, screenshots, or secrets.
     });
     this.active = true;
     const inFlight = new Set();
@@ -257,10 +300,10 @@ export class MidsceneController {
             ),
           );
         child.on("error", (e) => finish(e));
-        child.on("exit", () =>
+        child.on("exit", (code, signal) =>
           finish(
             new Error(
-              "Midscene worker exited; inspect screen before continuing",
+              `Midscene worker exited (code ${code}, signal ${signal ?? "none"}). ${workerFailure || "Computer-side worker failed; reload Android Use and inspect the phone before continuing."} Do not replay an uncertain action.`,
             ),
           ),
         );
@@ -311,16 +354,39 @@ export class MidsceneController {
       }
       if (result.frame) this.observation = result.frame;
       const { screenshot, frame, ...metadata } = result;
+      const reportLink = result.report
+        ? `[查看 Midscene HTML 报告](<${result.report}>)`
+        : undefined;
       return {
+        structuredContent: {
+          ...metadata,
+          ...(frame ? { geometry: frame.geometry } : {}),
+          ...(reportLink ? {
+            report_link: reportLink,
+            final_response_instruction: `Include this exact clickable link in the final reply: ${reportLink}`,
+          } : {}),
+        },
         isError: !result.ok,
         content: [
           {
             type: "text",
             text: JSON.stringify({
               ...metadata,
+              ...(reportLink ? { report_link: reportLink } : {}),
               ...(frame ? { geometry: frame.geometry } : {}),
             }),
           },
+          ...(reportLink ? [
+            { type: "text", text: reportLink },
+            {
+              type: "resource_link",
+              uri: pathToFileURL(result.report).href,
+              name: `android-use-${reportId}.html`,
+              title: "Midscene HTML 报告",
+              description: "Local Midscene execution report with screenshots and action replay.",
+              mimeType: "text/html",
+            },
+          ] : []),
           ...(screenshot
             ? [
                 {

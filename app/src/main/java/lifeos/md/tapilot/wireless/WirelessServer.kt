@@ -75,7 +75,7 @@ internal class WirelessServer(
             controllers.add(socket)
             check(pairing.authenticate(first.optString("token"))) { "Pairing was revoked" }
             onController(true)
-            reply(firstId, JSONObject().put("protocolVersion", 1))
+            reply(firstId, JSONObject().put("protocolVersion", 1).put("features", JSONObject().put("compactActionFrame", true).put("jpegPreview", true)))
             socket.soTimeout = 120_000 // No invisible permanent controller: idle sessions release the phone.
             val seen = LinkedHashSet<String>()
             seen.add(firstId)
