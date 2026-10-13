@@ -6,6 +6,6 @@ allowBuilds:
   sharp: true
 
 minimumReleaseAgeExclude:
-  - '@midscene/core@1.12.9'
-  - '@midscene/shared@1.12.9'
-  - '@midscene/test@1.12.9'
+  - '@midscene/core@1.12.9 || 1.15.2'
+  - '@midscene/shared@1.12.9 || 1.15.2'
+  - '@midscene/test@1.12.9 || 1.15.2'

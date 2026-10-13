@@ -290,16 +290,17 @@ Third-party components remain subject to their respective licenses.
 
 Task messages expose expandable plan and verified operation results. Explicit “new task” instructions stop the current task before switching. Opening the global panel safely pauses phone actions; the next amendment resumes the saved task. Long model requests compact old logs without discarding user constraints or changing saved checkpoints.
 
-### Optional ChatGPT conversation provider
+### Use your ChatGPT plan
 
 In Settings → ChatGPT, choose **Continue with ChatGPT**, complete authorization in
-the system browser, select an available model, then enable **Use for conversation
-& planning**. Midscene phone actions still use the separately configured vision
-model (for example, DeepSeek); speech keeps its own provider.
+the system browser, select an available model, then enable **Use ChatGPT**. Conversation, planning, and Midscene phone actions
+all use the selected ChatGPT model; no separate model API Key is required.
+Choose a GPT-6 model or a supported GPT-5 vision model. Speech keeps its own provider.
 
 Tapilot uses the official SIWC public-client OAuth flow with a loopback callback,
 PKCE, and ID-token validation. Account tokens are stored separately using Android
-Keystore encryption and refreshed before expiry. The account picker supports
+Keystore encryption and refreshed before expiry. Each phone-operation process
+receives a current access token; refresh tokens remain in the native credential store. The account picker supports
 separate registrations; signing out removes local tokens and attempts remote
 revocation. Pending sign-ins are encrypted too: after a process restart, Tapilot
 reopens the original callback port so the browser callback can be retried within

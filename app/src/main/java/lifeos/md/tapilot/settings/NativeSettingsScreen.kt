@@ -59,7 +59,8 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
         Column(Modifier.fillMaxSize().navigationBarsPadding().imePadding()) {
             Header(label("设置", "Settings")) { coordinator.back() }
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Group(label("Midscene 模型", "Midscene model")) {
+                Group("ChatGPT") { ChatGptSettingsSection(coordinator, zh) }
+                if (!coordinator.data.optBoolean("chatgptConversation")) Group(label("Midscene 模型", "Midscene model")) {
                     SettingRow(label("服务商", "Provider"), coordinator.preset) { if (!busy) picker = "model" }
                     listOf("baseUrl" to "API 地址", "modelName" to "模型名称", "modelFamily" to "模型系列").forEach { (field, title) ->
                         val en = when (field) { "baseUrl" -> "API URL"; "modelName" -> "Model name"; else -> "Model family" }
@@ -77,7 +78,6 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
                     }
                     if (coordinator.settingsSection == "model") Status(coordinator.settingsStatus)
                 }
-                Group("ChatGPT") { ChatGptSettingsSection(coordinator, zh) }
                 Group(label("语音输入", "Voice input")) {
                     SettingRow(label("转写服务", "Provider"), if (provider == "volcengine") label("火山引擎", "Volcengine") else "Deepgram") { if (!busy) picker = "speech" }
                     Text(if (provider == "volcengine") label("Seed ASR 2.0 小时版 · API 接入", "Seed ASR 2.0 duration · API") else "Deepgram Nova-3 · API", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)

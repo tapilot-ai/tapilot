@@ -21,10 +21,10 @@ internal fun ChatGptSettingsSection(coordinator: NativeConversationCoordinator, 
     var accountPicker by remember { mutableStateOf(false) }
     var modelPicker by remember { mutableStateOf(false) }
     val busy = connection.busy || coordinator.settingsBusy
-    Text(label("使用 ChatGPT 套餐处理对话与任务规划。手机操作继续使用上方配置的 Midscene 模型。",
-        "Use your ChatGPT plan for conversation and task planning. Phone operations use the Midscene model configured above."), fontSize = 13.sp)
+    Text(label("使用 ChatGPT 套餐处理对话、任务规划和手机操作，无需另填模型 API Key。",
+        "Use your ChatGPT plan for conversation, planning, and phone operations. No separate model API Key is needed."), fontSize = 13.sp)
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label("用于对话与任务规划", "Use for conversation & planning"), modifier = Modifier.weight(1f), fontSize = 14.sp)
+        Text(label("使用 ChatGPT", "Use ChatGPT"), modifier = Modifier.weight(1f), fontSize = 14.sp)
         Switch(coordinator.data.optBoolean("chatgptConversation"), { coordinator.preference("chatgptConversation", it) },
             enabled = !busy && (connection.ready || coordinator.data.optBoolean("chatgptConversation")))
     }

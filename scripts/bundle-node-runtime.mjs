@@ -163,7 +163,13 @@ fs.mkdirSync(stagingRoot, { recursive: true });
 for (const file of ['package.json', 'pnpm-lock.yaml']) {
   fs.copyFileSync(path.join(bundleRoot, file), path.join(stagingRoot, file));
 }
-fs.writeFileSync(path.join(stagingRoot, 'pnpm-workspace.yaml'), 'packages:\n  - .\n');
+fs.writeFileSync(path.join(stagingRoot, 'pnpm-workspace.yaml'), `packages:
+  - .
+minimumReleaseAgeExclude:
+  - '@midscene/core@1.15.2'
+  - '@midscene/shared@1.15.2'
+  - '@midscene/test@1.15.2'
+`);
 run(
   'pnpm',
   [

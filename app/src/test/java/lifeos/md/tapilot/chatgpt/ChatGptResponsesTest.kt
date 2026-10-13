@@ -8,6 +8,18 @@ import java.util.Base64
 
 class ChatGptResponsesTest {
     private fun response(text: String, status: Int = 200) = JSONObject().put("status", status).put("bodyBase64", Base64.getEncoder().encodeToString(text.toByteArray()))
+    @Test fun completedItemsArePreservedWhenFinalEventOmitsOutput() {
+        val items = """data: {"type":"response.output_item.done","output_index":1,"item":{"type":"message","content":[{"type":"output_text","text":"OK"}]}}
+
+data: {"type":"response.output_item.done","output_index":0,"item":{"type":"reasoning","encrypted_content":"opaque"}}
+
+"""
+        assertThrows(IllegalStateException::class.java) { ChatGptResponses.decode(response(items)) }
+        val result = ChatGptResponses.decode(response(items + "data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\"}}\n\n"))
+        assertEquals("OK", result.getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content"))
+        assertEquals("opaque", result.getJSONArray("tapilotResponsesOutput").getJSONObject(0).getString("encrypted_content"))
+        assertThrows(IllegalStateException::class.java) { ChatGptResponses.decode(response(items + "data: {\"type\":\"error\",\"code\":\"subscription_sharing_usage_limit_exceeded\"}\n\n")) }
+    }
     @Test fun requestConvertsSystemImagesToolsAndToolResultsWithoutUnsupportedParameters() {
         val messages = JSONArray("""[{"role":"system","content":"plan"},{"role":"user","content":[{"type":"text","text":"look"},{"type":"image_url","image_url":{"url":"data:image/png;base64,test"}}]},{"role":"assistant","tool_calls":[{"id":"call","function":{"name":"operate_phone","arguments":"{}"}}]},{"role":"tool","tool_call_id":"call","content":"done"}]""")
         val tools = JSONArray("""[{"type":"function","function":{"name":"operate_phone","parameters":{"type":"object"}}}]""")

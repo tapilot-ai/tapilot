@@ -67,6 +67,7 @@ object ChatGptResponses {
             throw IllegalStateException(failure(error, response.getInt("status")))
         }
         var completed: JSONObject? = null
+        val completedItems = sortedMapOf<Int, JSONObject>()
         val data = mutableListOf<String>()
         fun event() {
             if (data.isEmpty()) return
@@ -74,6 +75,7 @@ object ChatGptResponses {
             if (payload == "[DONE]") return
             val value = JSONObject(payload)
             when (value.optString("type")) {
+                "response.output_item.done" -> completedItems[value.getInt("output_index")] = value.getJSONObject("item")
                 "response.completed" -> {
                     val result = value.getJSONObject("response")
                     check(result.optString("status") == "completed") { "ChatGPT 响应未完成，请重试" }
@@ -90,7 +92,8 @@ object ChatGptResponses {
         }
         event()
         val result = completed ?: error("ChatGPT 连接中断，未收到完整结果，请重试")
-        val output = result.optJSONArray("output") ?: JSONArray()
+        val output = result.optJSONArray("output")?.takeIf { it.length() > 0 }
+            ?: JSONArray(completedItems.values.toList())
         val textParts = mutableListOf<String>(); val calls = JSONArray()
         for (i in 0 until output.length()) {
             val item = output.getJSONObject(i)

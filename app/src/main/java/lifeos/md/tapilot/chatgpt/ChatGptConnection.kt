@@ -60,7 +60,7 @@ class ChatGptConnection(private val context: Context, private val changed: () ->
             // A catalog failure must not discard a valid completed authorization.
             val catalog = runCatching { loadModels() }
             main.post { if (!closed) models = catalog.getOrDefault(emptyList()) }
-            catalog.fold({ "ChatGPT 已连接，请选择模型并开启用于对话" }, { "ChatGPT 已登录；加载模型失败：${it.message}" })
+            catalog.fold({ "ChatGPT 已连接，请选择模型并开启「使用 ChatGPT」" }, { "ChatGPT 已登录；加载模型失败：${it.message}" })
         }
         status = if (recovered) "已恢复被中断的登录，请返回浏览器刷新授权回调页面。" else "正在等待浏览器授权，请在 15 分钟内完成。"
     }

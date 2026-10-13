@@ -130,8 +130,8 @@ class NativeConversationCoordinator(
         emit(ChatState(ready = ready, language = AppLanguage.resolved(activity), dark = AppTheme.isDark(activity), paletteId = AppTheme.paletteId(activity),
             advancedMode = data.optBoolean("advanced"), activeConversationId = active(), messages = messages, conversations = conversations,
             draft = data.optString("draft"), draftEpoch = draftEpoch, running = running,
-            configured = model.optString("baseUrl").isNotBlank() && model.optString("modelName").isNotBlank() && model.optString("modelFamily").isNotBlank() && hasKey(preset) && (!data.optBoolean("chatgptConversation") || chatGpt.ready),
-            modelName = model.optString("modelName"), speechProvider = data.optString("speechProvider", "volcengine"),
+            configured = if (data.optBoolean("chatgptConversation")) chatGpt.ready else model.optString("baseUrl").isNotBlank() && model.optString("modelName").isNotBlank() && model.optString("modelFamily").isNotBlank() && hasKey(preset),
+            modelName = if (data.optBoolean("chatgptConversation")) chatGpt.model else model.optString("modelName"), speechProvider = data.optString("speechProvider", "volcengine"),
             error = error, errorEpoch = errorEpoch, needsAccessibility = MidsceneAccessibilityService.current() == null,
             attachment = ChatAttachment.parse(pendingAttachment), preview = preview, progress = progress, confirmation = confirmationText))
     }
@@ -273,13 +273,14 @@ class NativeConversationCoordinator(
         if (running || (text.isBlank() && file == null)) return
         val model = profile()
         val key = credentials.getAll()[preset].orEmpty()
-        if (key.isBlank() || model.optString("modelName").isBlank() || model.optString("modelFamily").isBlank()) {
+        val useChatGpt = data.optBoolean("chatgptConversation")
+        if (!useChatGpt && (key.isBlank() || model.optString("modelName").isBlank() || model.optString("modelFamily").isBlank())) {
             fail(IllegalStateException(local("请先配置模型 API", "Configure model API first"))); settingsOpen = true; return
         }
-        runCatching { ModelProfiles.endpoint(model.getString("baseUrl")) }.onFailure { fail(it); return }
-        val chatGptAccount = if (kind == "task" && data.optBoolean("chatgptConversation")) chatGpt.activeId else ""
+        if (!useChatGpt) runCatching { ModelProfiles.endpoint(model.getString("baseUrl")) }.onFailure { fail(it); return }
+        val chatGptAccount = if (useChatGpt) chatGpt.activeId else ""
         val chatGptModel = chatGpt.model
-        if (kind == "task" && data.optBoolean("chatgptConversation") && !chatGpt.ready) {
+        if (useChatGpt && !chatGpt.ready) {
             fail(IllegalStateException(local("请先登录 ChatGPT 并选择模型", "Sign in to ChatGPT and choose a model first"))); settingsOpen = true; return
         }
         running = true; error = ""; preview = null; settingsOpen = false; advancedOpen = false
@@ -295,7 +296,7 @@ class NativeConversationCoordinator(
         val prior = before.filter { conversation(it) == cid && (retry == null || (it.optString("id") != retryOf && it.optLong("createdAt") <= retry.optLong("createdAt"))) }
         val source = text.trim().ifBlank { local("请查看附件", "Please inspect the attachment") }
         val entry = JSONObject().put("id", id).put("conversationId", cid).put("createdAt", startedAt)
-            .put("source", source).put("inputText", text).put("kind", kind).put("modelName", model.getString("modelName"))
+            .put("source", source).put("inputText", text).put("kind", kind).put("modelName", if (useChatGpt) chatGptModel else model.getString("modelName"))
             .put("status", "running").put("reports", JSONArray())
         if (chatGptAccount.isNotBlank()) entry.put("conversationProvider", "chatgpt").put("conversationModel", chatGptModel)
         retry?.let { entry.put("retryOf", it.getString("id")) }
@@ -319,11 +320,12 @@ class NativeConversationCoordinator(
                     if (saved.has("pageCount")) ref.put("pageCount", saved.getInt("pageCount"))
                     find(id)?.put("attachment", ref); save(); publish()
                 }
-                val env = JSONObject().put("MIDSCENE_MODEL_BASE_URL", model.getString("baseUrl"))
+                fun environment(): JSONObject = if (useChatGpt) lifeos.md.tapilot.chatgpt.ChatGptMidscene.environment(chatGptModel, chatGpt.store.accessToken(chatGptAccount))
+                    else JSONObject().put("MIDSCENE_MODEL_BASE_URL", model.getString("baseUrl"))
                     .put("MIDSCENE_MODEL_API_KEY", key).put("MIDSCENE_MODEL_NAME", model.getString("modelName")).put("MIDSCENE_MODEL_FAMILY", model.getString("modelFamily"))
                 if (kind == "yaml") {
                     await("app.goHome", sessionId = runSession, stopped = stopped)
-                    val run = await("runtime.runTest", JSONObject().put("source", source).put("kind", "yaml").put("environment", env), runSession, stopped, 600) as JSONObject
+                    val run = await("runtime.runTest", JSONObject().put("source", source).put("kind", "yaml").put("environment", environment()), runSession, stopped, 600) as JSONObject
                     run.optJSONArray("reports")?.objects()?.forEach { reports.put(it) }
                     check(run.optInt("exitCode", 1) == 0) { run.optString("failure", "执行失败") }
                     run.optString("finalResponse").ifBlank { "任务已完成" }
@@ -353,7 +355,7 @@ class NativeConversationCoordinator(
                         }
                         updateProgress(local("正在操作手机", "Operating phone"), revised)
                         await("task.status", JSONObject().put("status", "running"), runSession, stopped)
-                        val run = await("runtime.runTest", JSONObject().put("source", NativeConversationAgent.verifiedTask(revised, condition)).put("kind", "yaml").put("environment", env), runSession, stopped, 600) as JSONObject
+                        val run = await("runtime.runTest", JSONObject().put("source", NativeConversationAgent.verifiedTask(revised, condition)).put("kind", "yaml").put("environment", environment()), runSession, stopped, 600) as JSONObject
                         run.optJSONArray("reports")?.objects()?.forEach { reports.put(it) }
                         val success = run.optInt("exitCode", 1) == 0
                         PhoneResult(success, run.optString(if (success) "finalResponse" else "failure").ifBlank { run.optJSONArray("output")?.strings()?.takeLast(10)?.joinToString("\n").orEmpty().ifBlank { if (success) "手机操作已完成" else "手机操作失败" } }).also { result ->
