@@ -252,3 +252,33 @@ renderer remains a separate reload/acceptance step.
 Per user instruction, the server instructions and disconnect-tool description
 now keep the screen open on task completion. Disconnect is explicit-user-only;
 phone/network interruption and idle timeout remain possible.
+
+### Midscene physical acceptance, 2026-10-13 15:01–15:06 Asia/Shanghai
+
+- Reinstalled the previously verified supporting APK on Samsung `R5CN90V1AYP`
+  with `adb install -r`: Success. Package `lifeos.md.tapilot`, versionCode 8,
+  versionName 0.1.7. Data and accessibility authorization were preserved. This
+  phone APK version is separate from the desktop plugin version.
+- Installed desktop Android Use 0.4.1. The default TCP route to the paired phone
+  timed out through `utun8`; binding the connection to physical `en0` succeeded.
+  A Node TLS source-address binding resolved the actual pairing connection
+  without changing system routes. Twenty-six local tests pass.
+- A direct SDK MCP host loaded the **installed 0.4.1 cache artifact**, connected
+  over Wi-Fi, executed `tapilot_midscene` screenshot, launch of
+  `com.android.settings`, tap on Connections, and a fresh screenshot. The final
+  image visibly showed the Connections page. Initial launch capture caught an
+  animation; only the subsequent observation was used for choosing coordinates.
+- Native report: `~/.local/share/android-use/midscene_run/report/android-use-samsung-20261013-midscene.html`.
+  Screenshots remain private; no account/settings screenshots are committed.
+- USB was connected for installation during this test, but the MCP control
+  transport was the pinned TLS Wi-Fi endpoint, not ADB. This is not a new
+  cable-unplugged acceptance run.
+- ChatGPT started 0.4.1 processes after the user reloaded, but this existing
+  conversation retained its old 0.3.0 tool connection. Computer Use denies access
+  to the ChatGPT application, so native ChatGPT UI acceptance is not claimed.
+- The temporary direct test connection initially competed with the user's
+  sidebar reconnect. It was closed to hand ownership back to the sidebar; socket
+  inventory then showed no remaining controller. User-visible reconnect outcome
+  is pending. The phone's wireless service remains enabled.
+- Real ChatGPT-authorized Midscene AI is pending independent consent. The tested
+  real-phone actions used steps mode (`decision_source=chat_host`).

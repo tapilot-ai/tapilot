@@ -1,5 +1,19 @@
 import tls from 'node:tls';
 import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
+import { networkInterfaces } from 'node:os';
+
+// A VPN may route the phone's LAN range into its tunnel. Bind the source to a
+// physical interface when unambiguous, preserving the pinned TLS identity.
+export function localAddressForPhone(host, interfaces = networkInterfaces()) {
+  if (host.startsWith('127.')) return undefined;
+  const addresses = Object.entries(interfaces)
+    .filter(([name]) => /^(en\d+|eth\d+|wlan\d+|wlp\w+)$/.test(name))
+    .flatMap(([, entries]) => (entries ?? []).filter(a => a.family === 'IPv4' && !a.internal));
+  const numeric = ip => ip.split('.').reduce((value, part) => (value << 8) | Number(part), 0);
+  const sameSubnet = addresses.filter(a => (numeric(a.address) & numeric(a.netmask)) === (numeric(host) & numeric(a.netmask)));
+  const candidates = sameSubnet.length ? sameSubnet : addresses;
+  return candidates.length === 1 ? candidates[0].address : undefined;
+}
 
 const MAX_RESPONSE = 32 * 1024 * 1024;
 export class PhoneConnection {
@@ -10,7 +24,7 @@ export class PhoneConnection {
   get connected() { return !!this.#socket && !this.#socket.destroyed; }
   async open(pair = false) {
     if (this.connected) return;
-    const socket = tls.connect({ host: this.config.host, port: this.config.port, minVersion: 'TLSv1.2', maxVersion: 'TLSv1.2', rejectUnauthorized: false });
+    const socket = tls.connect({ host: this.config.host, port: this.config.port, localAddress: localAddressForPhone(this.config.host), minVersion: 'TLSv1.2', maxVersion: 'TLSv1.2', rejectUnauthorized: false });
     socket.setKeepAlive(true, 10000);
     socket.setNoDelay(true);
     this.#socket = socket;

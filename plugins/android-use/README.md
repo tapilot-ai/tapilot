@@ -229,3 +229,11 @@ wireless RPC fixtures and OAuth Responses fixtures (including false assertions).
 They are not real-provider or real-phone AI acceptance. The added dependencies
 currently report npm audit findings (js-yaml, sharp and uuid transitive paths);
 no forced downgrade is applied to the pinned SDK used by iPhone Use.
+
+### VPN routing (0.4.1)
+
+The TLS client binds its source address to an unambiguous physical IPv4 interface
+(prefer a matching subnet, otherwise the sole physical interface). This avoids a
+VPN capturing the phone's LAN route on the tested Mac. Ambiguous interfaces retain
+the operating system default; no system routes or VPN settings are modified.
+Pinned certificate verification and pairing credentials remain unchanged.

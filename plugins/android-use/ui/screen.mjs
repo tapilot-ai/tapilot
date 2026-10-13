@@ -1,6 +1,6 @@
 import { App } from '@modelcontextprotocol/ext-apps';
 import { imagePoint } from './geometry.mjs';
-const app = new App({ name: 'Android Use', version: '0.4.0' }, {});
+const app = new App({ name: 'Android Use', version: '0.4.1' }, {});
 const image = document.querySelector('img');
 const status = document.querySelector('[role=status]');
 const resume = document.querySelector('#resume');

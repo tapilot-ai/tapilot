@@ -212,3 +212,14 @@ test('MCP pause interrupts Midscene while a phone action is pending; live frames
   assert.equal(requests.filter(r=>r.method==='device.execute').length,1);
   assert.equal(requests.filter(r=>r.method==='disconnect').length,0);
 });
+
+test('LAN source selection excludes VPNs and refuses ambiguous interfaces', async () => {
+  const {localAddressForPhone: choose} = await import('../server/transport.mjs');
+  const entry = (address,netmask='255.255.255.0') => [{family:'IPv4',internal:false,address,netmask}];
+  const physical = {en0:entry('100.82.238.75','255.255.240.0'),utun8:entry('100.82.240.1','255.255.240.0')};
+  assert.equal(choose('100.82.246.47',physical),'100.82.238.75');
+  assert.equal(choose('127.0.0.1',physical),undefined);
+  assert.equal(choose('100.82.246.47',{utun8:physical.utun8}),undefined);
+  assert.equal(choose('100.82.246.47',{...physical,en1:entry('192.168.1.2')}),undefined);
+  assert.equal(choose('192.168.1.10',{...physical,en1:entry('192.168.1.2')}),'192.168.1.2');
+});
