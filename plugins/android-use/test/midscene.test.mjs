@@ -256,7 +256,8 @@ test("real AI SDK uses Responses fixture and wireless adapter for act/assert/wai
 test("removed plugin worker tells the host to reload before touching the phone", async (t) => {
   const { controller: original, phone, calls } = await fixture(t);
   const source = (await readFile(new URL('../server/midscene.mjs', import.meta.url), 'utf8'))
-    .replace('"./midscene/chatgpt-auth.mjs"', JSON.stringify(new URL('../server/midscene/chatgpt-auth.mjs', import.meta.url).href));
+    .replace('"./midscene/chatgpt-auth.mjs"', JSON.stringify(new URL('../server/midscene/chatgpt-auth.mjs', import.meta.url).href))
+    .replace('"./installation.mjs"', JSON.stringify(new URL('../server/installation.mjs', import.meta.url).href));
   const modulePath = join(original.root, 'removed-version.mjs');
   await writeFile(modulePath, source);
   const { MidsceneController: RemovedController } = await import(pathToFileURL(modulePath).href);
@@ -293,4 +294,17 @@ test("authorization flow reuses pending login and respects cancellation and save
   c.auth.status = async () => ({authorized:true});
   assert.equal(metadata(await c.configure({action:'auth_login'})).next_action, 'continue_ai_task');
   assert.equal(c.authGuidance('steps', {authorized:true}).next_action, 'respect_saved_mode');
+});
+
+test("installation guidance includes both APK sources and needs no phone", async (t) => {
+  const { controller: c, calls } = await fixture(t);
+  const result = await c.configure({action:'setup'});
+  assert.equal(result.structuredContent.state, 'setup_required');
+  assert.equal(result.structuredContent.downloads.feishu, 'https://www.feishu.cn/file/Ig0KbUKlJoADozxRbOocm5iqnXf');
+  assert.equal(result.structuredContent.downloads.github, 'https://github.com/quanru/tapilot/releases');
+  assert.match(result.structuredContent.download_links, /\[飞书下载/);
+  assert.match(result.structuredContent.compatibility, /无线控制/);
+  assert.equal(result.structuredContent.pairing.command, 'node');
+  assert.match(result.structuredContent.pairing.script, /server\/pair\.mjs$/);
+  assert.equal(calls.length, 0);
 });

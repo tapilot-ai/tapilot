@@ -9,6 +9,14 @@ runs as a bundled MCP App inside the supporting desktop host.
 
 ## Install and pair
 
+Download Tapilot on the Android phone:
+[Feishu APK download](https://www.feishu.cn/file/Ig0KbUKlJoADozxRbOocm5iqnXf) ·
+[GitHub Releases](https://github.com/quanru/tapilot/releases).
+The GitHub repository currently requires access and has no published Release;
+use Feishu when it is unavailable. Only use a build with ChatGPT wireless control.
+The plugin's `tapilot_midscene(action="setup")` returns these links and installation,
+accessibility, Wi-Fi and private pairing guidance without connecting a phone.
+
 Requires Node.js 22.19+ (Node.js 24 recommended), an Android phone running this Tapilot build, and a Wi-Fi
 network that allows the computer to reach the phone. Corporate/guest networks
 may isolate devices. IPv4 is supported in this first version.

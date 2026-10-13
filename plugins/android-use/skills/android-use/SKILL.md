@@ -5,6 +5,24 @@ description: Operate the paired Android phone over Tapilot Wi-Fi, show its live 
 
 # Android Use
 
+## Install Tapilot on the user's phone
+
+For first installation, missing Tapilot, or missing pairing, call
+`tapilot_midscene(action="setup")`; it works without a connected phone. Show:
+
+- [飞书下载 Tapilot APK](https://www.feishu.cn/file/Ig0KbUKlJoADozxRbOocm5iqnXf)
+- [GitHub Releases](https://github.com/quanru/tapilot/releases)
+
+Guide the user to download on the Android phone, install the APK, enable Tapilot
+accessibility, and enable ChatGPT wireless control while unlocked on the same
+Wi-Fi as the computer. A private GitHub repository requires access; an empty
+Releases page has no APK. Prefer Feishu when GitHub is inaccessible. Check that
+the installed build has wireless control; do not assume a public older APK is
+compatible. No USB or ADB is needed for this flow. Guide private terminal pairing
+using the returned steps; never ask the user to paste a pairing link in chat.
+After the user confirms completion, verify connection and continue onboarding.
+If the phone is already paired and usable, skip installation.
+
 For a phone task, open `tapilot_preview_open` once if no panel is open, then check
 `tapilot_status` and `tapilot_midscene(action="settings")`. Keep the panel and
 connection open after the task. Runtime control uses Tapilot Wi-Fi; do not use ADB.

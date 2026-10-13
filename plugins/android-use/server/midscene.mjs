@@ -5,6 +5,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
+import { installationGuide } from "./installation.mjs";
 import { ChatGPTAuth } from "./midscene/chatgpt-auth.mjs";
 const text = (value) => ({
   content: [{ type: "text", text: JSON.stringify(value) }],
@@ -25,6 +26,7 @@ const fields = {
   wait: ["text", "timeout_ms"],
 };
 const admin = new Set([
+  "setup",
   "settings",
   "auth_status",
   "auth_login",
@@ -148,6 +150,7 @@ export class MidsceneController {
     this.validate(args);
     await mkdir(this.root, { recursive: true, mode: 0o700 });
     const { action } = args;
+    if (action === "setup") return text(installationGuide);
     if (action === "settings") {
       if (args.mode) {
         const temp = join(this.root, `${randomUUID()}.tmp`);

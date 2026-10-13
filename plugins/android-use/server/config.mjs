@@ -1,3 +1,4 @@
+import { installationGuide } from './installation.mjs';
 import { homedir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { readFile, mkdir, writeFile, rename, chmod } from 'node:fs/promises';
@@ -19,7 +20,7 @@ export function parsePairingLink(link) {
 }
 export async function loadConfig() {
   try { return validateConfig(JSON.parse(await readFile(configPath(), 'utf8'))); }
-  catch { throw new Error('Pair this computer first: run npm run pair in the Tapilot plugin folder. Keep pairing links out of chat.'); }
+  catch { throw Object.assign(new Error('Pair this computer first. Call tapilot_midscene(action=setup) for Tapilot APK downloads and installation guidance. Keep pairing links out of chat.'), { code: 'setup_required', installation: installationGuide }); }
 }
 export async function saveConfig(value, path = configPath()) {
   validateConfig(value);
