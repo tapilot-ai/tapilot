@@ -1,6 +1,6 @@
 import { App } from '@modelcontextprotocol/ext-apps';
 import { imagePoint } from './geometry.mjs';
-const app = new App({ name: 'Android Use', version: '0.4.1' }, {});
+const app = new App({ name: 'Android Use', version: '0.4.2' }, {});
 const image = document.querySelector('img');
 const status = document.querySelector('[role=status]');
 const resume = document.querySelector('#resume');
@@ -28,7 +28,9 @@ function render(data) {
   state = data?.state ?? 'unavailable';
   status.textContent = labels[state] ?? labels.unavailable;
   resume.hidden = state === 'live';
-  resume.textContent = state === 'device_locked' || state === 'manual' ? '已完成继续' : '重新连接';
+  pause.hidden = state !== 'live';
+  const resumeLabel = state === 'device_locked' || state === 'manual' ? '已完成继续' : '重新连接';
+  resume.title = resumeLabel; resume.setAttribute('aria-label', resumeLabel);
   if (state === 'live' && data.dataUrl?.startsWith('data:image/png;base64,')) {
     frame = { id: data.frame_id, width: data.width, height: data.height };
     image.src = data.dataUrl; image.hidden = false;
@@ -113,7 +115,7 @@ window.addEventListener('pageshow', () => { stopped = false; schedule(0); });
 syncControls();
 try {
   await app.connect();
-  const context = app.getHostContext();
-  if (context?.availableDisplayModes?.includes('fullscreen') && context.displayMode !== 'fullscreen') { try { await app.requestDisplayMode({ mode: 'fullscreen' }); } catch { /* Host chooses the available layout. */ } }
+  // The sole open tool requests the panel. Repeated frame/tool results must not
+  // request another fullscreen host tab.
   schedule(0);
 } catch { status.textContent = '请在支持 MCP App 的宿主中打开 Android Use'; }

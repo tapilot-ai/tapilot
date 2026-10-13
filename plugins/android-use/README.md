@@ -83,8 +83,9 @@ instructing the agent to use its interactive question tool and wait for the repl
 Never enter the phone passcode in chat. Only a fresh observation may be retried
 once after confirmation; a blocked mutation is never automatically replayed.
 
-`tapilot_screen` opens/reuses an MCP App side panel while returning an actual
-screenshot to the model. `tapilot_preview(action=open)` reopens the panel.
+`tapilot_preview_open` is the only MCP App panel opener. Call it once per open
+panel; `tapilot_screen` only returns a model screenshot. Pause/resume and captures
+update the existing panel without declaring another UI entry point.
 The panel polls a separate `device.preview` endpoint about once per second
 plus capture latency, over the existing pinned Wi-Fi connection. It does not
 invalidate the model's last action frame. Requires the Android APK built with
@@ -237,3 +238,14 @@ The TLS client binds its source address to an unambiguous physical IPv4 interfac
 VPN capturing the phone's LAN route on the tested Mac. Ambiguous interfaces retain
 the operating system default; no system routes or VPN settings are modified.
 Pinned certificate verification and pairing credentials remain unchanged.
+
+
+### Panel lifecycle (0.4.2)
+
+Reconnect/resume shares the pause button's toolbar position. The phone image has
+no CSS border or outline shadow. Only `tapilot_preview_open` declares the screen
+resource, with a fixed widget session ID. Captures and pause/resume no longer open
+panels; the iframe never requests fullscreen on load. Existing host tabs are not
+closed by the plugin: MCP Apps provides no host-tab closing API here. Native
+ChatGPT deduplication remains a host validation item; one opener is not a promise
+of global tab exclusivity across conversations or old plugin versions.

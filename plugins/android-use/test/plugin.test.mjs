@@ -86,10 +86,12 @@ test('real MCP stdio handshake, image content, schema and disconnect', async t =
   const client = new Client({ name: 'acceptance', version: '1' });
   t.after(() => client.close());
   await client.connect(transport);
-  assert.equal((await client.listTools()).tools.length, 13);
+  assert.equal((await client.listTools()).tools.length, 14);
   const settings = await client.callTool({name:'tapilot_midscene',arguments:{action:'settings'}});
   assert.equal(JSON.parse(settings.content[0].text).mode,'steps');
   assert.equal(requests.length,0, 'Settings must not connect to the phone');
+  const openers = (await client.listTools()).tools.filter(t => t._meta?.ui?.resourceUri);
+  assert.deepEqual(openers.map(t => t.name), ['tapilot_preview_open']);
   const resources = await client.listResources();
   const resource = await client.readResource({ uri: resources.resources[0].uri });
   assert.match(resource.contents[0].text, /Android Use/);
