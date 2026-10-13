@@ -157,7 +157,9 @@ an API Key from the new Doubao Speech console and the fixed resource ID
 stays closed and a speech bubble with Cancel / Send controls appears. Release normally
 to insert text; release over Cancel or Send for that action, or move back to insert.
 Focused or populated editors retain native editing menus, including whitespace-only drafts.
-Cancellation remains available during transcription and rejects late results. Chat,
+Cancellation remains available during transcription and rejects late results. An in-flight
+polish is reused on release only when it matches the current transcript revision;
+new tail words trigger a full-text pass, and polish failures preserve the recognized text. Chat,
 the global assistant share these rules and retain Tapilot colors. The optional legacy WebView verification entry follows the same rules. The first recording requires microphone
 permission. Audio streams through the selected provider's WebSocket API without
 creating a recording file. Each provider's key is encrypted separately with Android
