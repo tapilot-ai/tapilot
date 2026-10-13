@@ -36,7 +36,7 @@ class FloatingBallController(
     private var hiddenForCapture = false
     private var view: View? = null
     private var layoutParams: WindowManager.LayoutParams? = null
-    private var statusView: View? = null
+    private val taskStatus = TaskStatusOverlay(service, windowManager) { openAssistantPanel() }
     private var resultView: View? = null
     private var longPressAction: Runnable? = null
     private var voiceHint: View? = null
@@ -165,7 +165,7 @@ class FloatingBallController(
         hiddenForCapture = false
         resultView?.visibility = View.VISIBLE
         voiceHint?.visibility = View.VISIBLE
-        if (wasVisible) updateVisibility()
+        if (wasVisible || taskRunning) updateVisibility()
     }
 
     fun updatePosition() {
@@ -183,32 +183,10 @@ class FloatingBallController(
     }
 
     private fun showStatus() {
-        if (statusView != null || runtime.floatingVoice) return
-        val label = TextView(service).apply {
-            text = "Tapilot 正在处理 · 点击打断"
-            setOnClickListener { openAssistantPanel() }
-            textSize = 13f
-            setTextColor(AppTheme.colors(service).contrast)
-            setPadding(dp(16), dp(9), dp(16), dp(9))
-            background = GradientDrawable().apply {
-                cornerRadius = dp(10).toFloat()
-                setColor(AppTheme.color(service, if (AppTheme.isDark(service)) R.color.brand_dark_primary else R.color.brand_primary))
-            }
-        }
-        val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-            PixelFormat.TRANSLUCENT,
-        ).apply { gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL; y = dp(48) }
-        runCatching { windowManager.addView(label, params) }.onSuccess { statusView = label }
+        if (!runtime.floatingVoice) taskStatus.show(hiddenForCapture)
     }
 
-    private fun hideStatus() {
-        statusView?.let { runCatching { windowManager.removeView(it) } }
-        statusView = null
-    }
+    private fun hideStatus() = taskStatus.hide()
 
     private fun show() {
         val params = WindowManager.LayoutParams(
