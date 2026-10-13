@@ -21,7 +21,7 @@ internal fun SpeechPolishSettingsSection(context: Context, zh: Boolean) {
     val store = remember(context) { SpeechPolishStore(context) }
     var settings by remember { mutableStateOf(store.load()) }
     var key by remember { mutableStateOf("") }
-    var hasKey by remember { mutableStateOf(runCatching { store.key().isNotBlank() }.getOrDefault(false)) }
+    var hasKey by remember { mutableStateOf(store.hasKey()) }
     var status by remember { mutableStateOf("") }
     var failed by remember { mutableStateOf(false) }
     var promptsOpen by remember { mutableStateOf(false) }

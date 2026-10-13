@@ -23,14 +23,33 @@ android {
         versionName = if (updateVerification) "0.1.0-update-test" else "0.1.7"
     }
 
+    val releaseStore = providers.environmentVariable("TAPILOT_SIGNING_STORE")
+    signingConfigs {
+        if (releaseStore.isPresent) create("production") {
+            storeFile = file(releaseStore.get())
+            storePassword = providers.environmentVariable("TAPILOT_SIGNING_STORE_PASSWORD").orNull
+            keyAlias = providers.environmentVariable("TAPILOT_SIGNING_KEY_ALIAS").orNull
+            keyPassword = providers.environmentVariable("TAPILOT_SIGNING_KEY_PASSWORD").orNull
+        }
+    }
     buildTypes {
         release {
+            isDebuggable = false
+            signingConfig = signingConfigs.findByName("production")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
         }
+    }
+
+    // Upgrade-compatible beta: current installed certificate, with debugging disabled.
+    buildTypes.create("beta") {
+        initWith(buildTypes.getByName("release"))
+        signingConfig = signingConfigs.getByName("debug")
+        isDebuggable = false
+        matchingFallbacks += "release"
     }
 
     compileOptions {
@@ -94,7 +113,9 @@ val verifyReportAssets by tasks.registering {
     doLast { check(reportFiles.all { it.isFile }) { "Missing offline report assets" } }
 }
 
-val verifyNodeRuntimeAssets by tasks.registering {
+val verifyNodeRuntimeAssets by tasks.registering(Exec::class) {
+    workingDir(rootProject.projectDir)
+    commandLine("node", "scripts/runtime-integrity.mjs")
     val nodeBundle = rootProject.file("app/src/main/assets/node-runtime-bundle.zip")
     val nodeManifest = rootProject.file("app/src/main/assets/node-runtime-manifest.json")
     val nodeBinary = rootProject.file(".cache/native/arm64-v8a/libnodebin.so")
@@ -111,8 +132,16 @@ tasks.named("preBuild") {
     if (providers.gradleProperty("speechVerification").isPresent) dependsOn(verifyRuntimeAssets)
 }
 
+val verifyReleaseSigning by tasks.registering {
+    doLast {
+        check(listOf("TAPILOT_SIGNING_STORE", "TAPILOT_SIGNING_STORE_PASSWORD", "TAPILOT_SIGNING_KEY_ALIAS", "TAPILOT_SIGNING_KEY_PASSWORD", "TAPILOT_SIGNING_CERT_SHA256")
+            .all { !System.getenv(it).isNullOrBlank() }) { "Release requires explicit TAPILOT_SIGNING_* credentials; use assembleBeta for compatible beta updates." }
+    }
+}
+
 tasks.configureEach {
-    if (name == "packageDebug" || name == "packageRelease") {
+    if (name == "preReleaseBuild" || name == "packageRelease") dependsOn(verifyReleaseSigning)
+    if (name in listOf("packageDebug", "packageRelease", "packageBeta")) {
         dependsOn(verifyNodeRuntimeAssets)
     }
     if (name == "assembleDebug" && !providers.gradleProperty("speechVerification").isPresent) {

@@ -48,6 +48,9 @@ class NativeConversationCoordinator(
         private set
     private val handler = Handler(Looper.getMainLooper())
     private val worker = Executors.newSingleThreadExecutor()
+    private val persistence = ConversationWriter(store) { failure -> handler.post {
+        if (!closed) { stop(clearPending = false); fail(failure) }
+    } }
     private val credentials = ModelCredentialStore(activity)
     private val pi = NativePiConversation(activity)
     private var activeTaskId = ""
@@ -71,7 +74,7 @@ class NativeConversationCoordinator(
 
     val preset: String get() = data.optString("preset", "doubao")
     fun profile(id: String = preset): JSONObject = JSONObject((data.optJSONObject("profiles")?.optJSONObject(id) ?: ModelProfiles.defaults(id)).toString())
-    fun hasKey(id: String) = credentials.getAll()[id]?.isNotBlank() == true
+    fun hasKey(id: String) = credentials.contains(id)
     private var initializing = false
     fun initialize() {
         if (ready || initializing || closed) return
@@ -96,8 +99,8 @@ class NativeConversationCoordinator(
             }
         }
     }
-    private val persistDraft = Runnable { if (ready && !closed) runCatching { save() }.onFailure(::fail) }
-    private fun save() { handler.removeCallbacks(persistDraft); data.put("pendingTurns", JSONArray(pendingTurns.toList())); store.save(data); data = JSONObject(data.toString()) }
+    private val persistDraft = Runnable { if (ready && !closed) persistence.saveDraft(data.optString("draft")) }
+    private fun save() { handler.removeCallbacks(persistDraft); data.put("pendingTurns", JSONArray(pendingTurns.toList())); persistence.save(data); data = JSONObject().also { copy -> data.keys().forEach { copy.put(it, data.get(it)) } } }
     private fun history() = data.getJSONArray("history").objects()
     private fun conversation(entry: JSONObject) = entry.optString("conversationId", entry.optString("id"))
     private fun active() = data.getString("active")
@@ -273,7 +276,7 @@ class NativeConversationCoordinator(
                       restoreDraft: String? = null, restoreAttachment: JSONObject? = null, kind: String = "task", continueOf: String? = null) {
         if (running || (text.isBlank() && file == null)) return
         val model = profile()
-        val key = credentials.getAll()[preset].orEmpty()
+        val key = credentials.get(preset).orEmpty()
         if (key.isBlank() || model.optString("modelName").isBlank() || model.optString("modelFamily").isBlank()) {
             fail(IllegalStateException(local("请先配置模型 API", "Configure model API first"))); settingsOpen = true; return
         }
@@ -437,6 +440,7 @@ class NativeConversationCoordinator(
 
     private fun await(method: String, params: JSONObject = JSONObject(), sessionId: String = "native", stopped: AtomicBoolean = AtomicBoolean(false), seconds: Long = 120): Any? {
         check(!stopped.get() && !closed) { "任务已停止" }
+        persistence.flush()
         val promise = CompletableFuture<Any?>()
         services.call(method, params, sessionId) { it.fold(promise::complete, promise::completeExceptionally) }
         return waitFor(promise, stopped, seconds)
@@ -502,6 +506,15 @@ class NativeConversationCoordinator(
             preference("speechProvider", provider); settingsStatus = local("语音配置已保存", "Speech configuration saved")
         }.onFailure { settingsStatus = it.message ?: "保存失败" }
     }
+    fun resetSpeech(provider: String) {
+        if (running) return
+        settingsSection = "speech"
+        runCatching {
+            require(provider in listOf("volcengine", "deepgram"))
+            credentials.delete("speech-$provider")
+            settingsStatus = local("已清除该转写服务的密钥", "Transcription key removed"); publish()
+        }.onFailure { settingsStatus = it.message.orEmpty() }
+    }
     fun checkSpeech(provider: String) = settingsCall("speech.checkConnection", JSONObject().put("provider", provider))
     fun settingsCall(method: String, params: JSONObject = JSONObject()) {
         if (settingsBusy || running) return
@@ -516,9 +529,10 @@ class NativeConversationCoordinator(
         if (settingsBusy || running) return
         settingsSection = "model"
         settingsBusy = true; settingsStatus = local("正在检查模型…", "Checking model…")
-        val model = profile(); val key = credentials.getAll()[preset].orEmpty()
+        val model = profile()
         worker.execute {
             val result = runCatching {
+                val key = credentials.get(preset).orEmpty()
                 check(key.isNotBlank()) { "请先保存模型 API Key" }
                 requestCompletion(model, key, JSONArray().put(JSONObject().put("role", "user").put("content", "Reply OK.")), UUID.randomUUID().toString(), AtomicBoolean(false))
             }
@@ -531,5 +545,5 @@ class NativeConversationCoordinator(
         services.call("app.pruneAttachments", JSONObject().put("ids", JSONArray())) {}
     }
     fun executeYaml(source: String) { advancedOpen = false; start(source, file = null, kind = "yaml") }
-    override fun close() { stop(); pi.close(); closed = true; worker.shutdownNow(); handler.removeCallbacksAndMessages(null) }
+    override fun close() { stop(); if (ready) persistence.saveDraft(data.optString("draft")); pi.close(); closed = true; worker.shutdownNow(); persistence.close(); handler.removeCallbacksAndMessages(null) }
 }

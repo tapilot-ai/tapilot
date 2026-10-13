@@ -7,14 +7,31 @@ import org.json.JSONObject
 /** Versioned, atomic private storage. API keys continue to live only in Android Keystore. */
 class ConversationStore(private val file: File) {
     fun exists() = file.isFile
-    @Synchronized fun read(): JSONObject = if (file.isFile) JSONObject(file.readText()) else empty()
+    private val draftFile = File(file.parentFile, "${file.name}.draft")
+    @Synchronized fun read(): JSONObject {
+        val state = if (file.isFile) JSONObject(file.readText()) else empty()
+        if (draftFile.isFile) {
+            val draft = JSONObject(draftFile.readText())
+            if (draft.optString("baseRevision") == state.optString("storageRevision")) state.put("draft", draft.getString("text"))
+        }
+        return state
+    }
     @Synchronized fun save(value: JSONObject) {
         require(value.getInt("version") == 1)
-        file.parentFile?.mkdirs()
-        val pending = File(file.parentFile, "${file.name}.tmp")
+        value.put("storageRevision", java.util.UUID.randomUUID().toString())
+        writeAtomically(file, value.toString())
+        draftFile.delete() // A leftover draft has the old revision and is ignored after a crash.
+    }
+    @Synchronized fun saveDraft(text: String) {
+        val revision = if (file.isFile) JSONObject(file.readText()).optString("storageRevision") else ""
+        writeAtomically(draftFile, JSONObject().put("baseRevision", revision).put("text", text).toString())
+    }
+    private fun writeAtomically(target: File, text: String) {
+        target.parentFile?.mkdirs()
+        val pending = File(target.parentFile, "${target.name}.tmp")
         try {
-            pending.outputStream().use { it.write(value.toString().toByteArray()); it.fd.sync() }
-            check(pending.renameTo(file)) { "无法保存会话" }
+            pending.outputStream().use { it.write(text.toByteArray()); it.fd.sync() }
+            check(pending.renameTo(target)) { "无法保存会话" }
         } finally { pending.delete() }
     }
     companion object {

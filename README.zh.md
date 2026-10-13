@@ -46,7 +46,7 @@ pnpm install
 pnpm run build:adapter
 pnpm run runtime:bundle
 pnpm run runtime:node
-./gradlew assembleDebug
+./gradlew assembleBeta --max-workers=2 --no-parallel --no-daemon
 ```
 
 也可以使用组合命令：
@@ -55,7 +55,7 @@ pnpm run runtime:node
 pnpm run build:android
 ```
 
-Debug APK 输出到 `app/build/outputs/apk/debug/app-debug.apk`。
+Debug APK 输出到 `app/build/outputs/apk/beta/app-beta.apk`。
 普通 Android 构建不再编译旧网页。使用可选的 `-PspeechVerification` 调试入口时，先运行 `pnpm run build`。
 `runtime:bundle` 会生成不含符号链接的自包含 Node 依赖包，并在打包前真实执行一个
 `@midscene/test` YAML 冒烟项目。`runtime:node` 会下载锁定版本的 Termux arm64 包、
@@ -183,3 +183,11 @@ Tapilot 为非开源软件，保留所有权利。参见 [LICENSE](LICENSE)。
 ## Android Beta 下载发布
 
 公开下载使用固定文件 https://www.feishu.cn/file/Ig0KbUKlJoADozxRbOocm5iqnXf，文件名包含版本、渠道与架构，例如 `Tapilot-0.1.3-beta-arm64.apk`；后续版本原位替换文件，并使用新 APK 的实际文件名，不新增发布说明文档作为下载页。studio 的 `scripts/lark-drive-release-downloads.mjs` 已登记 `tapilot-android-beta`。匿名下载校验后再更新官网清单：`fileUrl` 指向固定文件；旧 `downloadUrl` 仅供旧客户端兼容，旧文档只保留 APK 附件，不写构建报告或说明。
+
+## 构建与发布校验
+
+`pnpm check`（或 `pnpm test`）统一检查类型、旧 Web 回归、设备适配器、Node Agent、报告脚本和 Kotlin，并构建及核验不可调试的 Beta APK。检测到本机 dev-gate 时自动排队执行。
+
+`pnpm build:android` 输出 Beta，沿用当前安装证书以支持覆盖升级；该证书不是正式生产签名。`pnpm build:release` 必须提供独立的 `TAPILOT_SIGNING_*` 配置和预期证书指纹，缺失时拒绝发布。配置说明见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+Gradle 打包前会核对 Node 源码指纹与 ZIP 摘要；修改源码后必须重新生成资源。公开 Intent 只能打开界面或传入分享内容，不能启动录音。草稿独立保存，任务持久化由专用线程完成，后续外部操作等待保存结果。

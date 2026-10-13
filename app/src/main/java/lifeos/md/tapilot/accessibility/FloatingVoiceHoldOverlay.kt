@@ -20,6 +20,12 @@ import lifeos.md.tapilot.voice.VoicePhase
 /** Vibelet's dim backdrop, speech bubble and bottom arc; release sends by default. */
 internal class FloatingVoiceHoldOverlay(private val context: Context, private val windows: WindowManager) {
     private var view: HoldView? = null
+    /** Run entry work only after the initial feedback has had a drawing pass. */
+    fun afterDraw(action: () -> Unit) {
+        val surface = view ?: return action()
+        surface.afterDraw = action
+        surface.invalidate()
+    }
     private val density get() = context.resources.displayMetrics.density
     fun isCancelTarget(x: Float, y: Float): Boolean {
         val bounds = windows.currentWindowMetrics.bounds
@@ -41,9 +47,18 @@ internal class FloatingVoiceHoldOverlay(private val context: Context, private va
         view?.runtime = runtime
         view?.invalidate()
     }
-    fun hide() { view?.let { runCatching { windows.removeView(it) } }; view = null }
+    fun hide() {
+        view?.let { surface ->
+            // A quick release can remove the hold surface before its first draw.
+            // Still start the released utterance; the caller rejects cancelled generations.
+            surface.afterDraw?.let { action -> surface.afterDraw = null; android.os.Handler(android.os.Looper.getMainLooper()).post { action() } }
+            runCatching { windows.removeView(surface) }
+        }
+        view = null
+    }
 
     private class HoldView(context: Context) : View(context) {
+        var afterDraw: (() -> Unit)? = null
         var runtime: AssistantRuntime? = null
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         private val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG)
@@ -112,6 +127,7 @@ internal class FloatingVoiceHoldOverlay(private val context: Context, private va
             }
             text(if (runtime.voiceState.phase == VoicePhase.Listening) local("可以直接说话", "Speak now") else local("正在开启录音…", "Starting microphone…"), width / 2f, bubble.top - dp(22f), 16f, colors.contrast)
             text(if (cancel) local("松手取消", "Release to cancel") else local("松手发送 · 滑到取消区取消", "Release to send · Slide to Cancel"), width / 2f, bubble.bottom + dp(36f), 15f, colors.contrast)
+            afterDraw?.let { action -> afterDraw = null; post { action() } }
 
         }
     }

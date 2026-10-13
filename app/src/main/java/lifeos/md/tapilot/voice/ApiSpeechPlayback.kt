@@ -54,8 +54,8 @@ class ApiSpeechPlayback(context: Context, private val provider: () -> String) : 
             val result = runCatching {
                 val service = provider()
                 val config = VoiceOutputSettings(context)
-                val keys = ModelCredentialStore(context).getAll()
-                val key = keys["speech-output-$service"].orEmpty().ifBlank { keys["speech-$service"].orEmpty() }
+                val keys = ModelCredentialStore(context)
+                val key = keys.get("speech-output-$service").orEmpty().ifBlank { keys.get("speech-$service").orEmpty() }
                 require(key.isNotBlank()) { "请在设置中配置语音 API Key" }
                 require(key.length <= 4096 && key.none { it == '\n' || it == '\r' || it == '\u0000' }) { "Invalid speech API Key" }
                 check(manager.requestAudioFocus(focus) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) { "暂时无法取得音频播放权限，请重试" }

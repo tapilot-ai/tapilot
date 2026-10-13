@@ -25,15 +25,18 @@
   "scripts": {
     "build": "pnpm run theme:check && rsbuild build",
     "build:adapter": "pnpm --filter @tapilot/android-accessibility build",
-    "build:android": "pnpm run build:adapter && pnpm run runtime:bundle && pnpm run runtime:node && ./gradlew assembleDebug",
+    "build:android": "pnpm run runtime:bundle && pnpm run runtime:node && ./gradlew assembleBeta --max-workers=2 --no-parallel --no-daemon && node scripts/verify-apk.mjs beta",
     "runtime:bundle": "node scripts/bundle-node-runtime.mjs",
     "runtime:doctor": "node build/node-runtime-bundle/runner.mjs doctor",
     "runtime:node": "bash scripts/fetch-node-runtime.sh",
     "dev": "rsbuild dev",
-    "test": "rstest",
+    "test": "node scripts/check.mjs",
     "theme:generate": "node scripts/generate-brand.mjs",
     "theme:check": "node scripts/generate-brand.mjs --check",
-    "baseline:check": "node scripts/visual-baseline.mjs --check"
+    "baseline:check": "node scripts/visual-baseline.mjs --check",
+    "check": "node scripts/check.mjs",
+    "test:legacy": "rstest run --pool.maxWorkers 2",
+    "build:release": "pnpm run runtime:bundle && pnpm run runtime:node && ./gradlew assembleRelease --max-workers=2 --no-parallel --no-daemon && node scripts/verify-apk.mjs release"
   },
   "dependencies": {
     "@lobehub/icons-static-svg": "^1.95.0",

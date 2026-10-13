@@ -13,11 +13,19 @@ import javax.crypto.spec.GCMParameterSpec
 class ModelCredentialStore(context: Context) {
     private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
 
-    fun getAll(): Map<String, String> = preferences.all.mapNotNull { (preset, value) ->
-        if (preset !in PRESET_IDS) return@mapNotNull null
-        val encrypted = value as? String
-            ?: error("Invalid encrypted credential for preset $preset")
-        preset to decrypt(encrypted)
+    /** Presence checks never decrypt other providers or make UI rendering depend on Keystore. */
+    fun contains(preset: String): Boolean { requirePreset(preset); return preferences.contains(preset) }
+
+    fun get(preset: String): String? {
+        requirePreset(preset)
+        return readCredential(preset, preferences.all[preset], ::decrypt)
+    }
+
+    /** Legacy migration only. One unreadable record must not prevent importing healthy records. */
+    fun getAll(): Map<String, String> = PRESET_IDS.mapNotNull { preset ->
+        runCatching { get(preset) }.onFailure {
+            android.util.Log.w("TapilotCredentials", "Unreadable credential: $preset; replace or reset it in settings")
+        }.getOrNull()?.let { preset to it }
     }.toMap()
 
     fun set(preset: String, apiKey: String) {

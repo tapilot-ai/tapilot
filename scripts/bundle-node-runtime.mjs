@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { sourceFingerprint } from './runtime-integrity.mjs';
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
@@ -176,6 +177,7 @@ run(
 );
 verifySharpRuntimeVersions();
 
+run('pnpm', ['--filter', '@tapilot/android-accessibility', 'build'], assistantRoot);
 const workspacePackages = ['android-accessibility'];
 for (const name of workspacePackages) replaceWorkspacePackage(name);
 for (const file of runtimeFiles) {
@@ -215,6 +217,7 @@ for (const name of workspacePackages) {
 const fingerprint = fingerprintHash.digest('hex').slice(0, 12);
 const manifest = {
   ...sourceManifest,
+  sourceFingerprint: sourceFingerprint(),
   runtimeVersion: `${sourceManifest.runtimeVersion}-${fingerprint}`,
 };
 fs.writeFileSync(
@@ -222,8 +225,9 @@ fs.writeFileSync(
   `${JSON.stringify(manifest, null, 2)}\n`,
 );
 
-fs.copyFileSync(path.join(sourceRoot, 'assets/node-runtime/pi-conversation.test.mjs'), path.join(stagingRoot, 'pi-conversation.test.mjs'));
-run(process.execPath, ['--test', '--test-timeout=10000', 'pi-conversation.test.mjs'], stagingRoot);
+const runtimeTests = fs.readdirSync(path.join(sourceRoot, 'assets/node-runtime')).filter(file => file.endsWith('.test.mjs')).sort();
+for (const file of runtimeTests) fs.copyFileSync(path.join(sourceRoot, 'assets/node-runtime', file), path.join(stagingRoot, file));
+run(process.execPath, ['--test', '--test-concurrency=1', '--test-timeout=10000', ...runtimeTests], stagingRoot);
 run(process.execPath, ['runner.mjs', 'doctor'], stagingRoot);
 run(
   process.execPath,
@@ -257,7 +261,7 @@ run(
   ],
   stagingRoot,
 );
-fs.copyFileSync(path.join(stagingRoot, 'manifest.json'), manifestAsset);
+fs.writeFileSync(manifestAsset, JSON.stringify({ ...manifest, bundleSha256: createHash('sha256').update(fs.readFileSync(bundleAsset)).digest('hex') }, null, 2) + '\n');
 process.stdout.write(
   `Node runtime bundle: ${bundleAsset} (${(fs.statSync(bundleAsset).size / 1024 / 1024).toFixed(1)} MB)\n`,
 );

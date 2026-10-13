@@ -22,7 +22,7 @@ class ChatController(
     private val onSurfaceChanged: (Boolean) -> Unit,
     private val picker: (String, (Result<JSONObject?>) -> Unit) -> Unit,
     private val speech: SpeechRecognition = lifeos.md.tapilot.speech.PolishingSpeechRecognition(activity),
-    private val speechKey: (String) -> String? = { provider -> ModelCredentialStore(activity).getAll()["speech-$provider"] },
+    private val speechKey: (String) -> String? = { provider -> ModelCredentialStore(activity).get("speech-$provider") },
     private val nativeCommand: ((JSONObject) -> Unit)? = null,
 ) : AutoCloseable {
     var state by mutableStateOf(ChatState())
@@ -63,7 +63,7 @@ class ChatController(
     fun startVoiceConversation(allowExistingInput: Boolean = false) {
         if (allowExistingInput && state.ready && !state.configured) { showError(if (state.chinese) "请先配置模型 API" else "Configure model API first"); command("settings"); return }
         if (!state.ready || !state.configured || runtime.startingVoice || recording || transcribing || picking || (!allowExistingInput && (draft.isNotBlank() || state.attachment != null))) return
-        val key = runCatching { speechKey(state.speechProvider) }.getOrNull()
+        val key = runCatching { speechKey(state.speechProvider) }.getOrElse { showError(it.message.orEmpty()); return }
         if (key.isNullOrBlank()) { showError(if (state.chinese) "请先填写语音 API 配置" else "Configure speech API first"); command("settings"); return }
         if (activity.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             activity.requestPermissions(arrayOf(android.Manifest.permission.RECORD_AUDIO), 7102); return
@@ -172,7 +172,7 @@ class ChatController(
         if (!state.ready || voiceState.active || recording || transcribing || picking) return
         runtime.stopSpeech()
         error = ""
-        val key = runCatching { speechKey(state.speechProvider) }.getOrNull()
+        val key = runCatching { speechKey(state.speechProvider) }.getOrElse { showError(it.message.orEmpty()); return }
         if (key.isNullOrBlank()) {
             showError(if (state.chinese) "请先填写语音转写 API 配置" else "Configure speech API first")
             command("settings")
@@ -255,7 +255,7 @@ class ChatController(
 
     fun retrySpeech() {
         if (!canRetrySpeech || recording || transcribing || picking) return
-        val key = speechKey(retryProvider).orEmpty()
+        val key = runCatching { speechKey(retryProvider).orEmpty() }.getOrElse { showError(it.message.orEmpty()); return }
         error = ""
         canRetrySpeech = false
         transcribing = true

@@ -22,10 +22,11 @@ class VoiceEntryActivity : Activity() {
     private var opened = false
     private var capturing = false
     private var started = 0L
+    private var entryGeneration = -1
     private val connect = object : Runnable {
         override fun run() {
             if (isFinishing || !resumed) return
-            if (!runtime.floatingVoice || (intent.getBooleanExtra("heldVoice", false) && intent.getIntExtra("voiceEntryGeneration", -1) != runtime.floatingEntryGeneration)) { opened = true; finish(); return }
+            if (!runtime.floatingVoice || entryGeneration != runtime.floatingEntryGeneration) { opened = true; finish(); return }
             if (!runtime.state.ready) {
                 if (SystemClock.elapsedRealtime() - started > 5_000) failEntry("语音启动失败，请重试")
                 else handler.postDelayed(this, 16)
@@ -33,7 +34,7 @@ class VoiceEntryActivity : Activity() {
             }
             if (!requested) {
                 requested = true
-                val key = runCatching { ModelCredentialStore(this@VoiceEntryActivity).getAll()["speech-${runtime.state.speechProvider}"] }.getOrNull()
+                val key = runCatching { ModelCredentialStore(this@VoiceEntryActivity).get("speech-${runtime.state.speechProvider}") }.getOrElse { failEntry(it.message.orEmpty()); return }
                 if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
                     requested = false
                     requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 7103)
@@ -80,8 +81,8 @@ class VoiceEntryActivity : Activity() {
             setTextColor(AppTheme.colors(this@VoiceEntryActivity).contrast)
             setBackgroundColor(AppTheme.color(this@VoiceEntryActivity, R.color.brand_primary))
         })
-        runtime.floatingVoice = true
-        runtime.floatingVoiceError = ""
+        if (!intent.getBooleanExtra("heldVoice", false)) runtime.beginFloatingRetry()
+        entryGeneration = runtime.floatingEntryGeneration
         if (!runtime.coordinator.ready) runtime.coordinator.initialize()
     }
     override fun onResume() {
@@ -106,7 +107,7 @@ class VoiceEntryActivity : Activity() {
         handler.postDelayed({ if (!opened && !isFinishing) completeEntry() }, 2_200)
         service.capture("voice-entry-${java.util.UUID.randomUUID()}") { result ->
             handler.post {
-                if (opened || isFinishing) return@post
+                if (opened || isFinishing || entryGeneration != runtime.floatingEntryGeneration) return@post
                 result.getOrNull()?.let { capture ->
                     LaunchContext.put(org.json.JSONObject().put("kind", "screen").put("label", "当前屏幕")
                         .put("dataUrl", capture.dataUrl).put("fromPanel", true).put("voice", true))
@@ -118,14 +119,14 @@ class VoiceEntryActivity : Activity() {
     private fun completeEntry() {
         if (opened) return
         opened = true
+        if (entryGeneration != runtime.floatingEntryGeneration) { finish(); return }
         runtime.coordinator.receiveLaunchContext()
         runtime.finishVoiceEntry()
         finish()
     }
     private fun failEntry(message: String) {
-        runtime.endVoice()
-        runtime.floatingVoice = true
-        runtime.floatingVoiceError = message.ifBlank { "语音启动失败，请重试" }
+        if (entryGeneration != runtime.floatingEntryGeneration) { opened = true; finish(); return }
+        runtime.failFloatingEntry(message)
         opened = true
         finish()
     }
@@ -138,7 +139,7 @@ class VoiceEntryActivity : Activity() {
     }
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
-        if (!opened && requested) runtime.endVoice()
+        if (!opened && requested && entryGeneration == runtime.floatingEntryGeneration) runtime.endVoice()
         super.onDestroy()
     }
 }

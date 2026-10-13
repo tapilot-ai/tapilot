@@ -100,13 +100,13 @@ class NodeRuntimeProcessSupervisor(
                     }
                     process.waitFor()
                 }
-                synchronized(lock) {
-                    if (activeProcess === process) {
-                        activeProcess = null
-                        activeInput?.let { writer -> runCatching { writer.close() } }
-                        activeInput = null
-                    }
+                // Keep ownership until the failed worker is known to have exited. A malformed
+                // event or listener exception must not leave an untracked process behind.
+                val terminated = if (result.isFailure) runCatching { terminate(process) } else Result.success(Unit)
+                if (terminated.isFailure) {
+                    result.exceptionOrNull()?.addSuppressed(terminated.exceptionOrNull()!!)
                 }
+                if (terminated.isSuccess) release(process)
                 result.fold(listener::onComplete, listener::onFailure)
             }
         }
@@ -114,11 +114,26 @@ class NodeRuntimeProcessSupervisor(
 
     fun stop(): Boolean {
         val process = synchronized(lock) { activeProcess } ?: return false
+        terminate(process)
+        release(process)
+        return true
+    }
+
+    private fun release(process: Process) {
+        val writer = synchronized(lock) {
+            if (activeProcess !== process) return
+            activeProcess = null
+            activeInput.also { activeInput = null }
+        }
+        writer?.let { runCatching { it.close() } }
+    }
+
+    private fun terminate(process: Process) {
         process.destroy()
         if (!process.waitFor(STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
             process.destroyForcibly()
+            check(process.waitFor(STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS)) { "Node runtime did not terminate" }
         }
-        return true
     }
 
     fun isRunning(): Boolean = synchronized(lock) { activeProcess != null }

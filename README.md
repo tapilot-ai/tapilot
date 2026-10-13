@@ -34,7 +34,7 @@ pnpm install
 pnpm run build:adapter
 pnpm run runtime:bundle
 pnpm run runtime:node
-./gradlew assembleDebug
+./gradlew assembleBeta --max-workers=2 --no-parallel --no-daemon
 ```
 
 Or run the combined script:
@@ -43,7 +43,9 @@ Or run the combined script:
 pnpm run build:android
 ```
 
-The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
+The non-debuggable Beta APK is written to `app/build/outputs/apk/beta/app-beta.apk`.
+Run `pnpm check` before distributing it. See [CONTRIBUTING.md](CONTRIBUTING.md)
+for the complete check gate and production signing configuration.
 Ordinary Android builds do not build the legacy web UI. For the optional
 `-PspeechVerification` debug entry, run `pnpm run build` first.
 `runtime:bundle` creates a self-contained, symlink-free Node module bundle and
