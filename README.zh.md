@@ -53,7 +53,7 @@ pnpm install
 pnpm run build:adapter
 pnpm run runtime:bundle
 pnpm run runtime:node
-./gradlew assembleDebug
+./gradlew assembleBeta --max-workers=2 --no-parallel --no-daemon
 ```
 
 也可以使用组合命令：
@@ -62,7 +62,7 @@ pnpm run runtime:node
 pnpm run build:android
 ```
 
-Debug APK 输出到 `app/build/outputs/apk/debug/app-debug.apk`。
+Debug APK 输出到 `app/build/outputs/apk/beta/app-beta.apk`。
 普通 Android 构建不再编译旧网页。使用可选的 `-PspeechVerification` 调试入口时，先运行 `pnpm run build`。
 `runtime:bundle` 会生成不含符号链接的自包含 Node 依赖包，并在打包前真实执行一个
 `@midscene/test` YAML 冒烟项目。`runtime:node` 会下载锁定版本的 Termux arm64 包、
@@ -213,3 +213,10 @@ SIWC 模式下，语音润色也复用当前 ChatGPT 账号和模型，无需另
 取决于 OpenAI 账号。详见 [SIWC 官方文档](https://developers.openai.com/siwc/token-sharing-open-source)。
 
 登录过程也会加密保存；App 重启后可在 15 分钟内恢复原回调端口，返回浏览器刷新即可继续。超过时限需重新发起登录。
+## 构建与发布校验
+
+`pnpm check`（或 `pnpm test`）统一检查类型、旧 Web 回归、设备适配器、Node Agent、报告脚本和 Kotlin，并构建及核验不可调试的 Beta APK。检测到本机 dev-gate 时自动排队执行。
+
+`pnpm build:android` 输出 Beta，沿用当前安装证书以支持覆盖升级；该证书不是正式生产签名。`pnpm build:release` 必须提供独立的 `TAPILOT_SIGNING_*` 配置和预期证书指纹，缺失时拒绝发布。配置说明见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+Gradle 打包前会核对 Node 源码指纹与 ZIP 摘要；修改源码后必须重新生成资源。公开 Intent 只能打开界面或传入分享内容，不能启动录音。草稿独立保存，任务持久化由专用线程完成，后续外部操作等待保存结果。

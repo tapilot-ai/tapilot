@@ -1,0 +1,40 @@
+package lifeos.md.tapilot.conversation
+
+import org.json.JSONArray
+import org.json.JSONObject
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+
+/** Snapshot mutable UI state, then serialize and fsync exclusively on a serial I/O worker. */
+class ConversationWriter(
+    private val store: ConversationStore,
+    private val onFailure: (Throwable) -> Unit,
+) : AutoCloseable {
+    private val worker = Executors.newSingleThreadExecutor()
+    @Volatile private var failure: Throwable? = null
+
+    fun save(value: JSONObject) {
+        val snapshot = snapshotObject(value)
+        enqueue { store.save(JSONObject(snapshot)) }
+    }
+    fun saveDraft(text: String) = enqueue { store.saveDraft(text) }
+    private fun enqueue(action: () -> Unit) {
+        worker.execute {
+            runCatching(action).fold({ failure = null }, { failure = it; onFailure(it) })
+        }
+    }
+    /** Call off the UI thread before starting more external work. */
+    fun flush() {
+        worker.submit {}.get(10, TimeUnit.SECONDS)
+        failure?.let { throw IllegalStateException("无法保存任务，请检查存储空间后重试", it) }
+    }
+    override fun close() { worker.shutdown() }
+
+    private fun snapshotObject(value: JSONObject): Map<String, Any?> = value.keys().asSequence().associateWith { snapshot(value.get(it)) }
+    private fun snapshot(value: Any?): Any? = when (value) {
+        is JSONObject -> snapshotObject(value)
+        is JSONArray -> (0 until value.length()).map { snapshot(value.get(it)) }
+        JSONObject.NULL -> null
+        else -> value
+    }
+}

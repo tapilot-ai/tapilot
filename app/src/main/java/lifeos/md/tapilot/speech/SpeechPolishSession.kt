@@ -15,7 +15,8 @@ internal class SpeechPolishSession(
 ) {
     private val executor = Executors.newSingleThreadScheduledExecutor()
     private var raw = ""
-    private var processed = ""
+    private var revision = 0L
+    private var processedRevision = -1L
     private var polished = ""
     private var changedAt = 0L
     private var dirtyAt = 0L
@@ -28,39 +29,43 @@ internal class SpeechPolishSession(
 
     @Synchronized fun update(text: String) {
         if (cancelled || finishing || raw == text) return
-        if (raw == processed) dirtyAt = now()
-        raw = text; changedAt = now()
+        if (revision == processedRevision || raw.isEmpty()) dirtyAt = now()
+        raw = text; revision++; changedAt = now()
         display(render())
         schedule()
     }
-    private fun render() = if (processed.isNotEmpty() && raw.startsWith(processed)) polished + raw.substring(processed.length) else raw
+    private fun render() = if (revision == processedRevision) polished else raw
     private fun schedule() {
         scheduled?.cancel(false)
-        if (cancelled || finishing || inFlight || raw.isBlank() || raw == processed) return
+        if (cancelled || finishing || inFlight || raw.isBlank() || revision == processedRevision) return
         val due = maxOf(startedAt + intervalMs, minOf(changedAt + pauseMs, dirtyAt + intervalMs))
         scheduled = executor.schedule({ preview() }, maxOf(0, due - now()), TimeUnit.MILLISECONDS)
     }
     private fun preview() {
-        val text = synchronized(this) {
+        val (text, requestRevision) = synchronized(this) {
             if (cancelled || finishing) return
-            inFlight = true; startedAt = now(); raw
+            inFlight = true; startedAt = now(); raw to revision
         }
         val result = runCatching { polish(text) }.getOrDefault(text).ifBlank { text }
         synchronized(this) {
             inFlight = false
-            if (cancelled || finishing) return
-            processed = text; polished = result
-            if (raw != text) dirtyAt = changedAt
-            display(render()); schedule()
+            // Finishing may reuse this request only when its ASR revision still matches.
+            if (cancelled) return
+            if (requestRevision == revision) {
+                processedRevision = requestRevision; polished = result
+                display(render())
+            }
+            schedule()
         }
     }
     @Synchronized fun finish(text: String, callback: (String) -> Unit) {
         if (cancelled || finishing) return
         finishing = true; scheduled?.cancel(false)
+        if (raw != text) revision++
         raw = text
         display(render())
         executor.execute {
-            val cached = synchronized(this) { if (cancelled) return@execute; if (text == processed) polished else "" }
+            val cached = synchronized(this) { if (cancelled) return@execute; if (revision == processedRevision) polished else "" }
             val result = cached.ifBlank { runCatching { polish(text) }.getOrDefault(text).ifBlank { text } }
             synchronized(this) {
                 if (cancelled) return@execute

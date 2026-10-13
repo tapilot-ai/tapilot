@@ -13,3 +13,10 @@ local.properties
 midscene_run/
 node_modules/
 .kotlin/
+
+# Private signing identities and local provider configuration
+*.jks
+*.keystore
+.env
+.env.*
+!.env.example

@@ -93,6 +93,40 @@ class NodeRuntimeProcessSupervisorTest {
         } finally { supervisor.close() }
     }
 
+    @Test fun malformedEventAndListenerFailureTerminateBeforeReleasingOwnership() {
+        for (line in listOf("MIDSCENE_EVENT {broken", "diagnostic")) {
+            var forced = false
+            var destroyed = false
+            val process = object : Process() {
+                override fun getInputStream() = ByteArrayInputStream((line + "\n").toByteArray())
+                override fun getErrorStream() = ByteArrayInputStream(byteArrayOf())
+                override fun getOutputStream() = java.io.ByteArrayOutputStream()
+                override fun waitFor() = 0
+                override fun waitFor(timeout: Long, unit: TimeUnit) = forced
+                override fun exitValue(): Int { if (!forced) throw IllegalThreadStateException(); return 1 }
+                override fun destroy() { destroyed = true }
+                override fun destroyForcibly(): Process { forced = true; return this }
+            }
+            val supervisor = NodeRuntimeProcessSupervisor { _, _, _ -> process }
+            val complete = CountDownLatch(1)
+            var releasedAfterTermination = false
+            val runtime = InstalledNodeRuntime(File(".", "node"), File("."), File("runner.mjs"), File("."), File("."), NodeRuntimeManifest(1, "test", "runner.mjs", 20))
+            try {
+                supervisor.runDoctor(runtime, object : NodeRuntimeListener {
+                    override fun onLog(line: String) { error("listener failed") }
+                    override fun onEvent(event: NodeRuntimeEvent) = Unit
+                    override fun onComplete(exitCode: Int) { complete.countDown() }
+                    override fun onFailure(error: Throwable) {
+                        releasedAfterTermination = destroyed && forced && !supervisor.isRunning()
+                        complete.countDown()
+                    }
+                })
+                assertTrue(complete.await(2, TimeUnit.SECONDS))
+                assertTrue(releasedAfterTermination)
+            } finally { supervisor.close() }
+        }
+    }
+
     private class BlockingInputProcess : Process() {
         val writeStarted = CountDownLatch(1)
         private val destroyed = CountDownLatch(1)

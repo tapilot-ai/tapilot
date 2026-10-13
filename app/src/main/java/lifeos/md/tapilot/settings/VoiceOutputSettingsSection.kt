@@ -23,7 +23,7 @@ internal fun VoiceOutputSettingsSection(context: Context, zh: Boolean, provider:
     var autoRead by remember { mutableStateOf(config.autoRead) }
     var speaker by remember(provider) { mutableStateOf(config.speaker(provider)) }
     var key by remember(provider) { mutableStateOf("") }
-    var hasKey by remember(provider) { mutableStateOf(runCatching { credentials.getAll()["speech-output-$provider"].orEmpty().isNotBlank() }.getOrDefault(false)) }
+    var hasKey by remember(provider) { mutableStateOf(credentials.contains("speech-output-$provider")) }
     var status by remember(provider) { mutableStateOf("") }
     var busy by remember(provider) { mutableStateOf(false) }
     val player = remember(provider) { ApiSpeechPlayback(context) { provider } }

@@ -30,6 +30,7 @@ class FloatingBallController(
 ) : AutoCloseable {
     private val size = (56 * service.resources.displayMetrics.density).roundToInt()
     private val touchSlop = ViewConfiguration.get(service).scaledTouchSlop
+    private val holdDelayMillis = 280L
     private val mainHandler = Handler(Looper.getMainLooper())
     private var appForeground = false
     private var taskRunning = false
@@ -215,16 +216,14 @@ class FloatingBallController(
             elevation = dp(8).toFloat()
             setOnClickListener { openTaskInput() }
             setOnLongClickListener {
-                runtime.floatingEntryGeneration++
-                runtime.floatingHold = true
-                runtime.floatingCancelSelected = false
-                runtime.floatingContextReady = false
-                runtime.floatingVoice = true
-                runtime.floatingVoiceError = ""
+                runtime.beginFloatingHold()
                 mainHandler.removeCallbacks(updateVoice)
-                mainHandler.post(updateVoice)
-                // The visible entry starts recording; the conversation remains above the current app.
-                openVoice.run()
+                updateVoice.run()
+                val generation = runtime.floatingEntryGeneration
+                // Draw feedback before Activity startup / credential and microphone initialization.
+                holdOverlay.afterDraw {
+                    if (view != null && runtime.floatingVoice && runtime.floatingEntryGeneration == generation) openVoice.run()
+                }
                 true
             }
             setOnTouchListener(DragTouchListener(params))
@@ -303,7 +302,7 @@ class FloatingBallController(
         val done = AtomicBoolean(false)
         val complete = Runnable {
             if (done.compareAndSet(false, true) && runtime.floatingVoice && generation == runtime.floatingEntryGeneration) {
-                runtime.completeFloatingContext()
+                runtime.completeFloatingContext(generation)
             }
         }
         mainHandler.postDelayed(complete, 2_200)
@@ -324,7 +323,6 @@ class FloatingBallController(
         service.startActivity(Intent(service, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             putExtra(MainActivity.EXTRA_GLOBAL_PANEL, true)
-            putExtra(MainActivity.EXTRA_START_VOICE, voice)
         })
     }
 
@@ -386,16 +384,16 @@ class FloatingBallController(
                             target.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
                             target.performLongClick()
                         }
-                    }.also { mainHandler.postDelayed(it, ViewConfiguration.getLongPressTimeout().toLong()) }
+                    }.also { mainHandler.postDelayed(it, holdDelayMillis) }
                     target.isPressed = true
-                    (target as? FloatingBallView)?.beginHold(ViewConfiguration.getLongPressTimeout().toLong())
+                    (target as? FloatingBallView)?.beginHold(holdDelayMillis)
                     return true
                 }
                 MotionEvent.ACTION_MOVE -> {
                     if (longPressed) {
                         val selected = holdOverlay.isCancelTarget(event.rawX, event.rawY)
                         if (selected != runtime.floatingCancelSelected) {
-                            runtime.floatingCancelSelected = selected
+                            runtime.selectFloatingCancel(selected)
                             target.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
                             holdOverlay.refresh(runtime)
                         }

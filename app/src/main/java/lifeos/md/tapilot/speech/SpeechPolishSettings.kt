@@ -37,7 +37,8 @@ internal class SpeechPolishStore(context: Context) {
             model = json.optString("model", defaults.model), promptZh = json.optString("promptZh", defaults.promptZh),
             promptEn = json.optString("promptEn", defaults.promptEn)).validated()
     }.getOrDefault(SpeechPolishSettings())
-    fun key() = credentials.getAll()[KEY].orEmpty()
+    fun hasKey() = credentials.contains(KEY)
+    fun key() = credentials.get(KEY).orEmpty()
     fun save(settings: SpeechPolishSettings, replacementKey: String = "") {
         // Turning off must take effect even if a partially edited URL or key is invalid.
         if (!settings.enabled) {

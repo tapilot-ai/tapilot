@@ -129,7 +129,7 @@ class NativeJavascriptBridge(
             }
             "speech.checkConnection" -> {
                 val provider = request.getJSONObject("params").getString("provider")
-                val key = modelCredentialStore.getAll()[speechPreset(request)] ?: error("请先保存语音 API Key")
+                val key = modelCredentialStore.get(speechPreset(request)) ?: error("请先保存语音 API Key")
                 speechTranscriber.checkConnection(provider, key) { result -> result.fold(
                     onSuccess = { respondSuccess(requestId, JSONObject().put("available", true)) },
                     onFailure = { respondError(requestId, it) },
@@ -271,7 +271,7 @@ class NativeJavascriptBridge(
             }
             "speech.hasCredential" -> respondSuccess(
                 requestId,
-                JSONObject().put("configured", modelCredentialStore.getAll()[speechPreset(request)]?.isNotBlank() == true),
+                JSONObject().put("configured", modelCredentialStore.get(speechPreset(request))?.isNotBlank() == true),
             )
             "speech.setProvider" -> {
                 val provider = request.getJSONObject("params").getString("provider")
@@ -288,7 +288,7 @@ class NativeJavascriptBridge(
                 val params = request.getJSONObject("params")
                 val provider = params.getString("provider")
                 val language = params.optString("language", "en-US")
-                val key = modelCredentialStore.getAll()[speechPreset(request)] ?: error("Speech API Key is missing")
+                val key = modelCredentialStore.get(speechPreset(request)) ?: error("Speech API Key is missing")
                 speechRecognition.start(provider, key, language) { outcome ->
                     outcome.fold(
                         onSuccess = { respondSuccess(requestId, JSONObject.NULL) },

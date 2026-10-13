@@ -41,7 +41,7 @@ pnpm install
 pnpm run build:adapter
 pnpm run runtime:bundle
 pnpm run runtime:node
-./gradlew assembleDebug
+./gradlew assembleBeta --max-workers=2 --no-parallel --no-daemon
 ```
 
 Or run the combined script:
@@ -50,7 +50,9 @@ Or run the combined script:
 pnpm run build:android
 ```
 
-The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
+The non-debuggable Beta APK is written to `app/build/outputs/apk/beta/app-beta.apk`.
+Run `pnpm check` before distributing it. See [CONTRIBUTING.md](CONTRIBUTING.md)
+for the complete check gate and production signing configuration.
 Ordinary Android builds do not build the legacy web UI. For the optional
 `-PspeechVerification` debug entry, run `pnpm run build` first.
 `runtime:bundle` creates a self-contained, symlink-free Node module bundle and
@@ -162,7 +164,9 @@ an API Key from the new Doubao Speech console and the fixed resource ID
 stays closed and a speech bubble with Cancel / Send controls appears. Release normally
 to insert text; release over Cancel or Send for that action, or move back to insert.
 Focused or populated editors retain native editing menus, including whitespace-only drafts.
-Cancellation remains available during transcription and rejects late results. Chat,
+Cancellation remains available during transcription and rejects late results. An in-flight
+polish is reused on release only when it matches the current transcript revision;
+new tail words trigger a full-text pass, and polish failures preserve the recognized text. Chat,
 the global assistant share these rules and retain Tapilot colors. The optional legacy WebView verification entry follows the same rules. The first recording requires microphone
 permission. Audio streams through the selected provider's WebSocket API without
 creating a recording file. Each provider's key is encrypted separately with Android

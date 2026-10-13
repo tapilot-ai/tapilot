@@ -31,13 +31,17 @@ class AssistantRuntime(context: Context) {
     var startingVoice by androidx.compose.runtime.mutableStateOf(false); private set
     private var service: VoiceRuntimeService? = null
     private var voiceKey = ""
-    var floatingEntryGeneration = 0
-    var floatingHold = false
-    var floatingCancelSelected = false
-    var floatingContextReady = false
-    private var finishFloatingWhenReady = false
-    var floatingVoice = false
-    var floatingVoiceError = ""
+    private val floatingSession = FloatingVoiceSession()
+    val floatingEntryGeneration get() = floatingSession.generation
+    val floatingHold get() = floatingSession.held
+    val floatingCancelSelected get() = floatingSession.cancelSelected
+    val floatingContextReady get() = floatingSession.contextReady
+    val floatingVoice get() = floatingSession.active
+    val floatingVoiceError get() = floatingSession.error
+    fun beginFloatingHold() { endVoice(); floatingSession.begin(held = true) }
+    fun beginFloatingRetry() { endVoice(); floatingSession.begin(held = false) }
+    fun selectFloatingCancel(selected: Boolean) = floatingSession.selectCancel(selected)
+    fun failFloatingEntry(message: String) { endVoice(); floatingSession.fail(message.ifBlank { "语音启动失败，请重试" }) }
     var floatingTranscript = ""; private set
     var voiceEntryPending = false; private set
     private var openingUtterance: String? = null
@@ -58,9 +62,9 @@ class AssistantRuntime(context: Context) {
             voiceState = next
             if (next.active && next.transcript.isNotBlank()) floatingTranscript = next.transcript
             refreshService()
-            if (finishFloatingWhenReady && next.phase == VoicePhase.Listening) {
-                finishFloatingWhenReady = false
-                handler.post { if (!floatingHold && voiceState.phase == VoicePhase.Listening) voice.finishUtterance() }
+            if (next.phase == VoicePhase.Listening && floatingSession.consumeFinish()) {
+                val token = floatingEntryGeneration
+                handler.post { if (floatingSession.isCurrent(token) && !floatingHold && voiceState.phase == VoicePhase.Listening) voice.finishUtterance() }
             }
         })
     private val clock = object : Runnable {
@@ -72,8 +76,8 @@ class AssistantRuntime(context: Context) {
     }
     private fun voiceReplies() = state.messages.filter { it.role == "assistant" }.map {
         VoiceReply(it.id, it.text, it.status !in listOf("running", "paused", "needs-confirmation")) }
-    private fun hasOutputKey() = runCatching { ModelCredentialStore(context).getAll().let {
-        !it["speech-output-${state.speechProvider}"].isNullOrBlank() || !it["speech-${state.speechProvider}"].isNullOrBlank() } }.getOrDefault(false)
+    private fun hasOutputKey() = runCatching { ModelCredentialStore(context).let {
+        !it.get("speech-output-${state.speechProvider}").isNullOrBlank() || !it.get("speech-${state.speechProvider}").isNullOrBlank() } }.getOrDefault(false)
     private fun accept(next: ChatState) {
         if (state.ready && state.activeConversationId != next.activeConversationId) endVoice()
         state = next
@@ -144,20 +148,20 @@ class AssistantRuntime(context: Context) {
         if (speakingId.isNotBlank()) replies.stop()
     }
     private fun refreshService() { service?.refresh(voiceState, speakingId.isNotBlank(), state.running && !mutedUntilNextSend && !voiceState.active && config.autoRead && hasOutputKey()) }
-    fun endVoice() { floatingEntryGeneration++; floatingHold = false; floatingCancelSelected = false; finishFloatingWhenReady = false; floatingVoice = false; floatingVoiceError = ""; floatingTranscript = ""; voiceEntryPending = false; openingUtterance = null; startingVoice = false; voiceKey = ""; if (voiceState.active) voice.stop(); handler.removeCallbacks(clock) }
+    fun endVoice() { floatingSession.end(); floatingTranscript = ""; voiceEntryPending = false; openingUtterance = null; startingVoice = false; voiceKey = ""; if (voiceState.active) voice.stop(); handler.removeCallbacks(clock) }
     fun pauseVoice() = voice.pause()
     fun resumeVoice() = voice.resume()
     fun interruptVoice() = voice.interrupt()
     fun finishUtterance() = voice.finishUtterance()
-    fun completeFloatingContext() {
-        floatingContextReady = true
+    fun completeFloatingContext(token: Int = floatingEntryGeneration) {
+        if (!floatingSession.contextCaptured(token)) return
         if (state.ready) { coordinator.receiveLaunchContext(); finishVoiceEntry() }
     }
     fun releaseFloatingHold(cancel: Boolean) {
-        floatingHold = false; floatingCancelSelected = false
+        if (!floatingHold) return
         if (cancel) { endVoice(); return }
-        if (voiceState.phase == VoicePhase.Listening) voice.finishUtterance()
-        else finishFloatingWhenReady = true
+        floatingSession.release()
+        if (voiceState.phase == VoicePhase.Listening && floatingSession.consumeFinish()) voice.finishUtterance()
     }
     fun stopSpeech() = replies.stop()
     fun read(reply: VoiceReply) {

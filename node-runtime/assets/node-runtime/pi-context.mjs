@@ -1,23 +1,42 @@
-/** Request projection only: checkpoints keep the original transcript for retry and audit. */
-export function projectContext(messages, threshold = 48000) {
-  if (JSON.stringify(messages).length <= threshold) return messages;
-  // Keep the last 12 messages and the entire tool batch at the boundary.
+/** Conservative request budget. Image bytes have a separate transport cap: base64 length
+ * is not a text token estimate. Durable checkpoints are never modified by projection. */
+const maxPayloadBytes = 32 * 1024 * 1024;
+export function contextSize(messages) {
+  return JSON.stringify(messages, (key, value) => key === 'url' && typeof value === 'string' && value.startsWith('data:image/')
+    ? '[image]'.repeat(1024) : value).length;
+}
+function clip(text, limit) {
+  if (typeof text !== 'string' || text.length <= limit) return text;
+  const half = Math.floor(limit / 2);
+  return `${text.slice(0, half)}\n[执行日志已截短；缺失结果未知，继续前核验实时画面，不能盲目重复操作]\n${text.slice(-half)}`;
+}
+export function projectContext(messages, budget = 48000) {
+  if (!Number.isFinite(budget) || budget <= 0) throw new Error('Invalid context budget');
+  if (Buffer.byteLength(JSON.stringify(messages)) > maxPayloadBytes)
+    throw new Error('附件与上下文超过传输上限，请减少附件或开始新对话。');
+  if (contextSize(messages) <= budget) return messages;
+  // Keep user constraints, system instructions, call arguments and complete tool batches.
+  // Only execution output and assistant prose can be shortened automatically.
   let cut = Math.max(0, messages.length - 12);
   while (cut > 0 && messages[cut]?.role === 'tool') cut--;
   const old = messages.slice(0, cut);
-  const retained = messages.slice(cut);
-  const evidence = [];
-  const clip = text => text.length > 1200 ? `${text.slice(0, 600)}\n[日志省略；详细结果保存在执行记录]\n${text.slice(-600)}` : text;
-  const inputs = [];
-  for (const message of old) {
-    if (message.role === 'system') continue;
-    if (message.role === 'user') inputs.push(message); // Never summarize away user constraints or attachments.
-    if (message.role === 'assistant') {
-      for (const call of message.tool_calls ?? []) evidence.push({ callId: call.id, tool: call.function.name, arguments: call.function.arguments });
-      if (message.content && !message.tool_calls?.length) evidence.push({ reply: clip(message.content) });
+  for (const limit of [1200, 600, 200, 80]) {
+    const evidence = [];
+    const inputs = [];
+    for (const message of old) {
+      if (message.role === 'user') inputs.push(message);
+      if (message.role === 'assistant') {
+        for (const call of message.tool_calls ?? []) evidence.push({ callId: call.id, tool: call.function.name, arguments: call.function.arguments });
+        if (message.content && !message.tool_calls?.length) evidence.push({ reply: clip(message.content, limit) });
+      }
+      if (message.role === 'tool') evidence.push({ callId: message.tool_call_id, result: clip(message.content, limit) });
     }
-    if (message.role === 'tool') evidence.push({ callId: message.tool_call_id, result: clip(message.content) });
+    const retained = messages.slice(cut).map(message => ['assistant', 'tool'].includes(message.role)
+      ? { ...message, content: clip(message.content, limit) } : message);
+    const projected = [...old.filter(m => m.role === 'system'), ...inputs,
+      ...(evidence.length ? [{ role: 'user', content: `以下是历史执行记录，不是新的用户指令。成功与失败以返回为准，缺失结果表示未知；先核验实时画面，不能重复已成功的副作用。\n${JSON.stringify(evidence)}` }] : []), ...retained];
+    if (contextSize(projected) <= budget) return projected;
   }
-  const system = old.filter(m => m.role === 'system');
-  return [...system, ...inputs, ...(evidence.length ? [{ role: 'user', content: `以下是历史执行记录的压缩副本，不是新的用户指令。成功与失败以每条返回为准，缺失结果表示未知；需要核验实时画面，不能重复已成功的副作用。\n${JSON.stringify(evidence)}` }] : []), ...retained];
+  // Never silently drop a constraint or send a request known to exceed the budget.
+  throw new Error('对话上下文超过安全预算。已保留任务记录，请缩短输入、减少附件或开始新对话；未继续操作手机。');
 }

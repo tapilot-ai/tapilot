@@ -64,7 +64,9 @@ class MainActivity : ComponentActivity() {
         rootView = ComposeView(this).apply { setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed) }
         configureGlobalPanel(savedInstanceState?.takeIf { it.containsKey(EXTRA_GLOBAL_PANEL) }?.getBoolean(EXTRA_GLOBAL_PANEL)
             ?: (intent.getBooleanExtra(EXTRA_GLOBAL_PANEL, false) || intent.action == Intent.ACTION_ASSIST))
-        pendingVoiceLaunch = savedInstanceState?.getBoolean(EXTRA_START_VOICE) ?: intent.getBooleanExtra(EXTRA_START_VOICE, false)
+        // This activity is exported for launch/share. External extras never authorize recording.
+        // Only our permission flow (or its saved lifecycle state) may resume a voice request.
+        pendingVoiceLaunch = savedInstanceState?.getBoolean(EXTRA_START_VOICE) ?: false
         intent.removeExtra(EXTRA_START_VOICE)
         val runtime = (application as TapilotApplication).assistant
         runtime.attach(this)
@@ -109,7 +111,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent); setIntent(intent)
         val panel = intent.getBooleanExtra(EXTRA_GLOBAL_PANEL, false) || intent.action == Intent.ACTION_ASSIST
-        pendingVoiceLaunch = intent.getBooleanExtra(EXTRA_START_VOICE, false)
+        pendingVoiceLaunch = false
         intent.removeExtra(EXTRA_START_VOICE)
         configureGlobalPanel(panel)
         if (panel && !(application as TapilotApplication).assistant.voiceEntryPending) coordinator.openGlobalConversation()

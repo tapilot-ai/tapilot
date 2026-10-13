@@ -105,6 +105,9 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
                         CompactPrimaryAction(label("保存", "Save"), enabled = !busy) { coordinator.saveSpeech(provider, speechKey); speechKey = "" }
                         TextButton(onClick = { coordinator.saveSpeech(provider, speechKey); speechKey = ""; coordinator.checkSpeech(provider) }, enabled = !busy) { Text(label("检查连接", "Check connection")) }
                     }
+                    if (coordinator.hasKey("speech-$provider")) TextButton(onClick = { coordinator.resetSpeech(provider); speechKey = "" }, enabled = !busy) {
+                        Text(label("清除转写密钥", "Remove transcription key"))
+                    }
                     if (coordinator.settingsSection == "speech") Status(coordinator.settingsStatus)
                 }
                 Group(label("语音对话与播报", "Voice conversation & playback")) { VoiceOutputSettingsSection(activity, zh, provider) }
