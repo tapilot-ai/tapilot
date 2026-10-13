@@ -5,6 +5,7 @@ import android.util.Log
 import lifeos.md.tapilot.AppLanguage
 import lifeos.md.tapilot.TaskExecutionStatus
 import lifeos.md.tapilot.TaskRuntimeService
+import lifeos.md.tapilot.accessibility.deviceDisplayMetrics
 import lifeos.md.tapilot.accessibility.MidsceneAccessibilityService
 import lifeos.md.tapilot.report.ReportRepository
 import lifeos.md.tapilot.runtime.InstalledNodeRuntime
@@ -286,7 +287,7 @@ class NodeTestRunCoordinator(
                             .put("canInputText", service != null),
                     )
                     "device.getSize" -> {
-                        val metrics = appContext.resources.displayMetrics
+                        val metrics = appContext.deviceDisplayMetrics()
                         respondSuccess(
                             requestId,
                             JSONObject().put("width", metrics.widthPixels)

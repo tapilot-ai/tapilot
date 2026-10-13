@@ -106,7 +106,7 @@ class MidsceneAccessibilityService : AccessibilityService() {
     fun validateFrame(frameId: String) {
         val capture = latestCapture
         if (capture?.frameId != frameId) throw StaleFrameException()
-        val metrics = resources.displayMetrics
+        val metrics = deviceDisplayMetrics()
         val rotation = getSystemService(DisplayManager::class.java)
             .getDisplay(Display.DEFAULT_DISPLAY)
             ?.rotation ?: 0
@@ -185,7 +185,7 @@ class MidsceneAccessibilityService : AccessibilityService() {
         try {
             val output = ByteArrayOutputStream()
             check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)) { "Unable to encode screenshot" }
-            val metrics = resources.displayMetrics
+            val metrics = deviceDisplayMetrics()
             return CapturePayload(
                 dataUrl = "data:image/png;base64," + Base64.getEncoder().encodeToString(output.toByteArray()),
                 frameId = UUID.randomUUID().toString(), capturedAt = System.currentTimeMillis(),
@@ -381,7 +381,7 @@ class MidsceneAccessibilityService : AccessibilityService() {
 
     private fun pinchGesture(action: NativeAction.Pinch, callback: (Result<Unit>) -> Unit) {
         val (scaleX, scaleY) = gestureCoordinateScale()
-        val metrics = resources.displayMetrics
+        val metrics = deviceDisplayMetrics()
         val geometry = pinchGeometry(action, metrics.widthPixels, metrics.heightPixels)
         val centerX = geometry.centerX * scaleX
         val centerY = geometry.centerY * scaleY
@@ -420,7 +420,7 @@ class MidsceneAccessibilityService : AccessibilityService() {
     }
 
     private fun gestureCoordinateScale(): Pair<Float, Float> {
-        val metrics = resources.displayMetrics
+        val metrics = deviceDisplayMetrics()
         val currentDisplay = getSystemService(DisplayManager::class.java)
             .getDisplay(Display.DEFAULT_DISPLAY) ?: return 1f to 1f
         val mode = currentDisplay.mode

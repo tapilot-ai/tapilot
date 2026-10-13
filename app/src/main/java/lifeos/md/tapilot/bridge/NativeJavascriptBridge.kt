@@ -16,6 +16,7 @@ import android.webkit.WebView
 import lifeos.md.tapilot.ReportActivity
 import lifeos.md.tapilot.LaunchContext
 import lifeos.md.tapilot.TaskRuntimeService
+import lifeos.md.tapilot.accessibility.deviceDisplayMetrics
 import lifeos.md.tapilot.accessibility.MidsceneAccessibilityService
 import lifeos.md.tapilot.accessibility.FloatingBallPreferences
 import lifeos.md.tapilot.accessibility.EdgeEffectGeometryMode
@@ -176,7 +177,7 @@ class NativeJavascriptBridge(
                     .put("canInputText", service != null),
             )
             "device.getSize" -> {
-                val bounds = activity.resources.displayMetrics
+                val bounds = activity.deviceDisplayMetrics()
                 respondSuccess(
                     requestId,
                     JSONObject().put("width", bounds.widthPixels).put("height", bounds.heightPixels),

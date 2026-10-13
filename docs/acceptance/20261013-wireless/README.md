@@ -36,12 +36,42 @@ no app-data reset and no ADB TCP mode or port forwarding was used.
 - MCP status reached the phone and correctly reported that its accessibility
   service was disconnected. Instrumentation restarts the app process and can
   leave that service enabled but unbound on this device.
-- Full actions/screenshot acceptance remains pending. Device UI repeatedly
-  switched to a localhost login browser page during setup; confirmation of
-  exclusive use was requested before proceeding with more device interaction.
-- The USB cable was still attached for setup. **Physical cable removal, complete
-  screenshot/tap/Chinese input/swipe verification, and reconnect verification
-  have not yet passed.**
+- Follow-up physical acceptance succeeded on October 13, 2026, 11:59–12:05
+  Asia/Shanghai. The harness ran the **installed plugin cache artifact**, using
+  the official MCP SDK client over stdio. The plugin connected directly to the
+  phone's Wi-Fi TLS endpoint. No ADB input or screenshots were used for the
+  functional actions below (ADB was used only for installation/setup).
+- Verified by inspecting actual MCP PNG image responses:
+  - Launch Android Settings and open its search field with a screenshot-based tap.
+  - Enter Chinese `电池`; the screen shows the query and eight search results.
+  - Swipe the Settings list; the visible entries change from Connection / Connected
+    devices to Display / Wallpaper / Location services.
+  - Tap Location services near the bottom of the screen; its detail page opens.
+    No setting toggle was changed.
+  - Explicitly disconnect, reconnect with the saved credential, press Back, and
+    capture the returned Settings list.
+- A second installed-plugin process was rejected with `Another task is already
+  registered`. The original connection continued working. Reusing an old frame
+  was rejected with `Stale frame. Capture a new screen.`
+- Screenshots in the final run took 368–560 ms, taps 176–228 ms, Chinese input
+  129 ms, and a 600 ms swipe took 771 ms. These are observed samples, not a
+  latency guarantee.
+- Capture metadata initially reported 1080×2210 logical size for a 1080×2316 PNG.
+  The existing inverse gesture scaling compensated on the tested wireless path,
+  but the metadata itself excluded system bars. Capture, frame validation,
+  device size, and native gesture scaling now share full-display logical metrics.
+  The final device reports 1080×2316 consistently, with successful top/bottom
+  taps, swipe, Chinese input, and reconnect on the rebuilt APK. Android's
+  [Display API](https://developer.android.com/reference/android/view/Display#getRealMetrics(android.util.DisplayMetrics))
+  documents the full-display metrics used here.
+- Final installed APK SHA-256:
+  `2cb26c6f9827410bfe588e4b2247f1dccf03376a3075307fb44c8341f3c654d3`.
+- USB was still physically attached at the last ADB inventory. **Actual cable
+  removal remains pending user action.** Wi-Fi transport is proven; a complete
+  unplugged acceptance is not yet claimed.
+
+![Settings list after MCP swipe](settings-after-swipe.png)
+![Chinese search result from MCP screenshot](chinese-search-result.png)
 
 ## Installed desktop artifact
 
@@ -53,13 +83,10 @@ that this conversation has invoked the plugin through its native tool picker.
 
 ## Remaining acceptance
 
-1. Reserve the phone for this test and restore its normal accessibility binding.
-2. Install the final APK and enable wireless mode through the normal settings UI.
-3. Run the installed plugin's MCP tools against the real phone: capabilities,
-   screenshot, app launch, screenshot-based tap, Chinese input, swipe, and visible
-   result verification. Do not submit messages or modify accounts as a test.
-4. Remove USB physically and repeat a visible action and screenshot.
-5. Verify second-controller exclusion, stale-frame rejection, local-task
-   exclusion, explicit disconnect/reconnect, notification stop, and revocation.
-6. Verify Android 14+ connected-device service behavior and idle/network-change
+1. Remove USB physically and repeat a visible action and screenshot.
+2. Reload the desktop host/open a fresh conversation and verify native plugin
+   tool discovery. This run proves the installed stdio MCP artifact against a
+   real phone, not invocation through ChatGPT's native tool picker.
+3. Verify local-task exclusion, notification stop, and revocation on the device.
+4. Verify Android 14+ connected-device service behavior and idle/network-change
    behavior on additional OS/device combinations. No always-on Doze guarantee.
