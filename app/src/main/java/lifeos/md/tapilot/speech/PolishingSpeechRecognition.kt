@@ -3,6 +3,20 @@ package lifeos.md.tapilot.speech
 import android.content.Context
 import lifeos.md.tapilot.bridge.SpeechRecognition
 import lifeos.md.tapilot.bridge.SpeechTranscriber
+import lifeos.md.tapilot.chatgpt.ChatGptAccounts
+import lifeos.md.tapilot.conversation.ConversationStore
+import java.io.File
+
+internal fun transcriptPolisher(context: Context): TranscriptPolisher {
+    val store = SpeechPolishStore(context)
+    val settings = store.load()
+    val useChatGpt = ConversationStore(File(context.filesDir, "native-conversation.json"))
+        .read().optBoolean("chatgptConversation")
+    if (!useChatGpt) return SpeechPolisher(settings, runCatching { store.key() }.getOrDefault(""))
+    val accounts = ChatGptAccounts.get(context)
+    val account = accounts.activeId()
+    return ChatGptSpeechPolisher(settings, accounts.selectedModel(account), { force -> accounts.accessToken(account, force) })
+}
 
 /** Shared by native chat, the global assistant and the legacy speech bridge. */
 internal class PolishingSpeechRecognition(
@@ -10,8 +24,7 @@ internal class PolishingSpeechRecognition(
     private val sessionFactory: ((String) -> Unit) -> SpeechPolishSession,
 ) : SpeechRecognition {
     constructor(activity: Context, recognition: SpeechRecognition = SpeechTranscriber(activity)) : this(recognition, { display ->
-        val store = SpeechPolishStore(activity)
-        val polisher = SpeechPolisher(store.load(), kotlin.runCatching { store.key() }.getOrDefault(""))
+        val polisher = transcriptPolisher(activity)
         SpeechPolishSession(polisher::polish, display, polisher::cancel)
     })
     private var session: SpeechPolishSession? = null

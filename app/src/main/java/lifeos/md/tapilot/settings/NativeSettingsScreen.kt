@@ -107,7 +107,8 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
                     if (coordinator.settingsSection == "speech") Status(coordinator.settingsStatus)
                 }
                 Group(label("语音对话与播报", "Voice conversation & playback")) { VoiceOutputSettingsSection(activity, zh, provider) }
-                Group(label("语音润色", "Voice polishing")) { SpeechPolishSettingsSection(activity, zh) }
+                Group(label("语音润色", "Voice polishing")) { SpeechPolishSettingsSection(activity, zh,
+                    coordinator.data.optBoolean("chatgptConversation"), coordinator.chatGpt.model) }
                 if (coordinator.settingsSection == "general") Status(coordinator.settingsStatus)
                 Group(label("外观与语言", "Appearance & language")) {
                     ThemePalettePicker(paletteId, zh) { id ->

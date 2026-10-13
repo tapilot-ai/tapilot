@@ -297,12 +297,21 @@ complete authorization in the system browser, then select an available model. Co
 all use the selected ChatGPT model; no separate model API Key is required.
 Choose a GPT-6 model or a supported GPT-5 vision model. Switch to **API Key** to
 use a regular model API instead. Both configurations are retained when switching;
-only the selected connection is used. Speech keeps its own provider.
+only the selected connection is used. In SIWC mode, optional transcript polishing
+also uses the selected ChatGPT account and model, without a separate polishing key.
+API Key mode retains its independent polishing endpoint, model, and encrypted key.
+Settings → Speech polishing → Try polishing checks a sample transcript on the device.
+Failed polishing preserves the original transcript. ASR keeps its own provider:
+SIWC currently supports neither audio input nor transcription APIs; see the
+[preview limitations](https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations).
 
 Tapilot uses the official SIWC public-client OAuth flow with a loopback callback,
 PKCE, and ID-token validation. Account tokens are stored separately using Android
-Keystore encryption and refreshed before expiry. Each phone-operation process
-receives a current access token; refresh tokens remain in the native credential store. The account picker supports
+Keystore encryption and refreshed before expiry. Every phone-model request obtains
+current credentials from the native store. A 401 triggers one refresh and retries
+only that inference request, without repeating phone actions. Refresh tokens remain
+in the native credential store. Phone tasks have no fixed wall-clock deadline;
+network requests retain timeouts and tasks remain cancellable. The account picker supports
 separate registrations; signing out removes local tokens and attempts remote
 revocation. Pending sign-ins are encrypted too: after a process restart, Tapilot
 reopens the original callback port so the browser callback can be retried within

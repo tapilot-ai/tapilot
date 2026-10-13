@@ -10,17 +10,23 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.json.JSONArray
 import org.json.JSONObject
 
+internal interface TranscriptPolisher {
+    val failureReason: String? get() = null
+    fun cancel()
+    fun polish(text: String): String
+}
+
 /** A failed polish never discards a successfully recognized transcript. */
 internal class SpeechPolisher(
     private val settings: SpeechPolishSettings,
     private val key: String,
     private val client: OkHttpClient = OkHttpClient.Builder().callTimeout(5, TimeUnit.SECONDS)
         .followRedirects(false).followSslRedirects(false).build(),
-) {
+) : TranscriptPolisher {
     @Volatile private var active: Call? = null
     @Volatile private var cancelled = false
-    fun cancel() { cancelled = true; active?.cancel(); client.connectionPool.evictAll() }
-    fun polish(text: String): String {
+    override fun cancel() { cancelled = true; active?.cancel(); client.connectionPool.evictAll() }
+    override fun polish(text: String): String {
         if (cancelled || !settings.enabled || key.isBlank() || text.isBlank()) return text
         return runCatching {
             val config = settings.validated()
@@ -29,6 +35,7 @@ internal class SpeechPolisher(
                 .put("messages", JSONArray().put(JSONObject().put("role", "system").put("content", config.prompt(text)))
                     .put(JSONObject().put("role", "user").put("content", text)))
             when (config.baseUrl.toHttpUrl().host) {
+                "ark.cn-beijing.volces.com" -> if (config.model.startsWith("deepseek-v4-1-")) body.put("thinking", JSONObject().put("type", "disabled"))
                 "api.deepseek.com" -> body.put("thinking", JSONObject().put("type", "disabled"))
                 "generativelanguage.googleapis.com" -> if (config.model.startsWith("gemini-2.5-")) body.put("reasoning_effort", "none")
             }
