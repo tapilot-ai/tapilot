@@ -16,6 +16,7 @@ import android.webkit.WebView
 import lifeos.md.tapilot.ReportActivity
 import lifeos.md.tapilot.LaunchContext
 import lifeos.md.tapilot.TaskRuntimeService
+import lifeos.md.tapilot.accessibility.deviceDisplayMetrics
 import lifeos.md.tapilot.accessibility.MidsceneAccessibilityService
 import lifeos.md.tapilot.accessibility.FloatingBallPreferences
 import lifeos.md.tapilot.accessibility.EdgeEffectGeometryMode
@@ -109,6 +110,9 @@ class NativeJavascriptBridge(
         val requestId = request.getString("requestId")
         val sessionId = request.getString("sessionId")
         val method = request.getString("method")
+        if (method.startsWith("device.") || method in setOf("runtime.runTest", "task.status")) {
+            lifeos.md.tapilot.wireless.DeviceControlLease.checkAccess(sessionId)
+        }
         val service = MidsceneAccessibilityService.current()
 
         when (method) {
@@ -173,13 +177,13 @@ class NativeJavascriptBridge(
                     .put("canInputText", service != null),
             )
             "device.getSize" -> {
-                val bounds = activity.resources.displayMetrics
+                val bounds = activity.deviceDisplayMetrics()
                 respondSuccess(
                     requestId,
                     JSONObject().put("width", bounds.widthPixels).put("height", bounds.heightPixels),
                 )
             }
-            "device.capture" -> requireService(service).capture(sessionId) { result ->
+            "device.capture", "device.prepareAction" -> requireService(service).capture(sessionId, metadataOnly = method == "device.prepareAction") { result ->
                 result.fold(
                     onSuccess = { capture ->
                         val geometry = JSONObject()

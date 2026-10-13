@@ -19,6 +19,13 @@ Tapilot ships under the `lifeos.md.tapilot` application ID. An APK signed with
 the same key can update an existing installation without clearing its app data;
 changing the signing key requires a new installation.
 
+## ChatGPT wireless control
+
+A local ChatGPT desktop / Codex plugin can control this Android phone over Wi-Fi
+using screenshots and individual accessibility actions. Enable wireless control
+in Tapilot settings and pair the computer once. No USB, ADB, or on-phone model API
+key is needed during use. See [plugin setup and limitations](plugins/android-use/README.md).
+
 ## Build
 
 Requirements:

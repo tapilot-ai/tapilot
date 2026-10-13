@@ -106,7 +106,7 @@ class MidsceneAccessibilityService : AccessibilityService() {
     fun validateFrame(frameId: String) {
         val capture = latestCapture
         if (capture?.frameId != frameId) throw StaleFrameException()
-        val metrics = resources.displayMetrics
+        val metrics = deviceDisplayMetrics()
         val rotation = getSystemService(DisplayManager::class.java)
             .getDisplay(Display.DEFAULT_DISPLAY)
             ?.rotation ?: 0
@@ -157,42 +157,45 @@ class MidsceneAccessibilityService : AccessibilityService() {
         if (::floatingBall.isInitialized) { floatingBall.updatePosition(); floatingBall.refreshTheme() }
     }
 
-    fun capture(sessionId: String, callback: (Result<CapturePayload>) -> Unit) {
+    fun capture(sessionId: String, recordFrame: Boolean = true, jpeg: Boolean = false, metadataOnly: Boolean = false, callback: (Result<CapturePayload>) -> Unit) {
         if (isCancelled(sessionId, callback)) return
         if (continuousEffectCapture.tryCapture(deliver = { result ->
             if (cancelledSessions.contains(sessionId)) {
                 result.hardwareBuffer.close()
                 callback(Result.failure(SessionCancelledException()))
             } else {
-                runCatching { encodeCapture(result) }.fold(
+                runCatching { encodeCapture(result, recordFrame, jpeg, metadataOnly) }.fold(
                     onSuccess = { callback(Result.success(it)) },
-                    onFailure = { handler.postDelayed({ captureFullDisplay(sessionId, callback) }, 350L) },
+                    onFailure = { handler.postDelayed({ captureFullDisplay(sessionId, callback, recordFrame = recordFrame, jpeg = jpeg, metadataOnly = metadataOnly) }, 350L) },
                 )
             }
         }, fallback = {
             // Some devices share a rate limit between window and display captures.
-            handler.postDelayed({ captureFullDisplay(sessionId, callback) }, 350L)
+            handler.postDelayed({ captureFullDisplay(sessionId, callback, recordFrame = recordFrame, jpeg = jpeg, metadataOnly = metadataOnly) }, 350L)
         })) return
-        captureFullDisplay(sessionId, callback)
+        captureFullDisplay(sessionId, callback, recordFrame = recordFrame, jpeg = jpeg, metadataOnly = metadataOnly)
     }
 
-    private fun encodeCapture(result: ScreenshotResult): CapturePayload {
+    private fun encodeCapture(result: ScreenshotResult, recordFrame: Boolean, jpeg: Boolean, metadataOnly: Boolean): CapturePayload {
         val hardwareBuffer = result.hardwareBuffer
         val bitmap = try {
             Bitmap.wrapHardwareBuffer(hardwareBuffer, result.colorSpace)?.copy(Bitmap.Config.ARGB_8888, false)
                 ?: error("Unable to copy screenshot buffer")
         } finally { hardwareBuffer.close() }
         try {
-            val output = ByteArrayOutputStream()
-            check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)) { "Unable to encode screenshot" }
-            val metrics = resources.displayMetrics
+            val dataUrl = if (metadataOnly) "" else {
+                val output = ByteArrayOutputStream()
+                check(bitmap.compress(if (jpeg) Bitmap.CompressFormat.JPEG else Bitmap.CompressFormat.PNG, if (jpeg) 75 else 100, output)) { "Unable to encode screenshot" }
+                (if (jpeg) "data:image/jpeg;base64," else "data:image/png;base64,") + Base64.getEncoder().encodeToString(output.toByteArray())
+            }
+            val metrics = deviceDisplayMetrics()
             return CapturePayload(
-                dataUrl = "data:image/png;base64," + Base64.getEncoder().encodeToString(output.toByteArray()),
+                dataUrl = dataUrl,
                 frameId = UUID.randomUUID().toString(), capturedAt = System.currentTimeMillis(),
                 rotation = getSystemService(DisplayManager::class.java).getDisplay(Display.DEFAULT_DISPLAY)?.rotation ?: 0,
                 screenWidth = metrics.widthPixels, screenHeight = metrics.heightPixels,
                 imageWidth = bitmap.width, imageHeight = bitmap.height,
-            ).also { latestCapture = it }
+            ).also { if (recordFrame) latestCapture = it }
         } finally { bitmap.recycle() }
     }
 
@@ -200,6 +203,9 @@ class MidsceneAccessibilityService : AccessibilityService() {
         sessionId: String,
         callback: (Result<CapturePayload>) -> Unit,
         retryAttempt: Int = 0,
+        recordFrame: Boolean = true,
+        jpeg: Boolean = false,
+        metadataOnly: Boolean = false,
     ) {
         if (isCancelled(sessionId, callback)) return
         // Full-display capture includes accessibility overlays. Hide only while
@@ -222,7 +228,7 @@ class MidsceneAccessibilityService : AccessibilityService() {
                             if (cancelledSessions.contains(sessionId)) {
                                 result.hardwareBuffer.close()
                                 callback(Result.failure(SessionCancelledException()))
-                            } else callback(Result.success(encodeCapture(result)))
+                            } else callback(Result.success(encodeCapture(result, recordFrame, jpeg, metadataOnly)))
                         } catch (error: Throwable) {
                             callback(Result.failure(error))
                         } finally {
@@ -240,7 +246,7 @@ class MidsceneAccessibilityService : AccessibilityService() {
                         )
                         if (retryDelay != null) {
                             handler.postDelayed(
-                                { captureFullDisplay(sessionId, callback, retryAttempt + 1) },
+                                { captureFullDisplay(sessionId, callback, retryAttempt + 1, recordFrame, jpeg, metadataOnly) },
                                 retryDelay,
                             )
                             return
@@ -381,7 +387,7 @@ class MidsceneAccessibilityService : AccessibilityService() {
 
     private fun pinchGesture(action: NativeAction.Pinch, callback: (Result<Unit>) -> Unit) {
         val (scaleX, scaleY) = gestureCoordinateScale()
-        val metrics = resources.displayMetrics
+        val metrics = deviceDisplayMetrics()
         val geometry = pinchGeometry(action, metrics.widthPixels, metrics.heightPixels)
         val centerX = geometry.centerX * scaleX
         val centerY = geometry.centerY * scaleY
@@ -420,7 +426,7 @@ class MidsceneAccessibilityService : AccessibilityService() {
     }
 
     private fun gestureCoordinateScale(): Pair<Float, Float> {
-        val metrics = resources.displayMetrics
+        val metrics = deviceDisplayMetrics()
         val currentDisplay = getSystemService(DisplayManager::class.java)
             .getDisplay(Display.DEFAULT_DISPLAY) ?: return 1f to 1f
         val mode = currentDisplay.mode

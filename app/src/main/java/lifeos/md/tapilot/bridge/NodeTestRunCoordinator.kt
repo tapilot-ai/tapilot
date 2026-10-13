@@ -5,6 +5,7 @@ import android.util.Log
 import lifeos.md.tapilot.AppLanguage
 import lifeos.md.tapilot.TaskExecutionStatus
 import lifeos.md.tapilot.TaskRuntimeService
+import lifeos.md.tapilot.accessibility.deviceDisplayMetrics
 import lifeos.md.tapilot.accessibility.MidsceneAccessibilityService
 import lifeos.md.tapilot.report.ReportRepository
 import lifeos.md.tapilot.runtime.InstalledNodeRuntime
@@ -49,9 +50,11 @@ class NodeTestRunCoordinator(
         require(kind == "task" || kind == "yaml") { "Unsupported Node run kind: $kind" }
         check(completion.isDone && !supervisor.isRunning()) { "A Node runtime task is already running" }
         chatGptAccountId = environment["MIDSCENE_CHATGPT_ACCOUNT_ID"]?.takeIf { it.isNotBlank() }
+        // Acquiring can fail while a wireless controller owns the device. Do not leave
+        // an unfinished completion future behind when the task was never started.
+        stopRegistration = ActiveTaskStopRegistry.register(::stop)
         completion = CompletableFuture()
         stopRequested.set(false)
-        stopRegistration = ActiveTaskStopRegistry.register(::stop)
         updateStatus(TaskExecutionStatus.STARTING)
         executor.execute {
             runCatching {
@@ -302,7 +305,7 @@ class NodeTestRunCoordinator(
                             .put("canInputText", service != null),
                     )
                     "device.getSize" -> {
-                        val metrics = appContext.resources.displayMetrics
+                        val metrics = appContext.deviceDisplayMetrics()
                         respondSuccess(
                             requestId,
                             JSONObject().put("width", metrics.widthPixels)

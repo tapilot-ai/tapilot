@@ -35,6 +35,13 @@ Android 14 及以上，模型截图会尝试直接截取单个全屏应用窗口
 Tapilot 采用 `lifeos.md.tapilot` 应用 ID。使用相同签名密钥打出的 APK 可覆盖更新
 已安装的 Tapilot 并保留应用数据；更换签名密钥则需要重新安装。
 
+## ChatGPT 无线控制
+
+电脑上的 ChatGPT / Codex 本地插件可以通过 Wi-Fi 截图、点击、输入、滑动和启动应用。
+在 Tapilot 设置中开启无线控制，首次使用时配对电脑。运行时不需要 USB、ADB 或手机端
+模型 API Key。手机需保持解锁；可从手机设置或通知中停止控制。
+安装方法和使用限制见[插件说明](plugins/android-use/README.md)。
+
 ## 构建
 
 需要 JDK 17、Android SDK Platform 35、对应 Build Tools、Node 和 pnpm。

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "android-use",
+  "version": "0.4.8",
+  "description": "Control your paired Android phone over Wi-Fi from ChatGPT desktop or Codex. No USB or on-phone model API key required.",
+  "author": {
+    "name": "quanru"
+  },
+  "license": "UNLICENSED",
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Android Use",
+        "shortDescription": "Control Android over Wi-Fi",
+        "category": "Productivity",
+        "defaultPrompt": [
+          "Check my paired Android phone, inspect its screen, and help me complete a task."
+        ]
+      }
+    }
+  }
+}
