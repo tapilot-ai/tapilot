@@ -61,7 +61,7 @@ internal fun MessageBubble(message: ChatMessage, zh: Boolean, controller: ChatCo
                 else if (quotaFailure && !details) (if (zh) "模型账户欠费，请充值或在设置中选择可用的模型 API。" else "The model account is overdue. Check your model settings.")
                 else message.text.ifBlank { if (zh) "任务已结束" else "Task finished" }
             if (user) Text(text, color = Color(palette.bubbleText), fontSize = 15.sp, lineHeight = 22.sp)
-            else SelectionContainer { Text(text, fontSize = 15.sp, lineHeight = 22.sp) }
+            else ReplyContentView(text, message.id, zh)
             if (!user) message.task?.let { TaskDetailsView(it, zh) }
             message.attachment?.let {
                 TextButton(onClick = { controller.command("preview", id = message.entryId) }) {
