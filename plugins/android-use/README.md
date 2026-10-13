@@ -144,3 +144,21 @@ It is not shipped in the normal APK. Instrumentation restarts the target process
 and may temporarily disconnect its accessibility service; normal UI operation
 must also be tested outside instrumentation. Final acceptance must include real
 MCP calls against the phone over Wi-Fi and a physically unplugged USB cable.
+
+## Interactive screen (0.3.0)
+
+Click the preview to tap, drag to swipe, or use the navigation and scroll buttons.
+Focus a field on the phone before submitting text. Text entry and Enter are separate
+actions. Letterboxed margins never produce phone touches. Each manual action
+requires a fresh preview frame and consumes it; rotation, stale frames, and lost
+connections require a new observation. Failed actions are never replayed.
+
+Use **Disconnect and release phone** when switching to another conversation or
+controller. The phone allows one controller at a time: an active preview in another
+host is reported as **occupied**, not as a Wi-Fi failure. Pause hides the preview
+for private authentication; it is distinct from releasing the controller.
+
+The transport enables TCP keepalive and disables Nagle buffering. These settings
+do not prevent Android Doze, network changes, or the phone service stopping. Keep
+the phone unlocked and wireless control enabled. Network errors, expired pairing,
+lock, privacy pause, and controller occupancy have distinct UI messages.

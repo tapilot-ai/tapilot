@@ -191,3 +191,45 @@ Waking the screen (without unlocking) restored connectivity and produced the
 correct unlock elicitation again. This version does not guarantee screen-off
 network availability; connection timeouts are not treated as proof of a lock.
 The actual ChatGPT side-panel renderer still requires a refreshed conversation.
+
+### Interactive panel 0.3.0, 2026-10-13 13:50 Asia/Shanghai
+
+Added click-to-tap, drag-to-swipe, navigation/scroll buttons, Chinese text input,
+separate Enter, and explicit disconnect/release. A panel frame expires after ten
+seconds and is consumed by an action. The server takes a fresh native capture
+before a single manual mutation and rejects changed screenshot dimensions. Model
+mutations invalidate pending panel coordinates. A hidden panel cancels gestures.
+Browser-native image dragging is disabled so it cannot steal phone gestures.
+Privacy pause/disconnect clears the displayed image before waiting for the server.
+
+Connection messages now distinguish another controller, pairing failure, lock,
+privacy pause, and network unavailability. Error notices survive frame refreshes.
+TCP keepalive and no-delay are enabled; this is NOT a fix for Android Doze or a
+guarantee of continuous screen-off connectivity.
+
+Validation:
+
+- 18 plugin tests pass. Coverage includes real MCP stdio control dispatch, fresh
+  native frame use, duplicate rejection, coordinate bounds/letterboxing, rotation,
+  Chinese input without submission, disconnect non-replay, and unlock elicitation.
+- Bundled UI built successfully. Browser fixture verified Home, pointer tap, drag,
+  Chinese input, text clearing, pause/resume, and disconnect. A 375×667 dark/reduced-
+  motion view has no horizontal overflow. The browser uses a historical Settings
+  image and mock device, explicitly labelled; these are NOT new phone actions.
+- Ego's higher-level mouse input toggled document visibility between pointer down
+  and up, correctly cancelling gestures. Browser CDP pointer events verified the
+  gesture handlers without that harness interference; form/button handlers were
+  exercised through the DOM.
+- Installed 0.3.0 in the local plugin cache. A fresh Codex app-server discovered
+  all 12 tools with no tool discovery error; the control tool is App-only. Direct
+  MCP discovery returned `ui://android-use/screen-0.3.0.html`.
+- Earlier an existing ChatGPT-owned 0.2.0 process held the Samsung connection. It
+  was not killed. The final native-host and direct installed-plugin observations
+  both timed out connecting to the phone, returning `state=unavailable`. This final
+  timeout does not establish controller occupancy or a locked screen.
+- **Pending:** real-phone validation of the new interactive panel, and actual
+  ChatGPT side-panel rendering after reloading the plugin. User was asked to
+  release the old session or cycle wireless control. No new phone-action success
+  or resolved disconnection claim is made. The Android APK was not changed.
+
+![Interactive panel browser fixture, not a live phone](interactive-panel-fixture.png)

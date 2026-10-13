@@ -11,6 +11,8 @@ export class PhoneConnection {
   async open(pair = false) {
     if (this.connected) return;
     const socket = tls.connect({ host: this.config.host, port: this.config.port, minVersion: 'TLSv1.2', maxVersion: 'TLSv1.2', rejectUnauthorized: false });
+    socket.setKeepAlive(true, 10000);
+    socket.setNoDelay(true);
     this.#socket = socket;
     this.#buffer = Buffer.alloc(0);
     socket.on('data', data => this.#receive(data));

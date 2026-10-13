@@ -76,7 +76,8 @@ test('tools reject invalid arguments before contacting phone', async () => {
 test('real MCP stdio handshake, image content, schema and disconnect', async t => {
   const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
   const { dir, config, requests } = await fixture(t, (request, reply) => {
-    if (request.method === 'device.capture') reply({ dataUrl: `data:image/png;base64,${png}`, geometry: { frameId: 'f1', imageWidth: 1, imageHeight: 1 } });
+    if (request.method === 'device.preview') reply({ dataUrl: `data:image/png;base64,${png}`, capturedAt: Date.now() });
+    else if (request.method === 'device.capture') reply({ dataUrl: `data:image/png;base64,${png}`, geometry: { frameId: 'f1', imageWidth: 1, imageHeight: 1 } });
     else reply({ canCapture: true });
   });
   const path = join(dir, 'config.json'); await saveConfig(config, path);
@@ -85,7 +86,7 @@ test('real MCP stdio handshake, image content, schema and disconnect', async t =
   const client = new Client({ name: 'acceptance', version: '1' });
   t.after(() => client.close());
   await client.connect(transport);
-  assert.equal((await client.listTools()).tools.length, 11);
+  assert.equal((await client.listTools()).tools.length, 12);
   const resources = await client.listResources();
   const resource = await client.readResource({ uri: resources.resources[0].uri });
   assert.match(resource.contents[0].text, /Android Use/);
@@ -96,8 +97,15 @@ test('real MCP stdio handshake, image content, schema and disconnect', async t =
   assert.equal(JSON.parse(result.content[0].text).frameId, 'f1');
   const invalid = await client.callTool({ name: 'tapilot_tap', arguments: {} });
   assert.equal(invalid.isError, true);
+  const frame = await client.callTool({ name: 'tapilot_preview_frame', arguments: {} });
+  const args = { frame_id: frame.structuredContent.frame_id, action: 'tap', x: .5, y: .5 };
+  const action = await client.callTool({ name: 'tapilot_preview_control', arguments: args });
+  assert.equal(action.isError, undefined);
+  assert.equal(action.structuredContent.action_completed, true);
+  const repeated = await client.callTool({ name: 'tapilot_preview_control', arguments: args });
+  assert.equal(repeated.isError, true);
   await client.callTool({ name: 'tapilot_disconnect', arguments: {} });
-  assert.deepEqual(requests.map(r => r.method), ['authenticate', 'device.capture', 'disconnect']);
+  assert.deepEqual(requests.map(r => r.method), ['authenticate', 'device.capture', 'device.preview', 'device.capture', 'device.execute', 'disconnect']);
 });
 
 test('pairing links validate endpoint and credentials without echoing secrets', () => {
@@ -110,7 +118,7 @@ test('preview uses independent capture, pauses on lock and requires explicit res
   const preview = new Preview(); let locked = false; const methods = [];
   const phone = { open: async () => {}, request: async method => {
     methods.push(method); if (locked) throw new Error('Phone is locked. Unlock it on the device.');
-    return { dataUrl: 'data:image/png;base64,abc', capturedAt: 1 };
+    return { dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', capturedAt: 1 };
   } };
   assert.equal((await preview.frame(phone)).structuredContent.state, 'disconnected');
   assert.equal(methods.length, 0);

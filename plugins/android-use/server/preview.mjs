@@ -1,13 +1,18 @@
-export const SCREEN_URI = 'ui://android-use/screen-0.2.0.html';
+import { randomUUID } from 'node:crypto';
+import { control, imageSize } from './panel-controls.mjs';
+export const SCREEN_URI = 'ui://android-use/screen-0.3.0.html';
 export const SCREEN_META = { ui: { csp: { connectDomains: [], resourceDomains: [] }, prefersBorder: false }, 'openai/ui': { availableDisplayModes: ['fullscreen'], preferredDisplayMode: 'fullscreen' } };
 export const PANEL_META = { 'openai/widgetSessionId': 'android-use-screen' };
 export const isLocked = error => /^(Unlock the phone first|Phone is locked\. Unlock it on the device\.)$/.test(error.message);
+export const connectionState = error => /Another task is already registered|already owned/i.test(error.message) ? 'occupied' : /certificate changed|Not paired|Pair this computer first/i.test(error.message) ? 'pairing_required' : 'unavailable';
 const result = data => ({ content: [], structuredContent: data });
 
 export class Preview {
   reason = 'disconnected';
   revision = 0;
-  pause(reason = 'manual') { this.reason = reason; this.revision++; }
+  lastFrame;
+  invalidate() { this.lastFrame = undefined; }
+  pause(reason = 'manual') { this.reason = reason; this.revision++; this.invalidate(); }
   observe() { if (this.reason === 'disconnected') this.reason = null; }
   async resume(phone) {
     // This probe cannot invalidate the model's last actionable frame.
@@ -16,16 +21,25 @@ export class Preview {
     this.reason = null;
     return result({ state: 'live' });
   }
+  async control(phone, args) {
+    const frame = this.lastFrame;
+    this.invalidate(); // Every submitted action consumes the visible frame.
+    if (this.reason) throw new Error('Screen paused or disconnected. Resume and inspect first.');
+    await control(phone, frame, args);
+    return result({ state: 'live', action_completed: true });
+  }
   async frame(phone) {
     if (this.reason) return result({ state: this.reason });
     try {
       await phone.open();
       const frame = await phone.request('device.preview');
-      if (typeof frame.dataUrl !== 'string' || !frame.dataUrl.startsWith('data:image/png;base64,')) throw new Error('Invalid preview frame');
-      return result({ state: 'live', ...frame });
+      const size = imageSize(frame.dataUrl);
+      this.lastFrame = { id: randomUUID(), receivedAt: performance.now(), ...size };
+      return result({ state: 'live', ...frame, frame_id: this.lastFrame.id, ...size });
     } catch (error) {
       if (isLocked(error)) this.pause('device_locked');
-      return result({ state: this.reason ?? 'unavailable', message: error.message });
+      this.invalidate();
+      return result({ state: this.reason ?? connectionState(error), message: error.message });
     }
   }
 }
