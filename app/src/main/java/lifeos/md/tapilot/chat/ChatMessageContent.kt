@@ -58,7 +58,6 @@ internal fun MessageBubble(message: ChatMessage, zh: Boolean, controller: ChatCo
             .combinedClickable(onClick = {}, onLongClick = { menu = true })
             .padding(horizontal = 14.dp, vertical = 12.dp)) {
             val text = if (!user && message.status == "running") (if (zh) "正在处理…" else "Working…")
-                else if (!user && message.status == "stopped") (if (zh) "任务已停止" else "Task stopped")
                 else if (quotaFailure && !details) (if (zh) "模型账户欠费，请充值或在设置中选择可用的模型 API。" else "The model account is overdue. Check your model settings.")
                 else message.text.ifBlank { if (zh) "任务已结束" else "Task finished" }
             if (user) Text(text, color = Color(palette.bubbleText), fontSize = 15.sp, lineHeight = 22.sp)

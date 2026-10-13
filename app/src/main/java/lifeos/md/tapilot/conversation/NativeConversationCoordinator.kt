@@ -110,9 +110,7 @@ class NativeConversationCoordinator(
             val status = e.optString("status")
             val reports = e.optJSONArray("reports")?.objects().orEmpty()
             val report = reports.lastOrNull { it.optString("kind") == "agent" } ?: reports.lastOrNull()
-            val response = e.optString("reply").ifBlank {
-                when (status) { "stopped" -> local("任务已停止", "Task stopped"); "failed" -> e.optString("detail"); else -> "" }
-            }
+            val response = TaskFeedback.response(e, chinese)
             val user = e.optLong("createdAt") to ChatMessage("$id-user", "user", e.optString("inputText", e.optString("source")).ifBlank { e.optString("source") }, status, "", id,
                 ChatAttachment.parse(e.optJSONObject("attachment")))
             if (e.optString("kind") == "instruction" && status !in listOf("stopped", "failed")) listOf(user)
@@ -120,7 +118,7 @@ class NativeConversationCoordinator(
                 ChatMessage("$id-assistant", "assistant", response, status, report?.optString("reportId").orEmpty(), id, task = ChatTask(e.optString("phase"),
                     e.optJSONArray("plan")?.strings().orEmpty(), e.optInt("currentStep"), e.optInt("modelTurns"),
                     e.optInt("phoneOperations"), e.optInt("attempt", 1), e.optJSONArray("completedOperations")?.objects().orEmpty()
-                        .map { it.optString("instruction") to it.optBoolean("success") })))
+                        .map { ChatOperation(it.optString("instruction"), it.optBoolean("success"), it.optString("result")) })))
         }.sortedBy { it.first }.map { it.second }
         val conversations = history.sortedByDescending { it.optLong("createdAt") }.distinctBy { conversation(it) }.map { e ->
             val first = history.filter { conversation(it) == conversation(e) }.minBy { it.optLong("createdAt") }
@@ -165,7 +163,7 @@ class NativeConversationCoordinator(
                 "accessibility" -> services.call("app.openAccessibilitySettings") { it.onFailure(::fail) }
                 "confirm" -> {
                     if (value.optBoolean("accepted") && value.optString("text").isNotBlank()) confirmation?.complete(value.getString("text").trim())
-                    else stop()
+                    else stop(reason = "declined")
                     confirmation = null; confirmationText = null
                 }
             }
@@ -184,7 +182,7 @@ class NativeConversationCoordinator(
         }
         if (pendingAttachment == null && TaskLifecycle.isNewTask(text)) {
             pendingTurns.add(JSONObject().put("text", text).put("global", globalMode))
-            data.put("draft", ""); draftEpoch++; save(); stop(clearPending = false)
+            data.put("draft", ""); draftEpoch++; save(); stop(clearPending = false, reason = "new_task")
             progress = progress?.copy(title = local("正在停止旧任务，随后开始新任务", "Stopping before starting the new task"))
             return
         }
@@ -209,7 +207,7 @@ class NativeConversationCoordinator(
             pendingAttachment?.let { put("attachment", JSONObject(it.toString())) }
         })
         data.put("draft", ""); pendingAttachment = null; draftEpoch++; save()
-        stop(clearPending = false)
+        stop(clearPending = false, reason = "new_input")
         progress = progress?.copy(title = local("正在打断，随后处理新消息", "Interrupting, then processing your message"))
     }
     private fun consumePendingTurn(): Boolean {
@@ -244,7 +242,7 @@ class NativeConversationCoordinator(
         // then apply the next message to this task's saved context.
         if (running && activeTaskId.isNotBlank()) panelResumeId = activeTaskId
         settingsOpen = false; advancedOpen = false; preview = null
-        stop(clearPending = false)
+        stop(clearPending = false, reason = "panel")
         publish()
     }
     fun receiveLaunchContext() {
@@ -374,7 +372,16 @@ class NativeConversationCoordinator(
             val message = if (stopped.get()) local("任务已停止", "Task stopped") else outcome.getOrElse { it.cause?.message ?: it.message ?: "任务失败" }
             runCatching { await("task.status", JSONObject().put("status", status), runSession) }
             runCatching { await("task.complete", sessionId = runSession) }
-            if (global) runCatching { await("app.showGlobalResult", JSONObject().put("message", message), runSession) }
+            var feedback = message
+            onMain {
+                find(id)?.let { current ->
+                    val snapshot = JSONObject(current.toString()).put("status", status)
+                        .put("completedOperations", completedOperations)
+                        .put(if (status == "succeeded") "reply" else "detail", message)
+                    feedback = TaskFeedback.response(snapshot, chinese)
+                }
+            }
+            if (global) runCatching { await("app.showGlobalResult", JSONObject().put("message", feedback), runSession) }
             else if (phoneStarted && !stopped.get() && !backgroundReplies) runCatching { await("app.bringToFront", sessionId = runSession) }
             handler.post {
                 if (closed) return@post
@@ -456,11 +463,13 @@ class NativeConversationCoordinator(
         handler.post { if (!closed) runCatching(action).fold({ done.complete(Unit) }, done::completeExceptionally) else done.complete(Unit) }
         done.get(10, TimeUnit.SECONDS)
     }
-    fun stop(clearPending: Boolean = true) {
+    fun stop(clearPending: Boolean = true, reason: String = "user") {
         if (clearPending) { pendingTurns.clear(); if (ready) save() }
         if (!running) return
         if (cancellation.get()) { publish(); return }
         val barrier = CompletableFuture<Any?>(); stopBarrier = barrier
+        find(activeTaskId)?.put("stopReason", reason)
+        save()
         cancellation.set(true)
         pi.stop()
         progress = progress?.copy(title = local("正在停止", "Stopping"))
@@ -470,7 +479,7 @@ class NativeConversationCoordinator(
         publish()
     }
     fun back(): Boolean = when {
-        confirmationText != null -> { stop(); true }
+        confirmationText != null -> { stop(reason = "declined"); true }
         preview != null -> { preview = null; publish(); true }
         advancedOpen -> { advancedOpen = false; true }
         settingsOpen -> { settingsOpen = false; publish(); true }
@@ -531,5 +540,5 @@ class NativeConversationCoordinator(
         services.call("app.pruneAttachments", JSONObject().put("ids", JSONArray())) {}
     }
     fun executeYaml(source: String) { advancedOpen = false; start(source, file = null, kind = "yaml") }
-    override fun close() { stop(); pi.close(); closed = true; worker.shutdownNow(); handler.removeCallbacksAndMessages(null) }
+    override fun close() { stop(reason = "app"); pi.close(); closed = true; worker.shutdownNow(); handler.removeCallbacksAndMessages(null) }
 }

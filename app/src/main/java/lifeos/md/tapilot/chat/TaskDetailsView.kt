@@ -33,9 +33,10 @@ internal fun TaskDetailsView(task: ChatTask, zh: Boolean) {
             val marker = if (index < task.currentStep) "✓" else if (index == task.currentStep && task.phase == "running") "›" else "·"
             Text("$marker $step", fontSize = 12.sp, color = colors.onSurfaceVariant, modifier = Modifier.padding(vertical = 3.dp))
         }
-        task.operations.forEach { (instruction, success) ->
+        task.operations.forEach { (instruction, success, result) ->
             Text("${if (success) "✓" else "!"} $instruction", fontSize = 12.sp, color = if (success) colors.onSurfaceVariant else colors.error,
                 modifier = Modifier.padding(vertical = 3.dp))
+            if (!success && result.isNotBlank()) Text(result, fontSize = 12.sp, color = colors.error, modifier = Modifier.padding(start = 12.dp, bottom = 6.dp))
         }
         Text(if (zh) "第 ${task.attempt} 次尝试 · ${task.modelTurns} 轮对话" else "Attempt ${task.attempt} · ${task.modelTurns} model turns",
             fontSize = 11.sp, color = colors.onSurfaceVariant)

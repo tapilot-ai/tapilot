@@ -16,8 +16,10 @@ data class ChatAttachment(val name: String, val kind: String, val preview: Strin
         }
     }
 }
+data class ChatOperation(val instruction: String, val success: Boolean, val result: String)
+
 data class ChatTask(val phase: String, val plan: List<String>, val currentStep: Int,
-    val modelTurns: Int, val phoneOperations: Int, val attempt: Int, val operations: List<Pair<String, Boolean>>)
+    val modelTurns: Int, val phoneOperations: Int, val attempt: Int, val operations: List<ChatOperation>)
 data class ChatProgress(val title: String, val detail: String, val operation: String, val startedAt: Long, val step: Int)
 
 data class ChatState(
