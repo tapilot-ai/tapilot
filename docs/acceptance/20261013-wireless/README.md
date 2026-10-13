@@ -3,7 +3,8 @@
 Baseline: `e5dd7bf`. Implementation lives on `feat/wifi-mcp` in an isolated worktree
 so concurrent ChatGPT account integration changes in the original checkout are
 not overwritten. This record distinguishes protocol tests from physical-phone
-acceptance; it is not a claim of complete cable-free end-to-end validation.
+acceptance. Cable-free control through the installed MCP artifact passed; native
+ChatGPT tool discovery remains a separate host integration check.
 
 ## Automated checks
 
@@ -66,9 +67,24 @@ no app-data reset and no ADB TCP mode or port forwarding was used.
   documents the full-display metrics used here.
 - Final installed APK SHA-256:
   `2cb26c6f9827410bfe588e4b2247f1dccf03376a3075307fb44c8341f3c654d3`.
-- USB was still physically attached at the last ADB inventory. **Actual cable
-  removal remains pending user action.** Wi-Fi transport is proven; a complete
-  unplugged acceptance is not yet claimed.
+- **Physical USB removal passed**, October 13, 2026, 12:12–12:14 Asia/Shanghai:
+  the user unplugged the phone and `adb devices -l` no longer listed Samsung
+  serial `R5CN90V1AYP` (only an unrelated device and emulator remained).
+  A new installed-plugin process authenticated using the existing pairing over
+  Wi-Fi, then returned a fresh 1080×2316 screen.
+- Without USB, changed the focused search field to Chinese `显示` (126 ms).
+  The next screenshot shows `显示`, four popular results, and 90 search results.
+  Tapped the visible screen-mode result (255 ms), and a screenshot confirmed
+  the Display settings page opened. Swiped its list (765 ms), explicitly
+  disconnected, then reconnected through `tapilot_screen` (727 ms including
+  connection). The returned screenshot shows the lower Display settings list,
+  including resolution, timeout, navigation bar, and accidental-touch protection.
+  No setting toggles were changed. USB inventory was checked again at cleanup.
+- Cable-free screenshots took 538–567 ms on this run. Testing used the actual
+  installed stdio MCP plugin with an SDK host, not ChatGPT's native tool picker.
+
+![Cable-free Chinese input](unplugged-chinese-search.png)
+![Cable-free swipe and reconnect](unplugged-swipe-reconnect.png)
 
 ![Settings list after MCP swipe](settings-after-swipe.png)
 ![Chinese search result from MCP screenshot](chinese-search-result.png)
@@ -83,10 +99,9 @@ that this conversation has invoked the plugin through its native tool picker.
 
 ## Remaining acceptance
 
-1. Remove USB physically and repeat a visible action and screenshot.
-2. Reload the desktop host/open a fresh conversation and verify native plugin
+1. Reload the desktop host/open a fresh conversation and verify native plugin
    tool discovery. This run proves the installed stdio MCP artifact against a
    real phone, not invocation through ChatGPT's native tool picker.
-3. Verify local-task exclusion, notification stop, and revocation on the device.
-4. Verify Android 14+ connected-device service behavior and idle/network-change
+2. Verify local-task exclusion, notification stop, and revocation on the device.
+3. Verify Android 14+ connected-device service behavior and idle/network-change
    behavior on additional OS/device combinations. No always-on Doze guarantee.
