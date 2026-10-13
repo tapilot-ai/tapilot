@@ -3,7 +3,8 @@
 Control a paired Android phone from a **local** ChatGPT desktop / Codex session.
 ChatGPT sees screenshots and calls individual actions; this path does not call the
 phone's model provider or need an API key. The computer still needs internet for
-ChatGPT. No ADB, USB, public server, tunnel, or browser UI is used by the plugin.
+ChatGPT. No ADB, USB, public server, or tunnel is used by the plugin. The live preview
+runs as a bundled MCP App inside the supporting desktop host.
 
 ## Install and pair
 
@@ -69,7 +70,40 @@ breaks, its outcome may be unknown: capture and inspect before another action.
 The phone must remain unlocked. Secure windows may reject screenshots, and some
 custom input fields do not support accessibility text input. OEM battery policy
 and Doze can interrupt wireless availability. This version does not promise
-always-on locked-screen automation or live video streaming.
+always-on locked-screen automation or high-frame-rate video streaming.
+
+## Unlock and live side panel
+
+The phone must be unlocked. When it is locked, supported MCP hosts show an
+interactive unlock form. Unlock **on the phone**, then choose `已完成继续`.
+Hosts without form elicitation receive a structured `phone_locked` response
+instructing the agent to use its interactive question tool and wait for the reply.
+Never enter the phone passcode in chat. Only a fresh observation may be retried
+once after confirmation; a blocked mutation is never automatically replayed.
+
+`tapilot_screen` opens/reuses an MCP App side panel while returning an actual
+screenshot to the model. `tapilot_preview(action=open)` reopens the panel.
+The panel polls a separate `device.preview` endpoint about once per second
+plus capture latency, over the existing pinned Wi-Fi connection. It does not
+invalidate the model's last action frame. Requires the Android APK built with
+this plugin's 0.2.0 preview support; upgrade older APKs first.
+
+Locked/disconnected/paused states clear the displayed image. The panel offers
+`已完成继续` for unlock/authentication and a pause button. Before entering app
+passwords or other private authentication, pause through the panel or
+`tapilot_preview(action=pause)`. This also blocks model phone operations until
+explicit resume. Hidden or closed panels stop polling. Finishing a task with
+`tapilot_disconnect` stops collection; merely opening an existing panel does not
+clear a manual or lock pause. Live frames go only to the App response, not model
+observations. A supporting desktop host chooses the right-side/fullscreen layout;
+clients without MCP Apps continue to receive normal screenshot tools.
+
+Rebuild the bundled, offline UI after source edits:
+
+```sh
+npm ci --prefix plugins/android-use
+npm run build:ui --prefix plugins/android-use
+```
 
 ## Transport and credentials
 

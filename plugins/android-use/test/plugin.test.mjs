@@ -6,6 +6,8 @@ import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { ElicitRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { Preview, unlockRequired } from '../server/preview.mjs';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { PhoneConnection } from '../server/transport.mjs';
@@ -83,7 +85,11 @@ test('real MCP stdio handshake, image content, schema and disconnect', async t =
   const client = new Client({ name: 'acceptance', version: '1' });
   t.after(() => client.close());
   await client.connect(transport);
-  assert.equal((await client.listTools()).tools.length, 8);
+  assert.equal((await client.listTools()).tools.length, 11);
+  const resources = await client.listResources();
+  const resource = await client.readResource({ uri: resources.resources[0].uri });
+  assert.match(resource.contents[0].text, /Android Use/);
+  assert.deepEqual(resource.contents[0]._meta.ui.csp.connectDomains, []);
   const result = await client.callTool({ name: 'tapilot_screen', arguments: {} });
   assert.equal(result.isError, undefined);
   assert.equal(result.content[1].type, 'image'); assert.equal(result.content[1].data, png);
@@ -97,4 +103,72 @@ test('real MCP stdio handshake, image content, schema and disconnect', async t =
 test('pairing links validate endpoint and credentials without echoing secrets', () => {
   assert.throws(() => parsePairingLink('tapilot://pair/not-valid'), /Invalid/);
   assert.throws(() => parsePairingLink('https://example.com'), /Paste/);
+});
+
+
+test('preview uses independent capture, pauses on lock and requires explicit resume', async () => {
+  const preview = new Preview(); let locked = false; const methods = [];
+  const phone = { open: async () => {}, request: async method => {
+    methods.push(method); if (locked) throw new Error('Phone is locked. Unlock it on the device.');
+    return { dataUrl: 'data:image/png;base64,abc', capturedAt: 1 };
+  } };
+  assert.equal((await preview.frame(phone)).structuredContent.state, 'disconnected');
+  assert.equal(methods.length, 0);
+  preview.observe(); assert.equal((await preview.frame(phone)).structuredContent.state, 'live');
+  assert.deepEqual(methods, ['device.preview']);
+  locked = true; assert.equal((await preview.frame(phone)).structuredContent.state, 'device_locked');
+  locked = false; assert.equal((await preview.frame(phone)).structuredContent.state, 'device_locked');
+  await preview.resume(phone); assert.equal(preview.reason, null);
+  preview.pause(); preview.observe(); assert.equal(preview.reason, 'manual');
+  assert.equal((await preview.frame(phone)).structuredContent.dataUrl, undefined);
+});
+
+test('unlock interaction waits for actual acceptance and never repeats mutations', async () => {
+  let repeated = 0, prompts = 0, answer = { action: 'cancel' };
+  const server = { getClientCapabilities: () => ({ elicitation: { form: {} } }), elicitInput: async () => { prompts++; return answer; } };
+  const preview = new Preview(); const retry = async () => { repeated++; return { content: [] }; };
+  const declined = await unlockRequired(server, preview, {}, 'tapilot_screen', retry);
+  assert.equal(JSON.parse(declined.content[0].text).needs_user_input, true);
+  assert.equal(repeated, 0);
+  answer = { action: 'accept', content: { completion: '已完成继续' } };
+  await unlockRequired(server, preview, {}, 'tapilot_tap', retry);
+  assert.equal(repeated, 0);
+  await unlockRequired(server, preview, {}, 'tapilot_screen', retry);
+  assert.equal(repeated, 1); assert.equal(prompts, 3); assert.equal(preview.reason, null);
+  const fallback = await unlockRequired({ getClientCapabilities: () => ({}) }, preview, {}, 'tapilot_screen', retry);
+  assert.equal(JSON.parse(fallback.content[0].text).code, 'phone_locked'); assert.equal(repeated, 1);
+});
+
+test('real MCP lock elicits once then returns fresh screen after user completion', async t => {
+  let locked = true, prompts = 0;
+  const { dir, config, requests } = await fixture(t, (request, reply, socket) => {
+    if (locked) socket.write(JSON.stringify({ id: request.id, ok: false, error: 'Phone is locked. Unlock it on the device.' }) + '\n');
+    else reply({ dataUrl: 'data:image/png;base64,YQ==', geometry: { frameId: 'unlocked' } });
+  });
+  const path = join(dir, 'config.json'); await saveConfig(config, path);
+  const client = new Client({ name: 'unlock-test', version: '1' }, { capabilities: { elicitation: { form: {} } } });
+  client.setRequestHandler(ElicitRequestSchema, async request => {
+    prompts++; assert.match(request.params.message, /手动解锁/);
+    const paused = await client.callTool({ name: 'tapilot_preview_frame', arguments: {} });
+    assert.equal(paused.structuredContent.state, 'device_locked');
+    assert.equal(paused.structuredContent.dataUrl, undefined);
+    locked = false;
+    return { action: 'accept', content: { completion: '已完成继续' } };
+  });
+  t.after(() => client.close());
+  await client.connect(new StdioClientTransport({ command: process.execPath, args: [new URL('../server/index.mjs', import.meta.url).pathname], env: { ...process.env, TAPILOT_CONFIG: path }, stderr: 'pipe' }));
+  const result = await client.callTool({ name: 'tapilot_screen', arguments: {} });
+  assert.equal(result.isError, undefined); assert.equal(prompts, 1);
+  assert.equal(JSON.parse(result.content[0].text).frameId, 'unlocked');
+  assert.equal(requests.filter(r => r.method === 'device.capture').length, 2);
+});
+
+
+test('a newer privacy pause or disconnect wins over an old unlock dialog', async () => {
+  const preview = new Preview(); let retried = false;
+  const server = { getClientCapabilities: () => ({ elicitation: { form: {} } }), elicitInput: async () => {
+    preview.pause('manual'); return { action: 'accept', content: { completion: '已完成继续' } };
+  } };
+  await unlockRequired(server, preview, {}, 'tapilot_screen', async () => { retried = true; });
+  assert.equal(retried, false); assert.equal(preview.reason, 'manual');
 });

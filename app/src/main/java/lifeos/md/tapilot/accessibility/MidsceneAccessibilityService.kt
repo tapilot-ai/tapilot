@@ -157,26 +157,26 @@ class MidsceneAccessibilityService : AccessibilityService() {
         if (::floatingBall.isInitialized) { floatingBall.updatePosition(); floatingBall.refreshTheme() }
     }
 
-    fun capture(sessionId: String, callback: (Result<CapturePayload>) -> Unit) {
+    fun capture(sessionId: String, recordFrame: Boolean = true, callback: (Result<CapturePayload>) -> Unit) {
         if (isCancelled(sessionId, callback)) return
         if (continuousEffectCapture.tryCapture(deliver = { result ->
             if (cancelledSessions.contains(sessionId)) {
                 result.hardwareBuffer.close()
                 callback(Result.failure(SessionCancelledException()))
             } else {
-                runCatching { encodeCapture(result) }.fold(
+                runCatching { encodeCapture(result, recordFrame) }.fold(
                     onSuccess = { callback(Result.success(it)) },
-                    onFailure = { handler.postDelayed({ captureFullDisplay(sessionId, callback) }, 350L) },
+                    onFailure = { handler.postDelayed({ captureFullDisplay(sessionId, callback, recordFrame = recordFrame) }, 350L) },
                 )
             }
         }, fallback = {
             // Some devices share a rate limit between window and display captures.
-            handler.postDelayed({ captureFullDisplay(sessionId, callback) }, 350L)
+            handler.postDelayed({ captureFullDisplay(sessionId, callback, recordFrame = recordFrame) }, 350L)
         })) return
-        captureFullDisplay(sessionId, callback)
+        captureFullDisplay(sessionId, callback, recordFrame = recordFrame)
     }
 
-    private fun encodeCapture(result: ScreenshotResult): CapturePayload {
+    private fun encodeCapture(result: ScreenshotResult, recordFrame: Boolean): CapturePayload {
         val hardwareBuffer = result.hardwareBuffer
         val bitmap = try {
             Bitmap.wrapHardwareBuffer(hardwareBuffer, result.colorSpace)?.copy(Bitmap.Config.ARGB_8888, false)
@@ -192,7 +192,7 @@ class MidsceneAccessibilityService : AccessibilityService() {
                 rotation = getSystemService(DisplayManager::class.java).getDisplay(Display.DEFAULT_DISPLAY)?.rotation ?: 0,
                 screenWidth = metrics.widthPixels, screenHeight = metrics.heightPixels,
                 imageWidth = bitmap.width, imageHeight = bitmap.height,
-            ).also { latestCapture = it }
+            ).also { if (recordFrame) latestCapture = it }
         } finally { bitmap.recycle() }
     }
 
@@ -200,6 +200,7 @@ class MidsceneAccessibilityService : AccessibilityService() {
         sessionId: String,
         callback: (Result<CapturePayload>) -> Unit,
         retryAttempt: Int = 0,
+        recordFrame: Boolean = true,
     ) {
         if (isCancelled(sessionId, callback)) return
         // Full-display capture includes accessibility overlays. Hide only while
@@ -222,7 +223,7 @@ class MidsceneAccessibilityService : AccessibilityService() {
                             if (cancelledSessions.contains(sessionId)) {
                                 result.hardwareBuffer.close()
                                 callback(Result.failure(SessionCancelledException()))
-                            } else callback(Result.success(encodeCapture(result)))
+                            } else callback(Result.success(encodeCapture(result, recordFrame)))
                         } catch (error: Throwable) {
                             callback(Result.failure(error))
                         } finally {
@@ -240,7 +241,7 @@ class MidsceneAccessibilityService : AccessibilityService() {
                         )
                         if (retryDelay != null) {
                             handler.postDelayed(
-                                { captureFullDisplay(sessionId, callback, retryAttempt + 1) },
+                                { captureFullDisplay(sessionId, callback, retryAttempt + 1, recordFrame) },
                                 retryDelay,
                             )
                             return

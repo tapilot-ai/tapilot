@@ -121,3 +121,42 @@ its tool-picker UI and automatic model selection are not claimed as tested.
 2. Verify local-task exclusion, notification stop, and revocation on the device.
 3. Verify Android 14+ connected-device service behavior and idle/network-change
    behavior on additional OS/device combinations. No always-on Doze guarantee.
+
+## Version 0.2.0: unlock interaction and MCP App preview
+
+Implemented a bundled `ui://android-use/screen-0.2.0.html` App, matching the
+resource/metadata convention used by the sibling iPhone Use project. A stable
+widget session ID requests panel reuse. Host layout support determines whether
+it opens in the right-side/fullscreen surface. App-only frame/resume tools return
+preview data in structured content, separately from model screenshots.
+
+The phone's new `device.preview` method captures without replacing the actionable
+frame. Native capture and its retries carry `recordFrame=false` for this path;
+normal captures retain the existing behavior. Locked devices are rejected before
+and after wireless captures. Preview polls are serialized with model operations.
+The UI polls at one second intervals plus capture latency, clears images on
+lock/pause/disconnect, and stops polling while hidden or torn down.
+
+Model tools encountering a locked phone request MCP form elicitation when
+supported, with the actual `已完成继续` answer required. Unsupported hosts receive
+an explicit interactive-question fallback instruction. Only an observation may
+be retried once; no mutation is replayed. The device queue is released while
+waiting for the answer, so preview polls can observe the lock state. A newer
+manual pause or disconnect prevents an old dialog from resuming capture.
+
+Validation:
+
+- Ten plugin tests pass, including a real MCP client lock→elicitation→confirmation
+  →fresh observation cycle, preview polling during the dialog, cancellation,
+  mutation non-replay, privacy-pause precedence, and resource discovery/read.
+- Android unit tests and `assembleDebug` pass (171 passed, one existing skip).
+- Installed plugin 0.2.0: a fresh Codex app-server discovers all eleven tools,
+  including two App-only tools, and reads the offline HTML resource with the
+  expected MIME type, empty network CSP lists, and fullscreen metadata.
+- Built APK SHA-256:
+  `7114d3491ee3e79f9d110acc14e891fdddbe7ac831a68ff487b30ee1ed62b8e7`.
+- **Pending:** install this APK on the Samsung, exercise preview between a model
+  screenshot and tap, physically lock/unlock while observing the interaction,
+  and verify the actual ChatGPT side-panel renderer. The Samsung was still
+  absent from USB inventory after requesting a temporary reconnection. Neither
+  live-panel rendering nor real-device unlock interaction is claimed passed.

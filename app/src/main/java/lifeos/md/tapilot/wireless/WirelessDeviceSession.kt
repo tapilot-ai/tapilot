@@ -34,11 +34,24 @@ internal class WirelessDeviceSession(private val context: Context, private val d
     }
 
     fun call(method: String, params: JSONObject): Any? {
-        require(method in setOf("device.getCapabilities", "device.getSize", "device.capture", "device.execute")) { "Unsupported wireless method" }
+        require(method in setOf("device.getCapabilities", "device.getSize", "device.capture", "device.preview", "device.execute")) { "Unsupported wireless method" }
         val prepared = if (method == "device.execute") actionPolicy.prepare(params) else params
         val result = onMain<Any?> { done ->
             check(!context.getSystemService(KeyguardManager::class.java).isDeviceLocked) { "Phone is locked. Unlock it on the device." }
-            (context.applicationContext as TapilotApplication).assistant.bridge.call(method, prepared, id, done)
+            if (method == "device.preview") {
+                val service = checkNotNull(MidsceneAccessibilityService.current()) { "Enable Tapilot device control in Accessibility settings" }
+                service.capture(id, recordFrame = false) { captured ->
+                    done(captured.mapCatching { frame ->
+                        check(!context.getSystemService(KeyguardManager::class.java).isDeviceLocked) { "Phone is locked. Unlock it on the device." }
+                        JSONObject().put("dataUrl", frame.dataUrl).put("capturedAt", frame.capturedAt)
+                    })
+                }
+            } else {
+                (context.applicationContext as TapilotApplication).assistant.bridge.call(method, prepared, id, done)
+            }
+        }
+        if (method == "device.capture" || method == "device.preview") {
+            check(!context.getSystemService(KeyguardManager::class.java).isDeviceLocked) { "Phone is locked. Unlock it on the device." }
         }
         if (method == "device.capture") actionPolicy.observe((result as JSONObject).getJSONObject("geometry"))
         return result
