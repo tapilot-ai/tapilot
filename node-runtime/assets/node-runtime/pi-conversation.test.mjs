@@ -195,3 +195,17 @@ test('context projection preserves constraints, failures, and complete recent to
   for(let i=0;i<projected.length;i++) if(projected[i].role==='tool') assert.ok(projected.slice(0,i).some(m=>m.tool_calls?.some(c=>c.id===projected[i].tool_call_id)));
   assert.equal(messages[3].content.length>4000,true); // Durable source is untouched.
 });
+
+test('Responses replay state survives tool round trips and checkpoints', async () => {
+  const replay = [{ type: 'reasoning', encrypted_content: 'opaque-test-state' },
+    { type: 'function_call', call_id: 'call-1', name: 'set_plan', arguments: '{}' }];
+  let turns = 0;
+  const checkpoints = [];
+  const conversation = createConversation({ messages: input('检查任务'), limits: { modelTurns: 3 }, rpc: async (_method, params) => {
+    if (turns++ === 0) return { ...tool('set_plan', { steps: ['检查'], currentStep: 0 }), tapilotResponsesOutput: replay };
+    assert.deepEqual(params.messages.find(m => m.role === 'assistant').tapilotResponsesOutput, replay);
+    return tool('finish_task', { outcome: 'completed', summary: '已检查' });
+  }, emit: event => { if (event.type === 'checkpoint') checkpoints.push(event.messages); } });
+  await conversation.run();
+  assert.ok(checkpoints.some(messages => messages.some(m => m.tapilotResponsesOutput?.[0].encrypted_content === 'opaque-test-state')));
+});

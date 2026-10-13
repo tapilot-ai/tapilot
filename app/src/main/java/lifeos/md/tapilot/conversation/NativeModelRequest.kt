@@ -8,7 +8,10 @@ import org.json.JSONObject
 object NativeModelRequest {
     fun params(model: JSONObject, key: String, messages: JSONArray, tools: JSONArray = JSONArray().put(NativeConversationAgent.tool)): JSONObject {
         val endpoint = ModelProfiles.endpoint(model.getString("baseUrl"))
-        val body = JSONObject().put("model", model.getString("modelName")).put("messages", messages)
+        // Opaque Responses replay state is local to the ChatGPT provider.
+        val chatMessages = JSONArray(messages.toString())
+        for (i in 0 until chatMessages.length()) chatMessages.getJSONObject(i).apply { remove("tapilotResponsesOutput"); remove("tapilotResponsesAccount") }
+        val body = JSONObject().put("model", model.getString("modelName")).put("messages", chatMessages)
             .put("tools", tools).put("tool_choice", "auto").put("stream", false).put("max_tokens", 2048)
         // DashScope hybrid Qwen models default to reasoning; use a fast, non-streaming reply.
         val host = URI(endpoint).host

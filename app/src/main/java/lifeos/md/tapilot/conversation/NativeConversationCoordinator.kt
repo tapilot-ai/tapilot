@@ -50,6 +50,7 @@ class NativeConversationCoordinator(
     private val worker = Executors.newSingleThreadExecutor()
     private val credentials = ModelCredentialStore(activity)
     private val pi = NativePiConversation(activity)
+    val chatGpt = lifeos.md.tapilot.chatgpt.ChatGptConnection(activity) { if (ready) publish() }
     private var activeTaskId = ""
     @Volatile private var closed = false
     var globalMode = false
@@ -129,7 +130,7 @@ class NativeConversationCoordinator(
         emit(ChatState(ready = ready, language = AppLanguage.resolved(activity), dark = AppTheme.isDark(activity), paletteId = AppTheme.paletteId(activity),
             advancedMode = data.optBoolean("advanced"), activeConversationId = active(), messages = messages, conversations = conversations,
             draft = data.optString("draft"), draftEpoch = draftEpoch, running = running,
-            configured = model.optString("baseUrl").isNotBlank() && model.optString("modelName").isNotBlank() && model.optString("modelFamily").isNotBlank() && hasKey(preset),
+            configured = model.optString("baseUrl").isNotBlank() && model.optString("modelName").isNotBlank() && model.optString("modelFamily").isNotBlank() && hasKey(preset) && (!data.optBoolean("chatgptConversation") || chatGpt.ready),
             modelName = model.optString("modelName"), speechProvider = data.optString("speechProvider", "volcengine"),
             error = error, errorEpoch = errorEpoch, needsAccessibility = MidsceneAccessibilityService.current() == null,
             attachment = ChatAttachment.parse(pendingAttachment), preview = preview, progress = progress, confirmation = confirmationText))
@@ -276,6 +277,11 @@ class NativeConversationCoordinator(
             fail(IllegalStateException(local("请先配置模型 API", "Configure model API first"))); settingsOpen = true; return
         }
         runCatching { ModelProfiles.endpoint(model.getString("baseUrl")) }.onFailure { fail(it); return }
+        val chatGptAccount = if (kind == "task" && data.optBoolean("chatgptConversation")) chatGpt.activeId else ""
+        val chatGptModel = chatGpt.model
+        if (kind == "task" && data.optBoolean("chatgptConversation") && !chatGpt.ready) {
+            fail(IllegalStateException(local("请先登录 ChatGPT 并选择模型", "Sign in to ChatGPT and choose a model first"))); settingsOpen = true; return
+        }
         running = true; error = ""; preview = null; settingsOpen = false; advancedOpen = false
         val stopped = AtomicBoolean(false); cancellation = stopped; stopBarrier = null
         session = UUID.randomUUID().toString(); val runSession = session
@@ -291,6 +297,7 @@ class NativeConversationCoordinator(
         val entry = JSONObject().put("id", id).put("conversationId", cid).put("createdAt", startedAt)
             .put("source", source).put("inputText", text).put("kind", kind).put("modelName", model.getString("modelName"))
             .put("status", "running").put("reports", JSONArray())
+        if (chatGptAccount.isNotBlank()) entry.put("conversationProvider", "chatgpt").put("conversationModel", chatGptModel)
         retry?.let { entry.put("retryOf", it.getString("id")) }
         TaskLifecycle.begin(entry, retry?.takeIf { continueOf != null || it.optString("phase") != "completed" })
         activeTaskId = id
@@ -332,7 +339,8 @@ class NativeConversationCoordinator(
                     val messages = NativeConversationAgent.messages(prior, modelSource, AppLanguage.resolved(activity) == "zh", attachments, saved?.optJSONArray("images")?.strings().orEmpty())
                     val reply = pi.run(messages, retry?.takeIf { continueOf != null || it.optString("phase") != "completed" }?.optJSONArray("agentContext"), limits, stopped::get, complete = { chat, tools ->
                         updateProgress(if (phoneStarted) local("正在整理结果", "Preparing reply") else local("正在理解任务", "Understanding task"))
-                        requestCompletion(model, key, chat, runSession, stopped, tools)
+                        if (chatGptAccount.isNotBlank()) requestChatGpt(chatGptAccount, chatGptModel, chat, tools, runSession, stopped)
+                        else requestCompletion(model, key, chat, runSession, stopped, tools)
                     }, phone = { instruction, condition ->
                         updateProgress(local("准备操作手机", "Preparing phone operation"), instruction, increment = true)
                         val revised = confirmOperation(instruction, stopped)
@@ -424,6 +432,26 @@ class NativeConversationCoordinator(
         val promise = CompletableFuture<String>()
         onMain { confirmation = promise; confirmationText = text; publish() }
         return waitFor(promise, stopped, 600)
+    }
+    private fun requestChatGpt(account: String, model: String, messages: JSONArray, tools: JSONArray, sessionId: String, stopped: AtomicBoolean): JSONObject {
+        check(!stopped.get()) { "任务已停止" }
+        val token = chatGpt.store.accessToken(account)
+        val history = JSONArray(messages.toString())
+        for (i in 0 until history.length()) history.getJSONObject(i).let { message ->
+            if (message.optString("tapilotResponsesAccount") != account) message.remove("tapilotResponsesOutput")
+        }
+        val params = lifeos.md.tapilot.chatgpt.ChatGptResponses.params(model, token, history, tools)
+        return lifeos.md.tapilot.chatgpt.ChatGptResponses.decode(await("model.request", params, sessionId, stopped) as JSONObject)
+            .put("tapilotResponsesAccount", account)
+    }
+    fun testChatGpt() {
+        if (settingsBusy || running || !chatGpt.ready) return
+        settingsSection = "chatgpt"; settingsBusy = true; settingsStatus = local("正在检查 ChatGPT…", "Checking ChatGPT…")
+        val account = chatGpt.activeId; val model = chatGpt.model
+        worker.execute {
+            val result = runCatching { requestChatGpt(account, model, JSONArray().put(JSONObject().put("role", "user").put("content", "Reply OK.")), JSONArray(), UUID.randomUUID().toString(), AtomicBoolean(false)) }
+            handler.post { if (!closed) { settingsBusy = false; settingsStatus = result.fold({ local("ChatGPT 连接成功", "ChatGPT connection succeeded") }, { it.message ?: "ChatGPT 连接失败" }) } }
+        }
     }
     private fun requestCompletion(model: JSONObject, key: String, messages: JSONArray, sessionId: String, stopped: AtomicBoolean, tools: JSONArray = JSONArray().put(NativeConversationAgent.tool)): JSONObject {
         val response = await("model.request", NativeModelRequest.params(model, key, messages, tools), sessionId, stopped) as JSONObject
@@ -540,5 +568,5 @@ class NativeConversationCoordinator(
         services.call("app.pruneAttachments", JSONObject().put("ids", JSONArray())) {}
     }
     fun executeYaml(source: String) { advancedOpen = false; start(source, file = null, kind = "yaml") }
-    override fun close() { stop(reason = "app"); pi.close(); closed = true; worker.shutdownNow(); handler.removeCallbacksAndMessages(null) }
+    override fun close() { stop(reason = "app"); chatGpt.close(); pi.close(); closed = true; worker.shutdownNow(); handler.removeCallbacksAndMessages(null) }
 }

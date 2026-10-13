@@ -7,6 +7,15 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class NativeModelRequestTest {
+    @Test fun switchingFromChatGptDoesNotForwardOpaqueResponsesStateToOtherProviders() {
+        val messages = JSONArray().put(JSONObject().put("role", "assistant").put("content", "done")
+            .put("tapilotResponsesAccount", "account").put("tapilotResponsesOutput", JSONArray().put("opaque")))
+        val request = NativeModelRequest.params(ModelProfiles.defaults("deepseek"), "test-key", messages)
+        val body = String(Base64.getDecoder().decode(request.getString("bodyBase64")))
+        assertFalse(body.contains("tapilotResponses")); assertFalse(body.contains("opaque"))
+        assertTrue(messages.getJSONObject(0).has("tapilotResponsesOutput"))
+    }
+
     @Test fun qwenRequestDisablesDefaultReasoningWithoutChangingStoredConfiguration() {
         val profile = ModelProfiles.defaults("qwen")
         val request = NativeModelRequest.params(profile, "test-key", JSONArray())

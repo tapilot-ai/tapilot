@@ -41,7 +41,7 @@ export function toOpenAI(context) {
       content: JSON.stringify({ success: !m.isError, result: m.content.filter(b => b.type === 'text').map(b => b.text).join('\n') }) });
     else if (m.role === 'assistant' && !['error', 'aborted'].includes(m.stopReason)) {
       const calls = m.content.filter(b => b.type === 'toolCall');
-      messages.push({ role: 'assistant', content: m.content.filter(b => b.type === 'text').map(b => b.text).join('\n') || null,
+      messages.push({ role: 'assistant', ...(m.tapilotResponsesOutput ? { tapilotResponsesOutput: m.tapilotResponsesOutput, tapilotResponsesAccount: m.tapilotResponsesAccount } : {}), content: m.content.filter(b => b.type === 'text').map(b => b.text).join('\n') || null,
         ...(calls.length ? { tool_calls: calls.map(c => ({ id: c.id, type: 'function', function: { name: c.name, arguments: JSON.stringify(c.arguments) } })) } : {}) });
     }
   }
@@ -123,7 +123,7 @@ export function createConversation({ messages, goal = '', resume = [], pendingIn
           if (message.content) content.push({ type: 'text', text: message.content });
           for (const c of message.tool_calls ?? []) content.push({ type: 'toolCall', id: c.id, name: c.function.name, arguments: JSON.parse(c.function.arguments) });
           if (!content.length) throw new Error('模型返回了空回复');
-          const result = { ...assistant(content), stopReason: response.choices[0].finish_reason === 'length' ? 'length' : content.some(b => b.type === 'toolCall') ? 'toolUse' : 'stop' };
+          const result = { ...assistant(content), ...(response.tapilotResponsesOutput ? { tapilotResponsesOutput: response.tapilotResponsesOutput, tapilotResponsesAccount: response.tapilotResponsesAccount } : {}), stopReason: response.choices[0].finish_reason === 'length' ? 'length' : content.some(b => b.type === 'toolCall') ? 'toolUse' : 'stop' };
           stream.push({ type: 'done', reason: result.stopReason, message: result }); stream.end(result);
         } catch (error) {
           const result = { ...assistant(), stopReason: options?.signal?.aborted ? 'aborted' : 'error', errorMessage: error.message };

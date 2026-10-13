@@ -289,3 +289,22 @@ Tapilot is proprietary software. All rights reserved. See [LICENSE](LICENSE).
 Third-party components remain subject to their respective licenses.
 
 Task messages expose expandable plan and verified operation results. Explicit “new task” instructions stop the current task before switching. Opening the global panel safely pauses phone actions; the next amendment resumes the saved task. Long model requests compact old logs without discarding user constraints or changing saved checkpoints.
+
+### Optional ChatGPT conversation provider
+
+In Settings → ChatGPT, choose **Continue with ChatGPT**, complete authorization in
+the system browser, select an available model, then enable **Use for conversation
+& planning**. Midscene phone actions still use the separately configured vision
+model (for example, DeepSeek); speech keeps its own provider.
+
+Tapilot uses the official SIWC public-client OAuth flow with a loopback callback,
+PKCE, and ID-token validation. Account tokens are stored separately using Android
+Keystore encryption and refreshed before expiry. The account picker supports
+separate registrations; signing out removes local tokens and attempts remote
+revocation. Pending sign-ins are encrypted too: after a process restart, Tapilot
+reopens the original callback port so the browser callback can be retried within
+15 minutes. An expired sign-in must be started again. Manage app usage and authorization in ChatGPT Settings → Usage.
+
+Inference uses the Responses API with `store: false` and streaming, and only a
+completed response is accepted. Account availability and plan-sharing permission
+are determined by OpenAI. See the [SIWC documentation](https://developers.openai.com/siwc/token-sharing-open-source).

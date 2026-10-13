@@ -183,3 +183,18 @@ Tapilot 为非开源软件，保留所有权利。参见 [LICENSE](LICENSE)。
 ## Android Beta 下载发布
 
 公开下载使用固定文件 https://www.feishu.cn/file/Ig0KbUKlJoADozxRbOocm5iqnXf，文件名包含版本、渠道与架构，例如 `Tapilot-0.1.3-beta-arm64.apk`；后续版本原位替换文件，并使用新 APK 的实际文件名，不新增发布说明文档作为下载页。studio 的 `scripts/lark-drive-release-downloads.mjs` 已登记 `tapilot-android-beta`。匿名下载校验后再更新官网清单：`fileUrl` 指向固定文件；旧 `downloadUrl` 仅供旧客户端兼容，旧文档只保留 APK 附件，不写构建报告或说明。
+
+### 可选：使用 ChatGPT 处理对话
+
+在「设置 → ChatGPT」点击 **Continue with ChatGPT**，在系统浏览器完成授权，
+选择可用模型，然后开启「用于对话与任务规划」。手机操作仍使用单独配置的
+Midscene 模型（例如 DeepSeek），语音也保留独立服务商。
+
+支持切换已保存账号、刷新授权和退出登录。令牌由 Android Keystore 加密保存，
+不会导出给 Node 执行引擎。退出登录会清除本机令牌并尝试撤销远端授权；也可从
+设置中的链接进入 ChatGPT 管理用量和授权。
+
+此功能使用 SIWC 的 OAuth 登录和 Responses API，实际可用模型和套餐共享权限
+取决于 OpenAI 账号。详见 [SIWC 官方文档](https://developers.openai.com/siwc/token-sharing-open-source)。
+
+登录过程也会加密保存；App 重启后可在 15 分钟内恢复原回调端口，返回浏览器刷新即可继续。超过时限需重新发起登录。
