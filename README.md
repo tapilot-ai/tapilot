@@ -292,10 +292,12 @@ Task messages expose expandable plan and verified operation results. Explicit �
 
 ### Use your ChatGPT plan
 
-In Settings → ChatGPT, choose **Continue with ChatGPT**, complete authorization in
-the system browser, select an available model, then enable **Use ChatGPT**. Conversation, planning, and Midscene phone actions
+In Settings → Model connection, select **ChatGPT (SIWC)**, choose **Continue with ChatGPT**,
+complete authorization in the system browser, then select an available model. Conversation, planning, and Midscene phone actions
 all use the selected ChatGPT model; no separate model API Key is required.
-Choose a GPT-6 model or a supported GPT-5 vision model. Speech keeps its own provider.
+Choose a GPT-6 model or a supported GPT-5 vision model. Switch to **API Key** to
+use a regular model API instead. Both configurations are retained when switching;
+only the selected connection is used. Speech keeps its own provider.
 
 Tapilot uses the official SIWC public-client OAuth flow with a loopback callback,
 PKCE, and ID-token validation. Account tokens are stored separately using Android

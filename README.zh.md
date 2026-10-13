@@ -186,9 +186,10 @@ Tapilot 为非开源软件，保留所有权利。参见 [LICENSE](LICENSE)。
 
 ### 使用 ChatGPT 套餐
 
-在「设置 → ChatGPT」点击 **Continue with ChatGPT**，在系统浏览器完成授权，
-选择 GPT-6 或支持视觉定位的 GPT-5 模型，然后开启「使用 ChatGPT」。
+在「设置 → 模型接入方式」选择 **ChatGPT (SIWC)**，点击 **Continue with ChatGPT**，
+在系统浏览器完成授权，选择 GPT-6 或支持视觉定位的 GPT-5 模型。
 对话、任务规划和 Midscene 手机操作统一使用所选模型，无需另填模型 API Key。
+选择 **API Key** 可切回普通模型 API。两种方式的配置分别保留，实际请求只使用当前选中的方式。
 语音保留独立服务商。
 
 支持切换已保存账号、刷新授权和退出登录。令牌由 Android Keystore 加密保存，

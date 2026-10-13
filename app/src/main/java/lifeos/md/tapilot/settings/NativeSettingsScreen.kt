@@ -59,7 +59,22 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
         Column(Modifier.fillMaxSize().navigationBarsPadding().imePadding()) {
             Header(label("设置", "Settings")) { coordinator.back() }
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Group("ChatGPT") { ChatGptSettingsSection(coordinator, zh) }
+                Group(label("模型接入方式", "Model connection")) {
+                    val useChatGpt = coordinator.data.optBoolean("chatgptConversation")
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        FilterChip(selected = useChatGpt,
+                            onClick = { coordinator.preference("chatgptConversation", true) },
+                            enabled = !busy && !coordinator.chatGpt.busy,
+                            label = { Text("ChatGPT (SIWC)") })
+                        FilterChip(selected = !useChatGpt,
+                            onClick = { coordinator.preference("chatgptConversation", false) },
+                            enabled = !busy && !coordinator.chatGpt.busy,
+                            label = { Text("API Key") })
+                    }
+                    Text(label("切换后，对话和手机操作使用所选方式。两种方式的配置会分别保留。",
+                        "Conversation and phone operations use the selected connection. Both configurations are saved separately."), fontSize = 12.sp)
+                }
+                if (coordinator.data.optBoolean("chatgptConversation")) Group("ChatGPT (SIWC)") { ChatGptSettingsSection(coordinator, zh) }
                 if (!coordinator.data.optBoolean("chatgptConversation")) Group(label("Midscene 模型", "Midscene model")) {
                     SettingRow(label("服务商", "Provider"), coordinator.preset) { if (!busy) picker = "model" }
                     listOf("baseUrl" to "API 地址", "modelName" to "模型名称", "modelFamily" to "模型系列").forEach { (field, title) ->

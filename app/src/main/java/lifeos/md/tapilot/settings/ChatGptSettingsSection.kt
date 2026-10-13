@@ -23,11 +23,6 @@ internal fun ChatGptSettingsSection(coordinator: NativeConversationCoordinator, 
     val busy = connection.busy || coordinator.settingsBusy
     Text(label("使用 ChatGPT 套餐处理对话、任务规划和手机操作，无需另填模型 API Key。",
         "Use your ChatGPT plan for conversation, planning, and phone operations. No separate model API Key is needed."), fontSize = 13.sp)
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label("使用 ChatGPT", "Use ChatGPT"), modifier = Modifier.weight(1f), fontSize = 14.sp)
-        Switch(coordinator.data.optBoolean("chatgptConversation"), { coordinator.preference("chatgptConversation", it) },
-            enabled = !busy && (connection.ready || coordinator.data.optBoolean("chatgptConversation")))
-    }
     if (connection.accounts.isNotEmpty()) {
         TextButton(onClick = { accountPicker = true }, enabled = !busy) {
             Text(connection.accounts.firstOrNull { it.id == connection.activeId }?.label ?: label("选择账号", "Choose account"))
