@@ -26,6 +26,8 @@ using screenshots and individual accessibility actions. Enable wireless control
 in Tapilot settings and pair the computer once. No USB, ADB, or on-phone model API
 key is needed during use. See [plugin setup and limitations](plugins/android-use/README.md).
 
+The chat composer shows the current execution mode and lets you switch between YOLO, confirmation for critical operations, and confirmation for every operation. New installations default to YOLO, which runs phone operations without confirmation prompts. Existing saved confirmation preferences are preserved. Mode changes are disabled while a task is running.
+
 ## Build
 
 Requirements:

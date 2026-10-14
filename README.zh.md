@@ -42,6 +42,8 @@ Tapilot 采用 `lifeos.md.tapilot` 应用 ID。使用相同签名密钥打出的
 模型 API Key。手机需保持解锁；可从手机设置或通知中停止控制。
 安装方法和使用限制见[插件说明](plugins/android-use/README.md)。
 
+聊天输入框底部显示当前执行模式，点击可切换 YOLO、关键操作确认或每次操作确认。新安装默认使用 YOLO，直接执行手机操作，不弹出操作确认；已有用户保存的确认偏好会保留。任务执行期间不能切换模式。
+
 ## 构建
 
 需要 JDK 17、Android SDK Platform 35、对应 Build Tools、Node 和 pnpm。

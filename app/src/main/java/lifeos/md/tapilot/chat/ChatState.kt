@@ -1,6 +1,7 @@
 package lifeos.md.tapilot.chat
 
 import org.json.JSONObject
+import lifeos.md.tapilot.conversation.ExecutionMode
 
 data class ChatMessage(val id: String, val role: String, val text: String, val status: String, val reportId: String,
     val entryId: String = "", val attachment: ChatAttachment? = null, val task: ChatTask? = null)
@@ -29,6 +30,7 @@ data class ChatState(
     val paletteId: String = "classic",
     val webSurfaceOpen: Boolean = false,
     val advancedMode: Boolean = false,
+    val executionMode: ExecutionMode = ExecutionMode.YOLO,
     val activeConversationId: String = "",
     val messages: List<ChatMessage> = emptyList(),
     val conversations: List<ChatConversation> = emptyList(),
@@ -59,7 +61,7 @@ data class ChatState(
             return ChatState(
                 ready = data.optBoolean("ready"), language = data.optString("language", "zh"),
                 dark = data.optString("theme") == "dark", webSurfaceOpen = data.optBoolean("webSurfaceOpen"),
-                advancedMode = data.optBoolean("advancedMode"),
+                advancedMode = data.optBoolean("advancedMode"), executionMode = ExecutionMode.from(data),
                 activeConversationId = data.optString("activeConversationId"),
                 messages = List(messages.length()) { index -> messages.getJSONObject(index).let {
                     ChatMessage(it.getString("id"), it.getString("role"), it.optString("text"),

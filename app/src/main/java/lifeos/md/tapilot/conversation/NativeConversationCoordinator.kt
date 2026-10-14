@@ -131,7 +131,7 @@ class NativeConversationCoordinator(
         if (conversations.none { it.id == active() }) conversations.add(0, ChatConversation(active(), local("新对话", "New conversation")))
         val model = profile()
         emit(ChatState(ready = ready, language = AppLanguage.resolved(activity), dark = AppTheme.isDark(activity), paletteId = AppTheme.paletteId(activity),
-            advancedMode = data.optBoolean("advanced"), activeConversationId = active(), messages = messages, conversations = conversations,
+            advancedMode = data.optBoolean("advanced"), executionMode = ExecutionMode.from(data), activeConversationId = active(), messages = messages, conversations = conversations,
             draft = data.optString("draft"), draftEpoch = draftEpoch, running = running,
             configured = if (data.optBoolean("chatgptConversation")) chatGpt.ready else model.optString("baseUrl").isNotBlank() && model.optString("modelName").isNotBlank() && model.optString("modelFamily").isNotBlank() && hasKey(preset),
             modelName = if (data.optBoolean("chatgptConversation")) chatGpt.model else model.optString("modelName"), speechProvider = data.optString("speechProvider", "volcengine"),
@@ -153,6 +153,11 @@ class NativeConversationCoordinator(
                     val preservedDraft = if (value.optBoolean("preserveDraft")) data.optString("draft") else null
                     submit(value.optString("text", data.optString("draft")))
                     if (preservedDraft != null) { data.put("draft", preservedDraft); draftEpoch++; save() }
+                }
+                "executionMode" -> {
+                    val mode = ExecutionMode.entries.firstOrNull { it.wireValue == value.optString("text") }
+                        ?: error("Unknown execution mode")
+                    preference("executionMode", mode.wireValue)
                 }
                 "stop" -> stop()
                 "settings" -> if (!running) { settingsOpen = true; settingsStatus = "" }

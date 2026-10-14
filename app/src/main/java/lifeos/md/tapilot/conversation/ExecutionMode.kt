@@ -21,6 +21,8 @@ enum class ExecutionMode(val wireValue: String) {
         private val criticalOperation = Regex("发送|转账|付款|支付|购买|下单|删除|清空|卸载|发布|提交|授权|分享给|\\b(send|transfer|pay|purchase|delete|uninstall|publish|submit)\\b", RegexOption.IGNORE_CASE)
 
         fun from(data: JSONObject): ExecutionMode = entries.firstOrNull { it.wireValue == data.optString("executionMode") }
-            ?: if (data.optBoolean("confirmEveryStep")) ALWAYS else CRITICAL
+            ?: if (data.has("confirmEveryStep")) {
+                if (data.optBoolean("confirmEveryStep")) ALWAYS else CRITICAL
+            } else YOLO
     }
 }

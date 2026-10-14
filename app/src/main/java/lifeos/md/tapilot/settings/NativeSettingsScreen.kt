@@ -24,7 +24,6 @@ import lifeos.md.tapilot.accessibility.EdgeEffectGeometryMode
 import lifeos.md.tapilot.accessibility.FloatingBallPreferences
 import lifeos.md.tapilot.bridge.NativeJavascriptBridge
 import lifeos.md.tapilot.conversation.ModelProfiles
-import lifeos.md.tapilot.conversation.ExecutionMode
 import lifeos.md.tapilot.conversation.NativeConversationCoordinator
 import lifeos.md.tapilot.theme.ThemePalettes
 import androidx.compose.ui.semantics.Role
@@ -143,12 +142,6 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
                     }
                 }
                 Group(label("任务与记录", "Tasks & history")) {
-                    SettingRow(label("执行模式", "Execution mode"), ExecutionMode.from(coordinator.data).title(zh)) { picker = "execution" }
-                    Text(when (ExecutionMode.from(coordinator.data)) {
-                        ExecutionMode.YOLO -> label("任务直接执行，不弹出操作确认。", "Tasks run without operation confirmation.")
-                        ExecutionMode.CRITICAL -> label("发送、付款、删除等操作前确认。", "Confirm before sending, paying, deleting, and similar operations.")
-                        ExecutionMode.ALWAYS -> label("每次调用手机操作前确认。", "Confirm before each phone operation.")
-                    }, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     AgentLimitSettings(coordinator, zh)
                     ToggleRow(label("高级 YAML 模式", "Advanced YAML mode"), coordinator.data.optBoolean("advanced")) { coordinator.preference("advanced", it) }
                     SettingRow(label("清空聊天记录", "Clear chat history"), "") { clearHistory = true }
@@ -164,13 +157,11 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
                 "speech" -> listOf("volcengine", "deepgram")
                 "theme" -> listOf("system", "light", "dark")
                 "language" -> listOf("system", "zh", "en")
-                "execution" -> ExecutionMode.entries.map { it.wireValue }
                 else -> listOf("auto", "square", "custom")
             }
             AlertDialog(onDismissRequest = { picker = "" }, title = { Text(label("选择", "Choose")) }, text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) { choices.forEach { choice ->
                     val title = when (choice) {
-                        "yolo", "critical", "always" -> ExecutionMode.entries.first { it.wireValue == choice }.title(zh)
                         "system" -> label("跟随系统", "System"); "light" -> label("浅色", "Light"); "dark" -> label("深色", "Dark")
                         "zh" -> "简体中文"; "en" -> "English"; "auto" -> label("自动检测", "Automatic")
                         "square" -> label("直角", "Square"); "custom" -> label("自定义", "Custom")
@@ -182,7 +173,6 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
                             "speech" -> { provider = choice; speechKey = "" }
                             "theme" -> { AppTheme.set(activity, choice); mode = choice; onThemeChanged() }
                             "language" -> if (AppLanguage.set(activity, choice)) onLanguageChanged()
-                            "execution" -> coordinator.preference("executionMode", choice)
                             "edge" -> { edge = edge.copy(mode = EdgeEffectGeometryMode.fromWireValue(choice)); saveEdge(services, edge) }
                         }; picker = ""
                     }.padding(vertical = 14.dp))

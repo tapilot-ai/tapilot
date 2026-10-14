@@ -37,7 +37,7 @@ class ConversationStore(private val file: File) {
     companion object {
         fun empty() = JSONObject().put("version", 1).put("profiles", JSONObject())
             .put("history", JSONArray()).put("preset", "doubao").put("active", "chat-${java.util.UUID.randomUUID()}")
-            .put("draft", "").put("speechProvider", "volcengine").put("advanced", false).put("confirmEveryStep", false)
+            .put("draft", "").put("speechProvider", "volcengine").put("advanced", false).put("executionMode", ExecutionMode.YOLO.wireValue)
 
         fun importLegacy(values: JSONObject): JSONObject {
             val state = empty()
@@ -62,7 +62,11 @@ class ConversationStore(private val file: File) {
             state.put("yaml", values.optString("midscene.yaml"))
             state.put("speechProvider", values.optString("tapilot.speech.provider", "volcengine"))
             state.put("advanced", values.optString("midscene.advancedMode") == "true")
-            state.put("confirmEveryStep", values.optString("tapilot.confirmEveryStep") == "true")
+            if (values.has("tapilot.confirmEveryStep")) {
+                val confirm = values.optString("tapilot.confirmEveryStep") == "true"
+                state.put("confirmEveryStep", confirm)
+                state.put("executionMode", if (confirm) "always" else "critical")
+            }
             val history = JSONArray(values.optString("midscene.reportHistory", "[]"))
             for (i in 0 until history.length()) {
                 val entry = history.getJSONObject(i)
