@@ -1,7 +1,7 @@
 package lifeos.md.tapilot.voice
 
-internal data class VoicePreset(val id: String, val name: String, val languages: String, val languagesEn: String) {
-    fun label(zh: Boolean) = "$name · ${if (zh) languages else languagesEn}"
+internal data class VoicePreset(val id: String, val name: String, val languages: String = "", val languagesEn: String = "") {
+    fun label(zh: Boolean) = if (languages.isBlank()) name else "$name · ${if (zh) languages else languagesEn}"
 }
 
 // Seed TTS 2.0 only; do not mix Seed TTS 1.0 voices with the playback resource.
@@ -9,13 +9,13 @@ internal data class VoicePreset(val id: String, val name: String, val languages:
 // https://developers.deepgram.com/docs/tts-models
 internal fun voicePresets(provider: String): List<VoicePreset> = when (provider) {
     "volcengine" -> listOf(
-        VoicePreset("zh_female_vv_uranus_bigtts", "Vivi 2.0", "中文/英语", "Chinese/English"),
-        VoicePreset("zh_male_dayi_saturn_bigtts", "大壹", "中文", "Chinese"),
-        VoicePreset("zh_female_mizai_saturn_bigtts", "黑猫侦探社咪仔", "中文", "Chinese"),
-        VoicePreset("zh_female_jitangnv_saturn_bigtts", "鸡汤女", "中文", "Chinese"),
-        VoicePreset("zh_female_meilinvyou_saturn_bigtts", "魅力女友", "中文", "Chinese"),
-        VoicePreset("zh_female_santongyongns_saturn_bigtts", "流畅女声", "中文", "Chinese"),
-        VoicePreset("zh_male_ruyayichen_saturn_bigtts", "儒雅逸辰", "中文", "Chinese"),
+        VoicePreset("zh_female_vv_uranus_bigtts", "Vivi 2.0"),
+        VoicePreset("zh_male_dayi_saturn_bigtts", "大壹"),
+        VoicePreset("zh_female_mizai_saturn_bigtts", "黑猫侦探社咪仔"),
+        VoicePreset("zh_female_jitangnv_saturn_bigtts", "鸡汤女"),
+        VoicePreset("zh_female_meilinvyou_saturn_bigtts", "魅力女友"),
+        VoicePreset("zh_female_santongyongns_saturn_bigtts", "流畅女声"),
+        VoicePreset("zh_male_ruyayichen_saturn_bigtts", "儒雅逸辰"),
     )
     "deepgram" -> listOf(
         VoicePreset("aura-2-thalia-en", "Thalia", "英语 · 女声", "English · Female"),
