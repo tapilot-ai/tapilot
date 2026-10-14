@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import lifeos.md.tapilot.conversation.NativeConversationCoordinator
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ChatGptSettingsSection(coordinator: NativeConversationCoordinator, zh: Boolean) {
     val connection = coordinator.chatGpt
@@ -28,11 +29,31 @@ internal fun ChatGptSettingsSection(coordinator: NativeConversationCoordinator, 
             Text(connection.accounts.firstOrNull { it.id == connection.activeId }?.label ?: label("选择账号", "Choose account"))
         }
         if (connection.accounts.any { it.id == connection.activeId && it.signedIn }) {
-            TextButton(onClick = { if (connection.models.isEmpty()) connection.refreshModels() else modelPicker = true }, enabled = !busy) {
-                Text(connection.models.firstOrNull { it.id == connection.model }?.label ?: connection.model.ifBlank { label("加载模型", "Load models") })
+            ExposedDropdownMenuBox(expanded = modelPicker, onExpandedChange = { open ->
+                if (!open) modelPicker = false
+                else if (!busy) { modelPicker = true; connection.refreshModels() }
+            }) {
+                OutlinedTextField(
+                    value = connection.models.firstOrNull { it.id == connection.model }?.label
+                        ?: connection.model.ifBlank { label("选择模型", "Choose model") },
+                    onValueChange = {}, readOnly = true, enabled = !busy, singleLine = true,
+                    label = { Text(label("模型", "Model")) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modelPicker) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(), shape = MaterialTheme.shapes.medium,
+                )
+                ExposedDropdownMenu(expanded = modelPicker, onDismissRequest = { modelPicker = false }) {
+                    if (connection.busy) {
+                        DropdownMenuItem(text = { Text(label("正在加载模型…", "Loading models…")) }, onClick = {}, enabled = false)
+                    } else if (connection.models.isEmpty()) {
+                        DropdownMenuItem(text = { Text(label("未能加载模型，点击重试", "Could not load models. Tap to retry")) },
+                            onClick = connection::refreshModels)
+                    } else connection.models.forEach { model ->
+                        DropdownMenuItem(text = { Text(model.label) }, enabled = !busy,
+                            onClick = { connection.selectModel(model.id); modelPicker = false })
+                    }
+                }
             }
             Row {
-                TextButton(onClick = connection::refreshModels, enabled = !busy) { Text(label("刷新模型", "Refresh models")) }
                 TextButton(onClick = coordinator::testChatGpt, enabled = !busy && connection.ready) { Text(label("检查连接", "Check connection")) }
                 TextButton(onClick = connection::signOut, enabled = !busy) { Text(label("退出登录", "Sign out")) }
             }
@@ -47,13 +68,11 @@ internal fun ChatGptSettingsSection(coordinator: NativeConversationCoordinator, 
     TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://chatgpt.com/settings/usage"))) }) {
         Text(label("管理 ChatGPT 用量与授权", "Manage ChatGPT usage & access"))
     }
-    if (accountPicker || modelPicker) AlertDialog(onDismissRequest = { accountPicker = false; modelPicker = false },
-        title = { Text(label(if (accountPicker) "选择账号" else "选择模型", if (accountPicker) "Choose account" else "Choose model")) },
+    if (accountPicker) AlertDialog(onDismissRequest = { accountPicker = false },
+        title = { Text(label("选择账号", "Choose account")) },
         text = { Column(Modifier.verticalScroll(rememberScrollState())) {
-            if (accountPicker) connection.accounts.forEach { account ->
+            connection.accounts.forEach { account ->
                 TextButton(onClick = { connection.selectAccount(account.id); accountPicker = false }) { Text(account.label) }
-            } else connection.models.forEach { model ->
-                TextButton(onClick = { connection.selectModel(model.id); modelPicker = false }) { Text(model.label) }
             }
-        } }, confirmButton = { TextButton(onClick = { accountPicker = false; modelPicker = false }) { Text(label("关闭", "Close")) } })
+        } }, confirmButton = { TextButton(onClick = { accountPicker = false }) { Text(label("关闭", "Close")) } })
 }
