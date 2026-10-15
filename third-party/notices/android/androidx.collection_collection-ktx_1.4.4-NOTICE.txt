@@ -1,0 +1,9 @@
+Component: androidx.collection:collection-ktx:1.4.4
+Declared license: Apache-2.0
+License declaration: https://dl.google.com/dl/android/maven2/androidx/collection/collection-ktx/1.4.4/collection-ktx-1.4.4.pom
+Source archive: https://dl.google.com/dl/android/maven2/androidx/collection/collection-ktx/1.4.4/collection-ktx-1.4.4-sources.jar
+Source archive SHA-256: c6deada2fac53b8ea6523dbda77597b128006674616f140f04df23264c6d1aa3
+
+Original source copyright/license headers:
+
+

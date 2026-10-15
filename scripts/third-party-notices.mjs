@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const licenseName = /^(?:licen[cs]e|copying|notice|copyright)(?:$|[._-])/i;
 const sha256 = data => createHash('sha256').update(data).digest('hex');
+const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 function licenseFiles(root, relative = '') {
   const files = [];
   for (const entry of fs.readdirSync(path.join(root, relative), { withFileTypes: true })) {
@@ -26,6 +27,7 @@ function copyNotices(source, destination) {
 }
 /** Collects actual installed files, without treating SPDX metadata as a license text. */
 export function collectNpmNotices(modules, output) {
+  const supplements = JSON.parse(fs.readFileSync(path.join(repositoryRoot, 'third-party/npm-supplements.json'), 'utf8'));
   fs.rmSync(output, { recursive: true, force: true });
   fs.mkdirSync(output, { recursive: true });
   const packages = [];
@@ -41,6 +43,14 @@ export function collectNpmNotices(modules, output) {
       if (!packages.some(item => item.id === id)) {
         const license = typeof pkg.license === 'string' ? pkg.license : pkg.license?.type ?? 'UNKNOWN';
         const files = copyNotices(source, path.join(output, id));
+        for (const supplement of supplements.filter(item => item.name === pkg.name && item.version === pkg.version)) {
+          const bytes = fs.readFileSync(path.join(repositoryRoot, supplement.path));
+          if (sha256(bytes) !== supplement.sha256) throw new Error(`Supplement checksum mismatch: ${supplement.path}`);
+          const relative = `upstream-${path.basename(supplement.path)}`;
+          fs.mkdirSync(path.join(output, id), { recursive: true });
+          fs.writeFileSync(path.join(output, id, relative), bytes);
+          files.push({ path: relative, sha256: supplement.sha256, source: supplement.url });
+        }
         packages.push({ id, name: pkg.name, version: pkg.version, license,
           repository: pkg.repository?.url ?? pkg.repository ?? null, files,
           reviewRequired: files.length === 0 || license === 'UNKNOWN' || /(?:A?GPL|LGPL|MPL|SEE LICENSE)/i.test(license) });

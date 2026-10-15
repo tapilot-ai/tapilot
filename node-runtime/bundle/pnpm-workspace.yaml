@@ -9,9 +9,11 @@ patchedDependencies:
 supportedArchitectures:
   cpu:
     - current
+    - arm64
     - wasm32
   os:
     - current
+    - android
 
 # Security fixes until upstream dependency ranges include these releases.
 overrides:

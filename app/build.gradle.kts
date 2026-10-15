@@ -1,6 +1,8 @@
 import java.util.zip.ZipFile
 import java.util.zip.ZipInputStream
 import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import java.security.MessageDigest
 
 plugins {
     id("com.android.application")
@@ -9,6 +11,8 @@ plugins {
 }
 
 abstract class GenerateAndroidNotices : DefaultTask() {
+    @get:org.gradle.api.tasks.InputDirectory
+    abstract val licenseDirectory: org.gradle.api.file.DirectoryProperty
     @get:org.gradle.api.tasks.OutputDirectory
     abstract val outputDirectory: org.gradle.api.file.DirectoryProperty
     @get:org.gradle.api.tasks.InputFiles
@@ -21,6 +25,9 @@ abstract class GenerateAndroidNotices : DefaultTask() {
         val output = outputDirectory.get().dir("third-party/android").asFile
         output.deleteRecursively()
         output.mkdirs()
+        val supplementalRoot = licenseDirectory.get().asFile
+        @Suppress("UNCHECKED_CAST")
+        val supplements = JsonSlurper().parse(supplementalRoot.resolve("android-supplements.json")) as List<Map<String, String>>
         val packages = archives.files.sortedBy { coordinates.get().getValue(it.absolutePath) }.map { archive ->
                 val id = coordinates.get().getValue(archive.absolutePath)
                 val target = output.resolve(id.replace(':', '/'))
@@ -47,7 +54,17 @@ abstract class GenerateAndroidNotices : DefaultTask() {
                         }
                     }
                 }
-                mapOf("id" to id, "files" to files, "reviewRequired" to files.isEmpty())
+                val supplement = supplements.singleOrNull { it["id"] == id }
+                if (supplement != null) {
+                    val notice = supplementalRoot.resolve(supplement.getValue("path").removePrefix("third-party/")).canonicalFile
+                    check(notice.toPath().startsWith(supplementalRoot.canonicalFile.toPath())) { "Invalid supplemental notice path" }
+                    val bytes = notice.readBytes()
+                    val hash = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+                    check(hash == supplement["sha256"]) { "Supplemental notice checksum mismatch: $id" }
+                    bytes.inputStream().use { retain("upstream-NOTICE.txt", it) }
+                    supplementalRoot.resolve("notices/Apache-2.0.txt").inputStream().use { retain("Apache-2.0.txt", it) }
+                }
+                mapOf("id" to id, "files" to files, "license" to supplement?.get("license"), "reviewRequired" to files.isEmpty())
             }
         output.resolve("index.json").writeText(JsonOutput.prettyPrint(JsonOutput.toJson(
             mapOf("schemaVersion" to 1, "packages" to packages))) + "\n")
@@ -56,6 +73,7 @@ abstract class GenerateAndroidNotices : DefaultTask() {
 
 androidComponents.onVariants { variant ->
     val notices = tasks.register<GenerateAndroidNotices>("generate${variant.name.replaceFirstChar { it.uppercase() }}AndroidNotices") {
+        licenseDirectory.set(rootProject.layout.projectDirectory.dir("third-party"))
         outputDirectory.set(layout.buildDirectory.dir("generated/third-party-assets/${variant.name}"))
         val dependencies = configurations.named("${variant.name}RuntimeClasspath")
         archives.from(dependencies)

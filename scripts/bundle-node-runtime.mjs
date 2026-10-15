@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { sourceFingerprint } from './runtime-integrity.mjs';
+import { pruneAndroidPackages } from './android-runtime-tree.mjs';
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
@@ -13,6 +14,7 @@ const assistantRoot = path.resolve(scriptDirectory, '..');
 const sourceRoot = path.join(assistantRoot, 'node-runtime');
 const bundleRoot = path.join(sourceRoot, 'bundle');
 const stagingRoot = path.join(assistantRoot, 'build/node-runtime-bundle');
+const deploymentRoot = path.join(assistantRoot, 'build/node-runtime-android');
 const assetRoot = path.join(assistantRoot, 'app/src/main/assets');
 const bundleAsset = path.join(assetRoot, 'node-runtime-bundle.zip');
 const manifestAsset = path.join(assetRoot, 'node-runtime-manifest.json');
@@ -178,9 +180,6 @@ fs.cpSync(
   { recursive: true },
 );
 removeLinks(path.join(stagingRoot, 'node_modules'));
-run(process.execPath, [path.join(assistantRoot, 'scripts/third-party-notices.mjs'), 'npm',
-  path.join(stagingRoot, 'node_modules'), path.join(assetRoot, 'third-party/npm')]);
-fs.copyFileSync(path.join(assistantRoot, 'LICENSE'), path.join(assetRoot, 'third-party/Tapilot-LICENSE.txt'));
 const remainingLinks = findLinks(stagingRoot);
 if (remainingLinks.length > 0) {
   throw new Error(
@@ -232,6 +231,18 @@ run(
   stagingRoot,
 );
 await runAndroidBridgeSmoke();
+fs.rmSync(deploymentRoot, { recursive: true, force: true });
+fs.mkdirSync(deploymentRoot, { recursive: true });
+for (const file of [...runtimeFiles, 'manifest.json', 'node_modules']) {
+  fs.cpSync(path.join(stagingRoot, file), path.join(deploymentRoot, file), { recursive: true });
+}
+console.log('Removed host-only packages:', pruneAndroidPackages(path.join(deploymentRoot, 'node_modules')));
+run(process.execPath, [path.join(assistantRoot, 'scripts/third-party-notices.mjs'), 'npm',
+  path.join(deploymentRoot, 'node_modules'), path.join(assetRoot, 'third-party/npm')]);
+fs.copyFileSync(path.join(assistantRoot, 'LICENSE'), path.join(assetRoot, 'third-party/Tapilot-LICENSE.txt'));
+const supplementalNotices = path.join(assetRoot, 'third-party/supplemental');
+fs.rmSync(supplementalNotices, { recursive: true, force: true });
+fs.cpSync(path.join(assistantRoot, 'third-party/notices'), supplementalNotices, { recursive: true });
 fs.mkdirSync(assetRoot, { recursive: true });
 fs.rmSync(bundleAsset, { force: true });
 run(
@@ -245,7 +256,7 @@ run(
     'manifest.json',
     'node_modules',
   ],
-  stagingRoot,
+  deploymentRoot,
 );
 fs.writeFileSync(manifestAsset, JSON.stringify({ ...manifest, bundleSha256: createHash('sha256').update(fs.readFileSync(bundleAsset)).digest('hex') }, null, 2) + '\n');
 process.stdout.write(

@@ -35,3 +35,5 @@
 *.apk    binary
 *.ttf    binary
 *.otf    binary
+# Preserve checksum-pinned upstream notice bytes, including original line endings.
+third-party/notices/** -text -whitespace

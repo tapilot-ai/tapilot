@@ -27,6 +27,14 @@ Generated files are ignored, not manually edited or committed.
 
 ## Remaining distribution requirements
 
+Run `pnpm release:materials` to assemble the checksum-pinned source archives and
+license texts collected in [third-party](../../third-party/README.md). This includes
+the 60 resolved Android source archives and POMs. Exact-version npm license
+supplements are added to the APK automatically. Host-only optional binaries are
+removed from the Android deployment tree before collecting its notices.
+The materials command does not approve redistribution; its status file records
+the remaining source/rebuild and notice requirements.
+
 The inventories are evidence, not a legal-compliance certificate. Before publishing
 an APK, inspect every `reviewRequired` entry and preserve missing upstream
 notices. License metadata and a copied Apache license cannot by themselves satisfy
