@@ -178,6 +178,9 @@ fs.cpSync(
   { recursive: true },
 );
 removeLinks(path.join(stagingRoot, 'node_modules'));
+run(process.execPath, [path.join(assistantRoot, 'scripts/third-party-notices.mjs'), 'npm',
+  path.join(stagingRoot, 'node_modules'), path.join(assetRoot, 'third-party/npm')]);
+fs.copyFileSync(path.join(assistantRoot, 'LICENSE'), path.join(assetRoot, 'third-party/Tapilot-LICENSE.txt'));
 const remainingLinks = findLinks(stagingRoot);
 if (remainingLinks.length > 0) {
   throw new Error(

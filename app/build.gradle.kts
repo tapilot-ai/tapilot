@@ -1,9 +1,71 @@
 import java.util.zip.ZipFile
+import java.util.zip.ZipInputStream
+import groovy.json.JsonOutput
 
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+}
+
+abstract class GenerateAndroidNotices : DefaultTask() {
+    @get:org.gradle.api.tasks.OutputDirectory
+    abstract val outputDirectory: org.gradle.api.file.DirectoryProperty
+    @get:org.gradle.api.tasks.InputFiles
+    abstract val archives: org.gradle.api.file.ConfigurableFileCollection
+    @get:org.gradle.api.tasks.Input
+    abstract val coordinates: org.gradle.api.provider.MapProperty<String, String>
+
+    @org.gradle.api.tasks.TaskAction
+    fun collect() {
+        val output = outputDirectory.get().dir("third-party/android").asFile
+        output.deleteRecursively()
+        output.mkdirs()
+        val packages = archives.files.sortedBy { coordinates.get().getValue(it.absolutePath) }.map { archive ->
+                val id = coordinates.get().getValue(archive.absolutePath)
+                val target = output.resolve(id.replace(':', '/'))
+                val files = mutableListOf<String>()
+                fun isNotice(name: String) = Regex("(?i)^(license|licence|notice|copying|copyright)([._-].*)?$")
+                    .matches(name.substringAfterLast('/'))
+                fun retain(name: String, input: java.io.InputStream) {
+                    val file = target.resolve(name).canonicalFile
+                    check(file.toPath().startsWith(target.canonicalFile.toPath())) { "Invalid license entry" }
+                    file.parentFile.mkdirs()
+                    file.outputStream().use { input.copyTo(it) }
+                    files.add(name)
+                }
+                ZipFile(archive).use { zip ->
+                    zip.entries().asSequence().filterNot { it.isDirectory }.forEach { entry ->
+                        if (isNotice(entry.name)) zip.getInputStream(entry).use { retain(entry.name, it) }
+                        else if (entry.name.endsWith(".jar")) ZipInputStream(zip.getInputStream(entry)).use { nested ->
+                            var child = nested.nextEntry
+                            while (child != null) {
+                                if (!child.isDirectory && isNotice(child.name)) retain("${entry.name}/${child.name}", nested)
+                                nested.closeEntry()
+                                child = nested.nextEntry
+                            }
+                        }
+                    }
+                }
+                mapOf("id" to id, "files" to files, "reviewRequired" to files.isEmpty())
+            }
+        output.resolve("index.json").writeText(JsonOutput.prettyPrint(JsonOutput.toJson(
+            mapOf("schemaVersion" to 1, "packages" to packages))) + "\n")
+    }
+}
+
+androidComponents.onVariants { variant ->
+    val notices = tasks.register<GenerateAndroidNotices>("generate${variant.name.replaceFirstChar { it.uppercase() }}AndroidNotices") {
+        outputDirectory.set(layout.buildDirectory.dir("generated/third-party-assets/${variant.name}"))
+        val dependencies = configurations.named("${variant.name}RuntimeClasspath")
+        archives.from(dependencies)
+        coordinates.set(provider {
+            dependencies.get().resolvedConfiguration.resolvedArtifacts.associate {
+                it.file.absolutePath to it.moduleVersion.id.toString()
+            }
+        })
+    }
+    variant.sources.assets?.addGeneratedSourceDirectory(notices, GenerateAndroidNotices::outputDirectory)
 }
 
 android {

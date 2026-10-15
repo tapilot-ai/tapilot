@@ -43,7 +43,18 @@ jobs:
           os.chmod(os.environ['TAPILOT_SIGNING_STORE'], 0o600)
           PYCODE
           pnpm build:release
+          python3 - <<'PYCODE'
+          import hashlib, pathlib, shutil
+          output = pathlib.Path('build/release-evidence')
+          output.mkdir(parents=True, exist_ok=True)
+          apk = pathlib.Path('app/build/outputs/apk/release/app-release.apk')
+          (output / 'SHA256SUMS').write_text(hashlib.sha256(apk.read_bytes()).hexdigest() + '  app-release.apk\n')
+          for name in ['LICENSE', 'PRIVACY.md', 'PRIVACY.zh.md', 'CREDITS.md']:
+              shutil.copy2(name, output / name)
+          shutil.copytree('app/src/main/assets/third-party', output / 'third-party', dirs_exist_ok=True)
+          shutil.copytree('app/build/generated/third-party-assets/release/third-party/android', output / 'third-party/android', dirs_exist_ok=True)
+          PYCODE
       - uses: actions/upload-artifact@v4
         with:
-          name: verified-production-apk
-          path: app/build/outputs/apk/release/app-release.apk
+          name: release-verification-evidence
+          path: build/release-evidence/

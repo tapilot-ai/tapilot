@@ -13,7 +13,9 @@ const bin=path.join(sdk,'build-tools/35.0.0');
 const apk=path.join(root,`app/build/outputs/apk/${variant}/app-${variant}.apk`);
 verifyRuntime();
 const entries=execFileSync('unzip',['-Z1',apk],{encoding:'utf8'}).trim().split('\n');
-for(const required of ['assets/report-export.js','assets/tapilot-icon.png','assets/node-runtime-bundle.zip','lib/arm64-v8a/libnodebin.so']) {
+for(const required of ['assets/report-export.js','assets/tapilot-icon.png','assets/node-runtime-bundle.zip',
+  'assets/third-party/Tapilot-LICENSE.txt','assets/third-party/npm/index.json',
+  'assets/third-party/native/index.json','assets/third-party/android/index.json','lib/arm64-v8a/libnodebin.so']) {
   if(!entries.includes(required)) throw new Error(`APK missing ${required}`);
 }
 if(entries.some(name=>name==='assets/index.html'||name.startsWith('assets/static/'))) throw new Error('Public APK contains legacy web UI');

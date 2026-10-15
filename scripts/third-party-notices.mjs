@@ -1,0 +1,73 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+
+const licenseName = /^(?:licen[cs]e|copying|notice|copyright)(?:$|[._-])/i;
+const sha256 = data => createHash('sha256').update(data).digest('hex');
+function licenseFiles(root, relative = '') {
+  const files = [];
+  for (const entry of fs.readdirSync(path.join(root, relative), { withFileTypes: true })) {
+    if (entry.isSymbolicLink() || entry.name === 'node_modules' || entry.name === '.git') continue;
+    const name = path.join(relative, entry.name);
+    if (entry.isDirectory()) files.push(...licenseFiles(root, name));
+    else if (licenseName.test(entry.name)) files.push(name);
+  }
+  return files.sort();
+}
+function copyNotices(source, destination) {
+  return licenseFiles(source).map(relative => {
+    const bytes = fs.readFileSync(path.join(source, relative));
+    const target = path.join(destination, relative);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, bytes);
+    return { path: relative.split(path.sep).join('/'), sha256: sha256(bytes) };
+  });
+}
+/** Collects actual installed files, without treating SPDX metadata as a license text. */
+export function collectNpmNotices(modules, output) {
+  fs.rmSync(output, { recursive: true, force: true });
+  fs.mkdirSync(output, { recursive: true });
+  const packages = [];
+  function visit(directory) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((a,b) => a.name.localeCompare(b.name))) {
+      if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+      const source = path.join(directory, entry.name);
+      if (entry.name.startsWith('@')) { visit(source); continue; }
+      const manifest = path.join(source, 'package.json');
+      if (!fs.existsSync(manifest)) continue;
+      const pkg = JSON.parse(fs.readFileSync(manifest, 'utf8'));
+      const id = `${encodeURIComponent(pkg.name)}@${encodeURIComponent(pkg.version)}`;
+      if (!packages.some(item => item.id === id)) {
+        const license = typeof pkg.license === 'string' ? pkg.license : pkg.license?.type ?? 'UNKNOWN';
+        const files = copyNotices(source, path.join(output, id));
+        packages.push({ id, name: pkg.name, version: pkg.version, license,
+          repository: pkg.repository?.url ?? pkg.repository ?? null, files,
+          reviewRequired: files.length === 0 || license === 'UNKNOWN' || /(?:A?GPL|LGPL|MPL|SEE LICENSE)/i.test(license) });
+      }
+      if (fs.existsSync(path.join(source, 'node_modules'))) visit(path.join(source, 'node_modules'));
+    }
+  }
+  visit(modules);
+  packages.sort((a,b) => a.id.localeCompare(b.id));
+  fs.writeFileSync(path.join(output, 'index.json'), JSON.stringify({ schemaVersion: 1, packages }, null, 2)+'\n');
+  return packages;
+}
+export function collectNativeNotices(unpacked, output) {
+  fs.rmSync(output, { recursive: true, force: true });
+  fs.mkdirSync(output, { recursive: true });
+  const packages = fs.readdirSync(unpacked).sort().filter(name => name.endsWith('.deb')).map(name => {
+    const files = copyNotices(path.join(unpacked, name), path.join(output, name));
+    return { id: name, files, reviewRequired: files.length === 0,
+      sourceRecipes: 'https://github.com/termux/termux-packages',
+      modifications: 'ELF dependency/SONAME changes documented in scripts/patch-node-elf.py' };
+  });
+  fs.writeFileSync(path.join(output, 'index.json'), JSON.stringify({ schemaVersion: 1, packages }, null, 2)+'\n');
+  return packages;
+}
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const [kind, source, output] = process.argv.slice(2);
+  if (!['npm','native'].includes(kind) || !source || !output) throw new Error('Usage: third-party-notices.mjs npm|native <installed tree> <output>');
+  const entries = kind === 'npm' ? collectNpmNotices(source, output) : collectNativeNotices(source, output);
+  console.log(`Collected ${entries.length} ${kind} packages; ${entries.filter(item => item.reviewRequired).length} require redistribution review`);
+}

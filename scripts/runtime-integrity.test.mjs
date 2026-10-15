@@ -13,7 +13,7 @@ test('rejects stale source and archive even when all runtime assets exist', () =
   try {
     for(const item of ['node-runtime/src','node-runtime/bundle/package.json','node-runtime/bundle/pnpm-lock.yaml', 'node-runtime/bundle/pnpm-workspace.yaml', 'node-runtime/bundle/patches',
       'packages/android-accessibility/src','packages/android-accessibility/package.json','packages/android-accessibility/rslib.config.ts',
-      'scripts/bundle-node-runtime.mjs','scripts/runtime-integrity.mjs']) {
+      'scripts/bundle-node-runtime.mjs','scripts/runtime-integrity.mjs','scripts/third-party-notices.mjs','LICENSE']) {
       fs.mkdirSync(path.dirname(path.join(fixture,item)),{recursive:true});
       fs.cpSync(path.join(root,item),path.join(fixture,item),{recursive:true});
     }

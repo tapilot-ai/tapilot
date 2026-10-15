@@ -17,7 +17,7 @@ export function sourceFingerprint(directory = root) {
   for (const relative of ['node-runtime/src', 'node-runtime/bundle/package.json',
     'node-runtime/bundle/pnpm-lock.yaml', 'node-runtime/bundle/pnpm-workspace.yaml', 'node-runtime/bundle/patches', 'packages/android-accessibility/src',
     'packages/android-accessibility/package.json', 'packages/android-accessibility/rslib.config.ts',
-    'scripts/bundle-node-runtime.mjs', 'scripts/runtime-integrity.mjs']) visit(relative);
+    'scripts/bundle-node-runtime.mjs', 'scripts/runtime-integrity.mjs', 'scripts/third-party-notices.mjs', 'LICENSE']) visit(relative);
   return hash.digest('hex');
 }
 export function verifyRuntime(directory = root) {

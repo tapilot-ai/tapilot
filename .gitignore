@@ -5,6 +5,7 @@ app/build/
 artifacts/
 app/src/main/assets/node-runtime-bundle.zip
 app/src/main/assets/node-runtime-manifest.json
+app/src/main/assets/third-party/
 build/
 dist/
 !packages/**/dist/
