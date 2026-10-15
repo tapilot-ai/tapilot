@@ -18,8 +18,10 @@ accessibility, and enable ChatGPT wireless control while unlocked on the same
 Wi-Fi as the computer. A private GitHub repository requires access; an empty
 Releases page has no APK. Prefer Feishu when GitHub is inaccessible. Check that
 the installed build has wireless control; do not assume a public older APK is
-compatible. No USB or ADB is needed for this flow. Guide private terminal pairing
-using the returned steps; never ask the user to paste a pairing link in chat.
+compatible. No USB or ADB is needed for this flow. Call `tapilot_midscene(action="pair")` and show the returned local window link.
+The user scans the computer QR from Tapilot on the phone, then confirms the phone
+in the computer window. `discover` lists nearby phones but never authorizes them.
+Keep private terminal pairing as a fallback for older phone builds; never ask the user to paste a pairing link in chat.
 After the user confirms completion, verify connection and continue onboarding.
 If the phone is already paired and usable, skip installation.
 

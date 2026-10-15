@@ -90,7 +90,9 @@ Wi-Fi measurements exclude ChatGPT host overhead and are not sidebar acceptance.
 ## Daily use
 
 Enable wireless control on the phone when needed. The paired credential survives
-app restarts. Port 39877 is bound only to the phone's Wi-Fi IPv4 address. Stop from
+app restarts. The listener binds only to the phone's Wi-Fi IPv4 address, preferring port 39877
+and falling back to an OS-assigned port if occupied. Pairing and discovery publish
+the actual port; pair again if a previously saved endpoint has changed. Stop from
 the phone settings or the persistent notification; the listener and active
 controller close immediately. Revoke pairing removes the computer's access.
 The service does not restart at boot or after being killed. If the Wi-Fi address
@@ -306,3 +308,31 @@ authorization is reused without opening a browser. Cancelled/failed/expired logi
 requires a new user choice before retrying. AI tasks are not silently downgraded
 to host-directed steps. The browser sign-in and model-backed AI result still need
 end-user acceptance; fixture tests only verify this routing contract.
+
+## Discover and pair by scanning the computer
+
+For a fresh phone, call `tapilot_midscene(action="pair")`. A temporary local
+browser window shows a computer QR code and nearby `_tapilot._tcp` services.
+In the phone's wireless-control settings choose **Scan computer QR to pair**, scan
+that code, then confirm the phone in the computer window. This needs the updated
+Tapilot phone build; older builds retain local terminal/link pairing.
+
+The QR pins the temporary computer receiver's TLS certificate. The phone uses its
+Wi-Fi network to submit a one-time pairing offer over HTTPS. Only explicit local
+browser confirmation redeems it and saves the pinned phone credential. The window
+expires after five minutes. No phone pairing secret is returned to chat or placed
+in DNS-SD. The browser controls bind to loopback; only the capability-protected TLS
+offer endpoint accepts LAN requests. Camera access is used only on the phone.
+
+`tapilot_midscene(action="discover")` lists nearby phones without connecting or
+authorizing them. After a paired address fails, reconnection may use discovery to
+find the same pinned identity at a new IPv4 address; the TLS pin and existing
+credential must still validate. Blocked multicast does not prevent QR pairing,
+although Wi-Fi client isolation or a computer firewall can prevent LAN traffic.
+
+Validation: protocol tests cover TLS certificate identity, explicit confirmation,
+cross-origin rejection, one-use offers and credential-free discovery metadata.
+Browser fixture rendering and native build/unit tests are separate from actual
+new-phone camera, DNS-SD and browser OAuth acceptance.
+
+The live panel stops requesting preview frames after 10 seconds in the background and refreshes immediately when visible or focused again. This does not release the phone or pause model tasks. Closing the panel stops preview polling. An in-flight frame may finish after suspension and is discarded.

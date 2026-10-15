@@ -1,6 +1,7 @@
 import { App } from '@modelcontextprotocol/ext-apps';
 import { imagePoint } from './geometry.mjs';
-const app = new App({ name: 'Android Use', version: '0.4.9' }, {});
+import { PreviewActivity } from './preview-activity.mjs';
+const app = new App({ name: 'Android Use', version: '0.5.1' }, {});
 const image = document.querySelector('img');
 const status = document.querySelector('[role=status]');
 const resume = document.querySelector('#resume');
@@ -14,6 +15,13 @@ let stopped = false, timer, busy = false, polling = false, epoch = 0, frame, dis
 const pendingActions = [];
 let draining = false;
 const MAX_PENDING = 6;
+let windowFocused = true;
+const activity = new PreviewActivity({
+  onSuspend: () => { ++epoch; clearTimeout(timer); pointer = undefined; clear(); syncControls(); },
+  onResume: () => { ++epoch; pointer = undefined; clear(); syncControls(); schedule(0); },
+});
+function updateActivity() { activity.update(!document.hidden && windowFocused); }
+
 const labels = {
   live: '已连接 · 点击或拖动屏幕操作', disconnected: '已断开，点击重新连接',
   manual: '已暂停，请在手机上完成私密操作', device_locked: '请手动解锁手机，然后点击“已完成继续”',
@@ -44,7 +52,7 @@ function render(data) {
   syncControls();
 }
 async function poll() {
-  if (stopped || document.hidden || busy || pointer || polling) return;
+  if (stopped || !activity.canPoll || busy || pointer || polling) return;
   polling = true; const generation = epoch;
   try { const r = await app.callServerTool({ name: 'tapilot_preview_frame', arguments: {} }); if (generation === epoch && !busy && !pointer) render(r.structuredContent); }
   catch { if (generation === epoch) render({ state: 'unavailable' }); }
@@ -52,7 +60,7 @@ async function poll() {
 }
 function schedule(delay = state === 'live' ? 250 : 4000) {
   clearTimeout(timer);
-  if (!stopped && !document.hidden && !pointer) timer = setTimeout(poll, delay);
+  if (!stopped && activity.canPoll && !pointer) timer = setTimeout(poll, delay);
 }
 async function action(name, args = {}) {
   if (busy) return;
@@ -143,15 +151,20 @@ resume.onclick = () => action('tapilot_preview_resume');
 pause.onclick = () => action('tapilot_preview', { action: 'pause' });
 disconnect.onclick = () => action('tapilot_disconnect');
 app.ontoolresult = result => { discardPending(); ++epoch; pointer = undefined; frame = undefined; if (result.isError) render(result.structuredContent ?? { state: 'unavailable' }); else if (result.structuredContent) render(result.structuredContent); schedule(0); };
-app.onteardown = async () => { stopped = true; ++epoch; clearTimeout(timer); clear(); text.value = ''; return {}; };
-app.onclose = () => { stopped = true; clearTimeout(timer); clear(); text.value = ''; render({ state: 'disconnected' }); };
-document.addEventListener('visibilitychange', () => { ++epoch; pointer = undefined; clear(); if (document.hidden) clearTimeout(timer); else schedule(0); });
+app.onteardown = async () => { activity.close(); stopped = true; ++epoch; clearTimeout(timer); clear(); text.value = ''; return {}; };
+app.onclose = () => { activity.close(); stopped = true; clearTimeout(timer); clear(); text.value = ''; render({ state: 'disconnected' }); };
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) windowFocused = true;
+  ++epoch; pointer = undefined; clear(); syncControls(); updateActivity();
+});
+window.addEventListener('blur', () => { windowFocused = false; pointer = undefined; discardPending(); updateActivity(); });
+window.addEventListener('focus', () => { windowFocused = true; updateActivity(); });
 window.addEventListener('pagehide', () => { stopped = true; ++epoch; clearTimeout(timer); clear(); text.value = ''; });
-window.addEventListener('pageshow', () => { stopped = false; schedule(0); });
+window.addEventListener('pageshow', () => { stopped = false; windowFocused = true; updateActivity(); schedule(0); });
 syncControls();
 try {
   await app.connect();
   // The sole open tool requests the panel. Repeated frame/tool results must not
   // request another fullscreen host tab.
-  schedule(0);
+  updateActivity(); schedule(0);
 } catch { status.textContent = '请在支持 MCP App 的宿主中打开 Android Use'; }

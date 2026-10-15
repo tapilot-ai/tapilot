@@ -22,7 +22,7 @@ export class PhoneConnection {
   #buffer = Buffer.alloc(0);
   constructor(config) { this.config = config; }
   get connected() { return !!this.#socket && !this.#socket.destroyed; }
-  async open(pair = false) {
+  async open(pair = false, rediscover = true) {
     if (this.connected) return;
     const socket = tls.connect({ host: this.config.host, port: this.config.port, localAddress: localAddressForPhone(this.config.host), minVersion: 'TLSv1.2', maxVersion: 'TLSv1.2', rejectUnauthorized: false });
     socket.setKeepAlive(true, 10000);
@@ -51,7 +51,24 @@ export class PhoneConnection {
       const result = await this.request(pair ? 'pair' : 'authenticate', {}, this.config.token);
       this.features = result?.features ?? {};
       return result;
-    } catch (error) { this.close(error); throw error; }
+    } catch (error) {
+      this.close(error);
+      if (!pair && rediscover && !this.config.host.startsWith('127.') && /Unable to connect|connection timed out|connection failed/i.test(error.message)) {
+        const { discoverPhones } = await import('./discovery.mjs');
+        const candidates = await discoverPhones({fingerprint:this.config.fingerprint,timeoutMs:2000});
+        const target = candidates.find(p => p.host !== this.config.host || p.port !== this.config.port);
+        if (target) {
+          const previous = this.config;
+          this.config = {...previous,host:target.host,port:target.port};
+          try {
+            const result = await this.open(false,false);
+            const {saveConfig} = await import('./config.mjs'); await saveConfig(this.config);
+            return result;
+          } catch (failure) { this.close(failure); this.config = previous; throw failure; }
+        }
+      }
+      throw error;
+    }
   }
   request(method, params = {}, token) {
     if (!this.connected) return Promise.reject(new Error('Phone disconnected. Capture a new screen before continuing.'));

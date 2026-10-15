@@ -26,6 +26,8 @@ const fields = {
   wait: ["text", "timeout_ms"],
 };
 const admin = new Set([
+  "pair",
+  "discover",
   "setup",
   "settings",
   "auth_status",
@@ -69,6 +71,7 @@ export class MidsceneController {
       join(homedir(), ".local", "share", "android-use"),
   } = {}) {
     this.root = root;
+    this.pairRevision = 0;
     this.auth = new ChatGPTAuth(join(root, "chatgpt"));
   }
   isAdmin(action) {
@@ -151,6 +154,31 @@ export class MidsceneController {
     await mkdir(this.root, { recursive: true, mode: 0o700 });
     const { action } = args;
     if (action === "setup") return text(installationGuide);
+    if (action === "discover") {
+      const { discoverPhones } = await import("./discovery.mjs");
+      return text({ devices: await discoverPhones(), requires_pairing: true });
+    }
+    if (action === "pair") {
+      if (this.pairWindow && this.pairProcess?.connected && this.pairWindow.expires_at > Date.now()) return text(this.pairWindow);
+      this.pairProcess?.kill();
+      const child = fork(new URL("./pair-ui.mjs", import.meta.url), [], { execArgv: [], stdio: ["ignore", "ignore", "ignore", "ipc"] });
+      this.pairProcess = child;
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => { child.kill(); reject(Error("Could not open pairing window; check Wi-Fi.")); }, 10000);
+        child.on("error", error => { clearTimeout(timer); reject(error); });
+        child.on("exit", () => { clearTimeout(timer); reject(Error("Pairing window closed before it was ready.")); });
+        child.on("message", message => {
+          if (message.paired) { this.pairRevision++; this.invalidate(); return; }
+          clearTimeout(timer);
+          if (message.error) return reject(Error(message.error));
+          if (!message.url) return;
+          this.pairWindow = { url: message.url, expires_at: Date.now()+300000, needs_user_input: true,
+            host_instruction: "Show the local pairing window link. On the phone enable wireless control, choose Scan computer QR to pair, scan this computer's QR, then confirm the phone in the computer window. Wait for completion before checking status. Never ask for pairing tokens in chat." };
+          execFile(process.platform === "darwin" ? "open" : process.platform === "win32" ? "explorer" : "xdg-open", [message.url], () => {});
+          resolve(text(this.pairWindow));
+        });
+      });
+    }
     if (action === "settings") {
       if (args.mode) {
         const temp = join(this.root, `${randomUUID()}.tmp`);

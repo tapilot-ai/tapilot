@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { control, imageSize } from './panel-controls.mjs';
-export const SCREEN_URI = 'ui://android-use/screen-0.4.9.html';
+export const SCREEN_URI = 'ui://android-use/screen-0.5.1.html';
 export const SCREEN_META = { ui: { csp: { connectDomains: [], resourceDomains: [] }, prefersBorder: false }, 'openai/ui': { availableDisplayModes: ['fullscreen'], preferredDisplayMode: 'fullscreen' } };
 export const PANEL_META = { 'openai/widgetSessionId': 'android-use-screen' };
 export const isLocked = error => /^(Unlock the phone first|Phone is locked\. Unlock it on the device\.)$/.test(error.message);
