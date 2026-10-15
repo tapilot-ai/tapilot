@@ -48,6 +48,25 @@ foreground services, wireless pairing and upgrade behavior.
 
 ## Signing and CI
 
+To reproduce the `Checks` workflow locally after configuring the toolchain above,
+run these commands in order (stop if any command fails):
+
+```sh
+pnpm install --frozen-lockfile
+npm ci --prefix plugins/android-use
+npm ci --prefix tests/midscene
+pnpm check:security
+pnpm check
+mkdir -p build/performance
+node scripts/benchmark-conversation.mjs > build/performance/conversation.json
+```
+
+If `actionlint` is installed, run `actionlint` to validate all workflow files.
+The custom `tapilot-android` runner label is declared in `.github/actionlint.yaml`;
+that declaration does not provision a runner. The performance benchmark above is
+model-free. A local pass does not establish a Linux-hosted CI pass, a production
+signing check, or physical-device E2E acceptance.
+
 Pull requests run `.github/workflows/check.yml` with development signing only.
 The APK is built and verified but is not uploaded while third-party binary
 redistribution review remains incomplete. The manually dispatched
