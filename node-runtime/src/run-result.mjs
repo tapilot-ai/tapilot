@@ -13,12 +13,14 @@ export function collectFinalAiResponse(runResult) {
             ? step?.output?.summary ?? step?.output?.data?.value
             : step?.output?.data?.value;
           // Assertions/waits establish success; their booleans are not observed facts.
-          if (!['aiAct', 'aiAsk', 'aiQuery', 'aiString', 'aiNumber', 'aiBoolean'].includes(step?.node) || value === undefined) continue;
+          if (!['aiAct', 'aiAsk', 'aiQuery', 'aiString', 'aiNumber', 'aiBoolean'].includes(step?.node)) continue;
+          // An empty explicit observation must not resurrect an earlier action summary.
+          if (value === undefined || value === null) { finalResponse = undefined; continue; }
           const text =
             typeof value === 'string'
               ? value.trim()
               : JSON.stringify(value, null, 2);
-          if (text) finalResponse = text;
+          finalResponse = text || undefined;
         }
       }
     }

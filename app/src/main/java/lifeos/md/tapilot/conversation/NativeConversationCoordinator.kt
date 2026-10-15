@@ -381,8 +381,7 @@ class NativeConversationCoordinator(
                         await("task.status", JSONObject().put("status", "running"), runSession, stopped)
                         val run = await("runtime.runTest", JSONObject().put("source", NativeConversationAgent.verifiedTask(revised, condition)).put("kind", "yaml").put("environment", environment()).put("reportTaskStatus", false), runSession, stopped, 0) as JSONObject
                         run.optJSONArray("reports")?.objects()?.forEach { reports.put(it) }
-                        val success = run.optInt("exitCode", 1) == 0
-                        PhoneResult(success, run.optString(if (success) "finalResponse" else "failure").ifBlank { run.optJSONArray("output")?.strings()?.takeLast(10)?.joinToString("\n").orEmpty().ifBlank { if (success) "手机操作已完成" else "手机操作失败" } }).also { result ->
+                        PhoneResult.fromRun(run).also { result ->
                             completedOperations.put(JSONObject().put("instruction", revised).put("success", result.success).put("result", result.result)
                                 .put("nativeRpcTimings", run.optJSONObject("nativeRpcTimings") ?: JSONObject()))
                             onMain { find(id)?.put("completedOperations", JSONArray(completedOperations.toString()))?.put("reports", JSONArray(reports.toString())); save(); publish() }

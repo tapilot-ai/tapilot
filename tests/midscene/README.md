@@ -223,3 +223,10 @@ panel pause, and storage 53.4/256 GB plus enabled automatic brightness had recor
 support. The reply also claimed Android 14, but the record only showed ColorOS
 14.0, which cannot verify Android version. This remains a product evidence gap;
 the completed badge does not override the failed E2E verdict.
+
+2026-10-15 follow-up implementation: each native operation now runs an independent
+`aiAsk` screenshot reading after its assertion. Multi-page facts are requested as
+separate operations; an empty reading cannot fall back to action summaries or logs.
+Regression tests cover ColorOS/Android confusion and missing observations. The
+original OPPO was disconnected during this follow-up, so LONG-02 remains awaiting
+real-device revalidation; these changes do not turn its previous failure into a pass.

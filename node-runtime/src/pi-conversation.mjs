@@ -79,7 +79,7 @@ export function createConversation({ messages, goal = '', resume = [], pendingIn
     throw new Error(`本次任务已达到${title}上限（${limit}），可重试或在设置中调整上限`); };
   const taskPrompt = `用户的操作指令必须作为任务持续推进。复杂任务先调用 set_plan 保存简短步骤，执行中按结果更新计划。用户在执行中补充的信息属于当前任务：修改条件就调整后续步骤，追加要求就继续完成；明确换任务则遵循最新要求。手机操作必须串行执行，失败可以调整后重试。需要补充信息时调用 finish_task，outcome=waiting_user 并提出具体问题；任务无法完成时用 outcome=failed 如实说明原因。执行过手机操作的任务只有通过最终画面核验后才可调用 finish_task，outcome=completed。不能把一句承诺、计划或工具未返回当作完成。恢复被打断任务时先检查实时画面，避免重复已经发生的操作。普通知识问答可以直接回答。`;
   const tools = [
-    { name: 'operate_phone', description: 'Execute a concrete phone instruction with Midscene and verify the final visible screen. Do not pass chat history.',
+    { name: 'operate_phone', description: 'Execute one concrete phone instruction with Midscene, verify it, and independently read the final screenshot. For facts on different pages, call this tool separately for each page before navigating away. Returned unknown fields remain unknown; never infer Android version from a vendor OS version, or fill missing facts from the requested success condition. Do not pass chat history.',
       executionMode: 'sequential', parameters: Type.Object({ instruction: Type.String({ minLength: 1 }), success_condition: Type.String({ minLength: 1 }) }),
       execute: async (_id, args, signal) => {
         lastPhoneResult = { success: false, result: '手机操作未完成' };

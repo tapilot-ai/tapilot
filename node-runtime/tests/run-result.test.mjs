@@ -5,6 +5,26 @@ import {
   collectFinalAiResponse,
 } from './run-result.mjs';
 
+test('independent screenshot reading replaces an unsupported action summary', () => {
+  const steps = [
+    { node: 'aiAct', output: { summary: 'Android 14' } },
+    { node: 'aiAssert', output: { data: { pass: true } } },
+    { node: 'aiAsk', output: { data: { value: 'ColorOS 14.0; Android version unknown' } } },
+  ];
+  assert.equal(collectFinalAiResponse({ projects: [{ cases: [{ run: { steps } }] }] }),
+    'ColorOS 14.0; Android version unknown');
+});
+
+test('empty explicit observation never falls back to an earlier action claim', () => {
+  for (const value of [undefined, null, '', '  ']) {
+    const steps = [
+      { node: 'aiAct', output: { summary: 'Android 14' } },
+      { node: 'aiAsk', output: { data: { value } } },
+    ];
+    assert.equal(collectFinalAiResponse({ projects: [{ cases: [{ run: { steps } }] }] }), undefined);
+  }
+});
+
 test('returns the final AI node value from the last attempt', () => {
   assert.equal(
     collectFinalAiResponse({

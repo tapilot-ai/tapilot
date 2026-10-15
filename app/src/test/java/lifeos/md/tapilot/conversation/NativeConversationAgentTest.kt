@@ -6,6 +6,18 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class NativeConversationAgentTest {
+    @Test fun missingObservationCannotBecomeSuccessFromExecutionLogs() {
+        for (value in listOf(JSONObject.NULL, "", "  ")) {
+            val result = PhoneResult.fromRun(JSONObject().put("exitCode", 0).put("finalResponse", value)
+                .put("output", JSONArray().put("Android 14; operation completed")))
+            assertFalse(result.success)
+            assertTrue(result.result.contains("不要重复"))
+            assertFalse(result.result.contains("Android 14"))
+        }
+        assertFalse(PhoneResult.fromRun(JSONObject().put("exitCode", 1).put("finalResponse", "stale observation")).success)
+        assertEquals(PhoneResult(true, "ColorOS 14.0; Android unknown"), PhoneResult.fromRun(
+            JSONObject().put("exitCode", 0).put("finalResponse", "ColorOS 14.0; Android unknown")))
+    }
     @Test fun contextKeepsAttachmentAndOrder() {
         val history = listOf(JSONObject().put("id", "e1").put("createdAt", 1).put("source", "读文件").put("reply", "TP1047").put("status", "succeeded"))
         val messages = NativeConversationAgent.messages(history, "是什么编号", true, mapOf("e1" to JSONObject().put("text", "编号TP1047")))
@@ -39,5 +51,11 @@ class NativeConversationAgentTest {
         val steps = JSONObject(source).getJSONArray("cases").getJSONObject(0).getJSONArray("steps")
         assertEquals("点击\n\"删除\"", steps.getJSONObject(0).getJSONObject("aiAct").getString("prompt"))
         assertEquals("显示：确认", steps.getJSONObject(1).getJSONObject("aiAssert").getString("prompt"))
+        assertEquals(3, steps.length())
+        val observation = steps.getJSONObject(2).getJSONObject("aiAsk").getString("prompt")
+        assertTrue(observation.contains("current screenshot"))
+        assertTrue(observation.contains("unknown"))
+        assertTrue(observation.contains(JSONObject.quote("点击\n\"删除\"")))
+        assertFalse(observation.contains("显示：确认"))
     }
 }
