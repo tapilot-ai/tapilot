@@ -24,6 +24,7 @@ internal class TaskStatusOverlay(
     private val handler = Handler(Looper.getMainLooper())
     private var view: Indicator? = null
     private var animator: ValueAnimator? = null
+    private var gesturePassThrough = false
     private val collapse = Runnable { animateCollapse() }
 
     fun show(hidden: Boolean, collapseDelayMillis: Long = 5_000) {
@@ -33,7 +34,8 @@ internal class TaskStatusOverlay(
         val width = indicator.expandedWidth.coerceAtMost(bounds.width() - dp(24))
         val params = WindowManager.LayoutParams(width, dp(40),
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT).apply {
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                (if (gesturePassThrough) WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE else 0), PixelFormat.TRANSLUCENT).apply {
             gravity = Gravity.TOP or Gravity.LEFT
             x = (bounds.width() - width) / 2
             y = dp(48)
@@ -50,6 +52,21 @@ internal class TaskStatusOverlay(
         animator?.cancel(); animator = null
         view?.let { runCatching { windows.removeView(it) } }
         view = null
+    }
+
+    fun setGesturePassThrough(enabled: Boolean) {
+        gesturePassThrough = enabled
+        val indicator = view ?: return
+        val params = indicator.layoutParams as WindowManager.LayoutParams
+        params.flags = if (enabled) params.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+            else params.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+        try {
+            windows.updateViewLayout(indicator, params)
+        } catch (error: Exception) {
+            gesturePassThrough = false
+            hide() // Never leave an inert input window if its flags cannot be restored.
+            throw error
+        }
     }
 
     fun setHidden(hidden: Boolean) {

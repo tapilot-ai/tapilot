@@ -10,7 +10,10 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /** On-device operations; never assumes shell or device-owner privileges. */
-internal class ExtendedDeviceActions(private val service: AccessibilityService) {
+internal class ExtendedDeviceActions(
+    private val service: AccessibilityService,
+    private val dispatchGesture: (GestureDescription, (Result<Unit>) -> Unit) -> Unit,
+) {
     private val globalActions = mapOf(
         "notifications" to AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS,
         "quickSettings" to AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS,
@@ -52,11 +55,7 @@ internal class ExtendedDeviceActions(private val service: AccessibilityService) 
         fun dispatch(strokes: List<GestureDescription.StrokeDescription>, done: (Result<Unit>) -> Unit) {
             val builder = GestureDescription.Builder()
             strokes.forEach { builder.addStroke(it) }
-            val accepted = service.dispatchGesture(builder.build(), object : AccessibilityService.GestureResultCallback() {
-                override fun onCompleted(gestureDescription: GestureDescription?) = done(Result.success(Unit))
-                override fun onCancelled(gestureDescription: GestureDescription?) = done(Result.failure(IllegalStateException("Gesture cancelled by Android or user input")))
-            }, null)
-            if (!accepted) done(Result.failure(IllegalStateException("Android rejected gesture")))
+            dispatchGesture(builder.build(), done)
         }
         if (action.holdMs == 0L) {
             dispatch(action.fingers.map { GestureDescription.StrokeDescription(path(it), 0, action.duration) }, callback)

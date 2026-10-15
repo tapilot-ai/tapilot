@@ -41,8 +41,13 @@ class MidsceneAccessibilityService : AccessibilityService() {
     private val cancelledSessions = ConcurrentHashMap.newKeySet<String>()
     private lateinit var taskEffects: TaskEffectController
     private lateinit var floatingBall: FloatingBallController
+    private val gestureInput = GestureInputGuard { floatingBall.setGesturePassThrough(it) }
     @Volatile private var latestCapture: CapturePayload? = null
-    private val extendedActions by lazy { ExtendedDeviceActions(this) }
+    private val extendedActions by lazy {
+        ExtendedDeviceActions(this) { description, callback ->
+            dispatchManagedGesture(description, "Multi-finger gesture", callback)
+        }
+    }
     private val continuousEffectCapture by lazy { ContinuousEffectCapture(this) }
     private var lastTapPoint: NativeAction.Point? = null
     private var lastTapAtMillis = 0L
@@ -369,20 +374,7 @@ class MidsceneAccessibilityService : AccessibilityService() {
         val description = GestureDescription.Builder()
             .addStroke(GestureDescription.StrokeDescription(path, 0, duration.coerceAtLeast(1)))
             .build()
-        val accepted = dispatchGesture(
-            description,
-            object : GestureResultCallback() {
-                override fun onCompleted(gestureDescription: GestureDescription?) {
-                    callback(Result.success(Unit))
-                }
-
-                override fun onCancelled(gestureDescription: GestureDescription?) {
-                    callback(Result.failure(IllegalStateException("Gesture was cancelled")))
-                }
-            },
-            handler,
-        )
-        if (!accepted) callback(Result.failure(IllegalStateException("Gesture was rejected")))
+        dispatchManagedGesture(description, "Gesture", callback)
     }
 
     private fun pinchGesture(action: NativeAction.Pinch, callback: (Result<Unit>) -> Unit) {
@@ -407,21 +399,31 @@ class MidsceneAccessibilityService : AccessibilityService() {
             .addStroke(GestureDescription.StrokeDescription(leftFinger, 0, duration))
             .addStroke(GestureDescription.StrokeDescription(rightFinger, 0, duration))
             .build()
-        val accepted = dispatchGesture(
-            description,
-            object : GestureResultCallback() {
-                override fun onCompleted(gestureDescription: GestureDescription?) {
-                    callback(Result.success(Unit))
-                }
+        dispatchManagedGesture(description, "Pinch gesture", callback)
+    }
 
-                override fun onCancelled(gestureDescription: GestureDescription?) {
-                    callback(Result.failure(IllegalStateException("Pinch gesture was cancelled")))
-                }
-            },
-            handler,
-        )
-        if (!accepted) {
-            callback(Result.failure(IllegalStateException("Pinch gesture was rejected")))
+    private fun dispatchManagedGesture(description: GestureDescription, name: String, callback: (Result<Unit>) -> Unit) {
+        val lease = runCatching { gestureInput.acquire() }.getOrElse { callback(Result.failure(it)); return }
+        var completed = false
+        fun finish(result: Result<Unit>) {
+            if (completed) return
+            completed = true
+            // A restoration failure must not turn an executed mutation into a retry.
+            runCatching { lease.close() }.onFailure {
+                android.util.Log.w("TapilotGesture", "Unable to restore task overlay input", it)
+            }
+            callback(result)
+        }
+        // WindowManager input flags must traverse before injection. A queued main
+        // message follows the view traversal barrier without a timing-based sleep.
+        handler.post {
+            runCatching {
+                val accepted = dispatchGesture(description, object : GestureResultCallback() {
+                    override fun onCompleted(gestureDescription: GestureDescription?) = finish(Result.success(Unit))
+                    override fun onCancelled(gestureDescription: GestureDescription?) = finish(Result.failure(IllegalStateException("$name was cancelled")))
+                }, handler)
+                if (!accepted) finish(Result.failure(IllegalStateException("$name was rejected")))
+            }.onFailure { finish(Result.failure(it)) }
         }
     }
 

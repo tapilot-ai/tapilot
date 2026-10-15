@@ -188,6 +188,8 @@ class FloatingBallController(
         if (!runtime.floatingVoice) taskStatus.show(hiddenForCapture)
     }
 
+    internal fun setGesturePassThrough(enabled: Boolean) = taskStatus.setGesturePassThrough(enabled)
+
     private fun hideStatus() = taskStatus.hide()
 
     private fun show() {
