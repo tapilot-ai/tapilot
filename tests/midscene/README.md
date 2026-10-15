@@ -36,6 +36,14 @@ OPPO devices with inactive inner displays. `TAPILOT_E2E_PACKAGE` defaults to
 `lifeos.md.tapilot`; select an explicit verification-package suffix if needed.
 Use a dedicated test device/profile: live actions can visit other installed apps.
 
+For a default-display phone with a resolution override (for example Samsung
+physical 1440×3088, overridden to 1080×2316), set `TAPILOT_E2E_SCREEN_INFO=wm`.
+This lets Midscene read the input dimensions from `wm` while selecting the physical
+screenshot display. The default `physical` mode is retained for folded OPPO.
+`wm` mode rejects nonzero display IDs. Do not change the user's screen resolution
+to make a test pass. The wrapper pins the project config even when selecting one
+YAML file from `cases/` or `fixtures/`.
+
 To reuse a locally configured environment file without copying credentials:
 
 ```sh

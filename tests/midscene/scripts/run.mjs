@@ -10,7 +10,10 @@ for (const [key, value] of Object.entries(configured.parsed || {})) {
 const args = process.argv.slice(2);
 const profile = ['--live', '--resilience', '--auth-fixture'].includes(args[0]) ? args.shift() : '';
 const live = !!profile;
-const result = spawnSync(process.execPath, [`${root}/node_modules/@midscene/test/bin/midscene-test`, ...args], {
+// File selection otherwise makes the CLI discover config relative to cases/fixtures.
+const configArgs = args.includes('--config') || ['model', 'create'].includes(args[0])
+  ? [] : ['--config', `${root}/midscene.config.ts`];
+const result = spawnSync(process.execPath, [`${root}/node_modules/@midscene/test/bin/midscene-test`, ...args, ...configArgs], {
   cwd: root, stdio: 'inherit',
   env: {
     ...process.env,

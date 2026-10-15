@@ -6,6 +6,7 @@ import { defineNode, z, type NodeExecutionContext } from '@midscene/test';
 import { defineProjectSetup, defineTestProject } from '@midscene/test/config';
 import { createMidsceneNodes } from '@midscene/test/midscene';
 import { DeviceFixtures } from './device-fixtures.js';
+import { displayOptions } from './display-options.js';
 
 const configured = loadEnv({ path: process.env.TAPILOT_E2E_ENV_FILE || fileURLToPath(new URL('.env', import.meta.url)) });
 // A selected local model config must not silently use another shell's model/token.
@@ -18,14 +19,8 @@ if (!/^lifeos\.md\.tapilot(?:\.[a-z][a-z0-9]*)?$/.test(packageName)) throw new E
 
 interface Context { fixtures: DeviceFixtures; serial: string; device?: AndroidDevice; agent?: AndroidAgent }
 function createDevice(serial: string) {
-  const displayId = Number(process.env.TAPILOT_E2E_DISPLAY_ID || '0');
-  if (!Number.isSafeInteger(displayId) || displayId < 0) throw new Error('Invalid logical Android display ID');
-  return new AndroidDevice(serial, {
-    displayId,
-    usePhysicalDisplayIdForScreenshot: true,
-    usePhysicalDisplayIdForDisplayLookup: true,
-    exposeRunAdbShellAction: false,
-  });
+  return new AndroidDevice(serial, displayOptions(process.env.TAPILOT_E2E_DISPLAY_ID,
+    process.env.TAPILOT_E2E_SCREEN_INFO));
 }
 const setup = defineProjectSetup<Context>({
   name: 'android',
