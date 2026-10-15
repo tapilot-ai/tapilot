@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Preview, connectionState } from '../server/preview.mjs';
+import { Preview, connectionState, connectionMessage } from '../server/preview.mjs';
 import { control, imageSize } from '../server/panel-controls.mjs';
 import { imagePoint } from '../ui/geometry.mjs';
 const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
@@ -146,4 +146,47 @@ test('missing local pairing is distinct from revoked pairing and network failure
   assert.equal(connectionState(Object.assign(new Error('Pair this computer first'), {code:'setup_required'})), 'setup_required');
   assert.equal(connectionState(new Error('certificate changed')), 'pairing_required');
   assert.equal(connectionState(new Error('connect ECONNREFUSED')), 'unavailable');
+});
+
+test('privacy pause wins over an in-flight preview, failed preview, and resume', async () => {
+  for (const operation of ['frame', 'resume', 'failure']) {
+    const preview=new Preview();preview.observe();
+    let resolve,reject,started;
+    const ready=new Promise(r=>started=r);
+    const phone={open:async()=>{},request:()=>{started();return new Promise((a,b)=>{resolve=a;reject=b;});}};
+    const pending=operation==='resume'?preview.resume(phone):preview.frame(phone);
+    await ready;preview.pause('manual');
+    if(operation==='failure')reject(new Error('Unlock the phone first'));
+    else resolve({dataUrl:png});
+    const value=await pending;
+    assert.equal(value.structuredContent.state,'manual');
+    assert.equal(value.structuredContent.dataUrl,undefined);
+    assert.equal(preview.lastFrame,undefined);
+    assert.equal(preview.reason,'manual');
+  }
+});
+
+test('privacy pause during action preparation prevents the gesture from dispatching', async () => {
+  const phone=device(),{preview,frame}=await ready(phone);
+  let finish,started;const preparing=new Promise(r=>started=r);
+  phone.request=async method=>{
+    if(method==='device.capture'){started();return new Promise(r=>finish=r);}
+    throw new Error('Gesture must not dispatch');
+  };
+  const pending=preview.control(phone,{frame_id:frame.frame_id,action:'home'});
+  await preparing;preview.pause('manual');
+  finish({geometry:{frameId:'new',imageWidth:1,imageHeight:1}});
+  await assert.rejects(pending,/paused/);
+});
+
+test('missing plugin modules explain host recovery without exposing local paths', async () => {
+  const error = Object.assign(new Error("Cannot find module '/private/cache/old/server/discovery.mjs'"), {code:'ERR_MODULE_NOT_FOUND'});
+  assert.equal(connectionState(error), 'host_reload_required');
+  assert.match(connectionMessage(error), /重载/);
+  assert.doesNotMatch(connectionMessage(error), /private\/cache/);
+  const phone=device(); phone.open=async()=>{throw error;};
+  const preview=new Preview();preview.observe();
+  const response=await preview.frame(phone);
+  assert.equal(response.structuredContent.state,'host_reload_required');
+  assert.equal(response.structuredContent.dataUrl,undefined);
 });

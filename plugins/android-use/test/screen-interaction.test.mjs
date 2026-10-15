@@ -17,12 +17,12 @@ async function fixture() {
   const doc = {hidden:false, handlers:{},querySelector:element,
     querySelectorAll:selector=>selector==='[data-control]'?[back,element('submit')]:[back],
     addEventListener(name,fn){this.handlers[name]=fn;}};
-  const win = {addEventListener(){}};
+  const win = {handlers:{},addEventListener(name,fn){this.handlers[name]=fn;}};
   let client;
   class App {constructor(){client=this;this.calls=[];} async connect(){} async callServerTool(request){this.calls.push(request);return this.respond(request);} }
   await new (Object.getPrototypeOf(async function(){}).constructor)('App','imagePoint','PreviewActivity','document','window','setTimeout','clearTimeout',source)(App,imagePoint,PreviewActivity,doc,win,()=>1,()=>{});
   client.ontoolresult({structuredContent:live});
-  return {client,element,doc,back};
+  return {client,element,doc,back,win};
 }
 const deferred = () => {let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
 
@@ -67,4 +67,34 @@ test('unpaired panel provides a local pairing window without phone access', asyn
   f.client.respond=async()=>({structuredContent:{url:'https://example.com/untrusted'}});
   await f.element('#pair').onclick();
   assert.match(f.element('[role=alert]').textContent,/无法创建/);
+});
+
+test('host tool results cannot reveal a backgrounded or closed panel', async()=>{
+  const f=await fixture();
+  f.doc.hidden=true;f.doc.handlers.visibilitychange();
+  f.client.ontoolresult({structuredContent:live});
+  assert.equal(f.element('img').hidden,true);
+  f.doc.hidden=false;await f.client.onteardown();
+  f.client.ontoolresult({structuredContent:live});
+  assert.equal(f.element('img').hidden,true);
+});
+
+test('missing host files offer reload guidance instead of phone reconnection', async()=>{
+  const f=await fixture();
+  f.client.ontoolresult({isError:true,structuredContent:{state:'host_reload_required'}});
+  assert.equal(f.element('#resume').hidden,true);
+  assert.equal(f.element('#pair').hidden,true);
+  assert.match(f.element('#recovery').textContent,/重载插件/);
+  assert.equal(f.element('img').hidden,true);
+});
+
+test('losing focus hides the screen immediately and discards a late action', async()=>{
+  const f=await fixture(),pending=deferred();f.client.respond=()=>pending.promise;
+  f.element('textarea').value='sent';const sent=f.element('form').onsubmit({preventDefault(){}});
+  f.win.handlers.blur();
+  assert.equal(f.element('img').hidden,true);
+  pending.resolve({structuredContent:{...live,action_completed:true}});await sent;
+  assert.equal(f.element('img').hidden,true);
+  f.client.ontoolresult({structuredContent:live});
+  assert.equal(f.element('img').hidden,true);
 });

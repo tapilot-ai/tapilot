@@ -1,10 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { control, imageSize } from './panel-controls.mjs';
-export const SCREEN_URI = 'ui://android-use/screen-0.5.2.html';
+export const SCREEN_URI = 'ui://android-use/screen-0.5.3.html';
 export const SCREEN_META = { ui: { csp: { connectDomains: [], resourceDomains: [] }, prefersBorder: false }, 'openai/ui': { availableDisplayModes: ['fullscreen'], preferredDisplayMode: 'fullscreen' } };
 export const PANEL_META = { 'openai/widgetSessionId': 'android-use-screen' };
 export const isLocked = error => /^(Unlock the phone first|Phone is locked\. Unlock it on the device\.)$/.test(error.message);
-export const connectionState = error => error.code === 'setup_required' ? 'setup_required' : /Another task is already registered|already owned/i.test(error.message) ? 'occupied' : /certificate changed|Not paired|Pair this computer first/i.test(error.message) ? 'pairing_required' : 'unavailable';
+export const needsHostReload = error => ['ERR_MODULE_NOT_FOUND', 'MODULE_NOT_FOUND'].includes(error.code) || /updated while this session|Worker files or dependencies are missing/.test(error.message);
+export const connectionMessage = error => needsHostReload(error) ? 'Android Use 已更新或安装文件缺失。请重载电脑上的插件或客户端；重启手机不会修复此问题。' : error.message;
+export const connectionState = error => needsHostReload(error) ? 'host_reload_required' : error.code === 'setup_required' ? 'setup_required' : /Another task is already registered|already owned/i.test(error.message) ? 'occupied' : /certificate changed|Not paired|Pair this computer first/i.test(error.message) ? 'pairing_required' : 'unavailable';
 const result = data => ({ content: [], structuredContent: data });
 
 export class Preview {
@@ -16,9 +18,11 @@ export class Preview {
   pause(reason = 'manual') { this.reason = reason; this.revision++; this.invalidate(); }
   observe() { if (this.reason === 'disconnected') this.reason = null; }
   async resume(phone) {
+    const revision = this.revision;
     // This probe cannot invalidate the model's last actionable frame.
     await phone.open();
     await phone.request('device.preview', phone.features?.jpegPreview ? {format:'jpeg'} : {});
+    if (revision !== this.revision) return result({ state: this.reason ?? 'disconnected' });
     this.reason = null;
     return result({ state: 'live' });
   }
@@ -27,7 +31,10 @@ export class Preview {
     this.invalidate(); // Every submitted action consumes the visible frame.
     if (this.reason) throw new Error('Screen paused or disconnected. Resume and inspect first.');
     const start = performance.now();
-    await control(phone, frame, args);
+    const revision = this.revision;
+    await control(phone, frame, args, () => {
+      if (revision !== this.revision || this.reason) throw new Error('Screen paused or disconnected. Resume and inspect first.');
+    });
     const actionMs = performance.now() - start;
     // One MCP response includes the next actionable frame; no extra host round trip.
     const next = await this.frame(phone);
@@ -35,9 +42,11 @@ export class Preview {
   }
   async frame(phone) {
     if (this.reason) return result({ state: this.reason });
+    const revision = this.revision;
     try {
       await phone.open();
       const frame = await phone.request('device.preview', phone.features?.jpegPreview ? {format:'jpeg'} : {});
+      if (revision !== this.revision) return result({ state: this.reason ?? 'disconnected' });
       const size = imageSize(frame.dataUrl);
       this.lastFrame = { id: randomUUID(), receivedAt: performance.now(), ...size };
       // A click may race the one outstanding polling request. Accept the
@@ -45,9 +54,10 @@ export class Preview {
       this.recentFrames = [this.lastFrame, ...this.recentFrames].slice(0, 2);
       return result({ state: 'live', ...frame, frame_id: this.lastFrame.id, ...size });
     } catch (error) {
+      if (revision !== this.revision) return result({ state: this.reason ?? 'disconnected' });
       if (isLocked(error)) this.pause('device_locked');
       this.invalidate();
-      return result({ state: this.reason ?? connectionState(error), message: error.message });
+      return result({ state: this.reason ?? connectionState(error), message: connectionMessage(error) });
     }
   }
 }
@@ -65,7 +75,11 @@ export async function unlockRequired(server, preview, phone, name, retryObservat
   }
   if (confirmed && preview.revision === revision && preview.reason === 'device_locked' && ['tapilot_status', 'tapilot_screen'].includes(name)) {
     // One fresh observation only. A mutation is never replayed after user input.
-    try { const value = await retryObservation(); preview.reason = null; return value; }
+    try {
+      const value = await retryObservation();
+      if (preview.revision !== revision) return result({ state: preview.reason ?? 'disconnected' });
+      preview.reason = null; return value;
+    }
     catch (error) { if (!isLocked(error)) throw error; }
   }
   return { isError: true, structuredContent: { state: 'device_locked' }, content: [{ type: 'text', text: JSON.stringify({

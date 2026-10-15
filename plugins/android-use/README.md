@@ -355,3 +355,17 @@ The live panel stops requesting preview frames after 10 seconds in the backgroun
 Reload the plugin host after updating to load the new server and panel resource.
 Local regression tests cover these transitions; native ChatGPT/Codex panel
 rendering and real-provider sign-in still require host acceptance.
+
+## Recovery and privacy fixes (0.5.3)
+
+- Updating a running plugin can leave the host using removed files. Missing-module
+  errors now ask for a host reload instead of suggesting phone reconnection.
+  Existing pairing and authorization do not need to be reset.
+- Pause or disconnect takes precedence over pending preview, resume, capture and
+  unlock responses. A manual action still waiting for capture is not dispatched
+  after a pause; an already dispatched action is never automatically replayed.
+- Backgrounded or closed panels discard late host tool results as well as late
+  manual-action responses.
+
+These paths are covered by local regression tests. Real ChatGPT/Codex host
+acceptance remains pending a host reload.

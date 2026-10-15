@@ -25,7 +25,7 @@ export function imageSize(dataUrl) {
   return { width, height };
 }
 
-export async function control(phone, frame, args) {
+export async function control(phone, frame, args, guard = () => {}) {
   const validation = validate(args);
   if (!validation.valid) throw new Error(`Invalid screen control: ${validation.errorMessage}`);
   if (!frame || args.frame_id !== frame.id || performance.now() - frame.receivedAt > 10000) throw new Error('Screen changed or expired. Wait for a fresh frame and try again.');
@@ -35,7 +35,9 @@ export async function control(phone, frame, args) {
   // Manual input invalidates previous model coordinates. Obtain the phone's
   // action-frame token immediately before sending one user-requested mutation.
   // Neither capture nor mutation is retried after a lost connection.
+  guard();
   const { geometry } = await phone.request(phone.features?.compactActionFrame ? 'device.prepareAction' : 'device.capture');
+  guard();
   if (geometry.imageWidth !== frame.width || geometry.imageHeight !== frame.height) throw new Error('Screen orientation or size changed. Wait for a fresh frame.');
   const common = { frame_id: geometry.frameId };
   if (args.action === 'tap') return callTool(phone, 'tapilot_tap', { ...common, x: args.x, y: args.y });

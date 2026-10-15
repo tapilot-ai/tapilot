@@ -1,7 +1,7 @@
 import { App } from '@modelcontextprotocol/ext-apps';
 import { imagePoint } from './geometry.mjs';
 import { PreviewActivity } from './preview-activity.mjs';
-const app = new App({ name: 'Android Use', version: '0.5.2' }, {});
+const app = new App({ name: 'Android Use', version: '0.5.3' }, {});
 const image = document.querySelector('img');
 const status = document.querySelector('[role=status]');
 const resume = document.querySelector('#resume');
@@ -23,6 +23,7 @@ const activity = new PreviewActivity({
 function updateActivity() { activity.update(!document.hidden && windowFocused); }
 
 const labels = {
+  host_reload_required: '请重载电脑上的 Android Use 插件',
   setup_required: '尚未配对手机',
   live: '已连接 · 点击或拖动屏幕操作', disconnected: '已断开，点击重新连接',
   manual: '已暂停，请在手机上完成私密操作', device_locked: '请手动解锁手机，然后点击“已完成继续”',
@@ -37,13 +38,15 @@ function syncControls() {
 }
 function clear() { frame = displayedFrame = undefined; image.removeAttribute('src'); image.hidden = true; }
 function render(data) {
+  if (stopped || document.hidden || !windowFocused) { clear(); syncControls(); return; }
   state = data?.state ?? 'unavailable';
   if (state === 'live') { pairingLink.hidden = true; pairingLink.removeAttribute('href'); }
   status.textContent = labels[state] ?? labels.unavailable;
-  resume.hidden = state === 'live';
+  resume.hidden = ['live', 'host_reload_required'].includes(state);
   pair.hidden = !['setup_required', 'pairing_required'].includes(state);
   recovery.hidden = state === 'live';
   recovery.textContent = ({
+    host_reload_required: '插件已更新或安装文件缺失。重载插件或重新打开客户端后继续，无需重新配对手机。',
     setup_required: '在手机 Tapilot 设置中开启无线控制，再点击下方按钮，用手机扫描电脑二维码。无需 USB。',
     pairing_required: '在手机上重新扫描电脑二维码，并在电脑窗口确认。完成后点击重新连接。',
     unavailable: '请检查手机无线控制已开启、两端 Wi-Fi 可互通。恢复后点击重新连接；不会重放之前的操作。',
@@ -158,14 +161,14 @@ pair.onclick = async () => {
 resume.onclick = () => action('tapilot_preview_resume');
 pause.onclick = () => action('tapilot_preview', { action: 'pause' });
 disconnect.onclick = () => action('tapilot_disconnect');
-app.ontoolresult = result => { ++epoch; pointer = undefined; frame = undefined; if (result.isError) render(result.structuredContent ?? { state: 'unavailable' }); else if (result.structuredContent) render(result.structuredContent); schedule(0); };
+app.ontoolresult = result => { ++epoch; pointer = undefined; frame = undefined; if (stopped || document.hidden || !windowFocused) { clear(); syncControls(); return; } if (result.isError) render(result.structuredContent ?? { state: 'unavailable' }); else if (result.structuredContent) render(result.structuredContent); schedule(0); };
 app.onteardown = async () => { activity.close(); stopped = true; ++epoch; clearTimeout(timer); clear(); text.value = ''; return {}; };
 app.onclose = () => { activity.close(); stopped = true; clearTimeout(timer); clear(); text.value = ''; render({ state: 'disconnected' }); };
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) windowFocused = true;
   ++epoch; pointer = undefined; clear(); syncControls(); updateActivity();
 });
-window.addEventListener('blur', () => { windowFocused = false; pointer = undefined; updateActivity(); });
+window.addEventListener('blur', () => { windowFocused = false; ++epoch; pointer = undefined; clear(); syncControls(); updateActivity(); });
 window.addEventListener('focus', () => { windowFocused = true; updateActivity(); });
 window.addEventListener('pagehide', () => { stopped = true; ++epoch; clearTimeout(timer); clear(); text.value = ''; });
 window.addEventListener('pageshow', () => { stopped = false; windowFocused = true; updateActivity(); schedule(0); });

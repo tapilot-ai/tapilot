@@ -228,3 +228,14 @@ test('LAN source selection excludes VPNs and refuses ambiguous interfaces', asyn
   assert.equal(choose('100.82.246.47',{...physical,en1:entry('192.168.1.2')}),undefined);
   assert.equal(choose('192.168.1.10',{...physical,en1:entry('192.168.1.2')}),'192.168.1.2');
 });
+
+test('pause during unlock observation discards its late screen', async () => {
+  const preview = new Preview();
+  const server = {getClientCapabilities:()=>({elicitation:{form:{}}}),elicitInput:async()=>({action:'accept',content:{completion:'已完成继续'}})};
+  const response=await unlockRequired(server,preview,{},'tapilot_screen',async()=>{
+    preview.pause('manual');return {content:[{type:'image',data:'private',mimeType:'image/png'}]};
+  });
+  assert.equal(preview.reason,'manual');
+  assert.deepEqual(response.content,[]);
+  assert.equal(response.structuredContent.state,'manual');
+});
