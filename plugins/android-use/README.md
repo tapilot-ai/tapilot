@@ -264,9 +264,8 @@ reject concurrent input. Finishing a task never disconnects the phone.
 
 Local tests execute the published Midscene SDK, native HTML report generation,
 wireless RPC fixtures and OAuth Responses fixtures (including false assertions).
-They are not real-provider or real-phone AI acceptance. The added dependencies
-currently report npm audit findings (js-yaml, sharp and uuid transitive paths);
-no forced downgrade is applied to the pinned SDK used by iPhone Use.
+They are not real-provider or real-phone AI acceptance. Run the repository security checks for current dependency audit results;
+fixture tests do not establish provider or host acceptance.
 
 ### VPN routing (0.4.1)
 
@@ -295,13 +294,15 @@ steps of the same task so the link opens the accumulated execution history.
 
 ## Guided Midscene AI sign-in
 
-The bundled Android Use skill guides each new user through the steps/AI choice.
-For AI, it saves mode `ai`, checks `auth_status`, opens `auth_login` if needed,
+First use continues in the default steps mode without a mandatory mode-selection
+question. AI remains an explicit optional choice. For AI, the skill saves mode `ai`, checks `auth_status`, opens `auth_login` if needed,
 shows the returned authorization link, waits for the user's browser confirmation,
 and verifies `authorized=true` before proceeding. This is a separate OpenAI
 sign-in for the local plugin; no API key or developer account is required.
 
-Settings return `onboarding_required` for an unconfigured user. Missing AI consent
+Settings return `onboarding_required` for an unconfigured user, together with
+`onboarding_blocking=false`. `status` returns mode, authorization guidance and
+active-task state without acquiring the phone, including during an ongoing task. Missing AI consent
 or authorization returns structured `code`, `next_action`, `message`, and
 `host_instruction` before touching the phone. Pending login is reused; an existing
 authorization is reused without opening a browser. Cancelled/failed/expired login
@@ -336,3 +337,21 @@ Browser fixture rendering and native build/unit tests are separate from actual
 new-phone camera, DNS-SD and browser OAuth acceptance.
 
 The live panel stops requesting preview frames after 10 seconds in the background and refreshes immediately when visible or focused again. This does not release the phone or pause model tasks. Closing the panel stops preview polling. An in-flight frame may finish after suspension and is discarded.
+
+## Experience updates (0.5.2)
+
+- An unpaired panel offers a local QR pairing window directly. Recovery messages
+  distinguish first setup, revoked pairing, occupied phones, locking and network
+  failure. Existing pairing and authorization remain reusable.
+- Manual controls accept one action at a time. Coordinates from an older screen
+  are never silently attached to a later frame. Failed or uncertain input keeps
+  the draft; confirmed input clears only that draft, preserving newly typed text.
+- Late action responses cannot restore a hidden screen after backgrounding or
+  closing the panel. Pausing still cancels AI execution and preserves pairing.
+- AI status can be read while a task runs; use it instead of submitting again.
+  Pending sign-in links are reused. Android execution reports identify the
+  correct device type and retain the existing clickable report-link contract.
+
+Reload the plugin host after updating to load the new server and panel resource.
+Local regression tests cover these transitions; native ChatGPT/Codex panel
+rendering and real-provider sign-in still require host acceptance.

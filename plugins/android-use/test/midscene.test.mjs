@@ -308,3 +308,19 @@ test("installation guidance includes both APK sources and needs no phone", async
   assert.match(result.structuredContent.pairing.script, /server\/pair\.mjs$/);
   assert.equal(calls.length, 0);
 });
+
+test('unified status is nonblocking and preserves saved mode and pending authorization', async t => {
+  const {controller:c,calls}=await fixture(t);
+  const initial=metadata(await c.configure({action:'status'}));
+  assert.equal(initial.mode,'steps');
+  assert.equal(initial.needs_user_input,false);
+  assert.equal(initial.next_action,'continue_steps');
+  assert.equal(metadata(await c.configure({action:'settings'})).onboarding_blocking,false);
+  await c.configure({action:'settings',mode:'ai'});
+  c.auth.status=async()=>({authorized:false,login:{status:'pending',url:'http://127.0.0.1:1234/start/fixture'}});
+  const pending=metadata(await c.configure({action:'status'}));
+  assert.equal(pending.authorization_url,'http://127.0.0.1:1234/start/fixture');
+  c.active=true;
+  assert.equal(metadata(await c.configure({action:'status'})).next_action,'wait_or_pause');
+  assert.equal(calls.length,0);
+});

@@ -26,7 +26,8 @@ After the user confirms completion, verify connection and continue onboarding.
 If the phone is already paired and usable, skip installation.
 
 For a phone task, open `tapilot_preview_open` once if no panel is open, then check
-`tapilot_status` and `tapilot_midscene(action="settings")`. Keep the panel and
+`tapilot_status` and `tapilot_midscene(action="status")`. The latter reports mode,
+authorization and whether an AI task is still running without acquiring the phone. Keep the panel and
 connection open after the task. Runtime control uses Tapilot Wi-Fi; do not use ADB.
 
 In default `steps` mode, use `tapilot_midscene(action="screenshot")` and explicit
@@ -40,11 +41,12 @@ and authorization; never enable it implicitly.
 ## First-use choice and guided AI authorization
 
 Read `settings.onboarding_required`. For a new user, explain the difference:
-steps means the current chat model decides and Midscene records explicit actions;
-ai means Midscene performs model-based recognition and planning. Offer the choice
-using the host interactive question. Respect an existing saved mode. An explicit
+steps means the current chat model decides and Midscene records explicit actions.
+Continue the requested phone task in this default mode without requiring a setup
+question. Mention that Midscene AI is an optional mode for automatic planning.
+Respect an existing saved mode. An explicit
 request for Midscene AI, automatic planning, or AI authorization already supplies
-the choice; do not ask for the same consent again. If the user chooses steps, save
+the choice; do not ask for the same consent again. If the user explicitly chooses steps, save
 `settings(mode="steps")` so later tasks do not repeat first-use onboarding.
 
 After the user chooses AI:
@@ -79,3 +81,8 @@ Verify the requested visible result before calling it complete. Reports record
 execution; they do not alone prove the business outcome. Pause the preview before
 private authentication, wait for the user, then resume; never replay an uncertain
 mutation or request a phone passcode.
+
+During AI execution, use `status` for progress instead of submitting the task again.
+The live panel provides a pairing button for an unpaired phone, preserves failed
+input drafts, and accepts one manual action at a time. After a failed or uncertain
+action, obtain a fresh screenshot before deciding whether any further action is needed.

@@ -203,6 +203,9 @@ test('MCP pause interrupts Midscene while a phone action is pending; live frames
   await client.callTool({name:'tapilot_status',arguments:{}});
   const action=client.callTool({name:'tapilot_midscene',arguments:{action:'home'}});
   await started;
+  const progress=await client.callTool({name:'tapilot_midscene',arguments:{action:'status'}}, undefined, {timeout:2000});
+  assert.equal(progress.structuredContent.active,true);
+  assert.equal(progress.structuredContent.next_action,'wait_or_pause');
   const live=await client.callTool({name:'tapilot_preview_frame',arguments:{}});
   assert.equal(live.structuredContent.state,'live');
   const pause=await client.callTool({name:'tapilot_preview',arguments:{action:'pause'}});

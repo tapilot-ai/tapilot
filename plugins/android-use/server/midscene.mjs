@@ -26,6 +26,7 @@ const fields = {
   wait: ["text", "timeout_ms"],
 };
 const admin = new Set([
+  "status",
   "pair",
   "discover",
   "setup",
@@ -39,7 +40,7 @@ const admin = new Set([
 export const midsceneTool = {
   name: "tapilot_midscene",
   description:
-    "Midscene over the existing Wi-Fi connection. Default steps mode: chat host decides explicit actions and gets native reports. AI act/assert/wait require mode=ai and separate ChatGPT consent. Settings/auth need no phone. Reuse report_id per task. At task completion, present the returned report_link as a clickable Markdown link to the user, including when the task fails. Use frame_id from the latest Midscene screenshot for tap/swipe/input. Never replay uncertain actions.",
+    "Midscene over the existing Wi-Fi connection. Default steps mode: chat host decides explicit actions and gets native reports. AI act/assert/wait require mode=ai and separate ChatGPT consent. Use status for mode, authorization and running-task status without connecting a phone. Settings/auth need no phone. Reuse report_id per task. At task completion, present the returned report_link as a clickable Markdown link to the user, including when the task fails. Use frame_id from the latest Midscene screenshot for tap/swipe/input. Never replay uncertain actions.",
   inputSchema: {
     type: "object",
     properties: {
@@ -154,6 +155,19 @@ export class MidsceneController {
     await mkdir(this.root, { recursive: true, mode: 0o700 });
     const { action } = args;
     if (action === "setup") return text(installationGuide);
+    if (action === "status") {
+      const mode = await this.mode();
+      const status = await this.auth.status();
+      return text({
+        mode, active: !!this.active, authorized: status.authorized,
+        onboarding_required: !existsSync(join(this.root, "midscene.json")),
+        ...(mode === "ai" ? this.authGuidance(mode, status) : {
+          needs_user_input: false,
+          next_action: mode === "steps" ? "continue_steps" : "respect_saved_mode",
+        }),
+        ...(this.active ? { next_action: "wait_or_pause", message: "任务正在执行。可继续查看实时画面；如需接管，先暂停任务，勿重复提交。" } : {}),
+      });
+    }
     if (action === "discover") {
       const { discoverPhones } = await import("./discovery.mjs");
       return text({ devices: await discoverPhones(), requires_pairing: true });
@@ -191,8 +205,9 @@ export class MidsceneController {
         mode: await this.mode(),
         default_mode: "steps",
         authorization_changes_mode: false,
+        onboarding_blocking: false,
         onboarding_required: !existsSync(join(this.root, "midscene.json")),
-        host_instruction: "For a new user, explain that steps uses chat-host decisions and AI uses Midscene planning. Ask which they want. After explicit AI consent set mode=ai and check auth_status; guide sign-in if needed. Do not silently enable AI or omit the choice.",
+        host_instruction: "For a new user, briefly explain the default steps mode and continue their phone task without blocking on a mode question. Offer AI as an optional later choice. Respect a saved mode. Only after explicit AI consent set mode=ai and check auth_status; reuse pending or existing authorization. Never silently enable AI.",
       });
     }
     if (action === "auth_status") {
@@ -214,7 +229,7 @@ export class MidsceneController {
         this.login = this.auth
           .login((info) => {
             execFile(
-              process.platform === "darwin" ? "open" : "xdg-open",
+              process.platform === "darwin" ? "open" : process.platform === "win32" ? "explorer" : "xdg-open",
               [info.url],
               () => {},
             );

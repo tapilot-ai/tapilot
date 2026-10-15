@@ -96,7 +96,7 @@ export class ActionReport {
         groupDescription: "Host-driven device actions",
         sdkVersion: getVersion(),
         modelBriefs: [],
-        deviceType: "ios",
+        deviceType: "android",
       },
       this.attributes,
     );

@@ -141,3 +141,9 @@ test('drag endpoints outside the image clamp to its edge while outside starts re
   assert.deepEqual(imagePoint(rect, 100, 200, 60, 0, true), { x: 50, y: 0 });
   assert.deepEqual(imagePoint(rect, 100, 200, 500, 500, true), { x: 99, y: 199 });
 });
+
+test('missing local pairing is distinct from revoked pairing and network failure', () => {
+  assert.equal(connectionState(Object.assign(new Error('Pair this computer first'), {code:'setup_required'})), 'setup_required');
+  assert.equal(connectionState(new Error('certificate changed')), 'pairing_required');
+  assert.equal(connectionState(new Error('connect ECONNREFUSED')), 'unavailable');
+});
