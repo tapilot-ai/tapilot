@@ -1,0 +1,61 @@
+afterEach:
+  - fixture.restore: {}
+cases:
+  - name: LIFE-01 Backgrounding preserves the running task and its visible outcome
+    tags: [live, lifecycle, background]
+    steps:
+      - app.open: {}
+      - aiAct: >-
+          Create a new Tapilot conversation with model/device access ready. Submit
+          "打开系统设置，读取 Android 版本和手机型号，并核对屏幕后返回结果。只读。"
+          Observe until the native task starts. Do not perform the Settings lookup yourself.
+      - aiAct: >-
+          Leave Tapilot's chat in the background while observing the native task.
+          Do not force-stop, change settings or launch a different task. Once it is
+          backgrounded, stop interacting.
+      - task.waitForIdle: {}
+      - aiAct: >-
+          Return to Tapilot using recent apps, and verify that the same
+          task and its history remain, with its factual reply supported by execution
+          screens. Fail if backgrounding silently loses the task or marks incomplete work done.
+
+  - name: LIFE-02 Restart retains an interrupted task without replaying mutations
+    tags: [live, resilience, lifecycle, restart]
+    steps:
+      - app.open: {}
+      - aiAct: >-
+          Create a new Tapilot conversation with model/device access ready. Submit
+          "用计算器先计算128×37，再加456，再除以8，逐步核对屏幕。"
+          Observe until native execution is visibly active. Do not operate Calculator yourself.
+      - fault.restart: {}
+      - aiAct: >-
+          Verify Tapilot retains the interrupted task and conversation history and does
+          not automatically resume Calculator actions or show a false completed state.
+          The app must show interrupted, stopped, failed or an explicit recovery choice.
+          Verify no old-task action occurs while inspecting it; do not click Retry/Continue.
+      - aiAct: >-
+          Submit a fresh request "换个任务：打开系统设置首页并核对 WLAN 项目，只读。"
+          Stop interacting after submission.
+      - task.waitForIdle: {}
+      - aiAct: >-
+          Return to Tapilot and verify the new task succeeds
+          with supporting screens while the interrupted calculation remains incomplete.
+
+  - name: LIFE-03 Locking stops screen access and does not silently replay after waking
+    tags: [live, resilience, lifecycle, lock]
+    steps:
+      - app.open: {}
+      - aiAct: >-
+          Use a dedicated test device without a secure PIN/password lock. If the
+          device requires private unlock credentials, fail with a manual-unlock
+          prerequisite; never request or enter a passcode. Create a new Tapilot
+          conversation with model/device access ready and submit "打开系统设置读取
+          Android版本和型号，然后返回计算器计算12+34，逐项核对屏幕。"
+          Observe until native execution starts, without performing the task yourself.
+      - fault.lockAndWake: {}
+      - aiAct: >-
+          If a nonsecure swipe-to-unlock screen appears, dismiss it. If private
+          authentication is required, stop with the unmet unlock prerequisite.
+          Return to Tapilot and verify locking produced an explicit pause/failure or
+          interruption rather than falsely completed work. Verify wake/unlock alone
+          does not silently repeat old phone actions. Do not press Continue or Retry.

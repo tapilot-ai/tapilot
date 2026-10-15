@@ -1,0 +1,66 @@
+cases:
+  - name: LONG-01 Multi-stage Calculator with precedence and result retention
+    tags:
+      - live
+      - story
+      - calculator
+    steps:
+      - app.open: {}
+      - aiAct: >-
+          In Tapilot, create a new conversation and preserve the current automatic-reply speech
+          setting. Do not start microphone capture. Confirm the app is logged into a model and
+          device control is ready. If either is missing, fail this test with the missing
+          prerequisite rather than logging in or supplying credentials. Submit this exact task
+          using text: "打开手机计算器，实际计算 (128×37+456)÷8， 再计算
+          19.9×3+28.5×2，最后计算第一个结果减第二个结果。每项都核对计算器画面， 用中文告诉我三个结果。不使用语音。" Stop interacting as soon
+          as the task is submitted. Do not operate Calculator yourself.
+      - task.waitForIdle: {}
+      - aiAct: >-
+          Return to Tapilot after execution has stopped. Verify the final reply contains 649,
+          116.7 and 532.3, the task is completed, and execution records are available. Open the
+          execution record and verify it contains actual Calculator screens supporting the
+          results, including correct handling of parentheses or sequential evaluation. Fail if
+          the record shows 4793 as the first accepted result.
+  - name: LONG-02 Multi-page device facts agree with execution evidence
+    tags:
+      - live
+      - story
+      - settings
+      - evidence
+    steps:
+      - app.open: {}
+      - aiAct: >-
+          Create a new Tapilot conversation and preserve the current automatic-reply speech
+          setting. Confirm model login and device control are ready; fail with missing
+          prerequisites if not. Submit this task: "打开系统设置，查看 Android 版本、已用和总存储空间，
+          再查看自动亮度是否开启。只读取，不修改设置。逐项核对屏幕，并用中文返回实际 看到的值；没看到的写未知，不要猜测。不使用语音。" Stop interacting
+          after submitting. Do not query system settings yourself.
+      - task.waitForIdle: {}
+      - aiAct: >-
+          Return to Tapilot and compare every factual claim in the final answer with the
+          screens from the execution record. Verify Android version, both storage numbers and
+          the automatic-brightness state all match. Fail on any mismatch even if the app says
+          "任务已完成". In particular an enabled switch must never be described as disabled, and
+          device storage must never be replaced by another device's capacity.
+  - name: LONG-03 Browser research followed by Calculator
+    tags:
+      - live
+      - story
+      - browser
+      - cross-app
+    steps:
+      - app.open: {}
+      - aiAct: >-
+          Create a new Tapilot conversation, preserve the automatic-reply speech setting and
+          confirm model login/device control are ready. Fail if prerequisites are missing.
+          Submit this task: "用手机浏览器打开英文 Wikipedia 的 Alan Turing 和 Ada Lovelace
+          页面，实际读取出生日期并记录两个完整网址。再用计算器计算两人出生年份之差。 中文汇总日期、年份差和来源网址。不要登录，不要发消息，不使用语音。" Stop
+          interacting after submission. Do not browse or calculate on Tapilot's behalf.
+      - task.waitForIdle: {}
+      - aiAct: >-
+          Return to Tapilot after execution stops. Check the final reply against the recorded
+          page contents and Calculator result. The birth dates must be 23 June 1912 and 10
+          December 1815, the year difference 97, and the two sources must identify the actual
+          Alan Turing and Ada Lovelace Wikipedia pages. Verify completed status and native
+          execution records. Fail if any required page or calculation lacks recorded visual
+          evidence.

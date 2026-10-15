@@ -1,0 +1,40 @@
+{
+  "name": "tapilot-midscene-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node scripts/run.mjs",
+    "test:live": "node scripts/run.mjs --live",
+    "check": "tsc --noEmit && tsx scripts/validate-cases.mjs && node --import tsx --test test/*.test.ts",
+    "nodes": "node scripts/run.mjs nodes",
+    "check:model": "node scripts/run.mjs model verify",
+    "test:resilience": "node scripts/run.mjs --resilience",
+    "test:auth-fixture": "node scripts/run.mjs --auth-fixture"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "devDependencies": {
+    "@midscene/android": "1.15.3",
+    "@midscene/test": "1.15.3",
+    "@types/node": "24.10.1",
+    "dotenv": "16.6.1",
+    "js-yaml": "4.3.2",
+    "typescript": "5.9.3",
+    "tsx": "4.23.15"
+  },
+  "overrides": {
+    "sharp": "0.35.5",
+    "js-yaml": "4.3.2",
+    "uuid": "11.1.1",
+    "axios": "1.20.0",
+    "form-data": "4.0.6",
+    "glob@>=10.2.0 <10.5.0": "10.5.0",
+    "glob@>=11.0.0 <11.1.0": "11.1.0",
+    "lodash": "4.18.1",
+    "moment": "2.31.0",
+    "shell-quote": "1.12.0",
+    "yauzl": "3.4.0",
+    "@appium/support": "7.2.8"
+  }
+}

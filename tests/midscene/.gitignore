@@ -1,0 +1,5 @@
+.env
+node_modules/
+midscene_run/
+.midscene/
+midscene-node-spec.*.md

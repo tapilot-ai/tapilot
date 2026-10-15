@@ -1,0 +1,19 @@
+cases:
+  - name: VOICE-01 Low-volume speech sample reports actual playback
+    tags: [live, speech-playback]
+    steps:
+      - app.open: {}
+      - aiAct: >-
+          Open Tapilot settings and find the voice conversation and playback section.
+          This sample uses only the speech provider and audio output. Accessibility
+          device control, wireless control and phone-model login are not prerequisites
+          for this case. Their 未开启 statuses must not end the test. Scroll past them
+          to the voice section without changing them.
+          Preserve the selected voice provider, voice, automatic-read selection and all
+          credentials. Do not start microphone capture. Press Test voice / 试听 once.
+          Observe the result without retrying or configuring credentials. Verify a
+          Playback succeeded / 播报成功 is shown. Preparing/Playing can be transient between
+          screenshots; their absence alone is not a failure. Fail with the
+          exact visible prerequisite or error if the service is unavailable or no
+          successful playback status appears. Do not treat the automatic-read switch
+          being on as evidence of successful audio playback.

@@ -1,0 +1,43 @@
+cases:
+  - name: UI-01 Chat composer and conversation menu
+    tags: [smoke, chat]
+    steps:
+      - app.open: {}
+      - aiAct: >-
+          Return to the main Tapilot chat screen. Open the conversation menu at the top
+          right and create a new conversation. Verify that the new conversation has an
+          empty message area, an editable task composer, and the execution-mode control.
+          Do not submit a task or start voice.
+      - aiAct: >-
+          Type "Tapilot E2E draft only" into the task composer without sending it.
+          Verify that the exact draft and the Send control are visible. Clear only this
+          draft and verify the composer is empty again.
+
+  - name: UI-02 Toggle automatic reply speech and persist the selection
+    tags: [smoke, settings, speech]
+    steps:
+      - app.open: {}
+      - aiAct: >-
+          Open Tapilot settings. Find "自动朗读助手回答" / "Read assistant answers aloud"
+          in the voice conversation and playback section. Turn it off if it is on.
+          Verify the switch is off. Do not play a sample, start a voice conversation,
+          edit any credential, or change the selected provider.
+      - aiAct: >-
+          Return to chat, reopen settings, find the same automatic-read switch and
+          verify that it remains off after navigation. Turn it on, return to chat, reopen
+          settings and verify it remains on. Leave automatic reply speech on, matching the
+          user preference; do not play a sample or start microphone capture.
+
+  - name: UI-03 Settings and device-control guidance
+    tags: [smoke, settings, permissions]
+    steps:
+      - app.open: {}
+      - aiAct: >-
+          Open Tapilot settings and locate the wireless-control section. Verify it
+          explains Wi-Fi control and how to enable Tapilot device control through
+          Android Accessibility settings. Read the current wireless status. Do not
+          start, stop, revoke or pair wireless control, and do not copy a pairing secret.
+      - aiAct: >-
+          Locate the model-access section and verify that ChatGPT (SIWC) and API Key
+          are available as access choices. Do not switch access modes, open login,
+          reveal credentials or modify the current account. Return to chat.

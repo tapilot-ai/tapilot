@@ -1,0 +1,59 @@
+afterEach:
+  - fixture.restore: {}
+cases:
+  - name: WIFI-01 Preferred port collision and repeated wireless starts
+    tags: [live, resilience, wireless, port-conflict]
+    steps:
+      - app.open: {}
+      - aiAct: >-
+          Open Tapilot wireless-control settings. Stop wireless control if active.
+          Do not revoke pairing, copy a token, change credentials or enable other permissions.
+          Verify the service is off before the test fixture binds its preferred port.
+      - fault.occupyPort: {}
+      - aiAct: >-
+          Enable wireless control. Verify it reaches Waiting for connection or Connected
+          with the phone address visible, without EADDRINUSE, Address already in use,
+          a startup failure or an endless Starting state. Stop it and enable it again,
+          repeating this stop/start once more while the fixture still holds port 39877.
+          Verify each start succeeds. Leave wireless control on.
+      - fixture.restore: {}
+      - aiAct: >-
+          After the occupied-port fixture is released, stop and restart wireless
+          control once. Verify it starts normally and scan-to-pair is available.
+          Preserve existing pairing. Do not require the previous fallback port to stay fixed.
+
+  - name: WIFI-02 Reconnect uses a fresh screen frame and releases the old controller
+    tags: [live, resilience, wireless, reconnect]
+    steps:
+      - app.open: {}
+      - aiAct: >-
+          Open Tapilot wireless settings. Confirm wireless control and device control
+          are enabled and this test computer is already paired. If not, fail with the
+          prerequisite; do not start pairing or accept an unknown computer.
+      - wireless.verifyReconnect: {}
+      - aiAct: >-
+          Verify Tapilot returns to Waiting for connection after the fixture disconnects.
+          Verify the local UI remains responsive and there is no permanent controller
+          or stale busy state. Do not revoke pairing or submit a phone task.
+
+  - name: WIFI-03 A wireless controller excludes native tasks until it disconnects
+    tags: [live, resilience, wireless, contention]
+    steps:
+      - app.open: {}
+      - aiAct: >-
+          Confirm model/device access and already-paired wireless control are ready.
+          Create a new conversation. Do not start any task yet.
+      - wireless.connect: {}
+      - aiAct: >-
+          Submit "打开系统设置首页并核对 WLAN 项目，只读。" Observe Tapilot's response.
+          Verify it reports that wireless control owns the phone or that the controller
+          must disconnect, and does not execute or claim completion of the local task.
+          Do not disconnect another controller or operate Settings yourself.
+      - wireless.disconnect: {}
+      - aiAct: >-
+          Explicitly retry the local task once after this fixture disconnects.
+          Stop interacting after submitting the retry.
+      - task.waitForIdle: {}
+      - aiAct: >-
+          Return to Tapilot and verify Settings opens and supports the successful reply.
+          Verify the old wireless connection does not reclaim the phone or replay actions.

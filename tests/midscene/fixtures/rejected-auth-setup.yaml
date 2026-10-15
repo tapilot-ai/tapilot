@@ -1,0 +1,13 @@
+cases:
+  - name: SETUP-AUTH Configure synthetic rejected credentials in an isolated app
+    tags: [live, auth-fixture]
+    steps:
+      - app.open: {}
+      - fixture.requireRejectedAuth: {}
+      - aiAct: >-
+          This is the separate lifeos.md.tapilot.e2everify test app, not the personal
+          main app. Open its settings and select API Key access. Select the Doubao
+          model preset and retain its default HTTPS endpoint, model name and family.
+          Configure only the API Key field with the literal synthetic value
+          "tapilot-e2e-rejected-credential" and save it. Do not sign into any account,
+          change any real credential, or submit a phone task. Return to chat.

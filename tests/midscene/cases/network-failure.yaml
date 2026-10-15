@@ -1,0 +1,30 @@
+afterEach:
+  - fixture.restore: {}
+cases:
+  - name: FAIL-03 Phone model offline failure is recoverable and never completed
+    tags: [live, resilience, failure, network]
+    steps:
+      - app.open: {}
+      - aiAct: >-
+          Create a new Tapilot conversation and confirm model/device access works.
+          Do not change credentials. Leave chat ready for a new request.
+      - fault.offline: {}
+      - aiAct: >-
+          Submit "打开系统设置首页并核对 WLAN 选项。" Stop interacting after submission.
+          Do not enable phone networking or perform the Settings task yourself.
+      - task.waitForIdle: {}
+      - aiAct: >-
+          Verify an explicit
+          network/connection error or failed task is shown. Verify the request is not
+          marked completed and the input/history remains available to retry.
+          If the phone still reaches its model and succeeds, fail the offline fixture.
+          Do not enable phone networking or perform the Settings task yourself.
+      - fixture.restore: {}
+      - aiAct: >-
+          After the phone network reconnects, explicitly retry the failed request once.
+          Stop interacting after submitting the retry.
+      - task.waitForIdle: {}
+      - aiAct: >-
+          Return to Tapilot and verify a real Settings screen supports the
+          successful reply. Fail if recovery loses the task, replays an uncertain
+          mutation without user retry, or again claims success without evidence.

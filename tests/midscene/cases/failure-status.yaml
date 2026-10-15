@@ -1,0 +1,42 @@
+cases:
+  - name: FAIL-01 An impossible visible goal is not reported completed
+    tags:
+      - live
+      - failure
+      - verification
+    steps:
+      - app.open: {}
+      - aiAct: >-
+          Create a new Tapilot conversation. Confirm model access and device control are ready.
+          Submit: "只打开系统设置首页，不允许离开设置、不允许创建或修改任何东西。 检查是否存在一个名为 TAPILOT_E2E_MISSING_7F92
+          的设置选项；不存在就明确报告 无法完成，不能当作成功。" Stop interacting after submission.
+      - task.waitForIdle: {}
+      - aiAct: >-
+          Observe the native task without operating Settings yourself until it stops. Return to
+          Tapilot and verify it explicitly reports that the named setting was not found after
+          it actually opened and inspected the main Settings page. Verify no completed task
+          status or claim of finding that option is shown. Open the execution record and
+          require actual Settings screenshots supporting the missing target. Fail if any
+          environment, authentication, network, permission, runtime-startup or unrelated error
+          prevented reaching Settings: truthful failure for another cause does not validate
+          this missing-target scenario.
+  - name: FAIL-02 Rejected test credentials produce a truthful authentication failure
+    tags:
+      - live
+      - failure
+      - auth-fixture
+    steps:
+      - app.open: {}
+      - fixture.requireRejectedAuth: {}
+      - aiAct: >-
+          This isolated verification app must already be configured by its owner with
+          deliberately rejected synthetic API credentials, not a personal account. Do not
+          modify credentials or start login. Create a new conversation and submit "打开系统设置首页并核对
+          WLAN 选项。" Stop interacting after submission.
+      - task.waitForIdle: {}
+      - aiAct: >-
+          Verify Tapilot reports a model authentication/authorization failure, leaves a
+          retryable failed task with its reason, and does not claim it opened or verified
+          Settings. Verify no credential value is exposed in the visible error. If the request
+          succeeds or no auth rejection occurs, fail this test: the rejected-credential fixture
+          is not valid. Do not fix or replace its credentials.

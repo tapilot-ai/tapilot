@@ -1,0 +1,27 @@
+cases:
+  - name: TASK-01 Cancel a running task and execute a fresh request
+    tags:
+      - live
+      - cancellation
+      - recovery
+    steps:
+      - app.open: {}
+      - aiAct: >-
+          Create a new Tapilot conversation, preserve the current automatic-reply speech
+          setting, and confirm model login and device control are ready. Fail if unavailable.
+          Submit: "打开手机计算器，依次实际计算 128×37、4736+456、5192÷8， 每次核对屏幕，最后汇总；不用语音。" Stop interacting
+          after submission.
+      - aiAct: >-
+          Observe until the native task visibly starts operating Calculator. Return to the main
+          Tapilot chat using Android recent apps and press its Stop control. Verify the task
+          changes to stopped/cancelled and does not claim completion. Observe briefly that no
+          further old-task actions occur. Do not press Calculator keys.
+      - aiAct: >-
+          In the same conversation submit a new text request: "换个任务：打开系统设置首页， 核对能看到
+          WLAN、蓝牙等设置项目，然后告诉我已看到哪些项目。不要继续计算器， 不修改设置，不用语音。" Stop interacting after submission. Do
+          not operate Settings or Calculator yourself.
+      - task.waitForIdle: {}
+      - aiAct: >-
+          Return to Tapilot and verify the new task completed with actually observed Settings
+          entries. Verify the old task remains stopped and its interrupted calculations are not
+          described as completed. Check the new execution record supports the Settings result.

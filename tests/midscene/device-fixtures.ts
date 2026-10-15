@@ -1,0 +1,150 @@
+import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { isIP } from 'node:net';
+import { setTimeout as delay } from 'node:timers/promises';
+
+type Connection = {
+  open(pair?: boolean, rediscover?: boolean): Promise<unknown>;
+  request(method: string): Promise<any>;
+  close(): void;
+};
+
+/** Owns only resources created by this test; never terminates another controller. */
+export class DeviceFixtures {
+  private network?: { wifi: boolean; data: boolean };
+  private portProcess?: ChildProcess;
+  private portPid?: string;
+  private controller?: Connection;
+  constructor(private serial: string, private packageName: string,
+    private runAdb = (args: string[]) => execFileSync('adb', ['-s', serial, ...args], { encoding: 'utf8', timeout: 15_000 }).trim()) {}
+
+  private adb(args: string[]) {
+    return this.runAdb(args);
+  }
+  private requireFaults() {
+    if (process.env.TAPILOT_E2E_FAULTS !== '1') throw new Error('Use test:resilience to opt into device faults');
+  }
+  async offline() {
+    this.requireFaults();
+    if (this.network) throw new Error('Network fault is already active');
+    const wifi = this.adb(['shell', 'cmd', 'wifi', 'status']);
+    const data = this.adb(['shell', 'settings', 'get', 'global', 'mobile_data']);
+    if (!/^Wifi is (enabled|disabled)/.test(wifi) || !/^[01]$/.test(data)) throw new Error('Cannot safely snapshot network state');
+    this.network = { wifi: wifi.startsWith('Wifi is enabled'), data: data === '1' };
+    try {
+      this.adb(['shell', 'svc', 'wifi', 'disable']);
+      this.adb(['shell', 'svc', 'data', 'disable']);
+      for (let attempt = 0; attempt < 20; attempt++) {
+        if (this.adb(['shell', 'cmd', 'wifi', 'status']).startsWith('Wifi is disabled') &&
+            this.adb(['shell', 'settings', 'get', 'global', 'mobile_data']) === '0') return;
+        await delay(100);
+      }
+      throw new Error('Phone radio controls did not reach the offline fixture state');
+    } catch (error) { await this.restore(); throw error; }
+  }
+  async waitForTaskIdle(signal: AbortSignal, timeoutMs = 25 * 60_000) {
+    const started = Date.now();
+    let polls = 0;
+    while (true) {
+      signal.throwIfAborted();
+      const services = this.adb(['shell', 'dumpsys', 'activity', 'services', this.packageName]);
+      polls++;
+      // The native service spans all Pi/model/phone operations and stops after a
+      // terminal outcome. An unchanged screenshot is not evidence of a pause.
+      if (!/\* ServiceRecord\{[^\n]*TaskRuntimeService[\s}]/.test(services)) {
+        return { waitMs: Date.now() - started, polls, status: 'native-service-idle' };
+      }
+      if (Date.now() - started >= timeoutMs) throw new Error('Native task is still running; inspect and stop the owned task before rerunning');
+      await delay(2000, undefined, { signal });
+    }
+  }
+  restart() {
+    this.requireFaults();
+    this.adb(['shell', 'am', 'force-stop', this.packageName]);
+    this.adb(['shell', 'monkey', '-p', this.packageName, '-c', 'android.intent.category.LAUNCHER', '1']);
+  }
+  async lockAndWake() {
+    this.requireFaults();
+    this.adb(['shell', 'input', 'keyevent', '223']);
+    try { await delay(1500); } finally { this.adb(['shell', 'input', 'keyevent', '224']); }
+    // A secure lock remains for the user to unlock. Never inject a PIN or bypass it.
+  }
+  requireRejectedAuth() {
+    if (process.env.TAPILOT_E2E_AUTH_FIXTURE !== '1' || this.packageName !== 'lifeos.md.tapilot.e2everify') {
+      throw new Error('Auth rejection requires test:auth-fixture and the isolated lifeos.md.tapilot.e2everify package with preconfigured rejected test credentials');
+    }
+  }
+  async occupyPort() {
+    this.requireFaults();
+    if (this.portProcess) throw new Error('Port fixture is already active');
+    const address = process.env.TAPILOT_E2E_WIFI_ADDRESS || '';
+    if (isIP(address) !== 4) throw new Error('Set TAPILOT_E2E_WIFI_ADDRESS to this test phone Wi-Fi IPv4');
+    if (!this.adb(['shell', 'ip', '-o', '-4', 'addr', 'show']).includes(` ${address}/`)) throw new Error('Wi-Fi address does not belong to selected device');
+    const processHandle = spawn('adb', ['-s', this.serial, 'shell', `echo $$; exec toybox nc -l -s ${address} -p 39877`], { stdio: ['pipe', 'pipe', 'pipe'] });
+    this.portProcess = processHandle;
+    await new Promise<void>((resolve, reject) => {
+      let output = '';
+      const timer = setTimeout(() => reject(new Error('Port fixture did not start')), 5000);
+      processHandle.once('error', error => { clearTimeout(timer); reject(error); });
+      processHandle.once('exit', () => { clearTimeout(timer); reject(new Error('Port fixture exited; stop wireless control before occupying its port')); });
+      processHandle.stdout!.on('data', chunk => {
+        output += chunk.toString();
+        const pid = output.match(/^(\d+)\r?\n/);
+        if (pid) { this.portPid = pid[1]; clearTimeout(timer); resolve(); }
+      });
+    });
+    // Check readiness without connecting: nc -l accepts only one connection.
+    for (let attempt = 0; attempt < 20; attempt++) {
+      if (processHandle.exitCode !== null) throw new Error('Preferred port is already occupied by another process');
+      if (this.adb(['shell', 'ss', '-ltn']).includes(`${address}:39877`)) return;
+      await delay(100);
+    }
+    throw new Error('Could not verify preferred-port occupancy');
+  }
+  async connectController() {
+    if (this.controller) throw new Error('This fixture already owns a controller');
+    const file = process.env.TAPILOT_E2E_PAIRING_FILE;
+    if (!file) throw new Error('Set TAPILOT_E2E_PAIRING_FILE to private pairing data for this test phone');
+    const configModule = await import(new URL('../../plugins/android-use/server/config.mjs', import.meta.url).href);
+    const config = configModule.validateConfig(JSON.parse(readFileSync(file, 'utf8')));
+    if (!this.adb(['shell', 'ip', '-o', '-4', 'addr', 'show']).includes(` ${config.host}/`)) throw new Error('Pairing file does not target the selected Android device');
+    const transport = await import(new URL('../../plugins/android-use/server/transport.mjs', import.meta.url).href);
+    const controller: Connection = new transport.PhoneConnection(config);
+    this.controller = controller;
+    try { await controller.open(false, false); } catch (error) { this.disconnectController(); throw error; }
+  }
+  disconnectController() { this.controller?.close(); this.controller = undefined; }
+  async verifyReconnect() {
+    await this.connectController();
+    try {
+      const first = await this.controller!.request('device.capture');
+      if (!first?.geometry?.frameId) throw new Error('First wireless capture lacks a frame identity');
+      this.disconnectController();
+      await this.connectController();
+      const second = await this.controller!.request('device.capture');
+      if (!second?.geometry?.frameId || first.geometry.frameId === second.geometry.frameId) throw new Error('Reconnection did not produce a fresh frame');
+    } finally { this.disconnectController(); }
+  }
+  async restore() {
+    this.disconnectController();
+    const errors: unknown[] = [];
+    if (this.portPid) {
+      try {
+        const command = this.adb(['shell', 'cat', `/proc/${this.portPid}/cmdline`]);
+        if (command.includes('toybox') && command.includes('39877') && command.includes('nc')) this.adb(['shell', 'kill', this.portPid]);
+      } catch (error) { if (this.portProcess?.exitCode === null) errors.push(error); }
+    }
+    this.portProcess?.kill(); this.portProcess = undefined; this.portPid = undefined;
+    if (this.network) {
+      const original = this.network;
+      const networkErrors: unknown[] = [];
+      for (const [radio, enabled] of [['wifi', original.wifi], ['data', original.data]] as const) {
+        try { this.adb(['shell', 'svc', radio, enabled ? 'enable' : 'disable']); }
+        catch (error) { networkErrors.push(error); }
+      }
+      if (networkErrors.length) errors.push(...networkErrors);
+      else this.network = undefined;
+    }
+    if (errors.length) throw new AggregateError(errors, 'Device fixture cleanup failed; inspect the device before another run');
+  }
+}

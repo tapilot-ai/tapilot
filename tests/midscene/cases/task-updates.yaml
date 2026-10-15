@@ -1,0 +1,46 @@
+cases:
+  - name: UPDATE-01 Incorporate an added requirement while preserving completed work
+    tags:
+      - live
+      - story
+      - steering
+    steps:
+      - app.open: {}
+      - aiAct: >-
+          Create a new Tapilot conversation. Confirm model/device access is ready. Submit
+          "打开系统设置，读取 Android 版本，然后读取手机型号，最后汇总。 只读，不修改设置。" Observe until the task is visibly
+          running and has started opening Settings. Do not execute its Settings lookup
+          yourself.
+      - aiAct: >-
+          Return to the main Tapilot chat while the task is still active. Add this text:
+          "补充要求：还要读取总存储空间，最后用三行分别列出 Android 版本、型号、总容量。 已读到的信息保留，不要重新开始，不要修改设置。" Verify this is
+          retained as an instruction for the current task. Stop interacting and allow Tapilot
+          to continue; do not complete any lookup on its behalf.
+      - task.waitForIdle: {}
+      - aiAct: >-
+          Wait for terminal state, return to Tapilot, and compare the final three requested
+          facts with its actual execution records. Verify the added storage requirement was
+          fulfilled and the original Android/model facts were retained. Fail on a second
+          independent replacement task, missing added requirement, fabricated values, old-task
+          restart, or completion without supporting recorded screens.
+  - name: UPDATE-02 A changed requirement supersedes the original calculation
+    tags:
+      - live
+      - story
+      - steering
+    steps:
+      - app.open: {}
+      - aiAct: >-
+          Create a new Tapilot conversation with model/device access ready. Submit "打开计算器，先计算
+          128×37，再把结果加456，最后除以8；逐项核对屏幕。" Observe until native execution has begun, without
+          pressing Calculator buttons.
+      - aiAct: >-
+          Return to the main Tapilot chat while active and submit "修改要求：最终不要除以8，
+          改为除以4；前面的乘法和加法仍然保留。最终只核对修改后的结果。" Stop interacting after it accepts the instruction;
+          let the native agent continue.
+      - task.waitForIdle: {}
+      - aiAct: >-
+          Observe until execution stops. Return to Tapilot and inspect the final reply and
+          Calculator record. Verify the amended final result is 1298 and supported by the
+          recorded calculation. Fail if the original 649 is presented as the final requested
+          result, if the update is dropped, or if no phone verification exists.
