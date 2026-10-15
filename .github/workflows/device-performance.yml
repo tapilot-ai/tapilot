@@ -1,0 +1,73 @@
+name: Native task performance
+on:
+  workflow_dispatch:
+    inputs:
+      samples:
+        description: Number of sequential native task samples (1-10)
+        default: '3'
+        required: true
+      max_wall_ms:
+        description: Per-sample wall time ceiling; 0 collects a baseline without a timing gate
+        default: '0'
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: tapilot-performance-device
+  cancel-in-progress: false
+jobs:
+  native-task:
+    # A dedicated, unlocked arm64 Android phone is attached to this runner.
+    # The APK embeds arm64 Node; an x86_64 emulator cannot run native tasks.
+    runs-on: [self-hosted, tapilot-android]
+    timeout-minutes: 90
+    environment: device-performance
+    env:
+      TAPILOT_E2E_DEVICE_ID: ${{ vars.TAPILOT_E2E_DEVICE_ID }}
+      TAPILOT_PERF_SAMPLES: ${{ inputs.samples }}
+      TAPILOT_PERF_MAX_WALL_MS: ${{ inputs.max_wall_ms }}
+      TAPILOT_PERF_OUTPUT: build/device-performance
+      TAPILOT_PERF_APK: app/build/outputs/apk/debug/app-debug.apk
+      TAPILOT_PERF_DEDICATED_DEVICE: '1'
+      TAPILOT_PERF_PROVISION_MODEL: '1'
+      MIDSCENE_MODEL_API_KEY: ${{ secrets.MIDSCENE_MODEL_API_KEY }}
+      MIDSCENE_MODEL_BASE_URL: ${{ vars.MIDSCENE_MODEL_BASE_URL }}
+      MIDSCENE_MODEL_NAME: ${{ vars.MIDSCENE_MODEL_NAME }}
+      MIDSCENE_MODEL_FAMILY: ${{ vars.MIDSCENE_MODEL_FAMILY }}
+      NODE_OPTIONS: --network-family-autoselection-attempt-timeout=2000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '12.4.1'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm runtime:bundle && pnpm runtime:node
+      - run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --max-workers=2 --no-parallel --no-daemon
+      - name: Install on the explicitly selected dedicated phone and run native tasks
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${TAPILOT_E2E_DEVICE_ID:?Set the dedicated device serial in environment variables}"
+          adb -s "$TAPILOT_E2E_DEVICE_ID" get-state
+          adb -s "$TAPILOT_E2E_DEVICE_ID" install -r app/build/outputs/apk/debug/app-debug.apk
+          adb -s "$TAPILOT_E2E_DEVICE_ID" install -t -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          node scripts/run-device-performance.mjs
+      - name: Upload performance evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-task-performance-${{ github.sha }}
+          path: |
+            build/device-performance/
+            app/build/reports/
+          if-no-files-found: warn
+          retention-days: 7
