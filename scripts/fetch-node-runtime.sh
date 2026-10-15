@@ -13,10 +13,10 @@ trap 'rm -rf "${work_directory}"' EXIT
 packages=(
   'n/nodejs-lts/nodejs-lts_24.18.0-1_aarch64.deb 490f4d08c45b25a7ea7db6ee466ebb3ee61f07083260b85332704ed018f59a87'
   'c/c-ares/c-ares_1.34.8_aarch64.deb 7681fc23e822d7988ba8b2adf3468f93ae68f724dda365cff1385096a9fa87e6'
-  'libc/libc++/libc++_29_aarch64.deb bb9f12113c137aa0e8513bb51cc49fe77a5ce3ca39ab9e92c57d228ecdf00222'
+  'libc/libc++/libc++_30_aarch64.deb 53d0b84a7ba7459024257cb94d5b136fe13ef858567f65a8064b35950799f2ca'
   'libi/libicu/libicu_78.3_aarch64.deb f536403f65a08fe0df6e7304184e902d54def77d5c3bd5edfd9109d57601d276'
-  'libs/libsqlite/libsqlite_3.53.4_aarch64.deb 0e909ce0d50fe123305446cd22e0c5edf535d40344b9b065fbdcdee52f53198d'
-  'o/openssl/openssl_1%3A3.6.3_aarch64.deb 86760e9ce736f463236f2c15b1eb3a3fdcfc5778d0fd7077a917448dcc90f3aa'
+  'libs/libsqlite/libsqlite_3.54.0_aarch64.deb 9adf91e118fcf4d449f0fb9668485d895916c4f76c2407da17ba114406f43a58'
+  'o/openssl/openssl_1%3A3.6.5_aarch64.deb a2fb7856875e63ef6b90442752e05974813372c3ca86d2513a78ea43c67a0f8b'
   'z/zlib/zlib_1.3.2_aarch64.deb 75e7d0af17fcc3b40004309fdc00a1ddb9ae08346dce5e269902c34ac3966ac9'
 )
 
@@ -36,7 +36,7 @@ if [[ -z "${node_binary}" ]]; then
   exit 1
 fi
 cp "${node_binary}" "${staging}/node"
-for library_name in libz.so.1.3.2 libcares.so libsqlite3.so.3.53.4 \
+for library_name in libz.so.1.3.2 libcares.so libsqlite3.so.3.54.0 \
   libcrypto.so.3 libssl.so.3 libicui18n.so.78.3 libicuuc.so.78.3 \
   libicudata.so.78.3 libc++_shared.so; do
   library="$(find "${unpack_root}" -path "*/${prefix}/lib/${library_name}" -type f -print -quit)"
@@ -48,4 +48,6 @@ for library_name in libz.so.1.3.2 libcares.so libsqlite3.so.3.53.4 \
 done
 
 python3 "${script_root}/patch-node-elf.py" "${staging}" "${output_directory}"
+node "${script_root}/third-party-notices.mjs" native "${unpack_root}" \
+  "${assistant_root}/app/src/main/assets/third-party/native"
 echo "Node runtime ready at ${output_directory}"

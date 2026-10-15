@@ -55,3 +55,15 @@ standalone package without a phone or model. `pnpm test:e2e` runs visual smoke
 cases on an explicitly selected device; `pnpm test:e2e:live` opts into native
 Tapilot tasks. Install test dependencies with `npm ci --prefix tests/midscene`.
 CI validates definitions; device and model runs remain explicit.
+
+## Native package pins
+
+The Termux apt pool is rolling. A clean build on 2026-10-15 exposed expired
+libc++ 29, SQLite 3.53.4 and OpenSSL 3.6.3 download paths that local caches had
+hidden. Pins now match the available libc++ 30, SQLite 3.54.0 and OpenSSL 3.6.5
+archives, with SHA-256 values from the repository index. The Node version stays
+24.18.0. The download script never silently selects a newer package or skips
+checksum verification. If an archive disappears again, verify new pins and
+Android ABI behavior, or use an approved snapshot mirror through `TERMUX_POOL`
+that serves the same pinned bytes. Do not treat an old local cache as clean-build
+proof. A long-lived binary mirror also requires redistribution review.
