@@ -12,7 +12,17 @@
     "shortDescription": "Control Android over Wi-Fi",
     "category": "Productivity",
     "defaultPrompt": [
-      "Check my paired Android phone, inspect its screen, and help me complete a task."
+      "Help me pair my Android phone over Wi-Fi and verify its screen.",
+      "Open Settings on my paired phone and verify the result with a Midscene report."
+    ],
+    "longDescription": "Control your paired Android phone over Wi-Fi with Midscene screenshot-based automation. View its live screen, tap, swipe and enter text, then inspect the result in an HTML execution report. The chat host chooses explicit actions in the default steps mode. Optional Midscene AI requires separate consent and OpenAI authorization. Requires Tapilot on an unlocked Android phone, accessibility and wireless control enabled, a compatible desktop host and Node.js 22.19 or newer. No USB is required for wireless control. This is a local desktop plugin, not a cloud phone service.",
+    "developerName": "quanru",
+    "logo": "./assets/icon.png",
+    "composerIcon": "./assets/icon.png",
+    "capabilities": [
+      "Android screenshot-based control",
+      "Live phone preview",
+      "Midscene execution reports"
     ]
   },
   "skills": "./skills/"
