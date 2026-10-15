@@ -6,7 +6,7 @@
   "author": {
     "name": "quanru"
   },
-  "license": "UNLICENSED",
+  "license": "MIT",
   "extensions": {
     "com.openai": {
       "interface": {

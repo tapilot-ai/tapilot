@@ -1,5 +1,10 @@
 # Security Policy
 
+See [PRIVACY.md](PRIVACY.md) ([中文](PRIVACY.zh.md)) for data recipients,
+local retention and deletion controls. Never post pairing data or raw private
+execution reports in public issues. If GitHub private reporting is unavailable,
+email `quanruzhuoxiu@gmail.com` with a minimal redacted description.
+
 ## Reporting a vulnerability
 
 If you discover a security vulnerability in Tapilot, please **do not open a

@@ -2,7 +2,7 @@
   "name": "@tapilot/android-accessibility",
   "version": "0.1.0",
   "description": "Android AccessibilityService device adapter for Midscene",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "author": "quanru (https://github.com/quanru)",
   "homepage": "https://github.com/quanru/tapilot/tree/main/packages/android-accessibility#readme",
   "repository": {
@@ -18,7 +18,8 @@
   "types": "./dist/types/src/index.d.ts",
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "exports": {
     ".": {

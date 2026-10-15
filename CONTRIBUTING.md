@@ -1,7 +1,7 @@
 # Developing Tapilot
 
-Tapilot remains proprietary. This guide is for developers with repository access;
-it does not grant permission to redistribute the source or binaries. See [LICENSE](LICENSE).
+Tapilot is MIT-licensed. Contributions are welcome under the same [license](LICENSE).
+Third-party components retain their own licenses.
 
 ## Setup
 
@@ -49,10 +49,11 @@ foreground services, wireless pairing and upgrade behavior.
 ## Signing and CI
 
 Pull requests run `.github/workflows/check.yml` with development signing only.
-Its APK artifact is for development, not distribution. The manually dispatched
+The APK is built and verified but is not uploaded while third-party binary
+redistribution review remains incomplete. The manually dispatched
 `release-check.yml` uses the `release` environment; configure that environment's
 reviewers and secrets before enabling production builds. It verifies an APK and
-uploads a workflow artifact; it does not publish a release.
+uploads verification/license evidence; it does not upload the APK or publish a release.
 
 Production builds require:
 
@@ -75,3 +76,9 @@ cancellation, serialization and provider boundaries. Update both README locales
 when behavior changes. Historical acceptance reports are dated evidence, not
 current setup instructions. Do not add private prompts, credentials or user data
 to acceptance artifacts. See [SECURITY.md](SECURITY.md) for vulnerability reporting.
+
+## Distribution and privacy
+
+Read [third-party redistribution](docs/development/third-party-licenses.md),
+[release verification](docs/development/releasing.md) and [privacy](PRIVACY.md)
+before distributing APKs or changing data flows.

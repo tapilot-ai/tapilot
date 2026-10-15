@@ -36,5 +36,6 @@
     "shell-quote": "1.12.0",
     "yauzl": "3.4.0",
     "@appium/support": "7.2.8"
-  }
+  },
+  "license": "MIT"
 }
