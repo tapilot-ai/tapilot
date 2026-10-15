@@ -8,5 +8,5 @@
     "lib": ["ES2022", "DOM"],
     "types": []
   },
-  "include": ["runtime"]
+  "include": ["legacy/web-ui"]
 }

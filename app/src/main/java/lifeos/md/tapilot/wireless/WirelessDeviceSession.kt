@@ -1,6 +1,7 @@
 package lifeos.md.tapilot.wireless
 
 import android.app.KeyguardManager
+import lifeos.md.tapilot.device.*
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
@@ -14,12 +15,13 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
-internal class WirelessDeviceSession(private val context: Context, private val disconnect: () -> Unit) : AutoCloseable {
+internal class WirelessDeviceSession(private val context: Context, private val disconnect: () -> Unit, private val device: DeviceService = AndroidDeviceService(context)) : AutoCloseable {
     private val id = "wireless-${UUID.randomUUID()}"
     private val handler = Handler(Looper.getMainLooper())
     private val closed = AtomicBoolean(false)
     private var registration: ActiveTaskStopRegistry.Registration? = null
     private val actionPolicy = WirelessActionPolicy()
+    private var executing = false
 
     fun acquire() = onMain<Unit> { done ->
         check(!context.getSystemService(KeyguardManager::class.java).isDeviceLocked) { "Unlock the phone first" }
@@ -29,26 +31,30 @@ internal class WirelessDeviceSession(private val context: Context, private val d
         try { DeviceControlLease.acquire(id) } catch (error: Throwable) {
             ActiveTaskStopRegistry.unregister(registration); registration = null; throw error
         }
-        MidsceneAccessibilityService.current()?.updateTaskStatus(TaskExecutionStatus.RUNNING, null)
         done(Result.success(Unit))
     }
 
-    fun call(method: String, params: JSONObject): Any? {
+    fun call(method: String, params: JSONObject): Any? = try {
+        callOnDevice(method, params)
+    } finally {
+        if (method == "device.execute") handler.post {
+            if (!closed.get()) {
+                executing = false
+                MidsceneAccessibilityService.current()?.updateTaskStatus(TaskExecutionStatus.IDLE, null)
+            }
+        }
+    }
+
+    private fun callOnDevice(method: String, params: JSONObject): Any? {
         require(method in setOf("device.getCapabilities", "device.getSize", "device.capture", "device.prepareAction", "device.preview", "device.execute")) { "Unsupported wireless method" }
         val prepared = if (method == "device.execute") actionPolicy.prepare(params) else params
         val result = onMain<Any?> { done ->
             check(!context.getSystemService(KeyguardManager::class.java).isDeviceLocked) { "Phone is locked. Unlock it on the device." }
-            if (method == "device.preview") {
-                val service = checkNotNull(MidsceneAccessibilityService.current()) { "Enable Tapilot device control in Accessibility settings" }
-                service.capture(id, recordFrame = false, jpeg = params.optString("format") == "jpeg") { captured ->
-                    done(captured.mapCatching { frame ->
-                        check(!context.getSystemService(KeyguardManager::class.java).isDeviceLocked) { "Phone is locked. Unlock it on the device." }
-                        JSONObject().put("dataUrl", frame.dataUrl).put("capturedAt", frame.capturedAt)
-                    })
-                }
-            } else {
-                (context.applicationContext as TapilotApplication).assistant.bridge.call(method, prepared, id, done)
+            if (method == "device.execute") {
+                executing = true
+                MidsceneAccessibilityService.current()?.updateTaskStatus(TaskExecutionStatus.RUNNING, null)
             }
+            device.execute(id, DeviceProtocol.parse(method, prepared), done)
         }
         if (method in setOf("device.capture", "device.prepareAction", "device.preview")) {
             check(!context.getSystemService(KeyguardManager::class.java).isDeviceLocked) { "Phone is locked. Unlock it on the device." }
@@ -77,7 +83,8 @@ internal class WirelessDeviceSession(private val context: Context, private val d
             // Keep cancellation marked so delayed input/navigation callbacks cannot run after disconnect.
             MidsceneAccessibilityService.current()?.cancelSession(id)
             DeviceControlLease.release(id)
-            if (registration != null) MidsceneAccessibilityService.current()?.updateTaskStatus(TaskExecutionStatus.STOPPED, null)
+            if (registration != null) MidsceneAccessibilityService.current()?.updateTaskStatus(if (executing) TaskExecutionStatus.STOPPED else TaskExecutionStatus.IDLE, null)
+            executing = false
             ActiveTaskStopRegistry.unregister(registration)
             registration = null
         }

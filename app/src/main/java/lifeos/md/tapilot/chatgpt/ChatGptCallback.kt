@@ -13,8 +13,9 @@ internal class ChatGptCallback(port: Int = 0) : AutoCloseable {
         soTimeout = 1000
     }
     val redirect: String get() = "http://127.0.0.1:${server.localPort}/auth/callback"
-    fun await(attempt: ChatGptOAuth.Attempt, expiresAt: Long): Map<String, String> {
+    fun await(attempt: ChatGptOAuth.Attempt, expiresAt: Long, onReady: () -> Unit = {}): Map<String, String> {
         require(attempt.redirect == redirect) { "OAuth callback address changed" }
+        onReady()
         while (System.currentTimeMillis() < expiresAt) {
             val socket = try { server.accept() } catch (_: SocketTimeoutException) { continue }
             val result = socket.use {
@@ -28,7 +29,19 @@ internal class ChatGptCallback(port: Int = 0) : AutoCloseable {
                         line.append(c.toChar())
                     }
                     require(line.length < 16_384) { "Callback request too large" }
-                    val request = line.toString().trimEnd('\r').split(' ')
+                    val requestLine = line.toString().trimEnd('\r')
+                    var headerBytes = line.length
+                    while (true) {
+                        val header = StringBuilder()
+                        while (true) {
+                            val c = reader.read(); require(c >= 0) { "Incomplete callback headers" }
+                            headerBytes++; require(headerBytes <= 32_768) { "Callback headers too large" }
+                            if (c == 10) break
+                            header.append(c.toChar())
+                        }
+                        if (header.toString().trimEnd('\r').isEmpty()) break
+                    }
+                    val request = requestLine.split(' ')
                     require(request.size == 3 && request[0] == "GET") { "Invalid callback request" }
                     attempt.callback(request[1])
                 }

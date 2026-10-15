@@ -47,7 +47,8 @@ class AssistantRuntime(context: Context) {
     private var openingUtterance: String? = null
     private var mutedUntilNextSend = false
     private val config = VoiceOutputSettings(context)
-    val bridge: NativeJavascriptBridge = NativeJavascriptBridge(context = context,
+    val device = lifeos.md.tapilot.device.AndroidDeviceService(context)
+    val bridge = lifeos.md.tapilot.services.AppServices(context = context, device = device,
         onProgress = { coordinator.phoneProgress(it) },
         onPickAttachment = { kind, callback -> picker?.invoke(kind, callback)
             ?: callback(Result.failure(IllegalStateException("Open Tapilot to select an attachment"))) })

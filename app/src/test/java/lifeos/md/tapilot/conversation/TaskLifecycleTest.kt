@@ -4,8 +4,56 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
+import lifeos.md.tapilot.TaskExecutionStatus
 
 class TaskLifecycleTest {
+    @Test fun performanceIsSavedWithCheckpointAndRetryStartsFresh() {
+        val task = entry(); TaskLifecycle.begin(task)
+        val timings = JSONObject().put("model.complete", JSONObject().put("count", 2).put("totalMs", 1200))
+        TaskLifecycle.event(task, JSONObject().put("type", "checkpoint").put("messages", JSONArray())
+            .put("turns", 2).put("operations", 0).put("performance", timings))
+        assertEquals(1200, task.getJSONObject("performance").getJSONObject("model.complete").getInt("totalMs"))
+        val next = entry("two"); TaskLifecycle.begin(next, task)
+        assertFalse(next.has("performance"))
+    }
+    @Test fun clarificationKeepsTheTaskResumableWithoutClaimingSuccess() {
+        val task = entry().put("reply", "要打开哪个应用？"); TaskLifecycle.begin(task)
+        val status = TaskLifecycle.executionStatus(false, true, true, "waiting_user")
+        assertEquals(TaskExecutionStatus.WAITING_USER, status)
+        task.put("status", status.name.lowercase())
+        TaskLifecycle.finish(task, task.getString("status"))
+        assertEquals("waiting_user", task.getString("phase"))
+        assertEquals("要打开哪个应用？", TaskFeedback.response(task, true))
+        val previous = TaskLifecycle.continuation(listOf(task), "系统计算器")
+        assertSame(task, previous)
+        val next = entry("two"); TaskLifecycle.begin(next, previous)
+        assertEquals("one", next.getString("taskId"))
+        assertEquals("打开计算器", next.getString("goal"))
+        assertEquals(TaskExecutionStatus.SUCCEEDED, TaskLifecycle.executionStatus(false, true, true, "completed"))
+    }
+
+    @Test fun stopDuringModelOrPhoneWorkOverridesACompletedReplyOnlyAfterAcknowledgement() {
+        assertEquals(TaskExecutionStatus.STOPPED, TaskLifecycle.executionStatus(true, true, true, "completed"))
+        assertEquals(TaskExecutionStatus.STOPPED, TaskLifecycle.executionStatus(true, true, false, ""))
+        assertEquals(TaskExecutionStatus.FAILED, TaskLifecycle.executionStatus(true, false, true, "completed"))
+        assertEquals(TaskExecutionStatus.FAILED, TaskLifecycle.executionStatus(false, true, false, "waiting_user"))
+    }
+
+    @Test fun unconsumedAmendmentsAreAvailableBeforePresentingAClarification() {
+        val task = entry().put("status", "waiting_user")
+            .put("agentContext", JSONArray().put(JSONObject().put("inputId", "used")))
+        val used = entry("used").put("kind", "instruction").put("taskId", "one")
+        val pending = entry("pending").put("kind", "instruction").put("taskId", "one").put("source", "系统计算器")
+        val next = TaskLifecycle.settleInputs(task, listOf(used, pending), "补充消息已保存")
+        assertEquals(listOf(pending), next)
+        assertEquals("waiting_user", used.getString("status"))
+        val inputs = TaskLifecycle.pendingInputs(task, listOf(used, pending))
+        assertEquals(1, inputs.length())
+        assertEquals("系统计算器", inputs.getJSONObject(0).getString("text"))
+        task.put("status", "stopped")
+        assertTrue(TaskLifecycle.settleInputs(task, listOf(used, pending), "补充消息已保存").isEmpty())
+    }
+
     private fun entry(id: String = "one") = JSONObject().put("id", id).put("source", "打开计算器").put("createdAt", 1).put("status", "running")
     @Test fun retryKeepsGoalAndCheckpointButResetsAttemptCounters() {
         val old = entry(); TaskLifecycle.begin(old)

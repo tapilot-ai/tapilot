@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.bridge
 
+import lifeos.md.tapilot.device.*
 import android.content.Context
 import android.util.Log
 import lifeos.md.tapilot.AppLanguage
@@ -27,6 +28,7 @@ class NodeTestRunCoordinator(
     context: Context,
     private val reportRepository: ReportRepository,
     private val supervisor: NodeRuntimeProcessSupervisor = NodeRuntimeProcessSupervisor(),
+    private val device: DeviceService = AndroidDeviceService(context),
     private val onProgress: (String) -> Unit = {},
 ) : AutoCloseable {
     private val appContext = context.applicationContext
@@ -38,11 +40,13 @@ class NodeTestRunCoordinator(
     @Volatile private var completion = CompletableFuture.completedFuture(Unit)
     @Volatile private var activeSessionId: String? = null
     @Volatile private var stopRegistration: ActiveTaskStopRegistry.Registration? = null
+    @Volatile private var reportTaskStatus = true
 
     fun run(
         source: String,
         kind: String,
         environment: Map<String, String>,
+        reportTaskStatus: Boolean = true,
         callback: (Result<JSONObject>) -> Unit,
     ) {
         require(source.isNotBlank()) { "YAML or task source must not be blank" }
@@ -52,7 +56,9 @@ class NodeTestRunCoordinator(
         chatGptAccountId = environment["MIDSCENE_CHATGPT_ACCOUNT_ID"]?.takeIf { it.isNotBlank() }
         // Acquiring can fail while a wireless controller owns the device. Do not leave
         // an unfinished completion future behind when the task was never started.
-        stopRegistration = ActiveTaskStopRegistry.register(::stop)
+        // Nested runs share the conversation's stop owner; only standalone runs register here.
+        stopRegistration = if (reportTaskStatus) ActiveTaskStopRegistry.register(::stop) else null
+        this.reportTaskStatus = reportTaskStatus
         completion = CompletableFuture()
         stopRequested.set(false)
         updateStatus(TaskExecutionStatus.STARTING)
@@ -81,7 +87,7 @@ class NodeTestRunCoordinator(
     }
 
     fun stop(): Boolean {
-        val taskWasActive = stopRegistration != null
+        val taskWasActive = !completion.isDone
         stopRequested.set(true)
         activeSessionId?.let { MidsceneAccessibilityService.current()?.cancelSession(it) }
         return supervisor.stop() || taskWasActive
@@ -129,6 +135,7 @@ class NodeTestRunCoordinator(
         var agentReports = JSONArray()
         var finalResponse: String? = null
         var failureMessage: String? = null
+        var nativeRpcTimings = JSONObject()
 
         fun finish(result: Result<JSONObject>) {
             if (!completed.compareAndSet(false, true)) return
@@ -152,7 +159,7 @@ class NodeTestRunCoordinator(
                     "MIDSCENE_MODEL_RETRY_COUNT" to "1",
                 ) + environment + (
                     "MIDSCENE_ANDROID_ASSISTANT_LANGUAGE" to AppLanguage.resolved(appContext)
-                ),
+                ) + screenshotExperimentEnvironment(),
             ),
             object : NodeRuntimeListener {
                 override fun onLog(line: String) {
@@ -167,6 +174,8 @@ class NodeTestRunCoordinator(
                         "rpc.request" -> dispatchRpc(payload)
                         "test.started" -> updateStatus(TaskExecutionStatus.RUNNING)
                         "test.completed" -> {
+                            nativeRpcTimings = payload.optJSONObject("nativeRpcTimings") ?: JSONObject()
+                            Log.i("TapilotPerformance", JSONObject().put("phase", "midscene.nativeRpc").put("timings", nativeRpcTimings).toString())
                             reportPath = payload.optString("reportPath")
                             testRunReportPath = payload.optString("testRunReportPath")
                             agentReports = payload.optJSONArray("agentReports") ?: JSONArray()
@@ -230,6 +239,7 @@ class NodeTestRunCoordinator(
                             .put("exitCode", exitCode)
                             .put("reportId", primaryReportId)
                             .put("reports", importedReports)
+                            .put("nativeRpcTimings", nativeRpcTimings)
                             .put("output", JSONArray(logs.toList()))
                             .putOptional("finalResponse", finalResponse)
                             .put(
@@ -291,71 +301,14 @@ class NodeTestRunCoordinator(
             }
             return
         }
-        val service = MidsceneAccessibilityService.current()
         appContext.mainExecutor.execute {
             runCatching {
                 onProgress(request.getString("method"))
                 when (request.getString("method")) {
-                    "device.getCapabilities" -> respondSuccess(
-                        requestId,
-                        (service?.capabilityDetails() ?: JSONObject())
-                            .put("protocolVersion", 1)
-                            .put("canCapture", service != null)
-                            .put("canPerformGestures", service != null)
-                            .put("canInputText", service != null),
-                    )
-                    "device.getSize" -> {
-                        val metrics = appContext.deviceDisplayMetrics()
-                        respondSuccess(
-                            requestId,
-                            JSONObject().put("width", metrics.widthPixels)
-                                .put("height", metrics.heightPixels),
-                        )
-                    }
-                    "device.capture" -> requireService(service).capture(sessionId) { result ->
-                        result.fold(
-                            onSuccess = { capture ->
-                                respondSuccess(
-                                    requestId,
-                                    JSONObject()
-                                        .put("dataUrl", capture.dataUrl)
-                                        .put(
-                                            "geometry",
-                                            JSONObject()
-                                                .put("frameId", capture.frameId)
-                                                .put("capturedAt", capture.capturedAt)
-                                                .put("displayId", 0)
-                                                .put("rotation", capture.rotation)
-                                                .put("screenWidth", capture.screenWidth)
-                                                .put("screenHeight", capture.screenHeight)
-                                                .put("imageWidth", capture.imageWidth)
-                                                .put("imageHeight", capture.imageHeight),
-                                        ),
-                                )
-                            },
-                            onFailure = { respondError(requestId, it) },
-                        )
-                    }
-                    "device.execute" -> {
-                        params.optString("frameId").takeIf { it.isNotBlank() }?.let {
-                            requireService(service).validateFrame(it)
+                    "device.getCapabilities", "device.getSize", "device.capture", "device.execute", "task.cancel", "task.complete" ->
+                        device.execute(sessionId, DeviceProtocol.parse(request.getString("method"), params)) { result ->
+                            result.fold({ respondSuccess(requestId, it ?: JSONObject.NULL) }, { respondError(requestId, it) })
                         }
-                        val action = NativeActionParser.parse(params.getJSONObject("action"))
-                        requireService(service).execute(sessionId, action) { result ->
-                            result.fold(
-                                onSuccess = { respondSuccess(requestId, JSONObject.NULL) },
-                                onFailure = { respondError(requestId, it) },
-                            )
-                        }
-                    }
-                    "task.cancel" -> {
-                        service?.cancelSession(sessionId)
-                        respondSuccess(requestId, JSONObject.NULL)
-                    }
-                    "task.complete" -> {
-                        service?.completeSession(sessionId)
-                        respondSuccess(requestId, JSONObject.NULL)
-                    }
                     "task.status" -> {
                         val status = TaskExecutionStatus.valueOf(
                             params.getString("status").uppercase(),
@@ -386,7 +339,7 @@ class NodeTestRunCoordinator(
                     .put(
                         "error",
                         JSONObject()
-                            .put("code", errorCode(error))
+                            .put("code", BridgeErrors.code(error))
                             .put("message", error.message ?: error.javaClass.simpleName),
                     ),
             )
@@ -394,21 +347,11 @@ class NodeTestRunCoordinator(
     }
 
     private fun updateStatus(status: TaskExecutionStatus, detail: String? = null) {
+        // Conversation-owned runs keep the outer task active between phone operations.
+        if (!reportTaskStatus) return
         MidsceneAccessibilityService.current()?.updateTaskStatus(status, detail)
         runCatching { TaskRuntimeService.report(appContext, status) }
             .onFailure { Log.w(LOG_TAG, "Unable to update task notification", it) }
-    }
-
-    private fun requireService(service: MidsceneAccessibilityService?): MidsceneAccessibilityService =
-        service ?: throw AccessibilityDisabledException()
-
-    private fun errorCode(error: Throwable): String = when (error) {
-        is AccessibilityDisabledException -> "ACCESSIBILITY_DISABLED"
-        is MidsceneAccessibilityService.SessionCancelledException -> "SESSION_CANCELLED"
-        is MidsceneAccessibilityService.StaleFrameException -> "STALE_FRAME"
-        is UnsupportedOperationException -> "UNSUPPORTED_ACTION"
-        is IllegalArgumentException -> "INVALID_REQUEST"
-        else -> "INTERNAL_ERROR"
     }
 
     private fun pruneRuns(root: File, active: File) {
@@ -416,6 +359,14 @@ class NodeTestRunCoordinator(
             ?.sortedByDescending { it.lastModified() }
             ?.drop(MAX_RETAINED_RUN_DIRECTORIES - 1)
             ?.forEach { stale -> stale.deleteRecursively() }
+    }
+
+    private fun screenshotExperimentEnvironment(): Map<String, String> {
+        val debuggable = appContext.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0
+        val factor = if (debuggable) appContext.getSharedPreferences("tapilot-performance", Context.MODE_PRIVATE)
+            .getString("screenshot-shrink-factor", "1") else "1"
+        require(factor in listOf("1", "1.5")) { "Unsupported screenshot experiment factor" }
+        return mapOf("TAPILOT_SCREENSHOT_SHRINK_FACTOR" to factor!!)
     }
 
     override fun close() {
@@ -427,9 +378,6 @@ class NodeTestRunCoordinator(
     }
 
     class NodeRunStoppedException : IllegalStateException("用户停止了任务")
-
-    private class AccessibilityDisabledException :
-        IllegalStateException("请先在系统设置中开启 Tapilot 辅助功能")
 
     companion object {
         private const val LOG_TAG = "MidsceneNodeTest"

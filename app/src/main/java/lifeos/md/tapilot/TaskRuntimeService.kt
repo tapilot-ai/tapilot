@@ -17,6 +17,7 @@ import lifeos.md.tapilot.bridge.ActiveTaskStopRegistry
 
 class TaskRuntimeService : Service() {
     private val handler = Handler(Looper.getMainLooper())
+    private var currentStatus = TaskExecutionStatus.IDLE
     private val stopAfterTerminal = Runnable {
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -38,27 +39,28 @@ class TaskRuntimeService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         handler.removeCallbacks(stopAfterTerminal)
         if (intent?.action == ACTION_STOP_TASK) {
-            TaskExecutionTracker.update(TaskExecutionStatus.STOPPED)
-            MidsceneAccessibilityService.current()?.refreshTaskRunning()
-            ActiveTaskStopRegistry.stopActive()
-            startForeground(NOTIFICATION_ID, notification(TaskExecutionStatus.STOPPED))
-            handler.postDelayed(stopAfterTerminal, TERMINAL_DISPLAY_MILLIS)
+            // The task owner reports STOPPED after cancellation has completed.
+            if (currentStatus != TaskExecutionStatus.STOPPING && ActiveTaskStopRegistry.stopActive()) {
+                currentStatus = TaskExecutionStatus.STOPPING
+            }
+            showStatus(currentStatus)
             return START_NOT_STICKY
         }
         val status = intent?.getStringExtra(EXTRA_STATUS)
             ?.let { runCatching { TaskExecutionStatus.valueOf(it) }.getOrNull() }
             ?: TaskExecutionStatus.RUNNING
+        showStatus(status)
+        return START_NOT_STICKY
+    }
+
+    private fun showStatus(status: TaskExecutionStatus) {
+        currentStatus = status
         TaskExecutionTracker.update(status)
         MidsceneAccessibilityService.current()?.refreshTaskRunning()
         startForeground(NOTIFICATION_ID, notification(status))
-        if (status == TaskExecutionStatus.SUCCEEDED ||
-            status == TaskExecutionStatus.FAILED ||
-            status == TaskExecutionStatus.STOPPED
-        ) {
+        if (status.isTerminal || status == TaskExecutionStatus.IDLE) {
             handler.postDelayed(stopAfterTerminal, TERMINAL_DISPLAY_MILLIS)
-            return START_NOT_STICKY
         }
-        return START_NOT_STICKY
     }
 
     override fun onDestroy() {
@@ -73,14 +75,14 @@ class TaskRuntimeService : Service() {
             TaskExecutionStatus.STARTING -> getString(R.string.task_notification_starting)
             TaskExecutionStatus.RUNNING -> getString(R.string.task_notification_running)
             TaskExecutionStatus.FINALIZING -> getString(R.string.task_notification_finalizing)
+            TaskExecutionStatus.STOPPING -> getString(R.string.task_notification_stopping)
+            TaskExecutionStatus.WAITING_USER -> getString(R.string.task_notification_waiting_user)
             TaskExecutionStatus.SUCCEEDED -> getString(R.string.task_notification_succeeded)
             TaskExecutionStatus.FAILED -> getString(R.string.task_notification_failed)
             TaskExecutionStatus.STOPPED -> getString(R.string.task_notification_stopped)
             TaskExecutionStatus.IDLE -> getString(R.string.app_name)
         }
-        val active = status == TaskExecutionStatus.STARTING ||
-            status == TaskExecutionStatus.RUNNING ||
-            status == TaskExecutionStatus.FINALIZING
+        val active = status.isActive
         val contentIntent = PendingIntent.getActivity(
             this,
             0,
@@ -95,7 +97,7 @@ class TaskRuntimeService : Service() {
             .setCategory(Notification.CATEGORY_PROGRESS)
             .setOngoing(active)
             .setOnlyAlertOnce(true)
-        if (active) {
+        if (active && status != TaskExecutionStatus.STOPPING) {
             val stopIntent = PendingIntent.getService(
                 this,
                 STOP_REQUEST_CODE,

@@ -44,9 +44,9 @@ class ChatGptAccounts private constructor(context: Context) {
         val attempt get() = pending.attempt
         @Volatile var cancelled = false; private set
         val url: String get() = attempt.authorize(previous?.optString("id_token").orEmpty(), previous?.optString("email").orEmpty())
-        fun finish(): Account {
+        fun finish(onReady: () -> Unit = {}): Account {
             listener.use {
-                val callback = listener.await(attempt, pending.expiresAt)
+                val callback = listener.await(attempt, pending.expiresAt, onReady)
                 phase("callback_received")
                 val grant = attempt.exchange(callback)
                 val client = grant.getValue("client_id")

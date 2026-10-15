@@ -8,6 +8,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertThrows
 import org.junit.Test
 import org.json.JSONObject
 
@@ -22,6 +23,27 @@ class NodeRuntimeProcessSupervisorTest {
         )
 
         assertEquals(2, result.size)
+    }
+
+    @Test
+    fun acceptsTheScreenshotPolicyUsedByNativePhoneRuns() {
+        for (factor in listOf("1", "1.5")) {
+            val environment = mapOf("MIDSCENE_MODEL_NAME" to "test", "TAPILOT_SCREENSHOT_SHRINK_FACTOR" to factor)
+            assertEquals(environment, NodeRuntimeProcessSupervisor.sanitizeEnvironment(environment))
+        }
+    }
+
+    @Test
+    fun screenshotExceptionDoesNotAllowOtherTapilotVariablesOrInvalidFactors() {
+        for (environment in listOf(
+            mapOf("TAPILOT_SCREENSHOT_SHRINK_FACTOR" to "2"),
+            mapOf("TAPILOT_SCREENSHOT_SHRINK_FACTOR" to "1\u0000"),
+            mapOf("TAPILOT_CONFIG" to "/tmp/untrusted.json"),
+        )) {
+            assertThrows(IllegalArgumentException::class.java) {
+                NodeRuntimeProcessSupervisor.sanitizeEnvironment(environment)
+            }
+        }
     }
 
     @Test(expected = IllegalArgumentException::class)

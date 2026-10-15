@@ -23,20 +23,31 @@
   ],
   "type": "module",
   "scripts": {
-    "build": "pnpm run theme:check && rsbuild build",
+    "build": "pnpm build:android",
     "build:adapter": "pnpm --filter @tapilot/android-accessibility build",
-    "build:android": "pnpm run runtime:bundle && pnpm run runtime:node && ./gradlew assembleBeta --max-workers=2 --no-parallel --no-daemon && node scripts/verify-apk.mjs beta",
+    "build:android": "pnpm run runtime:bundle && pnpm run runtime:node && ./gradlew assembleBeta --max-workers=2 --no-parallel --no-daemon && node scripts/verify-apk.mjs beta --local-check",
     "runtime:bundle": "node scripts/bundle-node-runtime.mjs",
     "runtime:doctor": "node build/node-runtime-bundle/runner.mjs doctor",
     "runtime:node": "bash scripts/fetch-node-runtime.sh",
-    "dev": "rsbuild dev",
+    "dev": "pnpm build:android",
     "test": "node scripts/check.mjs",
     "theme:generate": "node scripts/generate-brand.mjs",
     "theme:check": "node scripts/generate-brand.mjs --check",
     "baseline:check": "node scripts/visual-baseline.mjs --check",
     "check": "node scripts/check.mjs",
     "test:legacy": "rstest run --pool.maxWorkers 2",
-    "build:release": "pnpm run runtime:bundle && pnpm run runtime:node && ./gradlew assembleRelease --max-workers=2 --no-parallel --no-daemon && node scripts/verify-apk.mjs release"
+    "build:release": "pnpm run runtime:bundle && pnpm run runtime:node && ./gradlew assembleRelease --max-workers=2 --no-parallel --no-daemon && node scripts/verify-apk.mjs release",
+    "build:legacy": "pnpm run theme:check && rsbuild build",
+    "dev:legacy": "rsbuild dev",
+    "build:beta:distribution": "pnpm run runtime:bundle && pnpm run runtime:node && ./gradlew assembleBeta --max-workers=2 --no-parallel --no-daemon && node scripts/verify-apk.mjs beta",
+    "check:quick": "node scripts/check.mjs --quick",
+    "check:plugin": "npm --prefix plugins/android-use run check",
+    "check:security": "pnpm audit && pnpm --dir node-runtime/bundle audit && npm audit --prefix plugins/android-use && npm audit --prefix tests/midscene",
+    "check:e2e": "npm --prefix tests/midscene run check",
+    "test:e2e": "npm --prefix tests/midscene test",
+    "test:e2e:live": "npm --prefix tests/midscene run test:live",
+    "test:e2e:resilience": "npm --prefix tests/midscene run test:resilience",
+    "test:e2e:auth-fixture": "npm --prefix tests/midscene run test:auth-fixture"
   },
   "dependencies": {
     "@lobehub/icons-static-svg": "^1.95.0",
@@ -44,8 +55,12 @@
   },
   "devDependencies": {
     "@rsbuild/core": "^1.6.15",
-    "@rsbuild/plugin-node-polyfill": "1.4.2",
     "@rstest/core": "0.11.5",
     "typescript": "^5.8.3"
+  },
+  "packageManager": "pnpm@12.4.1",
+  "engines": {
+    "node": ">=22.19.0",
+    "pnpm": ">=12.4.1 <13"
   }
 }

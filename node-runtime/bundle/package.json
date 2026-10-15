@@ -3,25 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@img/sharp-wasm32": "0.34.5",
+    "@img/sharp-wasm32": "0.35.5",
     "@midscene/core": "1.15.2",
     "@midscene/shared": "1.15.2",
     "@midscene/test": "1.15.2",
-    "@tapilot/android-accessibility": "npm:@midscene/core@1.15.2",
-    "esbuild": "0.23.1",
-    "tsx": "4.19.2",
+    "@tapilot/android-accessibility": "file:../../packages/android-accessibility",
+    "esbuild": "0.25.11",
+    "tsx": "4.23.15",
     "@earendil-works/pi-agent-core": "1.1.0",
     "@earendil-works/pi-ai": "1.1.0"
-  },
-  "pnpm": {
-    "supportedArchitectures": {
-      "cpu": [
-        "current",
-        "wasm32"
-      ],
-      "os": [
-        "current"
-      ]
-    }
   }
 }

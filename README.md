@@ -30,55 +30,46 @@ The chat composer shows the current execution mode and lets you switch between Y
 
 ## Build
 
-Requirements:
-
-- JDK 17
-- Android SDK platform 35 and build tools
-- Node and pnpm
-
-From this directory:
+Tapilot is proprietary; these instructions are for authorized developers.
+Use Node.js 24 (minimum 22.19), pnpm 12.4.1, JDK 17, Android SDK Platform 35
+and Build Tools 35.0.0. Set `JAVA_HOME` and `ANDROID_HOME`. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for host utilities and signing configuration.
 
 ```sh
-pnpm install
-pnpm run build:adapter
-pnpm run runtime:bundle
-pnpm run runtime:node
-./gradlew assembleBeta --max-workers=2 --no-parallel --no-daemon
+pnpm install --frozen-lockfile
+npm ci --prefix plugins/android-use
+pnpm build:android
 ```
 
-Or run the combined script:
+`pnpm build` is the same local build. The non-debuggable Beta APK is written to
+`app/build/outputs/apk/beta/app-beta.apk` and signed with this machine's development
+certificate. `pnpm build:beta:distribution` additionally requires the historical
+Beta certificate; `pnpm build:release` requires explicit production credentials.
 
-```sh
-pnpm run build:android
-```
+Run `pnpm check:quick` during development and `pnpm check` before handoff. Both
+include plugin tests; the full gate also builds and verifies Android artifacts.
+CI runs the full gate. Physical-device acceptance is a separate step.
 
-The non-debuggable Beta APK is written to `app/build/outputs/apk/beta/app-beta.apk`.
-Run `pnpm check` before distributing it. See [CONTRIBUTING.md](CONTRIBUTING.md)
-for the complete check gate and production signing configuration.
-Ordinary Android builds do not build the legacy web UI. For the optional
-`-PspeechVerification` debug entry, run `pnpm run build` first.
-`runtime:bundle` creates a self-contained, symlink-free Node module bundle and
-runs a real `@midscene/test` YAML smoke project before packaging it.
-`runtime:node` downloads pinned Termux arm64 packages, verifies their SHA-256
-checksums, and patches the ELF dependencies for APK loading. Generated bundles
-and native binaries are build artifacts and are not committed.
-`packages/android-accessibility` (published as
-[`@tapilot/android-accessibility`](https://www.npmjs.com/package/@tapilot/android-accessibility))
-is this community project's independently buildable device adapter
-(`pnpm run build:adapter`). Its public package contains
-the device actions and native device protocol. Kotlin in `app/src/main/java/` owns
-app UI, conversation and configuration. `runtime/` retains the legacy web UI and
-optional speech verification entries, excluded from ordinary APKs. Core, Shared, and Test
-are consumed directly from the compatible upstream Midscene release. The
-standalone repository does not carry or patch snapshots of those packages.
+`node-runtime/src/` owns the embedded agent and runner. `runtime:bundle` builds the
+private local adapter in `packages/android-accessibility`, installs frozen production
+dependencies and runs Node tests plus YAML/stdio smoke projects. `runtime:node`
+downloads checksum-verified Termux ARM64 libraries. The deployment carries a
+[documented Midscene timeout patch](node-runtime/bundle/patches/README.md).
+
+Kotlin in `app/` owns the current UI, conversation and Android services.
+`legacy/web-ui/` retains the old UI and optional speech verification entry, excluded
+from ordinary APKs. Use `pnpm build:legacy` or `pnpm dev:legacy` explicitly.
+For the verification package use `TAPILOT_SPEECH_VERIFICATION=1 pnpm build:legacy`
+before building with `-PspeechVerification`.
+See the [architecture map](docs/architecture/README.md) and [documentation index](docs/README.md).
 
 ## Embedded Node runtime
 
 The APK includes Node.js 24 for arm64 and a bundled `@midscene/test` runtime.
 Android extracts the versioned JavaScript bundle into app-private storage and
 starts Node as a supervised child process. Android and Node communicate through
-structured JSON RPC over standard input and output; no local network port is
-opened. Only allow-listed model environment variables are forwarded to the
+structured JSON RPC over standard input and output. This embedded transport opens
+no network port; the separately enabled wireless service listens on Wi-Fi. See [SECURITY.md](SECURITY.md). Only allow-listed model environment variables are forwarded to the
 process, and one runner process may be active at a time.
 
 The settings page runtime check verifies both the Node executable and that the

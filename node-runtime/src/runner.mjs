@@ -2,6 +2,7 @@
 
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import { nativeRpcTimings } from './stdio-native-bridge.mjs';
 import {
   collectFailureMessage,
   collectFinalAiResponse,
@@ -143,12 +144,13 @@ async function test(options) {
       process.stdout.write(`${line}\n`);
     },
   });
-  const result = { ...runResult, output };
+  const result = { ...runResult, output, nativeRpcTimings: nativeRpcTimings() };
   await writeFile(summaryPath, `${JSON.stringify(result, null, 2)}\n`, 'utf8');
   const agentReports = collectAgentReports(runResult);
   const finalResponse = collectFinalAiResponse(runResult);
   const failure = collectFailureMessage(runResult);
   emit('test.completed', {
+    nativeRpcTimings: result.nativeRpcTimings,
     exitCode: runResult.exitCode,
     resultDir: runResult.resultDir,
     summaryPath: runResult.summaryPath,

@@ -5,9 +5,14 @@ enum class TaskExecutionStatus {
     STARTING,
     RUNNING,
     FINALIZING,
+    STOPPING,
+    WAITING_USER,
     SUCCEEDED,
     FAILED,
-    STOPPED,
+    STOPPED;
+
+    val isActive: Boolean get() = this in setOf(STARTING, RUNNING, FINALIZING, STOPPING)
+    val isTerminal: Boolean get() = this in setOf(WAITING_USER, SUCCEEDED, FAILED, STOPPED)
 }
 
 data class TaskStatusPresentation(
@@ -33,6 +38,12 @@ fun TaskExecutionStatus.presentation(detail: String? = null): TaskStatusPresenta
     )
     TaskExecutionStatus.RUNNING -> TaskStatusPresentation(TaskEffect.ACTIVE, null, null)
     TaskExecutionStatus.FINALIZING -> TaskStatusPresentation(TaskEffect.ACTIVE, null, null)
+    TaskExecutionStatus.STOPPING -> TaskStatusPresentation(TaskEffect.ACTIVE, null, null)
+    TaskExecutionStatus.WAITING_USER -> TaskStatusPresentation(
+        TaskEffect.NONE,
+        "Tapilot：等待你补充信息",
+        null,
+    )
     TaskExecutionStatus.SUCCEEDED -> TaskStatusPresentation(
         TaskEffect.SUCCESS,
         "Tapilot：任务执行成功",

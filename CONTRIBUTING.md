@@ -1,79 +1,77 @@
-# Internal development of Tapilot
+# Developing Tapilot
 
-Tapilot is proprietary software. This guide is for authorized developers.
+Tapilot remains proprietary. This guide is for developers with repository access;
+it does not grant permission to redistribute the source or binaries. See [LICENSE](LICENSE).
 
 ## Setup
 
-Use JDK 17, Android SDK platform/build tools 35, Node.js and pnpm. Set
-`JAVA_HOME` and `ANDROID_HOME`, then run `pnpm install --frozen-lockfile`.
+Use Node.js 24 (minimum 22.19), pnpm 12.4.1, JDK 17, Android SDK platform 35
+and Build Tools 35.0.0. The build host must provide Bash, Python 3, curl, tar,
+ar, zip, unzip and OpenSSL. macOS and Linux are supported build hosts.
+Set `JAVA_HOME` and `ANDROID_HOME` to your local installations.
 
-## Required checks
+```sh
+pnpm install --frozen-lockfile
+npm ci --prefix plugins/android-use
+npm ci --prefix tests/midscene
+pnpm check:quick
+pnpm build:android
+```
 
-Run `pnpm check` (also available as `pnpm test`) from the repository root.
-It executes, sequentially:
+The plugin is an independently installable npm project with its own lockfile.
+The root pnpm workspace owns the Android adapter; the Node deployment bundle
+has an isolated production dependency lockfile. The standalone Midscene E2E package has its own npm lockfile. All four dependency trees are checked by CI.
 
-- Generated theme validation and TypeScript checking.
-- Legacy runtime regression tests and Android adapter tests (two workers).
-- A fresh adapter/Node bundle build, all Node agent tests, and runner smoke tests.
-- Report export, failure-report and runtime integrity regression tests.
-- Kotlin unit tests and a non-debuggable Beta APK build.
-- APK package/version, runtime freshness and cryptographic signature verification.
-  Local checks accept a developer certificate; distribution separately pins the
-  installed Beta certificate through `pnpm build:android`.
+## Commands
 
-The command automatically uses `~/.local/bin/dev-gate` when installed. CI hosts
-without that local gate run the same checks directly. Do not disable tests or
-ignore exit codes to publish. Physical-device validation is still required for
-microphone access, gestures, foreground services and upgrade behavior.
+| Command | Purpose |
+| --- | --- |
+| `pnpm build` / `pnpm build:android` / `pnpm dev` | Build a local non-debuggable Beta APK; accept this machine's signing certificate |
+| `pnpm check:quick` | Generated theme, plugin UI freshness and tests, E2E definitions, TypeScript, legacy UI and adapter tests |
+| `pnpm check` / `pnpm test` | Quick checks, Node bundle and smoke tests, script tests, Kotlin tests, Beta build and APK integrity checks |
+| `pnpm check:e2e` | Type-check and validate Midscene YAML cases; no device or model needed |
+| `pnpm test:e2e` / `pnpm test:e2e:live` | Run visual smoke / explicitly opted-in native task E2E; see [E2E guide](tests/midscene/README.md) |
+| `pnpm check:plugin` | Plugin UI freshness and all plugin tests, no Android SDK needed |
+| `pnpm build:legacy` / `pnpm dev:legacy` | Optional legacy Web UI only |
+| `pnpm build:beta:distribution` | Maintainer Beta build, enforcing the existing installed Beta certificate |
+| `pnpm build:release` | Production build requiring explicit signing credentials |
 
-For focused development, `pnpm test:legacy` runs only the legacy runtime tests.
-`pnpm --filter @tapilot/android-accessibility test run --pool.maxWorkers 2` runs
-adapter tests. `./gradlew :app:testDebugUnitTest --max-workers=2 --no-parallel
---no-daemon` runs Kotlin tests. These are subsets, not the release gate.
+Local builds never bypass runtime integrity checks. Their APK is at
+`app/build/outputs/apk/beta/app-beta.apk`. A local signing certificate cannot
+update an app signed by someone else's key; use a separate test device/profile
+rather than uninstalling an existing app with valuable data.
 
-## Build and signing
+Checks do not discover or execute private scripts from a developer's home directory.
+If you use a local resource scheduler, invoke it explicitly around these commands.
+Physical-device acceptance is still required for microphone access, gestures,
+foreground services, wireless pairing and upgrade behavior.
 
-`pnpm build:android` builds `app/build/outputs/apk/beta/app-beta.apk`.
-Beta disables debugging but deliberately retains the existing installed Beta
-certificate for in-place upgrades. It is not a production signing identity.
-A different machine's default debug keystore will fail distribution certificate verification;
-do not uninstall an existing app to get around that check.
+## Signing and CI
 
-Production uses `pnpm build:release` and requires these environment variables:
+Pull requests run `.github/workflows/check.yml` with development signing only.
+Its APK artifact is for development, not distribution. The manually dispatched
+`release-check.yml` uses the `release` environment; configure that environment's
+reviewers and secrets before enabling production builds. It verifies an APK and
+uploads a workflow artifact; it does not publish a release.
+
+Production builds require:
 
 - `TAPILOT_SIGNING_STORE`: private keystore path.
-- `TAPILOT_SIGNING_STORE_PASSWORD`, `TAPILOT_SIGNING_KEY_ALIAS`,
-  `TAPILOT_SIGNING_KEY_PASSWORD`: credentials provided outside the repository.
-- `TAPILOT_SIGNING_CERT_SHA256`: expected certificate digest, independently recorded.
+- `TAPILOT_SIGNING_STORE_PASSWORD`, `TAPILOT_SIGNING_KEY_ALIAS`, `TAPILOT_SIGNING_KEY_PASSWORD`.
+- `TAPILOT_SIGNING_CERT_SHA256`: independently recorded expected certificate digest.
 
-Release fails without explicit signing configuration. Changing signing identity
-requires a planned migration; do not silently replace an existing certificate.
-Never commit a keystore, password, API key or exported private app data.
+The release workflow also needs `TAPILOT_SIGNING_STORE_BASE64` to materialize a
+temporary keystore. Never commit these values. Beta distribution deliberately
+pins the historical Beta certificate; production has no default signing identity.
 
-Direct Gradle packaging verifies the Node source fingerprint and ZIP digest. If
-it reports stale resources, run `pnpm runtime:bundle`; this also rebuilds the
-adapter. `pnpm runtime:node` prepares checksum-verified ARM64 native libraries.
+## Structure and changes
 
-## Architecture
+Start with the [architecture map](docs/architecture/README.md),
+[development guide](docs/development/README.md) and
+[device protocol](docs/protocols/device.md).
 
-- `app/`: native Kotlin/Compose UI, app-owned conversation/audio state, storage,
-  Android device interface and subprocess lifecycle.
-- `node-runtime/assets/node-runtime/`: Pi agent and Midscene runner source.
-- `packages/android-accessibility/`: device adapter and native protocol.
-- `runtime/`: legacy web implementation and optional speech verification entry;
-  excluded from ordinary APKs. It does not own the current app's conversation.
-- `scripts/`: reproducible bundling, checks and APK verification.
-
-Floating voice transitions belong to `FloatingVoiceSession`, driven by
-`AssistantRuntime`; views must not mutate independent lifecycle flags. Public
-Android intents may open/share into the UI but cannot request recording.
-Conversation snapshots are persisted by a serial I/O writer; external operations
-wait for durable progress. Draft writes do not rewrite task history.
-
-## Review
-
-Keep changes focused and include regression tests for lifecycle, cancellation,
-serialization and provider boundaries. Update both README locales when changing
-user-facing behavior. Include real device evidence without secrets. Read
-[SECURITY.md](SECURITY.md) for private vulnerability reporting and
-[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for collaboration expectations.
+Keep behavior changes separate from directory moves. Add regression coverage for
+cancellation, serialization and provider boundaries. Update both README locales
+when behavior changes. Historical acceptance reports are dated evidence, not
+current setup instructions. Do not add private prompts, credentials or user data
+to acceptance artifacts. See [SECURITY.md](SECURITY.md) for vulnerability reporting.

@@ -54,4 +54,22 @@ class ChatGptCallbackTest {
             assertTrue(failure.message!!.contains("重新登录"))
         }
     }
+    @Test fun callbackIsReadyBeforeBrowserAndConsumesLargeBrowserHeaders() {
+        val executor = Executors.newSingleThreadExecutor()
+        try { ChatGptCallback().use { listener ->
+            val attempt = ChatGptOAuth.Attempt(listener.redirect, "host")
+            val ready = java.util.concurrent.CountDownLatch(1)
+            val result = executor.submit<Map<String, String>> {
+                listener.await(attempt, System.currentTimeMillis()+5000) { ready.countDown() }
+            }
+            assertTrue(ready.await(2, TimeUnit.SECONDS))
+            Socket("127.0.0.1", URI(listener.redirect).port).use { socket ->
+                socket.soTimeout = 2000
+                val request = "GET /auth/callback?state=${attempt.state}&client_id=oaiapp_test&code=test-code HTTP/1.1\r\nHost: 127.0.0.1\r\nCookie: ${"x".repeat(12000)}\r\nConnection: close\r\n\r\n"
+                socket.getOutputStream().write(request.toByteArray())
+                assertTrue(socket.getInputStream().bufferedReader().readText().startsWith("HTTP/1.1 200"))
+            }
+            assertEquals("test-code", result.get(2, TimeUnit.SECONDS)["code"])
+        } } finally { executor.shutdownNow() }
+    }
 }

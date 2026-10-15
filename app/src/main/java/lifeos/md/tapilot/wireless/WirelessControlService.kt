@@ -34,8 +34,10 @@ internal object WirelessState {
 class WirelessControlService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private val worker = Executors.newSingleThreadExecutor()
+    private val serverLock = Any()
     private var server: WirelessServer? = null
     private var tls: WirelessTls? = null
+    private var discovery: WirelessDiscovery? = null
     private lateinit var pairing: WirelessPairing
     private var wifi: Network? = null
     @Volatile private var stopping = false
@@ -74,19 +76,31 @@ class WirelessControlService : Service() {
         worker.execute {
             runCatching {
                 val identity = WirelessTls()
-                val listener = WirelessServer(identity.context(), address, PORT, pairing,
+                val listener = synchronized(serverLock) {
+                    if (stopping) return@execute
+                    WirelessServer(identity.context(), address, PORT, pairing,
                     { disconnect -> WirelessDeviceSession(applicationContext, disconnect) },
                     { connected -> handler.post {
                         if (!stopping) { WirelessState.connected = connected; getSystemService(NotificationManager::class.java).notify(NOTIFICATION, notification()) }
-                    } })
+                    } }).also { server = it }
+                }
                 handler.post {
                     if (stopping) listener.close() else {
-                        tls = identity; server = listener
+                        tls = identity
                         WirelessState.address = address.hostAddress.orEmpty()
                         listener.start()
+                        discovery = WirelessDiscovery(applicationContext).also { discovery ->
+                            runCatching { discovery.start(listener.port, identity.fingerprint) }
+                                .onFailure { discovery.close() }
+                        }
                     }
                 }
-            }.onFailure { handler.post { WirelessState.error = it.message ?: "Unable to start wireless control"; stopSelf() } }
+            }.onFailure { error -> handler.post {
+                if (!stopping && current === this) {
+                    WirelessState.error = error.message ?: "Unable to start wireless control"
+                    stopSelf()
+                }
+            } }
         }
     }
 
@@ -98,16 +112,26 @@ class WirelessControlService : Service() {
     internal fun pairingLink(): String {
         check(!WirelessState.connected) { "Disconnect the controller before pairing another computer" }
         val identity = checkNotNull(tls) { "Wireless control is still starting" }
-        val data = JSONObject().put("version", 1).put("host", WirelessState.address).put("port", PORT)
+        val data = JSONObject().put("version", 1).put("host", WirelessState.address).put("port", checkNotNull(server).port)
             .put("fingerprint", identity.fingerprint).put("token", pairing.offer())
         return "tapilot://pair/" + Base64.getUrlEncoder().withoutPadding().encodeToString(data.toString().toByteArray())
+    }
+
+    internal fun pairComputer(qr: String, completion: (Result<Unit>) -> Unit) {
+        val link = pairingLink()
+        val network = checkNotNull(wifi) { "请先连接 Wi-Fi" }
+        worker.execute {
+            val result = runCatching { ComputerPairing.send(qr, link, network) }
+            handler.post { completion(result) }
+        }
     }
 
     internal fun revoke() { pairing.revoke(); stopSelf() }
 
     override fun onDestroy() {
         stopping = true
-        server?.close(); server = null
+        discovery?.close(); discovery = null
+        synchronized(serverLock) { server?.close(); server = null }
         worker.shutdownNow()
         runCatching { getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(networkCallback) }
         if (current === this) current = null

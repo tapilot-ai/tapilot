@@ -46,21 +46,32 @@ class ChatGptConnection(private val context: Context, private val changed: () ->
         if (busy || closed) return
         runCatching {
             val attempt = store.begin(id); login = attempt; signingIn = true
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(attempt.url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            listen(attempt)
+            listen(attempt, openBrowser = true)
         }.onFailure { login?.discard(); login?.close(); login = null; signingIn = false; status = it.message ?: "无法打开 ChatGPT 登录" }
     }
-    private fun listen(attempt: ChatGptAccounts.Login, recovered: Boolean = false) {
+    private fun listen(attempt: ChatGptAccounts.Login, recovered: Boolean = false, openBrowser: Boolean = false) {
         login = attempt; signingIn = true
+        try { ChatGptLoginService.start(context) } catch (failure: Exception) {
+            attempt.close(); login = null; signingIn = false
+            status = "无法保持登录回调运行，请返回前台重试：${failure.message}"
+            return
+        }
         run {
-            try { attempt.finish() } catch (failure: Exception) {
+            try { attempt.finish {
+                if (openBrowser) main.post {
+                    if (!closed && signingIn) runCatching {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(attempt.url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    }.onFailure { attempt.discard(); attempt.close(); status = "无法打开 ChatGPT 登录：${it.message}" }
+                }
+            } } catch (failure: Exception) {
                 if (!closed) attempt.discard()
                 if (attempt.cancelled) error("ChatGPT 登录已取消") else throw failure
-            } finally { attempt.close() }
+            } finally { attempt.close(); ChatGptLoginService.stop(context) }
+            val polishing = runCatching { lifeos.md.tapilot.speech.SpeechPolishStore(context).enableForSiwcIfUnset() }
             // A catalog failure must not discard a valid completed authorization.
             val catalog = runCatching { loadModels() }
             main.post { if (!closed) models = catalog.getOrDefault(emptyList()) }
-            catalog.fold({ "ChatGPT 已连接，请选择模型" }, { "ChatGPT 已登录；加载模型失败：${it.message}" })
+            catalog.fold({ if (polishing.getOrDefault(false)) "ChatGPT 已连接，自动润色已开启，请选择模型" else if (polishing.isFailure) "ChatGPT 已连接；自动润色设置失败，请在语音润色中检查" else "ChatGPT 已连接，请选择模型" }, { "ChatGPT 已登录；加载模型失败：${it.message}" })
         }
         status = if (recovered) "已恢复被中断的登录，请返回浏览器刷新授权回调页面。" else "正在等待浏览器授权，请在 15 分钟内完成。"
     }
@@ -90,5 +101,5 @@ class ChatGptConnection(private val context: Context, private val changed: () ->
             onFailure = { status = "无法恢复上次登录，请重新登录：${it.message}" },
         )
     }
-    override fun close() { closed = true; login?.close(); executor.shutdownNow() }
+    override fun close() { closed = true; login?.close(); ChatGptLoginService.stop(context); executor.shutdownNow() }
 }

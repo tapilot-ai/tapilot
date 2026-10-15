@@ -14,8 +14,8 @@ export function sourceFingerprint(directory = root) {
       hash.update(relative).update('\0').update(fs.readFileSync(absolute)).update('\0');
     }
   }
-  for (const relative of ['node-runtime/assets/node-runtime', 'node-runtime/bundle/package.json',
-    'node-runtime/bundle/pnpm-lock.yaml', 'packages/android-accessibility/src',
+  for (const relative of ['node-runtime/src', 'node-runtime/bundle/package.json',
+    'node-runtime/bundle/pnpm-lock.yaml', 'node-runtime/bundle/pnpm-workspace.yaml', 'node-runtime/bundle/patches', 'packages/android-accessibility/src',
     'packages/android-accessibility/package.json', 'packages/android-accessibility/rslib.config.ts',
     'scripts/bundle-node-runtime.mjs', 'scripts/runtime-integrity.mjs']) visit(relative);
   return hash.digest('hex');

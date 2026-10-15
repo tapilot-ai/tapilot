@@ -50,6 +50,8 @@ export type NativeTaskStatus =
   | 'starting'
   | 'running'
   | 'finalizing'
+  | 'stopping'
+  | 'waiting_user'
   | 'succeeded'
   | 'failed'
   | 'stopped';

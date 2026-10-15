@@ -30,7 +30,7 @@ const runtimeFiles = [
 ];
 const sourceManifest = JSON.parse(
   fs.readFileSync(
-    path.join(sourceRoot, 'assets/node-runtime/manifest.json'),
+    path.join(sourceRoot, 'src/manifest.json'),
     'utf8',
   ),
 );
@@ -142,24 +142,6 @@ function updateHashWithTree(hash, directory, relativeRoot = directory) {
   return hash;
 }
 
-function replaceWorkspacePackage(name) {
-  const source = path.join(assistantRoot, 'packages', name);
-  const destination = path.join(stagingRoot, 'node_modules/@tapilot', name);
-  if (!fs.existsSync(path.join(source, 'dist'))) {
-    throw new Error(`Build @tapilot/${name} before bundling the Node runtime`);
-  }
-  fs.rmSync(destination, { recursive: true, force: true });
-  fs.mkdirSync(destination, { recursive: true });
-  fs.cpSync(path.join(source, 'dist'), path.join(destination, 'dist'), {
-    recursive: true,
-    dereference: true,
-  });
-  fs.copyFileSync(
-    path.join(source, 'package.json'),
-    path.join(destination, 'package.json'),
-  );
-}
-
 fs.rmSync(stagingRoot, { recursive: true, force: true });
 fs.mkdirSync(stagingRoot, { recursive: true });
 for (const file of ['package.json', 'pnpm-lock.yaml']) {
@@ -167,6 +149,7 @@ for (const file of ['package.json', 'pnpm-lock.yaml']) {
 }
 fs.copyFileSync(path.join(bundleRoot, 'pnpm-workspace.yaml'), path.join(stagingRoot, 'pnpm-workspace.yaml'));
 fs.cpSync(path.join(bundleRoot, 'patches'), path.join(stagingRoot, 'patches'), { recursive: true });
+run('pnpm', ['--filter', '@tapilot/android-accessibility', 'build'], assistantRoot);
 run(
   'pnpm',
   [
@@ -179,12 +162,10 @@ run(
 );
 verifySharpRuntimeVersions();
 
-run('pnpm', ['--filter', '@tapilot/android-accessibility', 'build'], assistantRoot);
 const workspacePackages = ['android-accessibility'];
-for (const name of workspacePackages) replaceWorkspacePackage(name);
 for (const file of runtimeFiles) {
   fs.copyFileSync(
-    path.join(sourceRoot, 'assets/node-runtime', file),
+    path.join(sourceRoot, 'src', file),
     path.join(stagingRoot, file),
   );
 }
@@ -227,8 +208,8 @@ fs.writeFileSync(
   `${JSON.stringify(manifest, null, 2)}\n`,
 );
 
-const runtimeTests = fs.readdirSync(path.join(sourceRoot, 'assets/node-runtime')).filter(file => file.endsWith('.test.mjs')).sort();
-for (const file of runtimeTests) fs.copyFileSync(path.join(sourceRoot, 'assets/node-runtime', file), path.join(stagingRoot, file));
+const runtimeTests = fs.readdirSync(path.join(sourceRoot, 'tests')).filter(file => file.endsWith('.test.mjs')).sort();
+for (const file of runtimeTests) fs.copyFileSync(path.join(sourceRoot, 'tests', file), path.join(stagingRoot, file));
 run(process.execPath, ['--test', '--test-concurrency=1', '--test-timeout=10000', ...runtimeTests], stagingRoot);
 run(process.execPath, ['runner.mjs', 'doctor'], stagingRoot);
 run(

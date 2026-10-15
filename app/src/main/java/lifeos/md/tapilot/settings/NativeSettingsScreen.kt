@@ -22,7 +22,7 @@ import lifeos.md.tapilot.accessibility.EdgeEffectPreferences
 import lifeos.md.tapilot.accessibility.EdgeEffectGeometrySettings
 import lifeos.md.tapilot.accessibility.EdgeEffectGeometryMode
 import lifeos.md.tapilot.accessibility.FloatingBallPreferences
-import lifeos.md.tapilot.bridge.NativeJavascriptBridge
+import lifeos.md.tapilot.services.ServiceGateway
 import lifeos.md.tapilot.conversation.ModelProfiles
 import lifeos.md.tapilot.conversation.NativeConversationCoordinator
 import lifeos.md.tapilot.theme.ThemePalettes
@@ -36,7 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import org.json.JSONObject
 
 @Composable
-fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: Activity, services: NativeJavascriptBridge,
+fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: Activity, services: ServiceGateway,
                          onThemeChanged: () -> Unit, onLanguageChanged: () -> Unit) {
     val zh = AppLanguage.resolved(activity) == "zh"
     fun label(a: String, b: String) = if (zh) a else b
@@ -49,6 +49,7 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
     var provider by remember(coordinator.data.optString("speechProvider")) { mutableStateOf(coordinator.data.optString("speechProvider", "volcengine")) }
     var picker by remember { mutableStateOf("") }
     var resetModel by remember { mutableStateOf(false) }
+    var accessibilityGuide by remember { mutableStateOf(false) }
     var clearHistory by remember { mutableStateOf(false) }
     var floating by remember { mutableStateOf(FloatingBallPreferences.isEnabled(activity)) }
     var edge by remember { mutableStateOf(EdgeEffectPreferences.get(activity)) }
@@ -127,7 +128,10 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
                         services.call("app.setFloatingBallEnabled", JSONObject().put("enabled", value)) { result -> if (result.isSuccess) floating = value }
                     }
                     Text(label("单击圆点展开对话，长按直接语音对答。", "Tap the floating button to expand chat; hold it to start voice chat."), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    SettingRow(label("设备控制", "Device control"), label("管理权限", "Manage permissions")) { coordinator.settingsCall("app.openAccessibilitySettings") }
+                    SettingRow(label("设备控制（辅助功能）", "Device control (Accessibility)"),
+                        if (lifeos.md.tapilot.accessibility.MidsceneAccessibilityService.current() != null) label("已开启", "Enabled") else label("查看开启步骤", "How to enable")) { accessibilityGuide = true }
+                    Text(label("辅助功能 → 已安装的应用／已下载的应用 → Tapilot 设备控制 → 打开开关并确认，然后返回 Tapilot。",
+                        "Accessibility → Installed/Downloaded apps → Tapilot device control → Enable and confirm, then return to Tapilot."), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     SettingRow(label("系统默认助手", "Default assistant"), label("设置", "Set up")) { coordinator.settingsCall("app.requestAssistantRole") }
                     SettingRow(label("后台运行", "Background operation"), label("电池设置", "Battery settings")) { coordinator.settingsCall("app.openBatterySettings") }
                     Text(label("若系统会关闭后台任务，请将 Tapilot 的电池使用设为不受限制。", "If background tasks are interrupted, allow unrestricted battery use for Tapilot."), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -179,6 +183,12 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
                 } }
             }, confirmButton = { TextButton(onClick = { picker = "" }) { Text(label("关闭", "Close")) } })
         }
+        if (accessibilityGuide) AlertDialog(onDismissRequest = { accessibilityGuide = false },
+            title = { Text(label("开启 Tapilot 设备控制", "Enable Tapilot device control")) },
+            text = { Text(label("1. 在接下来打开的系统辅助功能页面，进入「已安装的应用」或「已下载的应用」（部分手机叫「更多已下载的服务」）。\n2. 找到「Tapilot 设备控制」。\n3. 打开「使用服务／允许」开关，并确认系统提示。\n4. 返回 Tapilot，设备控制应显示「已开启」。\n\n此权限用于读取屏幕及执行你要求的点击、滑动和输入。",
+                "1. Open Installed apps, Downloaded apps, or Downloaded services.\n2. Select Tapilot device control.\n3. Enable Use service/Allow and confirm the system prompt.\n4. Return to Tapilot and check Enabled.\n\nThis permission allows screen reading and the taps, swipes and text input you request.")) },
+            confirmButton = { TextButton(onClick = { accessibilityGuide = false; coordinator.settingsCall("app.openAccessibilitySettings") }) { Text(label("打开系统辅助功能", "Open Accessibility settings")) } },
+            dismissButton = { TextButton(onClick = { accessibilityGuide = false }) { Text(label("取消", "Cancel")) } })
         if (resetModel || clearHistory) AlertDialog(onDismissRequest = { resetModel = false; clearHistory = false },
             title = { Text(if (resetModel) label("重置当前模型？", "Reset this model?") else label("清空聊天记录？", "Clear chat history?")) },
             text = { Text(if (resetModel) label("将删除当前服务商的 API Key 并恢复默认参数。", "Deletes this provider's API Key and restores defaults.") else label("聊天和附件副本将被清除，执行报告仍保留。", "Chat and attachment copies will be removed. Reports are retained.")) },
@@ -187,7 +197,7 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
     }
 }
 
-private fun saveEdge(services: NativeJavascriptBridge, value: EdgeEffectGeometrySettings) {
+private fun saveEdge(services: ServiceGateway, value: EdgeEffectGeometrySettings) {
     services.call("app.setEdgeEffectSettings", JSONObject().put("mode", value.mode.wireValue).put("cornerRadiusDp", value.cornerRadiusDp).put("insetDp", value.insetDp)) {}
 }
 

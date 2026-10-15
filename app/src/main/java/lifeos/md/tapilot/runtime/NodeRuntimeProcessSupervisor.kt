@@ -178,7 +178,9 @@ class NodeRuntimeProcessSupervisor(
 
         internal fun sanitizeEnvironment(environment: Map<String, String>): Map<String, String> =
             environment.mapValues { (name, value) ->
-                require(allowedEnvironment.matches(name)) { "Environment variable is not allowed: $name" }
+                val screenshotFactor = name == "TAPILOT_SCREENSHOT_SHRINK_FACTOR"
+                require(allowedEnvironment.matches(name) || screenshotFactor) { "Environment variable is not allowed: $name" }
+                if (screenshotFactor) require(value in setOf("1", "1.5")) { "Unsupported screenshot experiment factor" }
                 require('\u0000' !in value) { "Environment variable contains a null byte: $name" }
                 value
             }

@@ -9,8 +9,11 @@ export function collectFinalAiResponse(runResult) {
           : [];
       for (const attempt of attempts) {
         for (const step of attempt.steps ?? []) {
-          const value = step?.output?.data?.value;
-          if (!step?.node?.startsWith('ai') || value === undefined) continue;
+          const value = step?.node === 'aiAct'
+            ? step?.output?.summary ?? step?.output?.data?.value
+            : step?.output?.data?.value;
+          // Assertions/waits establish success; their booleans are not observed facts.
+          if (!['aiAct', 'aiAsk', 'aiQuery', 'aiString', 'aiNumber', 'aiBoolean'].includes(step?.node) || value === undefined) continue;
           const text =
             typeof value === 'string'
               ? value.trim()

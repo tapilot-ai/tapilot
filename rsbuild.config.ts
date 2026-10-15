@@ -1,16 +1,15 @@
 import { defineConfig } from '@rsbuild/core';
-import { pluginNodePolyfill } from '@rsbuild/plugin-node-polyfill';
 
 export default defineConfig({
   source: {
     entry: process.env.TAPILOT_SPEECH_VERIFICATION === '1'
-      ? { index: './runtime/index.ts', speechverification: './runtime/speech-verification-entry.ts' }
-      : { index: './runtime/index.ts' },
+      ? { index: './legacy/web-ui/index.ts', speechverification: './legacy/web-ui/speech-verification-entry.ts' }
+      : { index: './legacy/web-ui/index.ts' },
     define: { __SDK_VERSION__: JSON.stringify('tapilot') },
   },
   html: {
     title: 'Tapilot',
-    template: './runtime/index.html',
+    template: './legacy/web-ui/index.html',
   },
   output: {
     target: 'web',
@@ -27,5 +26,4 @@ export default defineConfig({
       sharp: false,
     },
   },
-  plugins: [pluginNodePolyfill()],
 });

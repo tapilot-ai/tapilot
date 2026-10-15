@@ -26,7 +26,7 @@ import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
 import lifeos.md.tapilot.bridge.AttachmentReader
-import lifeos.md.tapilot.bridge.NativeJavascriptBridge
+import lifeos.md.tapilot.services.ServiceGateway
 import lifeos.md.tapilot.chat.ChatController
 import lifeos.md.tapilot.chat.ChatScreen
 import lifeos.md.tapilot.conversation.ConversationStore
@@ -47,7 +47,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var rootView: ComposeView
     private lateinit var chatController: ChatController
     private lateinit var coordinator: NativeConversationCoordinator
-    private lateinit var nativeBridge: NativeJavascriptBridge
+    private lateinit var nativeBridge: ServiceGateway
     private var importer: LegacyConversationImport? = null
     private val attachmentWorker = Executors.newSingleThreadExecutor()
     private var attachmentCallback: ((Result<JSONObject?>) -> Unit)? = null

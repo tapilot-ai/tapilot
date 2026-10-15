@@ -8,6 +8,28 @@ import org.junit.Test
 
 class TaskExecutionStatusTest {
     @Test
+    fun `waiting for clarification never displays a success effect`() {
+        val presentation = TaskExecutionStatus.WAITING_USER.presentation()
+        assertEquals(TaskEffect.NONE, presentation.effect)
+        assertEquals("Tapilot：等待你补充信息", presentation.announcement)
+        assertTrue(TaskExecutionStatus.WAITING_USER.isTerminal)
+        TaskExecutionTracker.update(TaskExecutionStatus.WAITING_USER)
+        assertFalse(TaskExecutionTracker.isActive)
+    }
+
+    @Test
+    fun `cancellation remains active and silent until stopped is confirmed`() {
+        TaskExecutionTracker.update(TaskExecutionStatus.STOPPING)
+        assertTrue(TaskExecutionTracker.isActive)
+        assertFalse(TaskExecutionStatus.STOPPING.isTerminal)
+        assertNull(TaskExecutionStatus.STOPPING.presentation().announcement)
+        assertNull(TaskExecutionStatus.STOPPING.presentation().resetAfterMillis)
+        TaskExecutionTracker.update(TaskExecutionStatus.STOPPED)
+        assertFalse(TaskExecutionTracker.isActive)
+        assertTrue(TaskExecutionStatus.STOPPED.isTerminal)
+    }
+
+    @Test
     fun `running status remains visible without resetting`() {
         val presentation = TaskExecutionStatus.RUNNING.presentation()
 

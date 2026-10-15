@@ -46,42 +46,40 @@ Tapilot 采用 `lifeos.md.tapilot` 应用 ID。使用相同签名密钥打出的
 
 ## 构建
 
-需要 JDK 17、Android SDK Platform 35、对应 Build Tools、Node 和 pnpm。
-
-在本目录中构建：
-
-```sh
-pnpm install
-pnpm run build:adapter
-pnpm run runtime:bundle
-pnpm run runtime:node
-./gradlew assembleBeta --max-workers=2 --no-parallel --no-daemon
-```
-
-也可以使用组合命令：
+Tapilot 保留专有许可证，以下说明面向有仓库访问权限的开发者。
+需要 Node.js 24（最低 22.19）、pnpm 12.4.1、JDK 17、Android SDK Platform 35
+和 Build Tools 35.0.0。设置 `JAVA_HOME` 和 `ANDROID_HOME`；其他工具要求及签名配置见
+[CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ```sh
-pnpm run build:android
+pnpm install --frozen-lockfile
+npm ci --prefix plugins/android-use
+pnpm build:android
 ```
 
-Debug APK 输出到 `app/build/outputs/apk/beta/app-beta.apk`。
-普通 Android 构建不再编译旧网页。使用可选的 `-PspeechVerification` 调试入口时，先运行 `pnpm run build`。
-`runtime:bundle` 会生成不含符号链接的自包含 Node 依赖包，并在打包前真实执行一个
-`@midscene/test` YAML 冒烟项目。`runtime:node` 会下载锁定版本的 Termux arm64 包、
-校验 SHA-256，并修补 ELF 依赖以便 APK 加载。生成的依赖包和原生二进制均属于构建产物，
-不会提交到仓库。
-`packages/android-accessibility`（以
-[`@tapilot/android-accessibility`](https://www.npmjs.com/package/@tapilot/android-accessibility)
-名义发布）是本社区项目自行维护、可独立构建的设备适配包
-（`pnpm run build:adapter`）。它只包含设备动作和原生设备协议；手机操作执行器运行在设备内 Node.js，
-应用界面、对话和配置由 `app/src/main/java/` 中的 Kotlin 管理。`runtime/` 保留旧网页实现及可选语音验证入口，不打入普通 APK。Core、Shared、Test 直接使用兼容的
-Midscene 上游正式发布版本，独立仓库不再保存或修改这些包的源码快照。
+`pnpm build` 执行相同的本地构建。Beta APK 输出到
+`app/build/outputs/apk/beta/app-beta.apk`，关闭调试，使用本机开发证书签名。
+`pnpm build:beta:distribution` 额外要求原有 Beta 证书；`pnpm build:release` 需要明确配置生产签名。
+
+开发时运行 `pnpm check:quick`，交付前运行 `pnpm check`。两者都包含插件测试，
+完整检查还会构建并验证 Android 产物。CI 执行完整检查，真机验收另行记录。
+
+`node-runtime/src/` 保存当前 agent 和 runner 源码。`runtime:bundle` 构建
+`packages/android-accessibility` 中的私有本地适配器，安装锁定依赖，并运行 Node 测试及
+YAML、stdio 冒烟测试。`runtime:node` 下载并校验 Termux ARM64 原生库。
+部署依赖保留了一份[已说明用途的 Midscene 超时补丁](node-runtime/bundle/patches/README.md)。
+
+`app/` 中的 Kotlin 管理当前界面、对话与 Android 服务。`legacy/web-ui/` 保留旧网页及
+可选语音验证入口，不打入普通 APK；使用 `pnpm build:legacy` 或 `pnpm dev:legacy` 单独操作。
+构建语音验证包时，先运行 `TAPILOT_SPEECH_VERIFICATION=1 pnpm build:legacy`，
+再使用 `-PspeechVerification` 构建。更多说明见[架构文档](docs/architecture/README.md)和[文档索引](docs/README.md)。
 
 ## 内嵌 Node 运行时
 
 APK 内置 arm64 版 Node.js 24 和打包后的 `@midscene/test` 运行时。Android 会将带版本
 指纹的 JavaScript 依赖包解压到应用私有目录，并以受监管的子进程启动 Node。Android
-与 Node 通过标准输入/输出上的结构化 JSON RPC 通信，不开放本地网络端口。只有白名单内
+与 Node 通过标准输入/输出上的结构化 JSON RPC 通信，这条通信链路不开放网络端口。
+单独开启的无线控制服务会监听 Wi-Fi，见 [SECURITY.md](SECURITY.md)。只有白名单内
 的模型环境变量会传给子进程，同时最多运行一个 Runner 进程。
 
 设置页的运行时检测会同时验证 Node 可执行文件以及 Test Runner 模块是否能加载。构建
@@ -219,6 +217,6 @@ SIWC 模式下，语音润色也复用当前 ChatGPT 账号和模型，无需另
 
 `pnpm check`（或 `pnpm test`）统一检查类型、旧 Web 回归、设备适配器、Node Agent、报告脚本和 Kotlin，并构建及核验不可调试的 Beta APK。检测到本机 dev-gate 时自动排队执行。
 
-`pnpm build:android` 输出 Beta，沿用当前安装证书以支持覆盖升级；该证书不是正式生产签名。`pnpm build:release` 必须提供独立的 `TAPILOT_SIGNING_*` 配置和预期证书指纹，缺失时拒绝发布。配置说明见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+`pnpm build:android` 输出使用本机开发证书的 Beta；维护者使用 `pnpm build:beta:distribution` 验证原有 Beta 证书后分发。`pnpm build:release` 必须提供独立的 `TAPILOT_SIGNING_*` 配置和预期证书指纹，缺失时拒绝发布。配置说明见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 Gradle 打包前会核对 Node 源码指纹与 ZIP 摘要；修改源码后必须重新生成资源。公开 Intent 只能打开界面或传入分享内容，不能启动录音。草稿独立保存，任务持久化由专用线程完成，后续外部操作等待保存结果。

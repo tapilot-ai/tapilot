@@ -6,8 +6,6 @@ object TaskExecutionTracker {
         private set
 
     fun update(status: TaskExecutionStatus) {
-        isActive = status == TaskExecutionStatus.STARTING ||
-            status == TaskExecutionStatus.RUNNING ||
-            status == TaskExecutionStatus.FINALIZING
+        isActive = status.isActive
     }
 }

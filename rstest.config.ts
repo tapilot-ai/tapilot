@@ -1,5 +1,5 @@
 import { defineConfig } from '@rstest/core';
 
 export default defineConfig({
-  include: ['runtime/**/*.test.ts'],
+  include: ['legacy/web-ui/**/*.test.ts'],
 });

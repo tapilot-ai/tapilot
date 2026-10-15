@@ -21,7 +21,7 @@ data class ChatOperation(val instruction: String, val success: Boolean, val resu
 
 data class ChatTask(val phase: String, val plan: List<String>, val currentStep: Int,
     val modelTurns: Int, val phoneOperations: Int, val attempt: Int, val operations: List<ChatOperation>)
-data class ChatProgress(val title: String, val detail: String, val operation: String, val startedAt: Long, val step: Int)
+data class ChatProgress(val title: String, val detail: String, val operation: String, val startedAt: Long, val step: Int, val stopping: Boolean = false)
 
 data class ChatState(
     val ready: Boolean = false,
@@ -78,7 +78,7 @@ data class ChatState(
                 attachment = ChatAttachment.parse(attachment),
                 preview = ChatAttachment.parse(data.optJSONObject("preview")),
                 progress = data.optJSONObject("progress")?.let { ChatProgress(it.optString("title"), it.optString("detail"),
-                    it.optString("operation"), it.optLong("startedAt"), it.optInt("step")) },
+                    it.optString("operation"), it.optLong("startedAt"), it.optInt("step"), it.optBoolean("stopping")) },
                 confirmation = data.optString("confirmation").takeIf { !data.isNull("confirmation") && it.isNotBlank() },
             )
         }

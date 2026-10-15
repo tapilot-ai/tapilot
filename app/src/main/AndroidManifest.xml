@@ -19,6 +19,9 @@
         </intent>
     </queries>
 
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
     <application
         android:name=".TapilotApplication"
         android:allowBackup="false"
@@ -30,6 +33,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Tapilot"
         android:usesCleartextTraffic="false">
+        <service android:name=".chatgpt.ChatGptLoginService" android:exported="false" android:foregroundServiceType="dataSync" />
         <activity
             android:name=".MainActivity"
             android:theme="@style/Theme.Tapilot.GlobalHost"

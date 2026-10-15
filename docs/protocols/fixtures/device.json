@@ -1,0 +1,12 @@
+{
+  "protocolVersion": 1,
+  "sessionId": "contract-session",
+  "frameId": "contract-frame",
+  "actions": [
+    {"type":"tap","x":12,"y":34},
+    {"type":"input","text":"你好 Tapilot","replace":false,"autoDismissKeyboard":false},
+    {"type":"swipe","startX":10,"startY":20,"endX":30,"endY":40,"duration":500},
+    {"type":"home"},
+    {"type":"launch","uri":"com.example.app"}
+  ]
+}

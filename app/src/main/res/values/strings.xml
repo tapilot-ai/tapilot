@@ -26,6 +26,8 @@
     <string name="task_notification_starting">Tapilot is preparing the task</string>
     <string name="task_notification_running">Tapilot is running the task</string>
     <string name="task_notification_finalizing">Tapilot is generating the report</string>
+    <string name="task_notification_stopping">Tapilot is stopping the task</string>
+    <string name="task_notification_waiting_user">Tapilot is waiting for your answer</string>
     <string name="task_notification_succeeded">Tapilot task completed</string>
     <string name="task_notification_failed">Tapilot task failed</string>
     <string name="task_notification_stopped">Tapilot task stopped</string>

@@ -17,6 +17,9 @@ test('Pi pushes a planned phone task to verified completion through native RPC',
       tool('finish_task', { outcome: 'completed', summary: '已打开计算器' })][count++];
   }, emit: e => events.push(e) });
   const result = await conversation.run();
+  const checkpoints = events.filter(e => e.type === 'checkpoint');
+  assert.deepEqual(checkpoints.map(e => e.messages.length), [1, 2, 3, 4, 5, 6, 7]);
+  assert.equal(checkpoints.at(-1).messages.at(-1).toolName, 'finish_task');
   assert.equal(result.reply, '已打开计算器'); assert.equal(result.operations, 1);
   assert.equal(result.phase, 'completed'); assert.ok(events.some(e => e.type === 'plan'));
   assert.equal(methods.filter(m => m === 'phone.execute').length, 1);

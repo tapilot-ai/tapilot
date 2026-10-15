@@ -4,7 +4,6 @@ import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.net.InetAddress
-import java.net.InetSocketAddress
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ThreadPoolExecutor
@@ -20,11 +19,8 @@ internal class WirelessServer(
     private val createSession: (disconnect: () -> Unit) -> WirelessDeviceSession,
     private val onController: (Boolean) -> Unit,
 ) : AutoCloseable {
-    private val listener = (context.serverSocketFactory.createServerSocket() as SSLServerSocket).apply {
-        reuseAddress = true
-        enabledProtocols = arrayOf("TLSv1.2")
-        bind(InetSocketAddress(address, port), 4)
-    }
+    private val listener = WirelessListener.bind(context, address, port)
+    val port: Int get() = listener.localPort
     private val sockets = ConcurrentHashMap.newKeySet<SSLSocket>()
     private val controllers = ConcurrentHashMap.newKeySet<SSLSocket>()
     private val workers = ThreadPoolExecutor(4, 4, 0, TimeUnit.SECONDS, ArrayBlockingQueue(4))

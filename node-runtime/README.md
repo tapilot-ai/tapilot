@@ -1,16 +1,16 @@
-# Android Node runtime worker
+# Android Node worker
 
-This directory contains the JavaScript entrypoint executed by the embedded
-Android Node.js process. Android installs these assets into app-private storage
-before starting a run.
-
-The worker emits machine-readable events as single lines prefixed with
-`MIDSCENE_EVENT `. Model credentials are passed only through the child process
-environment and must never be written into this directory or a run report.
-
-Commands:
+`src/` contains the embedded worker's source; `tests/` contains its regression
+tests; `bundle/` locks deployment dependencies and necessary upstream patches.
+Build and test the installed tree from the repository root:
 
 ```sh
-node assets/node-runtime/runner.mjs doctor
-node assets/node-runtime/runner.mjs test --project-root /absolute/project --result-dir /absolute/results
+pnpm runtime:bundle
+pnpm runtime:doctor
 ```
+
+Generated files go to `build/node-runtime-bundle` and Android's generated bundle
+assets. The worker emits JSON lines prefixed with `MIDSCENE_EVENT `; Pi uses
+`TAPILOT_AGENT `. Credentials must not appear in source assets or reports.
+Android and its embedded worker use stdio. The separate wireless service opens
+a Wi-Fi listener only when enabled; see [SECURITY.md](../SECURITY.md).

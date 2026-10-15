@@ -2,6 +2,18 @@ import { randomUUID } from 'node:crypto';
 import { createInterface } from 'node:readline';
 
 const DEFAULT_TIMEOUT_MS = 60_000;
+const timings = {};
+
+// Process-local aggregates only: never retain arguments, tokens, or screenshots.
+export function nativeRpcTimings() { return structuredClone(timings); }
+function record(method, start, failed) {
+  const elapsed = performance.now() - start;
+  const value = timings[method] ??= { count: 0, totalMs: 0, maxMs: 0, failures: 0 };
+  value.count++;
+  value.totalMs += elapsed;
+  value.maxMs = Math.max(value.maxMs, elapsed);
+  if (failed) value.failures++;
+}
 
 export class StdioNativeBridge {
   #pending = new Map();
@@ -56,6 +68,7 @@ export class StdioNativeBridge {
   }
 
   #request(method, params) {
+    const start = performance.now();
     const requestId = `${this.#sessionId}:${++this.#sequence}`;
     const message = {
       type: 'rpc.request',
@@ -69,9 +82,10 @@ export class StdioNativeBridge {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.#pending.delete(requestId);
+        record(method, start, true);
         reject(new Error(`Native RPC timed out: ${method}`));
       }, this.timeoutMs);
-      this.#pending.set(requestId, { resolve, reject, timeout });
+      this.#pending.set(requestId, { resolve, reject, timeout, method, start });
       process.stdout.write(`MIDSCENE_EVENT ${JSON.stringify(message)}\n`);
     });
   }
@@ -88,6 +102,7 @@ export class StdioNativeBridge {
     if (!pending) return;
     clearTimeout(pending.timeout);
     this.#pending.delete(response.requestId);
+    record(pending.method, pending.start, !response.ok);
     if (response.ok) {
       pending.resolve(response.result);
     } else {
@@ -100,6 +115,7 @@ export class StdioNativeBridge {
   #rejectAll(error) {
     for (const pending of this.#pending.values()) {
       clearTimeout(pending.timeout);
+      record(pending.method, pending.start, true);
       pending.reject(error);
     }
     this.#pending.clear();

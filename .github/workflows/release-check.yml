@@ -1,0 +1,49 @@
+name: Verify production APK
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  release:
+    environment: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '12.4.1'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - run: pnpm install --frozen-lockfile
+      - run: npm ci --prefix plugins/android-use
+      - run: npm ci --prefix tests/midscene
+      - run: pnpm check
+      - name: Build and verify signed release
+        env:
+          TAPILOT_SIGNING_STORE: ${{ runner.temp }}/tapilot-release.jks
+          TAPILOT_SIGNING_STORE_BASE64: ${{ secrets.TAPILOT_SIGNING_STORE_BASE64 }}
+          TAPILOT_SIGNING_STORE_PASSWORD: ${{ secrets.TAPILOT_SIGNING_STORE_PASSWORD }}
+          TAPILOT_SIGNING_KEY_ALIAS: ${{ secrets.TAPILOT_SIGNING_KEY_ALIAS }}
+          TAPILOT_SIGNING_KEY_PASSWORD: ${{ secrets.TAPILOT_SIGNING_KEY_PASSWORD }}
+          TAPILOT_SIGNING_CERT_SHA256: ${{ secrets.TAPILOT_SIGNING_CERT_SHA256 }}
+        run: |
+          trap 'rm -f "$TAPILOT_SIGNING_STORE"' EXIT
+          python3 - <<'PYCODE'
+          import base64, os
+          with open(os.environ['TAPILOT_SIGNING_STORE'], 'wb') as output:
+              output.write(base64.b64decode(os.environ['TAPILOT_SIGNING_STORE_BASE64'], validate=True))
+          os.chmod(os.environ['TAPILOT_SIGNING_STORE'], 0o600)
+          PYCODE
+          pnpm build:release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-production-apk
+          path: app/build/outputs/apk/release/app-release.apk

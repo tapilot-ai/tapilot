@@ -14,6 +14,7 @@ android {
     defaultConfig {
         applicationId = "lifeos.md.tapilot"
         if (providers.gradleProperty("speechVerification").isPresent) applicationIdSuffix = ".speechverify"
+        else if (providers.gradleProperty("e2eVerification").isPresent) applicationIdSuffix = ".e2everify"
         minSdk = 30
         targetSdk = 35
         // An older local build exercises the available-update UI against the real published feed.
@@ -68,6 +69,7 @@ android {
         sourceSets["main"].assets.srcDir("../public")
     }
     sourceSets["main"].jniLibs.srcDir("../.cache/native")
+    sourceSets["test"].resources.srcDir("../docs/protocols")
 
     packaging {
         jniLibs.useLegacyPackaging = true
@@ -88,6 +90,8 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.webkit:webkit:1.12.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    implementation("com.google.zxing:core:3.5.3")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
 }

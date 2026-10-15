@@ -23,7 +23,7 @@ import lifeos.md.tapilot.speech.transcriptPolisher
 @Composable
 internal fun SpeechPolishSettingsSection(context: Context, zh: Boolean, useChatGpt: Boolean = false, chatGptModel: String = "") {
     val store = remember(context) { SpeechPolishStore(context) }
-    var settings by remember { mutableStateOf(store.load()) }
+    var settings by remember(useChatGpt, chatGptModel) { mutableStateOf(store.load()) }
     var key by remember { mutableStateOf("") }
     var hasKey by remember { mutableStateOf(store.hasKey()) }
     var status by remember { mutableStateOf("") }

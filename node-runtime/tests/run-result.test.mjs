@@ -96,3 +96,27 @@ test('returns no failure for a successful run', () => {
     undefined,
   );
 });
+
+
+test('final assertion does not overwrite observed phone facts', () => {
+  const result = { projects: [{ cases: [{ run: { steps: [
+    { node: 'aiAct', output: { data: { value: '自动调节已开启；存储 54.2 GB / 256 GB' } } },
+    { node: 'aiAssert', output: { data: { value: true } } },
+    { node: 'aiWaitFor', output: { data: { value: true } } },
+  ] } }] }] };
+  assert.equal(collectFinalAiResponse(result), '自动调节已开启；存储 54.2 GB / 256 GB');
+});
+
+test('verification alone cannot supply an observed answer', () => {
+  assert.equal(collectFinalAiResponse({ projects: [{ cases: [{ run: { steps: [
+    { node: 'aiAssert', output: { data: { value: true } } },
+  ] } }] }] }), undefined);
+});
+
+
+test('preserves real SDK aiAct summary when the following assertion has no insight value', () => {
+  assert.equal(collectFinalAiResponse({ projects: [{ cases: [{ run: { steps: [
+    { node: 'aiAct', output: { summary: '自动调节已开启' } },
+    { node: 'aiAssert', output: { summary: 'Assertion passed', data: { pass: true } } },
+  ] } }] }] }), '自动调节已开启');
+});

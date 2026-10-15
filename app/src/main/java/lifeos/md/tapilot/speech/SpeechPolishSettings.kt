@@ -37,6 +37,11 @@ internal class SpeechPolishStore(context: Context) {
             model = json.optString("model", defaults.model), promptZh = json.optString("promptZh", defaults.promptZh),
             promptEn = json.optString("promptEn", defaults.promptEn)).validated()
     }.getOrDefault(SpeechPolishSettings())
+    fun enableForSiwcIfUnset(): Boolean {
+        val saved = JSONObject(preferences.getString("settings", "{}").orEmpty())
+        if (!saved.has("enabled")) save(load().copy(enabled = true))
+        return load().enabled
+    }
     fun hasKey() = credentials.contains(KEY)
     fun key() = credentials.get(KEY).orEmpty()
     fun save(settings: SpeechPolishSettings, replacementKey: String = "") {

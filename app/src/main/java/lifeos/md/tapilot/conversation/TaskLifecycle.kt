@@ -2,9 +2,18 @@ package lifeos.md.tapilot.conversation
 
 import org.json.JSONArray
 import org.json.JSONObject
+import lifeos.md.tapilot.TaskExecutionStatus
 
 /** Persist task state before execution, and every plan/tool/context checkpoint afterwards. */
 object TaskLifecycle {
+    fun executionStatus(stopped: Boolean, stopAcknowledged: Boolean, succeeded: Boolean, phase: String): TaskExecutionStatus = when {
+        stopped && !stopAcknowledged -> TaskExecutionStatus.FAILED
+        stopped -> TaskExecutionStatus.STOPPED
+        !succeeded -> TaskExecutionStatus.FAILED
+        phase == "waiting_user" -> TaskExecutionStatus.WAITING_USER
+        else -> TaskExecutionStatus.SUCCEEDED
+    }
+
     fun begin(entry: JSONObject, previous: JSONObject? = null) {
         entry.put("taskId", previous?.optString("taskId", previous.optString("id")) ?: entry.getString("id"))
             .put("goal", previous?.optString("goal", previous.optString("source")) ?: entry.getString("source"))
@@ -15,6 +24,7 @@ object TaskLifecycle {
         previous?.optJSONArray("completedOperations")?.let { entry.put("previousOperations", JSONArray(it.toString())) }
     }
     fun event(entry: JSONObject, value: JSONObject) {
+        value.optJSONObject("performance")?.let { entry.put("performance", it) }
         when (value.getString("type")) {
             "plan" -> entry.put("plan", value.getJSONArray("steps")).put("currentStep", value.getInt("currentStep"))
             "model" -> entry.put("modelTurns", value.getInt("turns"))
@@ -25,7 +35,7 @@ object TaskLifecycle {
         entry.put("updatedAt", System.currentTimeMillis())
     }
     fun finish(entry: JSONObject, status: String, phase: String = "") {
-        entry.put("phase", phase.ifBlank { when (status) { "stopped" -> "paused"; "succeeded" -> "completed"; else -> "failed" } })
+        entry.put("phase", phase.ifBlank { when (status) { "stopped" -> "paused"; "waiting_user" -> "waiting_user"; "succeeded" -> "completed"; else -> "failed" } })
             .put("completedAt", System.currentTimeMillis())
     }
     /** Never auto-run after process death. Preserve pending messages as visible, retryable input. */
@@ -46,13 +56,14 @@ object TaskLifecycle {
             val inputStatus = when {
                 input.getString("id") !in consumed -> "stopped"
                 status == "succeeded" -> "succeeded"
+                status == "waiting_user" -> "waiting_user"
                 status == "failed" -> "failed"
                 else -> "stopped"
             }
             input.put("status", inputStatus); finish(input, inputStatus)
-            if (inputStatus != "succeeded") input.put("detail", if (inputStatus == "failed") entry.optString("detail") else pendingMessage)
+            if (inputStatus !in listOf("succeeded", "waiting_user")) input.put("detail", if (inputStatus == "failed") entry.optString("detail") else pendingMessage)
         }
-        return if (status == "succeeded") inputs.filter { it.getString("id") !in consumed } else emptyList()
+        return if (status in listOf("succeeded", "waiting_user")) inputs.filter { it.getString("id") !in consumed } else emptyList()
     }
     fun pendingInputs(previous: JSONObject?, history: List<JSONObject>): JSONArray {
         if (previous == null) return JSONArray()

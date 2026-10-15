@@ -142,7 +142,9 @@ export function createConversation({ messages, goal = '', resume = [], pendingIn
     if (event.type === 'message_end' && event.message.role === 'user' && event.message.inputId) final = null;
     if (event.type === 'tool_execution_end' && event.toolName === 'operate_phone' && event.isError)
       lastPhoneResult = { success: false, result: event.result.content.filter(b => b.type === 'text').map(b => b.text).join('\n') };
-    if (event.type === 'message_end' || event.type === 'turn_end') emit({ type: 'checkpoint', messages: checkpointMessages(agent.state.messages), turns, operations });
+    // Pi has already committed each user/assistant/tool result at message_end.
+    // turn_end repeats that same transcript and triggers another full native fsync.
+    if (event.type === 'message_end') emit({ type: 'checkpoint', messages: checkpointMessages(agent.state.messages), turns, operations });
   });
   return {
     steer(input, followUp = false) {

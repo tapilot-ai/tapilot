@@ -15,6 +15,10 @@ let activeAgentProvider;
 const assistantLanguage =
   process.env.MIDSCENE_ANDROID_ASSISTANT_LANGUAGE === 'zh' ? 'zh' : 'en';
 const defaultAIActContext = androidAssistantAIActContext(assistantLanguage);
+const screenshotShrinkFactor = Number(process.env.TAPILOT_SCREENSHOT_SHRINK_FACTOR ?? 1);
+if (![1, 1.5].includes(screenshotShrinkFactor)) {
+  throw new Error('TAPILOT_SCREENSHOT_SHRINK_FACTOR must be 1 or 1.5');
+}
 
 class AndroidAssistantAgent extends Agent {
   aiAct(task, options) {
@@ -53,6 +57,7 @@ const setup = defineProjectSetup({
           agent = new AndroidAssistantAgent(device, {
             autoPrintReportMsg: false,
             generateReport: true,
+            screenshotShrinkFactor,
             replanningCycleLimit: 100,
             aiContexts: { aiAct: defaultAIActContext },
           });
