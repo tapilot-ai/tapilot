@@ -517,3 +517,34 @@ samples, collect **all** operation reports in the task interval (including faile
 verification and recovery), and retain independent final screenshot verification.
 A successful final task must not hide an earlier failed operation in its timings.
 
+
+A live full-resolution sample on 2026-10-16 took 79.015 s. Its first screenshot
+query read the correct page and enabled switch, but returned false because the
+outer model also requested proof that no setting had previously been changed.
+That historical assertion is not observable in a final screenshot. The task then
+performed another observation and succeeded. The instruction-generation contract
+now explicitly keeps execution constraints in the action instruction while
+restricting the screenshot predicate to visible facts. It does not remove the
+constraint, rewrite a failed query to success, or claim a screenshot proves action
+history. This single diagnostic sample is not a new performance baseline.
+
+After that instruction change, three native runs completed with one outer model
+call, one phone operation, three visual plans and one successful independent
+query each. The execution instruction retained the prohibition on toggling. Actual
+outer and visual models were `gpt-6-luna`; the screenshot evidence read the enabled
+auto-brightness switch. Full-size images remained 988×1972; factor 1.5 produced
+659×1315. Results from the same debug build:
+
+| Sample | Screenshot factor | Task wall | Runtime preparation | Visual HTTP total |
+| --- | ---: | ---: | ---: | ---: |
+| First after runtime update | 1 | 58.602 s | 11.708 s | 22.220 s |
+| Warm reduced image | 1.5 | 57.808 s | 0.008 s | 33.527 s |
+| Warm full image | 1 | 48.797 s | 0.009 s | 26.270 s |
+
+USB observation disconnected transiently in the two warm samples; the native tasks
+continued and completed. Their task IDs and completed timing records were recovered
+from device logs, and their matching operation reports were collected without
+replaying tasks. These exploratory samples do not establish a screenshot-size
+speedup or a 50% reduction. Keep the full-resolution production default. The cold
+sample must not be mixed into a warm-start comparison. All local artifacts are under
+`artifacts/native-live-ab-20261016/` (ignored; not redistributed).
