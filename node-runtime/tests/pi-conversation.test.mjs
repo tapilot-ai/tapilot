@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createConversation, checkpointMessages, resumableTranscript } from './pi-conversation.mjs';
 const input = text => [{ role: 'system', content: 'Tapilot' }, { role: 'user', content: text }];
 const answer = content => ({ choices: [{ message: { content } }] });
-const tool = (name, args) => ({ choices: [{ message: { tool_calls: [{ id: `call-${name}`, function: { name, arguments: JSON.stringify(args) } }] } }] });
+const tool = (name, args) => ({ choices: [{ message: { tool_calls: [{ id: `call-${name}`, function: { name, arguments: JSON.stringify(name === 'operate_phone' ? { mode: 'act', app: '', ...args } : args) } }] } }] });
 
 test('Pi pushes a planned phone task to verified completion through native RPC', async () => {
   let count = 0;
@@ -11,7 +11,12 @@ test('Pi pushes a planned phone task to verified completion through native RPC',
   const conversation = createConversation({ messages: input('打开计算器'), rpc: async (method, params) => {
     methods.push(method);
     if (method === 'phone.execute') return { success: true, result: '计算器已显示' };
-    assert.deepEqual(params.tools.map(t => t.function.name), ['operate_phone', 'set_plan', 'finish_task']);
+    assert.deepEqual(params.tools.map(t => t.function.name), ['operate_phone', 'find_apps', 'set_plan', 'finish_task']);
+    assert.deepEqual(params.tools[0].function.parameters.required, ['instruction', 'success_condition', 'mode', 'app']);
+    if (count === 2) {
+      const verified = JSON.parse(params.messages.at(-1).content).result;
+      assert.equal(verified, '已独立看图核验：计算器已显示');
+    }
     return [tool('set_plan', { steps: ['打开计算器'], currentStep: 0 }),
       tool('operate_phone', { instruction: '打开计算器', success_condition: '计算器显示' }),
       tool('finish_task', { outcome: 'completed', summary: '已打开计算器' })][count++];
@@ -211,4 +216,123 @@ test('Responses replay state survives tool round trips and checkpoints', async (
   }, emit: event => { if (event.type === 'checkpoint') checkpoints.push(event.messages); } });
   await conversation.run();
   assert.ok(checkpoints.some(messages => messages.some(m => m.tapilotResponsesOutput?.[0].encrypted_content === 'opaque-test-state')));
+});
+
+
+test('lookup then direct-launch observation preserves routing and finishes without a repeat operation', async () => {
+  let turns = 0;
+  const methods = [];
+  const conversation = createConversation({ messages: input('Read existing weather in Doubao'), rpc: async (method, params) => {
+    methods.push(method);
+    if (method === 'phone.findApps') return { apps: [{ label: '豆包', component: 'example.doubao/.Main' }] };
+    if (method === 'phone.execute') {
+      assert.equal(params.mode, 'observe'); assert.equal(params.app, 'example.doubao/.Main');
+      return { success: true, result: 'Cloudy, 20–28°C' };
+    }
+    return [tool('find_apps', { query: '豆包' }),
+      tool('operate_phone', { instruction: 'Read existing reply; do not send', success_condition: 'Weather reply visible', mode: 'observe', app: 'example.doubao/.Main' }),
+      tool('finish_task', { outcome: 'completed', summary: 'Cloudy, 20–28°C' })][turns++];
+  }, emit: () => {} });
+  const result = await conversation.run();
+  assert.equal(result.phase, 'completed'); assert.equal(result.operations, 1);
+  assert.equal(methods.filter(m => m === 'phone.execute').length, 1);
+});
+
+
+test('routing fields cannot be omitted silently by the model', async () => {
+  let turns = 0, phoneCalls = 0;
+  const conversation = createConversation({ messages: input('Read the current screen'), rpc: async (method) => {
+    if (method === 'phone.execute') { phoneCalls++; return { success: true, result: 'Visible' }; }
+    if (turns++ === 0) return { choices: [{ message: { tool_calls: [{ id: 'missing-route', function: {
+      name: 'operate_phone', arguments: JSON.stringify({ instruction: 'Read', success_condition: 'Visible' }),
+    } }] } }] };
+    return tool('finish_task', { outcome: 'failed', summary: 'Missing routing fields' });
+  }, emit: () => {} });
+  const result = await conversation.run();
+  assert.equal(phoneCalls, 0);
+  assert.equal(result.phase, 'failed');
+});
+
+test('bounded launcher candidates are available on the first turn without a lookup round trip', async () => {
+  let calls = 0;
+  const installedApps = [{ label: '计算器', component: 'example.calc/.Main' },
+    ...Array.from({ length: 100 }, (_, i) => ({ label: `App ${i}`, component: `example.app${i}/.Main` }))];
+  const conversation = createConversation({ messages: input('计算'), installedApps, rpc: async (method, params) => {
+    if (method === 'phone.execute') { assert.equal(params.app, 'example.calc/.Main'); return { success: true, result: '56' }; }
+    assert.equal(method, 'model.complete');
+    const system = params.messages[0].content;
+    assert.match(system, /untrusted data/); assert.match(system, /example.calc/); assert.ok(!system.includes('example.app99'));
+    return calls++ === 0 ? tool('operate_phone', { instruction: '计算', success_condition: '56', app: 'example.calc/.Main' })
+      : tool('finish_task', { outcome: 'completed', summary: '56' });
+  }, emit: () => {} });
+  assert.equal((await conversation.run()).reply, '56'); assert.equal(calls, 2);
+});
+
+test('single whole-goal operation finishes with real visual evidence without a summary inference', async () => {
+  let models = 0;
+  const conversation = createConversation({ messages: input('计算并读取结果'), emit: () => {}, rpc: async method => {
+    if (method === 'phone.execute') return { success: true, result: '屏幕显示 9×6 = 54' };
+    models++;
+    return tool('operate_phone', { instruction: '实际计算', success_condition: '读取屏幕结果', finishWhenVerified: true });
+  } });
+  const result = await conversation.run();
+  assert.equal(models, 1); assert.equal(result.phase, 'completed');
+  assert.equal(result.reply, '屏幕显示 9×6 = 54');
+});
+
+for (const condition of ['failed', 'steering', 'followUp', 'planned', 'batch', 'resume', 'empty']) {
+  test(`whole-goal completion cannot bypass ${condition}`, async () => {
+    let conversation, models = 0, phones = 0;
+    const op = () => tool('operate_phone', { instruction: '读取', success_condition: '读取画面', finishWhenVerified: true });
+    conversation = createConversation({ messages: input('任务'),
+      resume: condition === 'resume' ? [{ role: 'user', content: '此前任务', timestamp: 1 }] : [], emit: () => {},
+      rpc: async method => {
+        if (method === 'phone.execute') {
+          phones++;
+          if (condition === 'steering' || condition === 'followUp') conversation.steer({ id: 'new', text: '还有新的要求' }, condition === 'followUp');
+          return { success: condition !== 'failed', result: condition === 'empty' ? '' : '观察结果' };
+        }
+        if (method === 'phone.findApps') return { apps: [] };
+        const index = models++;
+        if (condition === 'planned' && index === 0) return tool('set_plan', { steps: ['读取', '总结'], currentStep: 0 });
+        if (index === (condition === 'planned' ? 1 : 0)) {
+          const response = op();
+          if (condition === 'batch') response.choices[0].message.tool_calls.push(tool('find_apps', { query: 'x' }).choices[0].message.tool_calls[0]);
+          return response;
+        }
+        return tool('finish_task', { outcome: condition === 'failed' ? 'failed' : 'waiting_user', summary: '需要继续处理' });
+      } });
+    const result = await conversation.run();
+    assert.equal(phones, 1); assert.ok(models >= 2); assert.notEqual(result.phase, 'completed');
+    assert.equal(result.reply, '需要继续处理');
+  });
+}
+
+test('cancellation during verified operation cannot trigger direct completion', async () => {
+  let conversation;
+  conversation = createConversation({ messages: input('任务'), emit: () => {}, rpc: async method => {
+    if (method === 'phone.execute') {
+      conversation.abort();
+      return { success: true, result: '晚到的观察' };
+    }
+    return tool('operate_phone', { instruction: '读取', success_condition: '读取画面', finishWhenVerified: true });
+  } });
+  await assert.rejects(conversation.run());
+});
+
+test('new input arriving after verified result checkpoint is not lost to direct completion', async () => {
+  let conversation, queued = false, models = 0;
+  conversation = createConversation({ messages: input('任务'), emit: event => {
+    if (!queued && event.type === 'checkpoint' && event.messages.at(-1)?.toolName === 'operate_phone') {
+      queued = true; conversation.steer({ id: 'late', text: '请继续新要求' });
+    }
+  }, rpc: async method => {
+    if (method === 'phone.execute') return { success: true, result: '首次观察' };
+    return models++ === 0
+      ? tool('operate_phone', { instruction: '读取', success_condition: '读取画面', finishWhenVerified: true })
+      : tool('finish_task', { outcome: 'waiting_user', summary: '请说明新要求' });
+  } });
+  const result = await conversation.run();
+  assert.equal(models, 2); assert.equal(result.phase, 'waiting_user');
+  assert.equal(result.reply, '请说明新要求');
 });

@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.chatgpt
 
+import lifeos.md.tapilot.AppText.text as appText
 import org.json.JSONObject
 
 /** Midscene's public SIWC configuration, scoped to one phone-operation process. */
@@ -10,7 +11,7 @@ object ChatGptMidscene {
             model.startsWith("gpt-5") -> "gpt-5"
             else -> error("此模型暂不支持手机视觉操作，请选择 GPT-6 或 GPT-5.4 及以上模型")
         }
-        require(accountId.isNotBlank()) { "请先登录 ChatGPT" }
+        require(accountId.isNotBlank()) { appText("请先登录 ChatGPT", "Sign in to ChatGPT first") }
         return JSONObject()
             .put("MIDSCENE_MODEL_BASE_URL", ChatGptOAuth.RESOURCE)
             .put("MIDSCENE_MODEL_API_KEY", "tapilot-native-siwc")

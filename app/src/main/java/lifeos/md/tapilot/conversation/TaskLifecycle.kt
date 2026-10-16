@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.conversation
 
+import lifeos.md.tapilot.AppText.text as appText
 import org.json.JSONArray
 import org.json.JSONObject
 import lifeos.md.tapilot.TaskExecutionStatus
@@ -42,7 +43,7 @@ object TaskLifecycle {
     fun recover(state: JSONObject) {
         state.getJSONArray("history").objects().forEach { entry ->
             if (entry.optString("status") in listOf("running", "queued")) {
-                entry.put("status", "stopped").put("detail", "应用中断，任务进度已保存，请重试或继续")
+                entry.put("status", "stopped").put("detail", appText("应用中断，任务进度已保存，请重试或继续", "App interrupted. Progress saved; retry or continue"))
                 finish(entry, "stopped")
             }
         }

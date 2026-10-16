@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.speech
 
+import lifeos.md.tapilot.AppText.text as appText
 import lifeos.md.tapilot.chatgpt.ChatGptOAuth
 import lifeos.md.tapilot.chatgpt.ChatGptResponses
 import okhttp3.Call
@@ -63,8 +64,8 @@ internal class ChatGptSpeechPolisher(
             text
         }.getOrElse {
             failureReason = when (it) {
-                is java.io.InterruptedIOException -> "ChatGPT 请求超时"
-                is java.io.IOException -> "ChatGPT 网络连接失败"
+                is java.io.InterruptedIOException -> appText("ChatGPT 请求超时", "ChatGPT request timed out")
+                is java.io.IOException -> appText("ChatGPT 网络连接失败", "ChatGPT network connection failed")
                 else -> "ChatGPT 响应不完整或授权不可用"
             }
             text

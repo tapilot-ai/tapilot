@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.wireless
 
+import lifeos.md.tapilot.AppText.text as appText
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -129,6 +130,7 @@ class WirelessControlService : Service() {
         val identity = checkNotNull(tls) { "Wireless control is still starting" }
         val data = JSONObject().put("version", 1).put("host", WirelessState.address).put("port", checkNotNull(server).port)
             .put("fingerprint", identity.fingerprint).put("token", pairing.offer())
+            .put("language", AppLanguage.resolved(this))
         return "tapilot://pair/" + Base64.getUrlEncoder().withoutPadding().encodeToString(data.toString().toByteArray())
     }
 
@@ -137,7 +139,7 @@ class WirelessControlService : Service() {
             WirelessState.pairingStage != PairingStage.WAITING) { "Pairing is already in progress" }
         WirelessState.pairingStage = PairingStage.SENDING
         WirelessState.pairingError = ""
-        val prepared = runCatching { pairingLink() to checkNotNull(wifi) { "请先连接 Wi-Fi" } }
+        val prepared = runCatching { pairingLink() to checkNotNull(wifi) { appText("请先连接 Wi-Fi", "Connect to Wi-Fi first") } }
         fun fail(error: Throwable) {
             WirelessState.pairingStage = PairingStage.FAILED
             WirelessState.pairingError = error.message?.takeIf { it.isNotBlank() }

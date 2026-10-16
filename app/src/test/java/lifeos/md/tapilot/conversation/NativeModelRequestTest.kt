@@ -40,7 +40,7 @@ class NativeModelRequestTest {
         val errorBody = JSONObject().put("error", JSONObject().put("code", "Arrearage").put("message", "private service message"))
         val response = JSONObject().put("status", 400).put("bodyBase64", Base64.getEncoder().encodeToString(errorBody.toString().toByteArray()))
         val error = assertThrows(IllegalStateException::class.java) { NativeModelRequest.decode(response) }
-        assertTrue(error.message!!.contains("欠费"))
+        assertTrue(error.message!!.contains("balance insufficient"))
         assertFalse(error.message!!.contains("private"))
     }
 }

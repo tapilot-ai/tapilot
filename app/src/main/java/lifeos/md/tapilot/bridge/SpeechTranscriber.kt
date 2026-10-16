@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.bridge
 
+import lifeos.md.tapilot.AppText.text as appText
 import android.Manifest
 import android.app.Activity
 import android.content.Context
@@ -94,6 +95,10 @@ internal class SpeechTranscriber(private val activity: Context) : SpeechRecognit
                 { capture(session, bufferSize) }, "tapilot-speech-capture",
             ).apply { start() }
             connect(session, apiKey)
+            // A wall-clock backstop also releases the socket if capture stalls or
+            // its PCM limit is reached while the UI timer is unavailable.
+            timeouts.schedule({ fail(session, IOException("Recording reached the 60-second limit")) },
+                60, TimeUnit.SECONDS)
             session.startCallback = null
             callback(Result.success(Unit))
 
@@ -157,7 +162,7 @@ internal class SpeechTranscriber(private val activity: Context) : SpeechRecognit
             override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
                 if (provider != VOLCENGINE) return
                 finish(webSocket, runCatching {
-                    check(SeedAsrProtocol.parse(bytes.toByteArray()).code == 0) { "语音服务拒绝识别请求，请检查资源开通状态" }
+                    check(SeedAsrProtocol.parse(bytes.toByteArray()).code == 0) { appText("语音服务拒绝识别请求，请检查资源开通状态", "Speech request rejected. Check that the recognition service is enabled") }
                 })
             }
             override fun onFailure(webSocket: WebSocket, error: Throwable, response: Response?) {
@@ -165,14 +170,14 @@ internal class SpeechTranscriber(private val activity: Context) : SpeechRecognit
                     runCatching { response?.peekBody(4096)?.string().orEmpty() }.getOrDefault(""), response?.header("X-Tt-Logid")))))
             }
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                finish(webSocket, Result.failure(IOException("语音服务提前关闭，请稍后重试")))
+                finish(webSocket, Result.failure(IOException(appText("语音服务提前关闭，请稍后重试", "Speech service closed early. Try again"))))
             }
         })
         probes.add(socket)
         if (done.get()) { probes.remove(socket); socket.cancel() }
         timeouts.schedule({ if (done.compareAndSet(false, true)) {
             probes.remove(socket)
-            socket.cancel(); callback(Result.failure(IOException("语音服务连接超时，请稍后重试")))
+            socket.cancel(); callback(Result.failure(IOException(appText("语音服务连接超时，请稍后重试", "Speech connection timed out. Try again"))))
         } }, 12, TimeUnit.SECONDS)
     }
 

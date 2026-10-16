@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.conversation
 
+import lifeos.md.tapilot.AppText.text as appText
 import java.io.File
 import org.json.JSONArray
 import org.json.JSONObject
@@ -31,7 +32,7 @@ class ConversationStore(private val file: File) {
         val pending = File(target.parentFile, "${target.name}.tmp")
         try {
             pending.outputStream().use { it.write(text.toByteArray()); it.fd.sync() }
-            check(pending.renameTo(target)) { "无法保存会话" }
+            check(pending.renameTo(target)) { appText("无法保存会话", "Unable to save conversation") }
         } finally { pending.delete() }
     }
     companion object {
@@ -100,10 +101,10 @@ object ModelProfiles {
     }
     fun endpoint(base: String): String {
         val uri = java.net.URI(base.trim())
-        require(uri.scheme == "https" && !uri.host.isNullOrBlank() && uri.userInfo == null) { "请填写有效的 HTTPS API 地址" }
+        require(uri.scheme == "https" && !uri.host.isNullOrBlank() && uri.userInfo == null) { appText("请填写有效的 HTTPS API 地址", "Enter a valid HTTPS API URL") }
         val path = uri.path.orEmpty().trimEnd('/')
         val endpoint = when {
-            path.endsWith("/responses") -> error("对话 API 需要 chat/completions 接口，请填写兼容地址")
+            path.endsWith("/responses") -> error(appText("对话 API 需要 chat/completions 接口，请填写兼容地址", "Conversation API requires chat/completions. Enter a compatible URL"))
             path.endsWith("/chat/completions") -> path
             path.endsWith("/chat") -> "$path/completions"
             else -> "$path/chat/completions"

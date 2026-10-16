@@ -63,8 +63,9 @@ internal fun VoiceConversationPanel(controller: ChatController, connecting: Bool
         }
         val detail = when {
             voice.error.isNotBlank() -> voice.error
-            voice.phase == VoicePhase.Listening -> voice.transcript.ifBlank { label("我在听 · 说完停顿后自动发送", "Listening · Pause when finished to send") }
+            voice.phase == VoicePhase.Listening -> voice.transcript.ifBlank { label("我在听 · 停顿后自动发送，最长收听 30 秒", "Listening · Pause to send, up to 30 seconds") }
             voice.phase == VoicePhase.Speaking -> label("点击打断，接着说", "Tap interrupt to speak")
+            voice.phase == VoicePhase.Paused && voice.listeningTimedOut -> label("已达到 30 秒收听上限，麦克风已关闭。点击继续可重新说话", "30-second listening limit reached. Microphone off. Tap Resume to speak again") + voice.transcript.takeIf { it.isNotBlank() }?.let { "\n$it" }.orEmpty()
             voice.phase == VoicePhase.Paused -> if (controller.state.confirmation != null) label("请先确认手机操作", "Confirm the phone operation first") else label("点击继续，恢复对话", "Tap Resume to continue")
             voice.phase == VoicePhase.Preparing -> label("麦克风就绪后会提示可以说话", "Wait for the ready prompt before speaking")
             else -> voice.transcript

@@ -11,7 +11,9 @@ export function collectFinalAiResponse(runResult) {
         for (const step of attempt.steps ?? []) {
           const value = step?.node === 'aiAct'
             ? step?.output?.summary ?? step?.output?.data?.value
-            : step?.output?.data?.value;
+            : step?.node === 'aiQuery'
+              ? step?.output?.data
+              : step?.output?.data?.value;
           // Assertions/waits establish success; their booleans are not observed facts.
           if (!['aiAct', 'aiAsk', 'aiQuery', 'aiString', 'aiNumber', 'aiBoolean'].includes(step?.node)) continue;
           // An empty explicit observation must not resurrect an earlier action summary.

@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.services
 
+import lifeos.md.tapilot.AppText.text as appText
 import android.content.Context
 import lifeos.md.tapilot.bridge.ModelCredentialStore
 import lifeos.md.tapilot.bridge.SpeechTranscriber
@@ -16,7 +17,7 @@ internal class SpeechService(private val activity: Context, private val modelCre
         when (method) {
             "speech.checkConnection" -> {
                 val provider = params.getString("provider")
-                val key = modelCredentialStore.get(speechPreset(params)) ?: error("请先保存语音 API Key")
+                val key = modelCredentialStore.get(speechPreset(params)) ?: error(appText("请先保存语音 API Key", "Save a speech API Key in settings first"))
                 speechTranscriber.checkConnection(provider, key) { result -> result.fold(
                     onSuccess = { success(JSONObject().put("available", true)) },
                     onFailure = { failure(it) },

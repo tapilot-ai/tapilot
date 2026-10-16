@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.conversation
 
+import lifeos.md.tapilot.AppText.text as appText
 import java.net.URI
 import java.util.Base64
 import org.json.JSONArray
@@ -26,9 +27,9 @@ object NativeModelRequest {
             val code = runCatching { JSONObject(String(Base64.getDecoder().decode(response.getString("bodyBase64"))))
                 .optJSONObject("error")?.optString("code") }.getOrNull().orEmpty()
             val reason = when {
-                code.equals("Arrearage", true) -> "模型账户欠费或余额不足，请检查服务账户状态"
-                response.getInt("status") == 401 -> "模型 API Key 鉴权失败，请检查配置"
-                response.getInt("status") == 429 -> "模型请求限流或额度不足，请稍后重试并检查额度"
+                code.equals("Arrearage", true) -> appText("模型账户欠费或余额不足，请检查服务账户状态", "Model account balance insufficient. Check the provider account")
+                response.getInt("status") == 401 -> appText("模型 API Key 鉴权失败，请检查配置", "Model API Key authentication failed. Check settings")
+                response.getInt("status") == 429 -> appText("模型请求限流或额度不足，请稍后重试并检查额度", "Model rate limit or quota reached. Check quota and try later")
                 else -> "模型请求失败，请检查 API 配置、权限和额度"
             }
             error("$reason · HTTP ${response.getInt("status")}")

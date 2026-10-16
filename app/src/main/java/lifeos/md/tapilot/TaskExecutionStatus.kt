@@ -1,5 +1,6 @@
 package lifeos.md.tapilot
 
+import lifeos.md.tapilot.AppText.text as appText
 enum class TaskExecutionStatus {
     IDLE,
     STARTING,
@@ -33,7 +34,7 @@ fun TaskExecutionStatus.presentation(detail: String? = null): TaskStatusPresenta
     TaskExecutionStatus.IDLE -> TaskStatusPresentation(TaskEffect.NONE, null, null)
     TaskExecutionStatus.STARTING -> TaskStatusPresentation(
         TaskEffect.ACTIVE,
-        "Tapilot：任务开始执行",
+        appText("Tapilot：任务开始执行", "Tapilot: Task started"),
         null,
     )
     TaskExecutionStatus.RUNNING -> TaskStatusPresentation(TaskEffect.ACTIVE, null, null)
@@ -41,23 +42,23 @@ fun TaskExecutionStatus.presentation(detail: String? = null): TaskStatusPresenta
     TaskExecutionStatus.STOPPING -> TaskStatusPresentation(TaskEffect.ACTIVE, null, null)
     TaskExecutionStatus.WAITING_USER -> TaskStatusPresentation(
         TaskEffect.NONE,
-        "Tapilot：等待你补充信息",
+        appText("Tapilot：等待你补充信息", "Tapilot: Waiting for your input"),
         null,
     )
     TaskExecutionStatus.SUCCEEDED -> TaskStatusPresentation(
         TaskEffect.SUCCESS,
-        "Tapilot：任务执行成功",
+        appText("Tapilot：任务执行成功", "Tapilot: Task succeeded"),
         2_500L,
     )
     TaskExecutionStatus.FAILED -> TaskStatusPresentation(
         TaskEffect.FAILURE,
-        detail?.takeIf { it.isNotBlank() }?.let { "Tapilot：任务执行失败，$it" }
-            ?: "Tapilot：任务执行失败",
+        detail?.takeIf { it.isNotBlank() }?.let { appText("Tapilot：任务执行失败，$it", "Tapilot: Task failed, $it") }
+            ?: appText("Tapilot：任务执行失败", "Tapilot: Task failed"),
         4_000L,
     )
     TaskExecutionStatus.STOPPED -> TaskStatusPresentation(
         TaskEffect.STOPPED,
-        "Tapilot：任务已停止",
+        appText("Tapilot：任务已停止", "Tapilot: Task stopped"),
         2_500L,
     )
 }

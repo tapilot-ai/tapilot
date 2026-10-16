@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.voice
 
+import lifeos.md.tapilot.AppText.text as appText
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
@@ -39,7 +40,7 @@ class ApiSpeechPlayback(context: Context, private val provider: () -> String) : 
             if (change == AudioManager.AUDIOFOCUS_LOSS || change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
                 val interrupted = completion
                 stop()
-                interrupted?.invoke(Result.failure(IOException("播报被其他音频打断，请点击重试或继续说话")))
+                interrupted?.invoke(Result.failure(IOException(appText("播报被其他音频打断，请点击重试或继续说话", "Playback interrupted by other audio. Retry or continue speaking"))))
             }
         }.build()
 
@@ -56,9 +57,9 @@ class ApiSpeechPlayback(context: Context, private val provider: () -> String) : 
                 val config = VoiceOutputSettings(context)
                 val keys = ModelCredentialStore(context)
                 val key = keys.get("speech-output-$service").orEmpty().ifBlank { keys.get("speech-$service").orEmpty() }
-                require(key.isNotBlank()) { "请在设置中配置语音 API Key" }
+                require(key.isNotBlank()) { appText("请在设置中配置语音 API Key", "Configure a speech API Key in settings") }
                 require(key.length <= 4096 && key.none { it == '\n' || it == '\r' || it == '\u0000' }) { "Invalid speech API Key" }
-                check(manager.requestAudioFocus(focus) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) { "暂时无法取得音频播放权限，请重试" }
+                check(manager.requestAudioFocus(focus) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) { appText("暂时无法取得音频播放权限，请重试", "Audio playback is unavailable. Try again") }
                 var notified = false
                 for (part in spokenText(text).chunked(1000)) {
                     if (generation.get() != token) return@runCatching
@@ -71,7 +72,7 @@ class ApiSpeechPlayback(context: Context, private val provider: () -> String) : 
                         }
                     }
                 }
-                check(notified || generation.get() != token) { "语音服务没有返回音频" }
+                check(notified || generation.get() != token) { appText("语音服务没有返回音频", "Speech service returned no audio") }
             }
             manager.abandonAudioFocusRequest(focus)
             if (generation.get() == token) { if (completion === complete) completion = null; complete(result) }
@@ -126,7 +127,7 @@ class ApiSpeechPlayback(context: Context, private val provider: () -> String) : 
             currentCall.execute().use { response ->
                 if (!response.isSuccessful) {
                     // Do not expose request headers or credential-bearing URLs in UI errors.
-                    throw IOException(if (response.code == 403) "语音播报权限未开通（403），请检查 TTS 服务和 API Key" else "语音播报请求失败（HTTP ${response.code}）")
+                    throw IOException(if (response.code == 403) appText("语音播报权限未开通（403），请检查 TTS 服务和 API Key", "Speech playback access denied (403). Check the TTS service and API Key") else appText("语音播报请求失败（HTTP ${response.code}）", "Speech playback failed (HTTP ${response.code})"))
                 }
                 val source = response.body?.source() ?: throw IOException("Empty speech response")
                 if (volc) {
@@ -137,7 +138,7 @@ class ApiSpeechPlayback(context: Context, private val provider: () -> String) : 
                         if (line.isEmpty()) continue
                         val event = JSONObject(line)
                         val code = event.optInt("code", -1)
-                        if (code != 0 && code != 20000000) throw IOException("火山引擎播报失败（$code）：${event.optString("message").take(180)}")
+                        if (code != 0 && code != 20000000) throw IOException(appText("火山引擎播报失败（$code）：${event.optString("message").take(180)}", "Volcengine playback failed ($code): ${event.optString("message").take(180)}"))
                         event.optString("data").takeIf { it.isNotBlank() }?.let { write(Base64.decode(it, Base64.DEFAULT)) }
                     }
                 } else {

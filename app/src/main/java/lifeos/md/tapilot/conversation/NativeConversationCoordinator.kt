@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.conversation
 
+import lifeos.md.tapilot.AppText.text as appText
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
@@ -270,7 +271,7 @@ class NativeConversationCoordinator(
         val context = queuedContexts.removeFirst()
         val text = context.optString("text")
         val file = context.optString("dataUrl").takeIf { it.isNotBlank() }?.let {
-            JSONObject().put("name", context.optString("label", "当前屏幕")).put("kind", "image").put("images", JSONArray().put(it))
+            JSONObject().put("name", context.optString("label", appText("当前屏幕", "Current screen"))).put("kind", "image").put("images", JSONArray().put(it))
         }
         if (context.optBoolean("autoSend") && text.isNotBlank()) {
             val previousDraft = data.optString("draft")
@@ -351,14 +352,14 @@ class NativeConversationCoordinator(
                     await("task.status", JSONObject().put("status", "running"), runSession, stopped)
                     val run = await("runtime.runTest", JSONObject().put("source", source).put("kind", "yaml").put("environment", environment()).put("reportTaskStatus", false), runSession, stopped, 0) as JSONObject
                     run.optJSONArray("reports")?.objects()?.forEach { reports.put(it) }
-                    check(run.optInt("exitCode", 1) == 0) { run.optString("failure", "执行失败") }
-                    run.optString("finalResponse").ifBlank { "任务已完成" }
+                    check(run.optInt("exitCode", 1) == 0) { run.optString("failure", appText("执行失败", "Execution failed")) }
+                    run.optString("finalResponse").ifBlank { appText("任务已完成", "Task completed") }
                 } else {
                     val attachments = prior.filter { it.optString("status") in listOf("succeeded", "waiting_user", "stopped") && it.has("attachment") }
                         .sortedBy { it.optLong("createdAt") }.takeLast(2).associate { e ->
                             val ref = e.getJSONObject("attachment")
                             e.getString("id") to runCatching { await("app.readAttachment", JSONObject().put("id", ref.getString("id")), runSession, stopped) as JSONObject }
-                                .getOrElse { JSONObject().put("text", "之前的附件已不可用。不能猜测内容，请用户重新提供。") }
+                                .getOrElse { JSONObject().put("text", appText("之前的附件已不可用。不能猜测内容，请用户重新提供。", "Previous attachment is unavailable. Do not guess its contents; ask the user to provide it again.")) }
                         }
                     val modelSource = source + saved?.optString("text").orEmpty().takeIf { it.isNotBlank() }?.let { "\n\n文件内容：\n${it.take(30_000)}" }.orEmpty() +
                         if (saved?.optString("name")?.contains("屏幕") == true) "\n图片是用户先前保存的屏幕快照，不是当前实时画面。" else ""
@@ -367,19 +368,24 @@ class NativeConversationCoordinator(
                         updateProgress(if (phoneStarted) local("正在整理结果", "Preparing reply") else local("正在理解任务", "Understanding task"))
                         if (chatGptAccount.isNotBlank()) requestChatGpt(chatGptAccount, chatGptModel, chat, tools, runSession, stopped)
                         else requestCompletion(model, key, chat, runSession, stopped, tools)
-                    }, phone = { instruction, condition ->
+                    }, findApps = { query ->
+                        val capabilities = await("device.getCapabilities", sessionId = runSession, stopped = stopped) as JSONObject
+                        PhoneOperationRoute.findApps(capabilities.optJSONArray("apps") ?: JSONArray(), query)
+                    }, phone = { instruction, condition, mode, app ->
                         updateProgress(local("准备操作手机", "Preparing phone operation"), instruction, increment = true)
                         val revised = confirmOperation(instruction, stopped)
-                        check(!stopped.get()) { "任务已停止" }
+                        check(!stopped.get()) { appText("任务已停止", "Task stopped") }
                         val capabilities = await("device.getCapabilities", sessionId = runSession, stopped = stopped) as JSONObject
-                        check(capabilities.optBoolean("canCapture") && capabilities.optBoolean("canPerformGestures")) { "请在无障碍设置中开启设备控制" }
+                        check(capabilities.optBoolean("canCapture") && capabilities.optBoolean("canPerformGestures")) { appText("请在无障碍设置中开启设备控制", "Enable device control in Accessibility settings") }
+                        val component = PhoneOperationRoute.resolveApp(capabilities.optJSONArray("apps") ?: JSONArray(), app)
                         if (!phoneStarted) {
-                            await(if (global) "app.returnToPreviousApp" else "app.goHome", sessionId = runSession, stopped = stopped)
+                            // Observation must see the user's previous app, not a Home screen we just opened.
+                            if (component.isBlank()) await(if (global || mode == "observe") "app.returnToPreviousApp" else "app.goHome", sessionId = runSession, stopped = stopped)
                             phoneStarted = true
                         }
                         updateProgress(local("正在操作手机", "Operating phone"), revised)
                         await("task.status", JSONObject().put("status", "running"), runSession, stopped)
-                        val run = await("runtime.runTest", JSONObject().put("source", NativeConversationAgent.verifiedTask(revised, condition)).put("kind", "yaml").put("environment", environment()).put("reportTaskStatus", false), runSession, stopped, 0) as JSONObject
+                        val run = await("runtime.runTest", JSONObject().put("source", NativeConversationAgent.verifiedTask(revised, condition, mode, component)).put("kind", "yaml").put("environment", environment()).put("reportTaskStatus", false), runSession, stopped, 0) as JSONObject
                         run.optJSONArray("reports")?.objects()?.forEach { reports.put(it) }
                         PhoneResult.fromRun(run).also { result ->
                             completedOperations.put(JSONObject().put("instruction", revised).put("success", result.success).put("result", result.result)
@@ -396,7 +402,7 @@ class NativeConversationCoordinator(
                     } }, resumeInputs = TaskLifecycle.pendingInputs(retry?.takeIf { continueOf != null || it.optString("phase") != "completed" }, before), goal = entry.getString("goal"))
                     finalPhase = reply.getString("phase")
                     check(finalPhase != "failed") { reply.getString("reply") }
-                    check(reply.optJSONObject("lastPhoneResult")?.optBoolean("success") != false || finalPhase == "waiting_user") { "手机操作未通过最终画面验证" }
+                    check(reply.optJSONObject("lastPhoneResult")?.optBoolean("success") != false || finalPhase == "waiting_user") { appText("手机操作未通过最终画面验证", "Phone operation did not pass final screen verification") }
                     reply.getString("reply")
                 }
             }
@@ -419,7 +425,13 @@ class NativeConversationCoordinator(
                     }
                     find(id)?.put("status", status)?.put("reports", reports)?.put("completedOperations", completedOperations)
                         ?.put(if (status in listOf("succeeded", "waiting_user")) "reply" else "detail", message)
-                    find(id)?.let { TaskLifecycle.finish(it, status, if (stopped.get()) "" else finalPhase) }
+                    find(id)?.let {
+                        TaskLifecycle.finish(it, status, if (stopped.get()) "" else finalPhase)
+                        android.util.Log.i("TapilotPerformance", JSONObject().put("phase", "task.wall")
+                            .put("taskId", id).put("status", status)
+                            .put("createdAt", it.getLong("createdAt")).put("completedAt", it.getLong("completedAt"))
+                            .put("durationMs", it.getLong("completedAt") - it.getLong("createdAt")).toString())
+                    }
                     find(id)?.let { task ->
                         TaskLifecycle.settleInputs(task, history(), local("补充消息已保存，请重试或继续", "Update saved. Retry or continue."))
                             .takeIf { it.isNotEmpty() }?.let { inputs ->
@@ -479,8 +491,11 @@ class NativeConversationCoordinator(
         onMain { confirmation = promise; confirmationText = text; publish() }
         return waitFor(promise, stopped, 0)
     }
-    private fun requestChatGpt(account: String, model: String, messages: JSONArray, tools: JSONArray, sessionId: String, stopped: AtomicBoolean) =
-        models.chatGpt(account, model, messages, tools, sessionId, stopped)
+    private fun requestChatGpt(account: String, model: String, messages: JSONArray, tools: JSONArray, sessionId: String, stopped: AtomicBoolean): JSONObject {
+        android.util.Log.i("TapilotPerformance", JSONObject().put("phase", "model.config")
+            .put("role", "outer").put("model", model).put("reasoningEffort", "provider-default").toString())
+        return models.chatGpt(account, model, messages, tools, sessionId, stopped)
+    }
     fun testChatGpt() = settings.testChatGpt()
     private fun requestCompletion(model: JSONObject, key: String, messages: JSONArray, sessionId: String, stopped: AtomicBoolean, tools: JSONArray = JSONArray().put(NativeConversationAgent.tool)) =
         models.complete(ModelProfile.from(model), key, messages, tools, sessionId, stopped)
@@ -518,7 +533,7 @@ class NativeConversationCoordinator(
         save()
         pi.stop()
         progress = progress?.copy(title = local("正在停止", "Stopping"), stopping = true)
-        confirmation?.completeExceptionally(IllegalStateException("任务已停止")); confirmation = null; confirmationText = null
+        confirmation?.completeExceptionally(IllegalStateException(appText("任务已停止", "Task stopped"))); confirmation = null; confirmationText = null
         services.call("task.cancel", sessionId = session) {}
         services.call("task.status", JSONObject().put("status", "stopping"), session) {}
         services.call("runtime.stop") { it.fold(barrier::complete, barrier::completeExceptionally) }
@@ -536,7 +551,7 @@ class NativeConversationCoordinator(
         history().forEach { e -> e.put("reports", JSONArray(e.optJSONArray("reports")?.objects().orEmpty().filterNot { it.optString("reportId") in ids })) }
         save(); publish()
     }
-    private fun fail(t: Throwable) { error = t.message ?: "操作失败"; errorEpoch++; publish() }
+    private fun fail(t: Throwable) { error = t.message ?: appText("操作失败", "Operation failed"); errorEpoch++; publish() }
     fun selectPreset(id: String) = settings.selectPreset(id)
     fun saveModel(profile: JSONObject, replacementKey: String = "", reset: Boolean = false) = settings.saveModel(profile, replacementKey, reset)
     fun preference(name: String, value: Any) = settings.preference(name, value)

@@ -85,6 +85,49 @@ class ModelTransportTest {
         }
     }
 
+    @Test fun `consecutive requests reuse a connection and emit only numeric transport metrics`() {
+        ServerSocket(0).use { server ->
+            server.soTimeout = 4000
+            var serverError: Throwable? = null
+            val worker = thread {
+                try {
+                    server.accept().use { socket ->
+                        socket.soTimeout = 4000
+                        val input = socket.getInputStream().bufferedReader()
+                        repeat(2) {
+                            var length = 0
+                            while (true) {
+                                val line = input.readLine() ?: error("connection was not reused")
+                                if (line.isEmpty()) break
+                                assertFalse(line.equals("Connection: close", ignoreCase = true))
+                                if (line.startsWith("Content-Length:", true)) length = line.substringAfter(':').trim().toInt()
+                            }
+                            repeat(length) { check(input.read() != -1) }
+                            socket.getOutputStream().write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n{}".toByteArray())
+                            socket.getOutputStream().flush()
+                        }
+                    }
+                } catch (error: Throwable) { serverError = error }
+            }
+            val records = mutableListOf<JSONObject>()
+            val client = OkHttpClient.Builder().retryOnConnectionFailure(false).addInterceptor { chain ->
+                chain.proceed(chain.request().newBuilder().url("http://127.0.0.1:${server.localPort}/completions").build())
+            }.build()
+            ModelTransport(client, onTiming = { records.add(it) }).use { transport ->
+                repeat(2) { assertEquals(200, execute(transport).getOrThrow().getInt("status")) }
+            }
+            worker.join(4500)
+            assertFalse(worker.isAlive); assertNull(serverError)
+            assertEquals(2, records.size)
+            records.forEach {
+                assertEquals(2, it.getInt("responseBytes"))
+                assertTrue(it.getDouble("totalMs") >= it.getDouble("firstBodyMs"))
+                assertTrue(it.getDouble("firstBodyMs") >= it.getDouble("headersMs"))
+                assertFalse(it.has("url")); assertFalse(it.has("headers")); assertFalse(it.has("body"))
+            }
+        }
+    }
+
     @Test fun `repeated disconnect stops after one retry with actionable error`() {
         val calls = AtomicInteger()
         val client = OkHttpClient.Builder().addInterceptor {
@@ -94,7 +137,7 @@ class ModelTransportTest {
             val error = execute(transport).exceptionOrNull()
             assertTrue(error is ModelTransport.ModelNetworkException)
             assertTrue(error!!.cause is EOFException)
-            assertTrue(error.message!!.contains("重试"))
+            assertTrue(error.message!!.contains("try again"))
             assertEquals(2, calls.get())
         }
     }

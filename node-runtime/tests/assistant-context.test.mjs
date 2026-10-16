@@ -14,7 +14,7 @@ test('provides localized Android assistant guidance', () => {
   assert.match(chinese, /AndroidRecentAppsButton/);
   assert.match(chinese, /AndroidOpenAppDetails/);
   assert.match(chinese, /卸载某个应用/);
-  assert.match(chinese, /独立精定位/);
+  assert.match(chinese, /目标模糊或定位失败时再使用精定位/);
   assert.match(chinese, /禁止无变化地重复同一动作/);
   assert.match(english, /Android phone/);
   assert.match(english, /Launch action with its app name/);

@@ -47,11 +47,11 @@ data: {"type":"response.output_item.done","output_index":0,"item":{"type":"reaso
         assertThrows(IllegalStateException::class.java) { ChatGptResponses.decode(response(delta)) }
         val failure = "data: {\"type\":\"response.failed\",\"response\":{\"error\":{\"code\":\"subscription_sharing_usage_limit_exceeded\"}}}\n\n"
         val error = assertThrows(IllegalStateException::class.java) { ChatGptResponses.decode(response(delta + failure)) }
-        assertTrue(error.message!!.contains("额度已用完"))
+        assertTrue(error.message!!.contains("quota exhausted"))
         assertThrows(IllegalStateException::class.java) { ChatGptResponses.decode(response("data: {\"type\":\"response.incomplete\"}\n\n")) }
     }
     @Test fun authorizationFailureAsksForLoginWithoutEchoingResponseSecrets() {
         val error = assertThrows(IllegalStateException::class.java) { ChatGptResponses.decode(response("{\"error\":{\"message\":\"secret-token\"}}", 401)) }
-        assertTrue(error.message!!.contains("重新登录")); assertFalse(error.message!!.contains("secret-token"))
+        assertTrue(error.message!!.contains("Sign in again")); assertFalse(error.message!!.contains("secret-token"))
     }
 }

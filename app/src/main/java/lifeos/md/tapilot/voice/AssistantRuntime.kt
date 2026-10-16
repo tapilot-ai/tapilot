@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.voice
 
+import lifeos.md.tapilot.AppText.text as appText
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import android.app.Activity
@@ -41,7 +42,7 @@ class AssistantRuntime(context: Context) {
     fun beginFloatingHold() { endVoice(); floatingSession.begin(held = true) }
     fun beginFloatingRetry() { endVoice(); floatingSession.begin(held = false) }
     fun selectFloatingCancel(selected: Boolean) = floatingSession.selectCancel(selected)
-    fun failFloatingEntry(message: String) { endVoice(); floatingSession.fail(message.ifBlank { "语音启动失败，请重试" }) }
+    fun failFloatingEntry(message: String) { endVoice(); floatingSession.fail(message.ifBlank { appText("语音启动失败，请重试", "Unable to start voice input. Try again") }) }
     var floatingTranscript = ""; private set
     var voiceEntryPending = false; private set
     private var openingUtterance: String? = null
@@ -71,7 +72,7 @@ class AssistantRuntime(context: Context) {
     private val clock = object : Runnable {
         override fun run() {
             if (!voiceState.active) return
-            if (!floatingHold) voice.tick(); voice.update(voiceReplies(), state.running, state.confirmation)
+            voice.tick(autoSend = !floatingHold); voice.update(voiceReplies(), state.running, state.confirmation)
             handler.postDelayed(this, 100)
         }
     }

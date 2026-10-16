@@ -26,6 +26,7 @@ const runtimeFiles = [
   'run-result.mjs',
   'stdio-native-bridge.mjs',
   'siwc-fetch.mjs',
+  'settled-capture.mjs',
   'android.config.mjs',
   'assistant-context.mjs',
   'execution-policy.mjs',

@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.conversation
 
+import lifeos.md.tapilot.AppText.text as appText
 import android.content.Context
 import android.os.Handler
 import androidx.compose.runtime.getValue
@@ -56,7 +57,7 @@ internal class ConversationSettings(
             if (reset) credentials.delete(preset) else if (replacementKey.isNotBlank()) credentials.set(preset, replacementKey.trim())
             data.getJSONObject("profiles").put(preset, if (reset) ModelProfiles.defaults(preset) else JSONObject().apply { listOf("baseUrl", "modelName", "modelFamily").forEach { put(it, profile.optString(it)) } })
             save(); status = local("已保存", "Saved"); publish()
-        }.onFailure { status = it.message ?: "保存失败" }
+        }.onFailure { status = it.message ?: appText("保存失败", "Save failed") }
     }
     fun preference(name: String, value: Any) { if (!running) { data.put(name, value); save(); publish() } }
     fun saveSpeech(provider: String, key: String) {
@@ -66,7 +67,7 @@ internal class ConversationSettings(
             if (key.isNotBlank()) credentials.set("speech-$provider", key.trim())
             activity.getSharedPreferences("tapilot-speech", 0).edit().putString("provider", provider).commit()
             preference("speechProvider", provider); status = local("语音配置已保存", "Speech configuration saved")
-        }.onFailure { status = it.message ?: "保存失败" }
+        }.onFailure { status = it.message ?: appText("保存失败", "Save failed") }
     }
     fun resetSpeech(provider: String) {
         if (running) return
@@ -95,7 +96,7 @@ internal class ConversationSettings(
         worker.execute {
             val result = runCatching {
                 val key = credentials.get(preset).orEmpty()
-                check(key.isNotBlank()) { "请先保存模型 API Key" }
+                check(key.isNotBlank()) { appText("请先保存模型 API Key", "Save a model API Key first") }
                 models.complete(ModelProfile.from(model), key, JSONArray().put(JSONObject().put("role", "user").put("content", "Reply OK.")), JSONArray().put(NativeConversationAgent.tool), UUID.randomUUID().toString(), AtomicBoolean(false))
             }
             handler.post { if (!closed) { busy = false; status = result.fold({ local("模型连接成功", "Model connection succeeded") }, { it.cause?.message ?: it.message ?: "模型连接失败" }) } }

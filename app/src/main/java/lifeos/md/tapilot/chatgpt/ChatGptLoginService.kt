@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.chatgpt
 
+import lifeos.md.tapilot.AppText.text as appText
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -20,10 +21,10 @@ class ChatGptLoginService : Service() {
         super.onCreate()
         val channel = "chatgpt-login"
         getSystemService(NotificationManager::class.java).createNotificationChannel(
-            NotificationChannel(channel, "ChatGPT 登录", NotificationManager.IMPORTANCE_LOW))
+            NotificationChannel(channel, appText("ChatGPT 登录", "ChatGPT sign-in"), NotificationManager.IMPORTANCE_LOW))
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         startForeground(7413, Notification.Builder(this, channel).setSmallIcon(android.R.drawable.ic_lock_lock)
-            .setContentTitle("等待 ChatGPT 授权").setContentText("请在浏览器完成登录，然后返回 Tapilot")
+            .setContentTitle(appText("等待 ChatGPT 授权", "Waiting for ChatGPT authorization")).setContentText(appText("请在浏览器完成登录，然后返回 Tapilot", "Finish signing in in your browser, then return to Tapilot"))
             .setContentIntent(open).setOngoing(true).build())
         handler.postDelayed({ stopSelf() }, 15 * 60_000L)
     }

@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.chatgpt
 
+import lifeos.md.tapilot.AppText.text as appText
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.ServerSocket
@@ -53,7 +54,7 @@ internal class ChatGptCallback(port: Int = 0) : AutoCloseable {
             }
             if (result != null) return result
         }
-        error("ChatGPT 登录已超时。请回到 Tapilot 重新登录，不要刷新旧的授权页面。")
+        error(appText("ChatGPT 登录已超时。请回到 Tapilot 重新登录，不要刷新旧的授权页面。", "ChatGPT login timed out. Return to Tapilot and sign in again; do not refresh the old authorization page."))
     }
     override fun close() = server.close()
 }

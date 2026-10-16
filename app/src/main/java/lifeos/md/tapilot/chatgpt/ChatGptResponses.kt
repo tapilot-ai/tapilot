@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.chatgpt
 
+import lifeos.md.tapilot.AppText.text as appText
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Base64
@@ -78,11 +79,11 @@ object ChatGptResponses {
                 "response.output_item.done" -> completedItems[value.getInt("output_index")] = value.getJSONObject("item")
                 "response.completed" -> {
                     val result = value.getJSONObject("response")
-                    check(result.optString("status") == "completed") { "ChatGPT 响应未完成，请重试" }
+                    check(result.optString("status") == "completed") { appText("ChatGPT 响应未完成，请重试", "ChatGPT response incomplete. Try again") }
                     completed = result
                 }
                 "response.failed" -> error(failure(value.optJSONObject("response")?.optJSONObject("error")))
-                "response.incomplete" -> error("ChatGPT 响应未完成，请重试或更换模型")
+                "response.incomplete" -> error(appText("ChatGPT 响应未完成，请重试或更换模型", "ChatGPT response incomplete. Retry or choose another model"))
                 "error" -> error(failure(value.optJSONObject("error") ?: value))
             }
         }
@@ -91,7 +92,7 @@ object ChatGptResponses {
             if (line.isEmpty()) event() else if (line.startsWith("data:")) data += line.substring(5).removePrefix(" ")
         }
         event()
-        val result = completed ?: error("ChatGPT 连接中断，未收到完整结果，请重试")
+        val result = completed ?: error(appText("ChatGPT 连接中断，未收到完整结果，请重试", "ChatGPT disconnected before the full response. Try again"))
         val output = result.optJSONArray("output")?.takeIf { it.length() > 0 }
             ?: JSONArray(completedItems.values.toList())
         val textParts = mutableListOf<String>(); val calls = JSONArray()
@@ -113,19 +114,19 @@ object ChatGptResponses {
                 }
             }
         }
-        check(textParts.isNotEmpty() || calls.length() > 0) { "ChatGPT 未返回文字或操作指令" }
+        check(textParts.isNotEmpty() || calls.length() > 0) { appText("ChatGPT 未返回文字或操作指令", "ChatGPT returned no text or actions") }
         val message = JSONObject().put("role", "assistant").put("content", textParts.joinToString("\n"))
         if (calls.length() > 0) message.put("tool_calls", calls)
         return JSONObject().put("tapilotResponsesOutput", output).put("choices", JSONArray().put(JSONObject().put("message", message)
             .put("finish_reason", if (calls.length() > 0) "tool_calls" else "stop")))
     }
     private fun failure(error: JSONObject?, status: Int = 0): String = when (error?.optString("code")) {
-        "subscription_sharing_usage_limit_exceeded" -> "ChatGPT 套餐共享额度已用完，请在 ChatGPT 设置中检查用量或稍后重试"
-        "subscription_sharing_usage_unavailable" -> "此 ChatGPT 账号暂时无法共享套餐，请检查账号与工作区权限"
+        "subscription_sharing_usage_limit_exceeded" -> appText("ChatGPT 套餐共享额度已用完，请在 ChatGPT 设置中检查用量或稍后重试", "ChatGPT shared plan quota exhausted. Check usage in ChatGPT settings or try later")
+        "subscription_sharing_usage_unavailable" -> appText("此 ChatGPT 账号暂时无法共享套餐，请检查账号与工作区权限", "ChatGPT plan sharing unavailable. Check account and workspace permissions")
         else -> when (status) {
-            401 -> "ChatGPT 授权已失效，请重新登录"
-            403 -> "ChatGPT 未获准使用此模型或套餐，请检查授权"
-            429 -> "ChatGPT 请求限流或额度不足，请稍后重试"
+            401 -> appText("ChatGPT 授权已失效，请重新登录", "ChatGPT authorization expired. Sign in again")
+            403 -> appText("ChatGPT 未获准使用此模型或套餐，请检查授权", "ChatGPT model or plan access denied. Check authorization")
+            429 -> appText("ChatGPT 请求限流或额度不足，请稍后重试", "ChatGPT rate limit or quota reached. Try later")
             else -> "ChatGPT 请求失败${if (status > 0) " · HTTP $status" else ""}，请重试或检查模型权限"
         }
     }

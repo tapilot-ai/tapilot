@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.conversation
 
+import lifeos.md.tapilot.AppText.text as appText
 import lifeos.md.tapilot.chatgpt.ChatGptResponses
 import org.json.JSONArray
 import org.json.JSONObject
@@ -19,7 +20,7 @@ internal class ConversationModelClient(
     private val apiFailure: (JSONObject, String) -> Unit = { _, _ -> },
 ) {
     fun chatGpt(account: String, model: String, messages: JSONArray, tools: JSONArray, session: String, stopped: AtomicBoolean): JSONObject {
-        check(!stopped.get()) { "任务已停止" }
+        check(!stopped.get()) { appText("任务已停止", "Task stopped") }
         val token = accessToken(account)
         val history = JSONArray(messages.toString())
         for (i in 0 until history.length()) history.getJSONObject(i).let { message ->

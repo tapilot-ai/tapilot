@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.conversation
 
+import lifeos.md.tapilot.AppText.text as appText
 import lifeos.md.tapilot.services.ServiceGateway
 import org.json.JSONObject
 import java.util.concurrent.CompletableFuture
@@ -34,5 +35,5 @@ internal class ConversationEffects(
             }
         }
     }
-    private fun checkActive(stopped: AtomicBoolean) = check(!stopped.get() && !closed()) { "任务已停止" }
+    private fun checkActive(stopped: AtomicBoolean) = check(!stopped.get() && !closed()) { appText("任务已停止", "Task stopped") }
 }

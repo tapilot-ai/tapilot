@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.chat
 
+import lifeos.md.tapilot.AppText.text as appText
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.graphics.BitmapFactory
@@ -65,7 +66,7 @@ internal fun MessageBubble(message: ChatMessage, zh: Boolean, controller: ChatCo
             if (!user) message.task?.let { TaskDetailsView(it, zh) }
             message.attachment?.let {
                 TextButton(onClick = { controller.command("preview", id = message.entryId) }) {
-                    Text((if (it.name == "当前屏幕") "引用：" else "附件：") + it.name, color = if (user) Color(palette.bubbleText) else colors.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text((if (it.name in listOf("当前屏幕", "Current screen")) appText("引用：", "Reference: ") else appText("附件：", "Attachment: ")) + it.name, color = if (user) Color(palette.bubbleText) else colors.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             if (!user && message.status != "running") {
@@ -129,7 +130,7 @@ internal fun AttachmentThumbnail(preview: String, modifier: Modifier = Modifier)
             BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
         }.getOrNull() }
     }
-    bitmap?.let { Image(it.asImageBitmap(), "附件预览", modifier.size(48.dp)) }
+    bitmap?.let { Image(it.asImageBitmap(), appText("附件预览", "Attachment preview"), modifier.size(48.dp)) }
 }
 
 @Composable
@@ -143,7 +144,7 @@ internal fun AttachmentPreview(attachment: ChatAttachment, zh: Boolean, close: (
                 }
                 HorizontalDivider()
                 LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp)) {
-                    if (attachment.pageCount > attachment.images.size) item { Text("共 ${attachment.pageCount} 页 · 当前提供前 ${attachment.images.size} 页", fontSize = 12.sp) }
+                    if (attachment.pageCount > attachment.images.size) item { Text(appText("共 ${attachment.pageCount} 页 · 当前提供前 ${attachment.images.size} 页", "${attachment.pageCount} pages · First ${attachment.images.size} pages available"), fontSize = 12.sp) }
                     attachment.images.forEachIndexed { index, image -> item { PreviewImage(image, index + 1) } }
                     if (attachment.text.isNotEmpty()) item { SelectionContainer { Text(attachment.text, fontSize = 15.sp, lineHeight = 23.sp) } }
                 }
@@ -160,5 +161,5 @@ private fun PreviewImage(data: String, page: Int) {
             BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
         }.getOrNull() }
     }
-    bitmap?.let { Image(it.asImageBitmap(), "预览 $page", Modifier.fillMaxWidth().aspectRatio(it.width.toFloat() / it.height).padding(vertical = 8.dp)) }
+    bitmap?.let { Image(it.asImageBitmap(), appText("预览 $page", "Preview $page"), Modifier.fillMaxWidth().aspectRatio(it.width.toFloat() / it.height).padding(vertical = 8.dp)) }
 }

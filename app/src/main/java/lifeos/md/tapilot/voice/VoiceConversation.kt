@@ -9,7 +9,7 @@ interface SpeechPlayback : AutoCloseable {
 
 enum class VoicePhase { Idle, Preparing, Listening, Recognizing, Thinking, Speaking, Paused, Error }
 data class VoiceState(val active: Boolean = false, val phase: VoicePhase = VoicePhase.Idle,
-    val transcript: String = "", val response: String = "", val level: Float = 0f, val error: String = "")
+    val transcript: String = "", val response: String = "", val level: Float = 0f, val error: String = "", val listeningTimedOut: Boolean = false)
 data class VoiceReply(val id: String, val text: String, val complete: Boolean)
 
 /** All calls are serialized on the UI thread. Audio/network callbacks enter through dispatch. */
@@ -30,7 +30,10 @@ class VoiceConversation(
     private var awaiting = false
     private var busy = false
     private var started = 0L
-    private var lastVoice = 0L
+    private var quietSince: Long? = null
+    private var lastAudio: Long? = null
+    private var noiseFloor = .25f
+    private var peakLevel = 0f
     private var voiceFrames = 0
     private var lastText = 0L
     private val seen = mutableSetOf<String>()
@@ -57,15 +60,22 @@ class VoiceConversation(
         playbackFailed = false
         cancelAudio()
         val token = generation
-        started = now(); lastVoice = 0; voiceFrames = 0; lastText = 0
-        change(state.copy(phase = VoicePhase.Preparing, transcript = "", level = 0f, error = ""))
+        started = now(); quietSince = null; lastAudio = null; noiseFloor = .25f; peakLevel = 0f; voiceFrames = 0; lastText = 0
+        change(state.copy(phase = VoicePhase.Preparing, transcript = "", level = 0f, error = "", listeningTimedOut = false))
         fun current() = state.active && foreground && generation == token
         runCatching {
             recognition.start(provider, key, language,
                 onLevel = { level -> dispatch {
                     if (current() && state.phase in listOf(VoicePhase.Preparing, VoicePhase.Listening)) {
-                        // SpeechAudio reports a compressed dB level, rather than linear RMS.
-                        if (level > .25f) { voiceFrames++; lastVoice = now() }
+                        val time = now()
+                        // Learn the quietest observed background, without raising the floor
+                        // during sustained speech. Levels are compressed dB, not linear RMS.
+                        peakLevel = maxOf(peakLevel, level)
+                        noiseFloor = minOf(noiseFloor, level)
+                        val speaking = level > maxOf(.08f, noiseFloor + .06f)
+                        if (speaking) { voiceFrames++; quietSince = null }
+                        else if (quietSince == null || lastAudio == null || time - lastAudio!! > 300) quietSince = time
+                        lastAudio = time
                         change(state.copy(level = level))
                     }
                 } }, onTranscript = { text -> dispatch {
@@ -79,16 +89,21 @@ class VoiceConversation(
         }.onFailure { fail(it) }
     }
 
-    /** A short pause ends the utterance; idle listening pauses, long speech respects the ASR cap. */
-    fun tick() {
-        if (!state.active || !foreground || state.phase != VoicePhase.Listening) return
+    /** Require observed quiet audio, never infer silence from missing callbacks. */
+    fun tick(autoSend: Boolean = true) {
+        if (!state.active || !foreground || state.phase !in listOf(VoicePhase.Preparing, VoicePhase.Listening)) return
         val time = now()
-        if ((state.transcript.isNotBlank() || (voiceFrames >= 4 && lastVoice > 0)) &&
-            time - maxOf(lastVoice, lastText) >= 1200) finishUtterance()
-        else if (time - started >= 30_000 && state.transcript.isBlank() && voiceFrames < 4) pause()
-        else if (time - started >= 48_000) {
-            if (state.transcript.isNotBlank() || voiceFrames >= 4) finishUtterance() else listen()
+        // This deadline also applies to preparation and press-and-hold entry.
+        if (time - started >= 30_000) {
+            pause()
+            change(state.copy(listeningTimedOut = true))
+            return
         }
+        val quiet = quietSince ?: return
+        val audio = lastAudio ?: return
+        if (autoSend && state.phase == VoicePhase.Listening &&
+            (voiceFrames >= 4 || (state.transcript.isNotBlank() && peakLevel > maxOf(.08f, noiseFloor + .06f))) &&
+            time - audio <= 300 && time - maxOf(quiet, lastText) >= 1500) finishUtterance()
     }
 
     fun finishUtterance() {
@@ -98,14 +113,14 @@ class VoiceConversation(
         runCatching { recognition.finish { result -> dispatch {
             if (!state.active || !foreground || token != generation) return@dispatch
             result.fold({ text ->
-                if (text.isBlank()) listen() else {
+                if (text.isBlank()) pause() else {
                     seen.addAll(replies.map { it.id })
                     awaiting = true
                     change(state.copy(phase = VoicePhase.Thinking, transcript = text.trim()))
                     acknowledge()
                     onQuestion(text.trim())
                 }
-            }, { if (it.message == "No speech recognized") listen() else fail(it) })
+            }, { if (it.message == "No speech recognized") pause() else fail(it) })
         } } }.onFailure { fail(it) }
     }
 

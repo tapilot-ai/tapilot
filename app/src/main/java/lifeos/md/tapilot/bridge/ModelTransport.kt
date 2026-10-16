@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.bridge
 
+import lifeos.md.tapilot.AppText.text as appText
 import org.json.JSONObject
 import java.io.EOFException
 import java.net.ProtocolException
@@ -20,6 +21,7 @@ class ModelTransport(
         .readTimeout(READ_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
         .retryOnConnectionFailure(false)
         .followRedirects(false).followSslRedirects(false).build(),
+    private val onTiming: (JSONObject) -> Unit = {},
 ) : AutoCloseable {
     private data class ActiveRequest(
         val sessionId: String,
@@ -51,8 +53,7 @@ class ModelTransport(
                 val body = if (params.has("bodyBase64") && !params.isNull("bodyBase64")) {
                     Base64.getDecoder().decode(params.getString("bodyBase64")).toRequestBody()
                 } else null
-                val request = builder.header("Connection", "close")
-                    .method(params.optString("method", "POST"), body).build()
+                val request = builder.method(params.optString("method", "POST"), body).build()
                 require(request.url.isHttps) { "Model URL must use HTTPS" }
                 // Share one deadline across reconnection attempts. Only repeat this model
                 // completion, never the agent turn or already executed phone tools.
@@ -64,11 +65,21 @@ class ModelTransport(
                     call.timeout().deadlineNanoTime(deadline)
                     activeRequests[requestId] = ActiveRequest(sessionId, call)
                     var responseStatus: Int? = null
+                    val started = System.nanoTime()
+                    fun elapsed() = (System.nanoTime() - started) / 1_000_000.0
+                    val measurement = JSONObject().put("phase", "model.http")
+                        .put("requestId", requestId).put("attempt", attempt)
+                        .put("requestBytes", body?.contentLength() ?: 0)
+
                     try {
                         if (isCancelled(requestId, sessionId)) throw RequestCancelledException()
                         call.execute().use { response ->
                             responseStatus = response.code
+                            measurement.put("headersMs", elapsed()).put("status", response.code)
+                            val source = response.body?.source()
+                            if (source?.request(1) == true) measurement.put("firstBodyMs", elapsed())
                             val bytes = response.body?.bytes() ?: byteArrayOf()
+                            measurement.put("responseBytes", bytes.size).put("bodyComplete", true)
                             if (isCancelled(requestId, sessionId)) throw RequestCancelledException()
                             val responseHeaders = JSONObject()
                             response.headers.names().forEach { name ->
@@ -87,6 +98,8 @@ class ModelTransport(
                         if (!disconnected || (responseStatus != null && responseStatus !in 200..299)) throw ModelNetworkException(error)
                         if (attempt == 1 || System.nanoTime() >= deadline) throw ModelNetworkException(error)
                     } finally {
+                        measurement.put("totalMs", elapsed())
+                        runCatching { onTiming(measurement) }
                         activeRequests.remove(requestId)
                     }
                 }
@@ -136,7 +149,7 @@ class ModelTransport(
     private fun isCancelled(requestId: String, sessionId: String): Boolean =
         closed || cancelledRequests.contains(requestId) || cancelledSessions.contains(sessionId)
 
-    class ModelNetworkException(cause: IOException) : IOException("模型连接中断或请求超时，请检查网络后重试", cause)
+    class ModelNetworkException(cause: IOException) : IOException(appText("模型连接中断或请求超时，请检查网络后重试", "Model connection interrupted or timed out. Check your network and try again"), cause)
 
     class RequestCancelledException : IllegalStateException("Model request was cancelled")
 

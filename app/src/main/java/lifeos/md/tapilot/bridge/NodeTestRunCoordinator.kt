@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.bridge
 
+import lifeos.md.tapilot.AppText.text as appText
 import lifeos.md.tapilot.device.*
 import android.content.Context
 import android.util.Log
@@ -172,6 +173,12 @@ class NodeTestRunCoordinator(
                     val payload = JSONObject(event.payload)
                     when (event.type) {
                         "rpc.request" -> dispatchRpc(payload)
+                        "capture.settled" -> Log.i("TapilotPerformance", JSONObject(event.payload)
+                            .put("phase", "midscene.capture.settled").toString())
+                        "model.network" -> Log.i("TapilotPerformance", JSONObject(event.payload)
+                            .put("phase", "midscene.model.network").toString())
+                        "model.timing" -> Log.i("TapilotPerformance", JSONObject(event.payload)
+                            .put("phase", "midscene.model.http").toString())
                         "test.started" -> updateStatus(TaskExecutionStatus.RUNNING)
                         "test.completed" -> {
                             nativeRpcTimings = payload.optJSONObject("nativeRpcTimings") ?: JSONObject()
@@ -377,7 +384,7 @@ class NodeTestRunCoordinator(
         authorizationExecutor.shutdownNow()
     }
 
-    class NodeRunStoppedException : IllegalStateException("用户停止了任务")
+    class NodeRunStoppedException : IllegalStateException(appText("用户停止了任务", "User stopped the task"))
 
     companion object {
         private const val LOG_TAG = "MidsceneNodeTest"

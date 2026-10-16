@@ -64,7 +64,7 @@ test('serializes structured AI values and ignores non-AI node output', () => {
                   { node: 'custom', output: { data: { value: 'ignored' } } },
                   {
                     node: 'aiQuery',
-                    output: { data: { value: { count: 2 } } },
+                    output: { data: { count: 2 } },
                   },
                 ],
               },

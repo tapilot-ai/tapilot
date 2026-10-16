@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.accessibility
 
+import lifeos.md.tapilot.AppText.text as appText
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
@@ -116,12 +117,12 @@ class FloatingBallController(
             addView(LinearLayout(service).apply {
                 gravity = Gravity.CENTER_VERTICAL
                 addView(TextView(service).apply {
-                    text = "Tapilot 已回复 · 查看对话"
+                    text = appText("Tapilot 已回复 · 查看对话", "Tapilot replied · View conversation")
                     textSize = 14f
                     setTextColor(AppTheme.color(service, if (AppTheme.isDark(service)) R.color.brand_dark_primary else R.color.brand_primary))
                 }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
                 addView(TextView(service).apply {
-                    text = "关闭"
+                    text = appText("关闭", "Close")
                     textSize = 13f
                     gravity = Gravity.CENTER
                     minWidth = dp(48); minHeight = dp(48)
@@ -291,7 +292,7 @@ class FloatingBallController(
                 outcome.getOrNull()?.let { capture ->
                     LaunchContext.putPanel(JSONObject()
                         .put("kind", "screen")
-                        .put("label", "当前屏幕")
+                        .put("label", appText("当前屏幕", "Current screen"))
                         .put("dataUrl", capture.dataUrl))
                 }
                 openAssistantPanel(voice)
@@ -312,7 +313,7 @@ class FloatingBallController(
             mainHandler.post {
                 if (done.get() || !runtime.floatingVoice || generation != runtime.floatingEntryGeneration) return@post
                 outcome.getOrNull()?.let { capture ->
-                    LaunchContext.put(JSONObject().put("kind", "screen").put("label", "当前屏幕")
+                    LaunchContext.put(JSONObject().put("kind", "screen").put("label", appText("当前屏幕", "Current screen"))
                         .put("dataUrl", capture.dataUrl).put("fromPanel", true).put("voice", true))
                 }
                 complete.run()

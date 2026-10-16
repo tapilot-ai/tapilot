@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.speech
 
+import lifeos.md.tapilot.AppText.text as appText
 import android.content.Context
 import lifeos.md.tapilot.bridge.ModelCredentialStore
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -14,9 +15,9 @@ internal data class SpeechPolishSettings(
 ) {
     fun validated(): SpeechPolishSettings {
         val url = baseUrl.trim().toHttpUrl()
-        require(url.isHttps && url.username.isEmpty() && url.password.isEmpty() && url.query == null && url.fragment == null && baseUrl.length <= 2048) { "润色 API 地址必须为不含凭据或查询参数的 HTTPS 地址" }
-        require(model.trim().isNotEmpty() && model.length <= 256 && model.none { it == '\r' || it == '\n' || it == '\u0000' }) { "请填写有效的润色模型名称" }
-        require(listOf(promptZh, promptEn).all { it.isNotBlank() && it.length <= 8000 }) { "润色提示词不能为空且不超过 8000 字符" }
+        require(url.isHttps && url.username.isEmpty() && url.password.isEmpty() && url.query == null && url.fragment == null && baseUrl.length <= 2048) { appText("润色 API 地址必须为不含凭据或查询参数的 HTTPS 地址", "Polishing API URL must use HTTPS without credentials or query parameters") }
+        require(model.trim().isNotEmpty() && model.length <= 256 && model.none { it == '\r' || it == '\n' || it == '\u0000' }) { appText("请填写有效的润色模型名称", "Enter a valid polishing model name") }
+        require(listOf(promptZh, promptEn).all { it.isNotBlank() && it.length <= 8000 }) { appText("润色提示词不能为空且不超过 8000 字符", "Polishing prompts must contain 1–8000 characters") }
         return copy(baseUrl = url.toString().trimEnd('/'), model = model.trim())
     }
     fun prompt(text: String): String {
@@ -47,13 +48,13 @@ internal class SpeechPolishStore(context: Context) {
     fun save(settings: SpeechPolishSettings, replacementKey: String = "") {
         // Turning off must take effect even if a partially edited URL or key is invalid.
         if (!settings.enabled) {
-            check(preferences.edit().putString("settings", load().copy(enabled = false).json().toString()).commit()) { "无法关闭语音润色" }
+            check(preferences.edit().putString("settings", load().copy(enabled = false).json().toString()).commit()) { appText("无法关闭语音润色", "Unable to turn off voice polishing") }
         }
         val valid = settings.validated()
         val key = replacementKey.trim()
-        require(key.length <= 4096 && key.none { it == '\r' || it == '\n' || it == '\u0000' }) { "无效的润色 API Key" }
+        require(key.length <= 4096 && key.none { it == '\r' || it == '\n' || it == '\u0000' }) { appText("无效的润色 API Key", "Invalid polishing API Key") }
         if (key.isNotBlank()) credentials.set(KEY, key)
-        check(preferences.edit().putString("settings", valid.json().toString()).commit()) { "无法保存润色配置" }
+        check(preferences.edit().putString("settings", valid.json().toString()).commit()) { appText("无法保存润色配置", "Unable to save polishing settings") }
     }
     fun deleteKey() = credentials.delete(KEY)
     companion object { const val KEY = "speech-polish" }

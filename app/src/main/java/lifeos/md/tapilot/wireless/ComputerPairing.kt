@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.wireless
 
+import lifeos.md.tapilot.AppText.text as appText
 import android.net.Network
 import org.json.JSONObject
 import java.net.Inet4Address
@@ -16,9 +17,9 @@ import javax.net.ssl.X509TrustManager
 /** The physically scanned QR pins the temporary computer receiver's TLS certificate. */
 internal object ComputerPairing {
     fun send(qr: String, phoneLink: String, network: Network) {
-        require(qr.startsWith("tapilot://computer/") && qr.length <= 4096) { "请扫描 Android Use 电脑配对窗口的二维码" }
+        require(qr.startsWith("tapilot://computer/") && qr.length <= 4096) { appText("请扫描 Android Use 电脑配对窗口的二维码", "Scan the QR code in the Android Use computer pairing window") }
         val data = JSONObject(String(Base64.getUrlDecoder().decode(qr.removePrefix("tapilot://computer/"))))
-        require(data.getInt("version") == 1 && data.getLong("expiresAt") > System.currentTimeMillis()) { "配对二维码已过期，请在电脑重新打开配对窗口" }
+        require(data.getInt("version") == 1 && data.getLong("expiresAt") > System.currentTimeMillis()) { appText("配对二维码已过期，请在电脑重新打开配对窗口", "Pairing QR expired. Open a new pairing window on the computer") }
         val uri = URI(data.getString("url"))
         val host = uri.host.orEmpty()
         require(host.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+")) && InetAddress.getByName(host) is Inet4Address) { "无效的电脑地址" }
@@ -32,7 +33,7 @@ internal object ComputerPairing {
                 val certificate = chain.firstOrNull() ?: error("Missing computer certificate")
                 certificate.checkValidity()
                 val actual = MessageDigest.getInstance("SHA-256").digest(certificate.encoded).joinToString("") { "%02x".format(it) }
-                check(MessageDigest.isEqual(actual.toByteArray(), fingerprint.toByteArray())) { "电脑证书不匹配，请重新扫描二维码" }
+                check(MessageDigest.isEqual(actual.toByteArray(), fingerprint.toByteArray())) { appText("电脑证书不匹配，请重新扫描二维码", "Computer certificate mismatch. Scan the QR again") }
             }
         }
         val ssl = SSLContext.getInstance("TLS").apply { init(null, arrayOf(trust), SecureRandom()) }
@@ -46,7 +47,7 @@ internal object ComputerPairing {
             val config = Base64.getUrlDecoder().decode(phoneLink.removePrefix("tapilot://pair/"))
             connection.setFixedLengthStreamingMode(config.size)
             connection.outputStream.use { it.write(config) }
-            check(connection.responseCode == 200) { "电脑未接受配对信息，请刷新电脑配对窗口后重试" }
+            check(connection.responseCode == 200) { appText("电脑未接受配对信息，请刷新电脑配对窗口后重试", "Computer rejected pairing. Open a new pairing window and scan again") }
         } finally { connection.disconnect() }
     }
 }

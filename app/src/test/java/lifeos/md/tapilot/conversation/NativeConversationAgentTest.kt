@@ -11,13 +11,33 @@ class NativeConversationAgentTest {
             val result = PhoneResult.fromRun(JSONObject().put("exitCode", 0).put("finalResponse", value)
                 .put("output", JSONArray().put("Android 14; operation completed")))
             assertFalse(result.success)
-            assertTrue(result.result.contains("不要重复"))
+            assertTrue(result.result.contains("before repeating"))
             assertFalse(result.result.contains("Android 14"))
         }
         assertFalse(PhoneResult.fromRun(JSONObject().put("exitCode", 1).put("finalResponse", "stale observation")).success)
         assertEquals(PhoneResult(true, "ColorOS 14.0; Android unknown"), PhoneResult.fromRun(
-            JSONObject().put("exitCode", 0).put("finalResponse", "ColorOS 14.0; Android unknown")))
+            JSONObject().put("exitCode", 0).put("finalResponse", JSONObject().put("success", true).put("observation", "ColorOS 14.0; Android unknown").toString())))
     }
+    @Test fun verificationMustContainStrictBooleanAndIndependentObservation() {
+        val malformed = listOf("operation completed", "{}", "null", "[]", "{broken",
+            "{\"success\":\"true\",\"observation\":\"visible\"}",
+            "{\"success\":1,\"observation\":\"visible\"}",
+            "{\"success\":true,\"observation\":false}",
+            "{\"success\":true,\"observation\":\"  \"}",
+            "{\"success\":true}", "{\"observation\":\"visible\"}")
+        for (value in malformed) assertFalse(value, PhoneResult.fromRun(
+            JSONObject().put("exitCode", 0).put("finalResponse", value)).success)
+    }
+
+    @Test fun negativeVerificationRemainsFailureEvenWhenRunnerSucceeds() {
+        val observed = JSONObject().put("success", false).put("observation", "Weather reply is not visible")
+        assertEquals(PhoneResult(false, "Weather reply is not visible"), PhoneResult.fromRun(
+            JSONObject().put("exitCode", 0).put("finalResponse", observed.toString())))
+        observed.put("success", true)
+        assertEquals(PhoneResult(false, "capture failed"), PhoneResult.fromRun(
+            JSONObject().put("exitCode", 1).put("failure", "capture failed").put("finalResponse", observed.toString())))
+    }
+
     @Test fun contextKeepsAttachmentAndOrder() {
         val history = listOf(JSONObject().put("id", "e1").put("createdAt", 1).put("source", "读文件").put("reply", "TP1047").put("status", "succeeded"))
         val messages = NativeConversationAgent.messages(history, "是什么编号", true, mapOf("e1" to JSONObject().put("text", "编号TP1047")))
@@ -46,16 +66,35 @@ class NativeConversationAgentTest {
         assertEquals("先别发", messages.getJSONObject(3).getString("content"))
     }
 
+    @Test fun launchedAppContextAvoidsDuplicateLaunchWithoutRemovingVerification() {
+        val instruction = "Open calculator and compute 7 * 8"
+        val steps = JSONObject(NativeConversationAgent.verifiedTask(instruction, "56 is visible", "act", "com.example/.Calculator"))
+            .getJSONArray("cases").getJSONObject(0).getJSONArray("steps")
+        assertEquals(3, steps.length())
+        assertEquals("com.example/.Calculator", steps.getJSONObject(0).getJSONObject("launch").getString("uri"))
+        val prompt = steps.getJSONObject(1).getJSONObject("aiAct").getString("prompt")
+        assertTrue(prompt.contains("already returned successfully"))
+        assertTrue(prompt.contains("recover as needed"))
+        assertTrue(prompt.contains("Perform the explicitly requested interactions in this run"))
+        assertTrue(prompt.contains(JSONObject.quote(instruction)))
+        assertTrue(steps.getJSONObject(2).has("aiQuery"))
+        val observe = JSONObject(NativeConversationAgent.verifiedTask(instruction, "56 is visible", "observe", "com.example/.Calculator"))
+            .getJSONArray("cases").getJSONObject(0).getJSONArray("steps")
+        assertEquals(2, observe.length())
+        assertTrue(observe.getJSONObject(1).has("aiQuery"))
+    }
+
     @Test fun generatedTaskKeepsUntrustedTextAsData() {
         val source = NativeConversationAgent.verifiedTask("点击\n\"删除\"", "显示：确认")
         val steps = JSONObject(source).getJSONArray("cases").getJSONObject(0).getJSONArray("steps")
         assertEquals("点击\n\"删除\"", steps.getJSONObject(0).getJSONObject("aiAct").getString("prompt"))
-        assertEquals("显示：确认", steps.getJSONObject(1).getJSONObject("aiAssert").getString("prompt"))
-        assertEquals(3, steps.length())
-        val observation = steps.getJSONObject(2).getJSONObject("aiAsk").getString("prompt")
+        assertEquals(2, steps.length())
+        val query = steps.getJSONObject(1).getJSONObject("aiQuery").getJSONObject("prompt")
+        assertTrue(query.getString("success").contains(JSONObject.quote("显示：确认")))
+        val observation = query.getString("observation")
         assertTrue(observation.contains("current screenshot"))
         assertTrue(observation.contains("unknown"))
-        assertTrue(observation.contains(JSONObject.quote("点击\n\"删除\"")))
+        assertFalse(observation.contains(JSONObject.quote("点击\n\"删除\"")))
         assertFalse(observation.contains("显示：确认"))
     }
 }

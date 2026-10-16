@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.conversation
 
+import lifeos.md.tapilot.AppText.text as appText
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.Executors
@@ -26,7 +27,7 @@ class ConversationWriter(
     /** Call off the UI thread before starting more external work. */
     fun flush() {
         worker.submit {}.get(10, TimeUnit.SECONDS)
-        failure?.let { throw IllegalStateException("无法保存任务，请检查存储空间后重试", it) }
+        failure?.let { throw IllegalStateException(appText("无法保存任务，请检查存储空间后重试", "Unable to save task. Check storage and try again"), it) }
     }
     override fun close() { worker.shutdown() }
 

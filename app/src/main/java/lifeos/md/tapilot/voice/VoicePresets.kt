@@ -1,7 +1,10 @@
 package lifeos.md.tapilot.voice
 
-internal data class VoicePreset(val id: String, val name: String, val languages: String = "", val languagesEn: String = "") {
-    fun label(zh: Boolean) = if (languages.isBlank()) name else "$name · ${if (zh) languages else languagesEn}"
+internal data class VoicePreset(val id: String, val name: String, val languages: String = "", val languagesEn: String = "", val nameEn: String = name) {
+    fun label(zh: Boolean): String {
+        val displayName = if (zh) name else nameEn
+        return if (languages.isBlank()) displayName else "$displayName · ${if (zh) languages else languagesEn}"
+    }
 }
 
 // Seed TTS 2.0 only; do not mix Seed TTS 1.0 voices with the playback resource.
@@ -10,12 +13,12 @@ internal data class VoicePreset(val id: String, val name: String, val languages:
 internal fun voicePresets(provider: String): List<VoicePreset> = when (provider) {
     "volcengine" -> listOf(
         VoicePreset("zh_female_vv_uranus_bigtts", "Vivi 2.0"),
-        VoicePreset("zh_male_dayi_saturn_bigtts", "大壹"),
-        VoicePreset("zh_female_mizai_saturn_bigtts", "黑猫侦探社咪仔"),
-        VoicePreset("zh_female_jitangnv_saturn_bigtts", "鸡汤女"),
-        VoicePreset("zh_female_meilinvyou_saturn_bigtts", "魅力女友"),
-        VoicePreset("zh_female_santongyongns_saturn_bigtts", "流畅女声"),
-        VoicePreset("zh_male_ruyayichen_saturn_bigtts", "儒雅逸辰"),
+        VoicePreset("zh_male_dayi_saturn_bigtts", "大壹", nameEn = "Dayi"),
+        VoicePreset("zh_female_mizai_saturn_bigtts", "黑猫侦探社咪仔", nameEn = "Mizai"),
+        VoicePreset("zh_female_jitangnv_saturn_bigtts", "鸡汤女", nameEn = "Warm female voice"),
+        VoicePreset("zh_female_meilinvyou_saturn_bigtts", "魅力女友", nameEn = "Charming female voice"),
+        VoicePreset("zh_female_santongyongns_saturn_bigtts", "流畅女声", nameEn = "Fluent female voice"),
+        VoicePreset("zh_male_ruyayichen_saturn_bigtts", "儒雅逸辰", nameEn = "Yichen"),
     )
     "deepgram" -> listOf(
         VoicePreset("aura-2-thalia-en", "Thalia", "英语 · 女声", "English · Female"),

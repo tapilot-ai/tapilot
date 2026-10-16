@@ -1,5 +1,6 @@
 package lifeos.md.tapilot
 
+import lifeos.md.tapilot.AppText.text as appText
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -95,7 +96,7 @@ class MainActivity : ComponentActivity() {
         receiveExternalIntent(intent)
         if (coordinator.ready) coordinator.publish()
         else importer = LegacyConversationImport(this, store).also { loader -> loader.start { result ->
-            result.fold(onSuccess = { coordinator.initialize() }, onFailure = { chatController.showError(it.message ?: "无法导入旧数据，请重新打开应用") })
+            result.fold(onSuccess = { coordinator.initialize() }, onFailure = { chatController.showError(it.message ?: appText("无法导入旧数据，请重新打开应用", "Unable to import existing data. Reopen the app")) })
         } }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -237,7 +238,7 @@ class MainActivity : ComponentActivity() {
             Intent.ACTION_SEND -> incoming.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
             else -> null
         }?.take(20_000).orEmpty()
-        val context = JSONObject().put("kind", "share").put("label", "分享内容")
+        val context = JSONObject().put("kind", "share").put("label", appText("分享内容", "Shared content"))
             .put("text", text)
         if (action == Intent.ACTION_SEND && incoming.type?.startsWith("image/") == true) {
             @Suppress("DEPRECATION")
@@ -260,7 +261,7 @@ class MainActivity : ComponentActivity() {
                     ?: incoming.type!!.takeIf { it.matches(Regex("image/[a-zA-Z0-9.+-]+")) }
                     ?: "image/jpeg"
                 context.put("dataUrl", "data:$mime;base64,${Base64.encodeToString(bytes, Base64.NO_WRAP)}")
-                context.put("label", "分享图片")
+                context.put("label", appText("分享图片", "Shared image"))
             }.onFailure { Log.w("TapilotShare", "Unable to read shared image", it) }
         }
         if (text.isNotBlank() || context.has("dataUrl") || action == Intent.ACTION_ASSIST) {

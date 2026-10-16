@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.chatgpt
 
+import lifeos.md.tapilot.AppText.text as appText
 import org.json.JSONObject
 import java.math.BigInteger
 import java.net.URI
@@ -57,7 +58,7 @@ object ChatGptOAuth {
             return values
         }
         fun exchange(values: Map<String, String>): Map<String, String> {
-            check(values["error"].isNullOrBlank()) { if (values["error"] == "access_denied") "ChatGPT 授权已取消" else "ChatGPT 授权失败，请重新登录" }
+            check(values["error"].isNullOrBlank()) { if (values["error"] == "access_denied") appText("ChatGPT 授权已取消", "ChatGPT authorization cancelled") else appText("ChatGPT 授权失败，请重新登录", "ChatGPT authorization failed. Sign in again") }
             val issued = values["client_id"] ?: client
             require(issued.isNotBlank() && issued != DYNAMIC_CLIENT && (client == DYNAMIC_CLIENT || client == issued)) { "Invalid ChatGPT client registration" }
             val code = values["code"].orEmpty(); require(code.isNotBlank()) { "Missing authorization code" }

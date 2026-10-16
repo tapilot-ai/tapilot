@@ -32,9 +32,7 @@ object AppLanguage {
     }
 
     fun resolved(context: Context): String {
-        val selected = preference(context)
-        if (selected != "system") return selected
-        return if (Resources.getSystem().configuration.locales[0].language == "zh") "zh" else "en"
+        return resolveAppLanguage(preference(context), Resources.getSystem().configuration.locales[0].language)
     }
 
     private fun preference(context: Context): String =
@@ -62,4 +60,10 @@ object AppLanguage {
             setLocales(locales)
         }
     }
+}
+
+internal fun resolveAppLanguage(preference: String, systemLanguage: String): String = when (preference) {
+    "zh" -> "zh"
+    "en" -> "en"
+    else -> if (systemLanguage == "zh") "zh" else "en"
 }

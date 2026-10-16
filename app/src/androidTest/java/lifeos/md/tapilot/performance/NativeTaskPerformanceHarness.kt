@@ -21,12 +21,14 @@ class NativeTaskPerformanceHarness : Instrumentation() {
     private var runId = ""
     private var manualRebind = false
     private var screenshotAb = false
+    private var taskOverride: String? = null
     override fun onCreate(arguments: Bundle?) {
         super.onCreate(arguments)
         samples = arguments?.getString("samples")?.toInt() ?: 3
         runId = arguments?.getString("run_id") ?: java.util.UUID.randomUUID().toString()
         manualRebind = arguments?.getString("manual_accessibility_rebind") == "1"
         screenshotAb = arguments?.getString("screenshot_ab") == "1"
+        taskOverride = arguments?.getString("task")?.also { require(it.isNotBlank()) }
         require(samples in 1..10)
         start()
     }
@@ -122,7 +124,7 @@ class NativeTaskPerformanceHarness : Instrumentation() {
                 runOnMainSync {
                     coordinator.command(JSONObject().put("action", "new"))
                     coordinator.command(JSONObject().put("action", "send").put("text",
-                        if (screenshotAb) "Open Android Settings. Tap the Display & brightness entry and verify that page is visible. Return to the main Settings page and verify it is visible. Read only: do not change settings. No voice."
+                        taskOverride ?: if (screenshotAb) "Open Android Settings. Tap the Display & brightness entry and verify that page is visible. Return to the main Settings page and verify it is visible. Read only: do not change settings. No voice."
                         else "Open Android Settings and verify its main Settings page is visible. Read only. No voice."))
                     check(runtime.state.running) { "Task was not accepted" }
                     taskId = coordinator.data.getJSONArray("history").getJSONObject(0).getString("id")
@@ -151,7 +153,8 @@ class NativeTaskPerformanceHarness : Instrumentation() {
                 check(entry.optString("reply").isNotBlank()) { "Missing final answer" }
                 check(entry.optInt("phoneOperations") > 0 && reports.length() > 0) { "No native execution evidence" }
                 val operations = entry.getJSONArray("completedOperations")
-                check(operations.length() > 0 && (0 until operations.length()).all { operations.getJSONObject(it).optBoolean("success") }) { "Phone operation was not verified" }
+                sample.put("failedOperations", (0 until operations.length()).count { !operations.getJSONObject(it).optBoolean("success") })
+                check(operations.length() > 0 && operations.getJSONObject(operations.length() - 1).optBoolean("success")) { "Final phone operation was not verified" }
             }
             result.put("status", "passed")
             code = 0

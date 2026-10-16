@@ -8,8 +8,9 @@ import {
   mergeAndroidAssistantAIActContext,
 } from './assistant-context.mjs';
 import { withAndroidAiActDefaults } from './execution-policy.mjs';
+import { withSettledScreenshots } from './settled-capture.mjs';
 import { StdioNativeBridge } from './stdio-native-bridge.mjs';
-import { siwcFetch } from './siwc-fetch.mjs';
+import { siwcFetch, measuredFetch, observeModelNetwork } from './siwc-fetch.mjs';
 
 let activeAgentProvider;
 const assistantLanguage =
@@ -39,16 +40,24 @@ const setup = defineProjectSetup({
   async setup({ onTeardown }) {
     const bridge = new StdioNativeBridge();
     const originalFetch = globalThis.fetch;
-    if (process.env.MIDSCENE_CHATGPT_ACCOUNT_ID) {
-      globalThis.fetch = siwcFetch(originalFetch, force => bridge.accessToken(force));
-    }
+    const stopNetworkTiming = observeModelNetwork(timing => {
+      process.stdout.write(`MIDSCENE_EVENT ${JSON.stringify({ type: 'model.network', timestamp: new Date().toISOString(), ...timing })}\n`);
+    });
+    onTeardown(stopNetworkTiming);
+    const transportFetch = measuredFetch(originalFetch, timing => {
+      process.stdout.write(`MIDSCENE_EVENT ${JSON.stringify({ type: 'model.timing', timestamp: new Date().toISOString(), ...timing })}\n`);
+    });
+    globalThis.fetch = process.env.MIDSCENE_CHATGPT_ACCOUNT_ID
+      ? siwcFetch(transportFetch, force => bridge.accessToken(force)) : transportFetch;
     onTeardown(() => { globalThis.fetch = originalFetch; });
     const capabilities = await bridge.getCapabilities();
     if (!capabilities.canCapture || !capabilities.canPerformGestures) {
       bridge.close();
       throw new Error('请先在系统设置中开启 Tapilot 辅助功能');
     }
-    const device = new AndroidAccessibilityDevice(bridge, capabilities);
+    const device = new AndroidAccessibilityDevice(withSettledScreenshots(bridge, { record: timing => {
+      process.stdout.write(`MIDSCENE_EVENT ${JSON.stringify({ type: 'capture.settled', timestamp: new Date().toISOString(), ...timing })}\n`);
+    } }), capabilities);
     const agents = new Map();
     activeAgentProvider = {
       getAgent(runId) {
@@ -128,6 +137,9 @@ const launchNode = defineNode({
       .find((candidate) => candidate.name === 'Launch');
     if (!action) throw new Error('Android Launch action is unavailable');
     await action.call(input);
+    // startActivity returns before the window transition. Direct nodes bypass
+    // aiAct's post-action wait; allow the new window to appear before aiQuery.
+    await new Promise(resolve => setTimeout(resolve, 500));
     return { summary: `Launched ${input.uri}` };
   },
 });

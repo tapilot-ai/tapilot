@@ -61,6 +61,7 @@ internal class WirelessDeviceSession(private val context: Context, private val d
         }
         if (method == "device.capture" || method == "device.prepareAction") actionPolicy.observe((result as JSONObject).getJSONObject("geometry"))
         if (method == "device.prepareAction") return JSONObject().put("geometry", (result as JSONObject).getJSONObject("geometry"))
+        if (result is JSONObject) result.put("language", lifeos.md.tapilot.AppLanguage.resolved(context))
         return result
     }
 

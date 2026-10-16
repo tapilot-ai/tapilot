@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.conversation
 
+import lifeos.md.tapilot.AppText.text as appText
 import android.content.Context
 import android.os.SystemClock
 import android.util.Log
@@ -29,9 +30,11 @@ class NativePiConversation(context: Context) : AutoCloseable {
     }
     fun run(messages: JSONArray, resume: JSONArray?, limits: AgentLimits, stopped: () -> Boolean,
             complete: (JSONArray, JSONArray) -> JSONObject,
-            phone: (String, String) -> PhoneResult, event: (JSONObject) -> Unit, resumeInputs: JSONArray = JSONArray(), goal: String = ""): JSONObject {
-        check(!stopped()) { "任务已停止" }
+            phone: (String, String, String, String) -> PhoneResult, findApps: (String) -> JSONArray, event: (JSONObject) -> Unit, resumeInputs: JSONArray = JSONArray(), goal: String = ""): JSONObject {
+        check(!stopped()) { appText("任务已停止", "Task stopped") }
         val timings = JSONObject()
+        val traceId = java.util.UUID.randomUUID().toString()
+        val traceStarted = SystemClock.elapsedRealtime()
         fun record(phase: String, started: Long, success: Boolean = true) {
             val elapsed = SystemClock.elapsedRealtime() - started
             val summary = timings.optJSONObject(phase) ?: JSONObject().also { timings.put(phase, it) }
@@ -39,15 +42,26 @@ class NativePiConversation(context: Context) : AutoCloseable {
                 .put("totalMs", summary.optLong("totalMs") + elapsed)
                 .put("maxMs", maxOf(summary.optLong("maxMs"), elapsed))
                 .put("failures", summary.optInt("failures") + if (success) 0 else 1)
+            // Numeric phase boundaries only: no prompts, screenshots or credentials.
+            Log.i("TapilotPerformance", JSONObject().put("traceId", traceId)
+                .put("phase", phase).put("index", summary.optInt("count"))
+                .put("startMs", started - traceStarted).put("durationMs", elapsed)
+                .put("success", success).toString())
         }
         val prepareStarted = SystemClock.elapsedRealtime()
         val runtime = provisioner.install()
         record("runtime.prepare", prepareStarted)
-        check(!stopped()) { "任务已停止" }
+        check(!stopped()) { appText("任务已停止", "Task stopped") }
+        // Supply inexpensive device facts before planning rather than spending a
+        // model round trip discovering them. A missing service must not block chat.
+        val catalogStarted = SystemClock.elapsedRealtime()
+        val catalog = runCatching { findApps("") }
+        record("phone.appCatalog", catalogStarted, catalog.isSuccess)
+        check(!stopped()) { appText("任务已停止", "Task stopped") }
         val startupStarted = SystemClock.elapsedRealtime()
         val child = synchronized(lock) {
-            check(process == null) { "Pi Agent 已在运行" }
-            check(!stopped()) { "任务已停止" }
+            check(process == null) { appText("Pi Agent 已在运行", "Pi Agent is already running") }
+            check(!stopped()) { appText("任务已停止", "Task stopped") }
             ProcessBuilder(runtime.nodeExecutable.absolutePath,
                 java.io.File(runtime.runtimeDirectory, "pi-runner.mjs").absolutePath)
                 .directory(runtime.runtimeDirectory).redirectErrorStream(true).apply {
@@ -57,7 +71,7 @@ class NativePiConversation(context: Context) : AutoCloseable {
                 }.start().also {
                     process = it; writer = it.outputStream.bufferedWriter()
                     write(JSONObject().put("type", "init").put("messages", messages)
-                        .put("goal", goal).put("resume", resume ?: JSONArray()).put("pendingInputs", resumeInputs).put("limits", limits.json()))
+                        .put("installedApps", catalog.getOrDefault(JSONArray())).put("goal", goal).put("resume", resume ?: JSONArray()).put("pendingInputs", resumeInputs).put("limits", limits.json()))
                     while (deferred.isNotEmpty()) write(deferred.removeFirst())
                     accepting = true
                 }
@@ -66,8 +80,8 @@ class NativePiConversation(context: Context) : AutoCloseable {
             var receivedFirstEvent = false
             child.inputStream.bufferedReader().use { reader ->
                 while (true) {
-                    check(!stopped()) { "任务已停止" }
-                    val line = reader.readLine() ?: error("Pi Agent 意外退出")
+                    check(!stopped()) { appText("任务已停止", "Task stopped") }
+                    val line = reader.readLine() ?: error(appText("Pi Agent 意外退出", "Pi Agent exited unexpectedly"))
                     // Library diagnostics are intentionally not copied to app logs or task context.
                     if (!line.startsWith("TAPILOT_AGENT ")) continue
                     if (!receivedFirstEvent) {
@@ -79,29 +93,31 @@ class NativePiConversation(context: Context) : AutoCloseable {
                         "rpc" -> {
                             val rpcStarted = SystemClock.elapsedRealtime()
                             val result = runCatching {
-                                check(!stopped()) { "任务已停止" }
+                                check(!stopped()) { appText("任务已停止", "Task stopped") }
                                 val args = value.getJSONObject("params")
                                 when (value.getString("method")) {
                                     "model.complete" -> complete(args.getJSONArray("messages"), args.getJSONArray("tools"))
-                                    "phone.execute" -> phone(args.getString("instruction"), args.getString("success_condition")).json()
+                                    "phone.execute" -> phone(args.getString("instruction"), args.getString("success_condition"), args.optString("mode", "act"), args.optString("app")).json()
+                                    "phone.findApps" -> JSONObject().put("apps", findApps(args.getString("query")))
                                     else -> error("未知 Agent 请求")
                                 }
                             }
                             record(value.getString("method"), rpcStarted,
                                 result.isSuccess && result.getOrNull()?.optBoolean("success", true) != false)
-                            check(!stopped()) { "任务已停止" }
+                            check(!stopped()) { appText("任务已停止", "Task stopped") }
                             val response = JSONObject().put("requestId", value.getString("requestId")).put("ok", result.isSuccess)
-                            result.fold({ response.put("result", it) }, { response.put("error", it.cause?.message ?: it.message ?: "请求失败") })
+                            result.fold({ response.put("result", it) }, { response.put("error", it.cause?.message ?: it.message ?: appText("请求失败", "Request failed")) })
                             synchronized(lock) { if (process === child) write(response) }
                         }
                         "result" -> { synchronized(lock) { accepting = false }; return value.put("performance", timings) }
-                        "failure" -> error(value.optString("error", "Pi Agent 执行失败"))
+                        "failure" -> error(value.optString("error", appText("Pi Agent 执行失败", "Pi Agent execution failed")))
                         else -> event(value.put("performance", JSONObject(timings.toString())))
                     }
                 }
             }
         } finally {
-            Log.i("TapilotPerformance", JSONObject().put("phase", "conversation").put("timings", timings).toString())
+            Log.i("TapilotPerformance", JSONObject().put("traceId", traceId).put("phase", "conversation")
+                .put("durationMs", SystemClock.elapsedRealtime() - traceStarted).put("timings", timings).toString())
             synchronized(lock) {
                 if (process === child) { accepting = false; writer = null; process = null }
             }

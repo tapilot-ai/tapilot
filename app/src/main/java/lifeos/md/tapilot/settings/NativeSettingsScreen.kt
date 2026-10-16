@@ -49,6 +49,7 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
     var provider by remember(coordinator.data.optString("speechProvider")) { mutableStateOf(coordinator.data.optString("speechProvider", "volcengine")) }
     var picker by remember { mutableStateOf("") }
     var resetModel by remember { mutableStateOf(false) }
+    val deviceControl = rememberDeviceControlStatus(activity)
     var accessibilityGuide by remember { mutableStateOf(false) }
     var clearHistory by remember { mutableStateOf(false) }
     var floating by remember { mutableStateOf(FloatingBallPreferences.isEnabled(activity)) }
@@ -130,7 +131,11 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
                     }
                     Text(label("单击圆点展开对话，长按直接语音对答。", "Tap the floating button to expand chat; hold it to start voice chat."), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     SettingRow(label("设备控制（辅助功能）", "Device control (Accessibility)"),
-                        if (lifeos.md.tapilot.accessibility.MidsceneAccessibilityService.current() != null) label("已开启", "Enabled") else label("查看开启步骤", "How to enable")) { accessibilityGuide = true }
+                        when (deviceControl) {
+                            DeviceControlStatus.READY -> label("已连接", "Connected")
+                            DeviceControlStatus.NEEDS_RECONNECT -> label("已授权 · 需要恢复连接", "Authorized · Reconnect required")
+                            DeviceControlStatus.DISABLED -> label("查看开启步骤", "How to enable")
+                        }) { accessibilityGuide = true }
                     Text(label("辅助功能 → 已安装的应用／已下载的应用 → Tapilot 设备控制 → 打开开关并确认，然后返回 Tapilot。",
                         "Accessibility → Installed/Downloaded apps → Tapilot device control → Enable and confirm, then return to Tapilot."), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     SettingRow(label("系统默认助手", "Default assistant"), label("设置", "Set up")) { coordinator.settingsCall("app.requestAssistantRole") }
@@ -186,8 +191,8 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
         }
         if (accessibilityGuide) AlertDialog(onDismissRequest = { accessibilityGuide = false },
             title = { Text(label("开启 Tapilot 设备控制", "Enable Tapilot device control")) },
-            text = { Text(label("1. 在接下来打开的系统辅助功能页面，进入「已安装的应用」或「已下载的应用」（部分手机叫「更多已下载的服务」）。\n2. 找到「Tapilot 设备控制」。\n3. 打开「使用服务／允许」开关，并确认系统提示。\n4. 返回 Tapilot，设备控制应显示「已开启」。\n\n此权限用于读取屏幕及执行你要求的点击、滑动和输入。",
-                "1. Open Installed apps, Downloaded apps, or Downloaded services.\n2. Select Tapilot device control.\n3. Enable Use service/Allow and confirm the system prompt.\n4. Return to Tapilot and check Enabled.\n\nThis permission allows screen reading and the taps, swipes and text input you request.")) },
+            text = { Text(if (deviceControl == DeviceControlStatus.NEEDS_RECONNECT) label("系统开关已开启，但 Tapilot 设备控制服务未连接。请在系统辅助功能中找到 Tapilot 设备控制，将开关关闭再开启，并确认系统提示。返回 Tapilot 后，状态应显示「已连接」。无需撤销配对或重新扫码。", "The system switch is enabled, but Tapilot device control is not connected. In Accessibility settings, turn Tapilot device control off and on and confirm the system prompt. Return to Tapilot and check Connected. You do not need to revoke pairing or scan again.") else label("1. 在接下来打开的系统辅助功能页面，进入「已安装的应用」或「已下载的应用」（部分手机叫「更多已下载的服务」）。\n2. 找到「Tapilot 设备控制」。\n3. 打开「使用服务／允许」开关，并确认系统提示。\n4. 返回 Tapilot，设备控制应显示「已连接」。\n\n此权限用于读取屏幕及执行你要求的点击、滑动和输入。",
+                "1. Open Installed apps, Downloaded apps, or Downloaded services.\n2. Select Tapilot device control.\n3. Enable Use service/Allow and confirm the system prompt.\n4. Return to Tapilot and check Connected.\n\nThis permission allows screen reading and the taps, swipes and text input you request.")) },
             confirmButton = { TextButton(onClick = { accessibilityGuide = false; coordinator.settingsCall("app.openAccessibilitySettings") }) { Text(label("打开系统辅助功能", "Open Accessibility settings")) } },
             dismissButton = { TextButton(onClick = { accessibilityGuide = false }) { Text(label("取消", "Cancel")) } })
         if (resetModel || clearHistory) AlertDialog(onDismissRequest = { resetModel = false; clearHistory = false },
@@ -229,7 +234,7 @@ private fun saveEdge(services: ServiceGateway, value: EdgeEffectGeometrySettings
 }
 
 @Composable fun NativeAdvancedScreen(coordinator: NativeConversationCoordinator) {
-    var source by remember { mutableStateOf(coordinator.data.optString("yaml").ifBlank { "cases:\n  - name: Tapilot\n    steps:\n      - aiAct: 打开计算器\n" }) }
+    var source by remember { mutableStateOf(coordinator.data.optString("yaml").ifBlank { "cases:\n  - name: Tapilot\n    steps:\n      - aiAct: ${if (coordinator.chinese) "打开计算器" else "Open Calculator"}\n" }) }
     TapilotTheme(coordinator.dark) {
         Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).navigationBarsPadding().imePadding()) {
             Header("YAML") { coordinator.back() }

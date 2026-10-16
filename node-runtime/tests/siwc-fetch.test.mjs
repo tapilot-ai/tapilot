@@ -25,3 +25,63 @@ test('other hosts receive no ChatGPT credentials and cancellation stops before r
   await assert.rejects(fetch('https://api.openai.com/v1/responses', { signal: controller.signal }));
   assert.equal(tokenCalls, 0);
 });
+
+test('transport measurements preserve streamed bytes and separate headers from body', async () => {
+  const { measuredFetch } = await import('./siwc-fetch.mjs');
+  let clock = 0, read = 0;
+  const records = [];
+  const fetch = measuredFetch(async () => {
+    clock = 10;
+    return new Response(new ReadableStream({ pull(c) {
+      if (read++ === 0) { clock = 30; c.enqueue(new TextEncoder().encode('data: hello\n\n')); }
+      else { clock = 50; c.close(); }
+    } }, { highWaterMark: 0 }), { headers: { 'content-type': 'text/event-stream' } });
+  }, value => records.push(value), () => clock);
+  const response = await fetch('https://example.test', { method: 'POST', body: 'secret' });
+  assert.equal(records.length, 0);
+  assert.equal(await response.text(), 'data: hello\n\n');
+  assert.equal(records.length, 1);
+  assert.equal(records[0].headersMs, 10);
+  assert.equal(records[0].firstBodyMs, 30);
+  assert.equal(records[0].totalMs, 50);
+  assert.equal(records[0].requestBytes, 6);
+  assert.ok(!JSON.stringify(records).includes('secret'));
+});
+
+test('transport measurement forwards cancellation and telemetry failures are harmless', async () => {
+  const { measuredFetch } = await import('./siwc-fetch.mjs');
+  let cancelled = false;
+  const response = await measuredFetch(async () => new Response(new ReadableStream({
+    cancel() { cancelled = true; },
+  })), () => { throw new Error('telemetry'); })('https://example.test');
+  await response.body.cancel();
+  assert.equal(cancelled, true);
+});
+
+test('real fetch diagnostics measure upload and response boundaries without retaining secrets', async () => {
+  const { createServer } = await import('node:http');
+  const { once } = await import('node:events');
+  const { observeModelNetwork } = await import('./siwc-fetch.mjs');
+  const records = [];
+  const server = createServer((request, response) => {
+    request.resume();
+    request.on('end', () => { response.writeHead(200); response.end('fixture'); });
+  });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening');
+  const stop = observeModelNetwork(value => records.push(value));
+  try {
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/secret-path`, {
+      method: 'POST', body: 'secret-body', headers: { Authorization: 'secret-token' },
+    });
+    assert.equal(await response.text(), 'fixture');
+    assert.equal(records.length, 1);
+    assert.ok(records[0].bodySentMs >= 0);
+    assert.ok(records[0].headersMs >= records[0].bodySentMs);
+    assert.ok(records[0].totalMs >= records[0].headersMs);
+    assert.equal(records[0].status, 200);
+    assert.ok(!JSON.stringify(records).includes('secret'));
+    stop();
+    await (await fetch(`http://127.0.0.1:${server.address().port}`)).text();
+    assert.equal(records.length, 1);
+  } finally { stop(); server.close(); server.closeAllConnections(); }
+});

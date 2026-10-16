@@ -27,6 +27,7 @@ internal fun WirelessControlSettings(context: Context, zh: Boolean) {
     fun label(a: String, b: String) = if (zh) a else b
     var status by rememberSaveable { mutableStateOf("") }
     var pairingDialog by rememberSaveable { mutableStateOf(false) }
+    val deviceControl = rememberDeviceControlStatus(context)
     val detailInset = Modifier.padding(horizontal = 12.dp)
     val stage = WirelessState.pairingStage
     val pairingBusy = stage == PairingStage.SENDING || stage == PairingStage.WAITING
@@ -70,8 +71,14 @@ internal fun WirelessControlSettings(context: Context, zh: Boolean) {
             "Let ChatGPT on your computer view and operate this phone over Wi-Fi. Keep the phone unlocked; stop at any time from the notification."), fontSize = 12.sp)
         Text(label("设备控制开启路径：系统辅助功能 → 已安装／已下载的应用 → Tapilot 设备控制 → 打开开关并确认，再返回此页。",
             "Enable device control: Accessibility → Installed/Downloaded apps → Tapilot device control → Enable and confirm, then return here."), fontSize = 12.sp)
+        if (deviceControl != DeviceControlStatus.READY) Text(
+            if (deviceControl == DeviceControlStatus.NEEDS_RECONNECT)
+                label("设备控制已授权，但服务未连接。请在系统辅助功能中将 Tapilot 设备控制关闭再开启，然后返回此页。无需重新配对。",
+                    "Device control is authorized, but the service is not connected. Turn Tapilot device control off and on in Accessibility settings, then return here. No pairing reset is needed.")
+            else label("设备控制未开启，暂时无法查看或操作屏幕。", "Enable device control to view and operate the screen."),
+            modifier = detailInset, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
         TextButton(onClick = {
-            android.widget.Toast.makeText(context, label("找到 Tapilot 设备控制，打开开关并确认，再返回 Tapilot", "Enable Tapilot device control, confirm, then return to Tapilot"), android.widget.Toast.LENGTH_LONG).show()
+            android.widget.Toast.makeText(context, if (deviceControl == DeviceControlStatus.NEEDS_RECONNECT) label("将 Tapilot 设备控制关闭再开启，然后返回 Tapilot", "Turn Tapilot device control off and on, then return to Tapilot") else label("找到 Tapilot 设备控制，打开开关并确认，再返回 Tapilot", "Enable Tapilot device control, confirm, then return to Tapilot"), android.widget.Toast.LENGTH_LONG).show()
             context.startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }) { Text(label("打开系统辅助功能", "Open Accessibility settings")) }
         Text(if (WirelessState.connected) label("已连接电脑", "Computer connected")

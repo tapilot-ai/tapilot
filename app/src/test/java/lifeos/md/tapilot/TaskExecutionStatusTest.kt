@@ -11,7 +11,7 @@ class TaskExecutionStatusTest {
     fun `waiting for clarification never displays a success effect`() {
         val presentation = TaskExecutionStatus.WAITING_USER.presentation()
         assertEquals(TaskEffect.NONE, presentation.effect)
-        assertEquals("Tapilot：等待你补充信息", presentation.announcement)
+        assertEquals("Tapilot: Waiting for your input", presentation.announcement)
         assertTrue(TaskExecutionStatus.WAITING_USER.isTerminal)
         TaskExecutionTracker.update(TaskExecutionStatus.WAITING_USER)
         assertFalse(TaskExecutionTracker.isActive)
@@ -49,7 +49,7 @@ class TaskExecutionStatusTest {
     fun `failure includes a useful detail and eventually resets`() {
         val presentation = TaskExecutionStatus.FAILED.presentation("模型请求超时")
 
-        assertEquals("Tapilot：任务执行失败，模型请求超时", presentation.announcement)
+        assertEquals("Tapilot: Task failed, 模型请求超时", presentation.announcement)
         assertEquals(TaskEffect.FAILURE, presentation.effect)
         assertEquals(4_000L, presentation.resetAfterMillis)
     }

@@ -51,7 +51,7 @@ class ChatGptCallbackTest {
             val failure = assertThrows(IllegalStateException::class.java) {
                 listener.await(ChatGptOAuth.Attempt(listener.redirect, "host"), System.currentTimeMillis() - 1)
             }
-            assertTrue(failure.message!!.contains("重新登录"))
+            assertTrue(failure.message!!.contains("sign in again"))
         }
     }
     @Test fun callbackIsReadyBeforeBrowserAndConsumesLargeBrowserHeaders() {

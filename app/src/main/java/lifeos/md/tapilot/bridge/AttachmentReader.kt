@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.bridge
 
+import lifeos.md.tapilot.AppText.text as appText
 import android.content.Context
 import android.database.Cursor
 import android.graphics.Bitmap
@@ -39,12 +40,12 @@ object AttachmentReader {
             while (true) {
                 val count = stream.read(chunk)
                 if (count < 0) break
-                require(output.size() + count <= maxBytes) { "附件超过 12 MB，请选择更小的文件" }
+                require(output.size() + count <= maxBytes) { appText("附件超过 12 MB，请选择更小的文件", "Attachment exceeds 12 MB. Choose a smaller file") }
                 output.write(chunk, 0, count)
             }
             output.toByteArray()
-        } ?: error("无法读取附件")
-        require(bytes.isNotEmpty()) { "附件为空" }
+        } ?: error(appText("无法读取附件", "Unable to read attachment"))
+        require(bytes.isNotEmpty()) { appText("附件为空", "Attachment is empty") }
         return when {
             isImage -> JSONObject().put("name", name).put("kind", "image")
                 .put("images", JSONArray().put(imageDataUrl(bytes)))
@@ -54,12 +55,12 @@ object AttachmentReader {
                     .put("images", pages).put("pageCount", pageCount)
             }
             isText(mime, name) -> {
-                require(bytes.size <= MAX_TEXT_BYTES) { "文本文件超过 256 KB，请选择更小的文件" }
+                require(bytes.size <= MAX_TEXT_BYTES) { appText("文本文件超过 256 KB，请选择更小的文件", "Text file exceeds 256 KB. Choose a smaller file") }
                 JSONObject().put("name", name).put("kind", "text")
                     .put("text", String(bytes, Charsets.UTF_8))
                     .put("images", JSONArray())
             }
-            else -> throw UnsupportedOperationException("目前可发送图片、PDF 和文本文件")
+            else -> throw UnsupportedOperationException(appText("目前可发送图片、PDF 和文本文件", "Supported attachments: images, PDF and text files"))
         }
     }
 
@@ -72,11 +73,11 @@ object AttachmentReader {
     private fun imageDataUrl(bytes: ByteArray): String {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-        require(bounds.outWidth > 0 && bounds.outHeight > 0) { "无法解码图片" }
+        require(bounds.outWidth > 0 && bounds.outHeight > 0) { appText("无法解码图片", "Unable to decode image") }
         var sample = 1
         while (bounds.outWidth / sample > 1600 || bounds.outHeight / sample > 1600) sample *= 2
         val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size,
-            BitmapFactory.Options().apply { inSampleSize = sample }) ?: error("无法解码图片")
+            BitmapFactory.Options().apply { inSampleSize = sample }) ?: error(appText("无法解码图片", "Unable to decode image"))
         return bitmap.useJpegDataUrl()
     }
 
@@ -87,7 +88,7 @@ object AttachmentReader {
             val pages = JSONArray()
             var pageCount = 0
             PdfRenderer(ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)).use { pdf ->
-                require(pdf.pageCount > 0) { "PDF 没有页面" }
+                require(pdf.pageCount > 0) { appText("PDF 没有页面", "PDF has no pages") }
                 pageCount = pdf.pageCount
                 for (index in 0 until minOf(pdf.pageCount, 4)) {
                     pdf.openPage(index).use { page ->
@@ -111,7 +112,7 @@ object AttachmentReader {
 
     private fun Bitmap.useJpegDataUrl(): String = try {
         val output = ByteArrayOutputStream()
-        check(compress(Bitmap.CompressFormat.JPEG, 82, output)) { "图片转换失败" }
+        check(compress(Bitmap.CompressFormat.JPEG, 82, output)) { appText("图片转换失败", "Image conversion failed") }
         "data:image/jpeg;base64,${Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)}"
     } finally {
         recycle()

@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.chatgpt
 
+import lifeos.md.tapilot.AppText.text as appText
 import android.content.Context
 import lifeos.md.tapilot.bridge.EncryptedPreferences
 import okhttp3.OkHttpClient
@@ -52,15 +53,15 @@ class ChatGptAccounts private constructor(context: Context) {
                 val client = grant.getValue("client_id")
                 val tokens = post("${ChatGptOAuth.ISSUER}/api/accounts/oauth/token", grant)
                 val claims = ChatGptOAuth.validateIdToken(tokens.getString("id_token"), jwks(), client, attempt.nonce)
-                require(previous == null || claims.getString("sub") == previous.getString("subject")) { "ChatGPT 账号与原注册不匹配" }
+                require(previous == null || claims.getString("sub") == previous.getString("subject")) { appText("ChatGPT 账号与原注册不匹配", "ChatGPT account does not match the original registration") }
                 val saved = tokenRecord(tokens, previous).put("client_id", client).put("subject", claims.getString("sub"))
                     .put("email", claims.optString("email", "ChatGPT")).put("issuer", ChatGptOAuth.ISSUER)
                 synchronized(this) {
-                    check(!cancelled) { "ChatGPT 登录已取消" }
+                    check(!cancelled) { appText("ChatGPT 登录已取消", "ChatGPT sign-in cancelled") }
                     change { state ->
                         val records = state.getJSONObject("accounts")
                         val existing = records.optJSONObject(client)
-                        require(existing == null || existing.getString("subject") == claims.getString("sub")) { "ChatGPT 注册账号不匹配" }
+                        require(existing == null || existing.getString("subject") == claims.getString("sub")) { appText("ChatGPT 注册账号不匹配", "ChatGPT registration account mismatch") }
                         records.put(client, saved); state.put("active", client)
                         if (state.optJSONObject("pendingLogin")?.optString("state") == attempt.state) state.remove("pendingLogin")
                         state.put("loginPhase", "authorized")
@@ -103,22 +104,22 @@ class ChatGptAccounts private constructor(context: Context) {
     private fun tokenRecord(tokens: JSONObject, old: JSONObject?): JSONObject {
         require(tokens.optString("token_type").equals("Bearer", true)) { "Unsupported ChatGPT token type" }
         val scope = tokens.optString("scope", old?.optString("scope").orEmpty())
-        require(ChatGptOAuth.PLAN_SCOPE in scope.split(' ')) { "未授权使用 ChatGPT 套餐，请重新登录并允许套餐使用" }
+        require(ChatGptOAuth.PLAN_SCOPE in scope.split(' ')) { appText("未授权使用 ChatGPT 套餐，请重新登录并允许套餐使用", "ChatGPT plan access was not granted. Sign in again and allow plan access") }
         require(tokens.optString("access_token").isNotBlank() && tokens.optLong("expires_in") > 0) { "Incomplete ChatGPT token response" }
         val result = old?.let { JSONObject(it.toString()) } ?: JSONObject()
         listOf("access_token", "refresh_token", "id_token").forEach { field -> if (tokens.optString(field).isNotBlank()) result.put(field, tokens.getString(field)) }
-        require(result.optString("refresh_token").isNotBlank()) { "ChatGPT 未返回可续期授权，请重新登录" }
+        require(result.optString("refresh_token").isNotBlank()) { appText("ChatGPT 未返回可续期授权，请重新登录", "ChatGPT returned no renewable authorization. Sign in again") }
         return result.put("scope", scope).put("expires_at", System.currentTimeMillis() + tokens.getLong("expires_in") * 1000)
     }
     fun accessToken(id: String, forceRefresh: Boolean = false): String = synchronized(refreshLock) {
         val saved = record(id)
-        check(saved.optString("access_token").isNotBlank()) { "请先登录 ChatGPT" }
+        check(saved.optString("access_token").isNotBlank()) { appText("请先登录 ChatGPT", "Sign in to ChatGPT first") }
         if (!forceRefresh && saved.optLong("expires_at") > System.currentTimeMillis() + 60_000) return@synchronized saved.getString("access_token")
         val tokens = post("${ChatGptOAuth.ISSUER}/api/accounts/oauth/token", mapOf("grant_type" to "refresh_token", "client_id" to id,
             "refresh_token" to saved.getString("refresh_token"), "resource" to ChatGptOAuth.RESOURCE))
         if (tokens.optString("id_token").isNotBlank()) {
             val claims = ChatGptOAuth.validateIdToken(tokens.getString("id_token"), jwks(), id, null)
-            require(claims.getString("sub") == saved.getString("subject")) { "ChatGPT 刷新账号不匹配，请重新登录" }
+            require(claims.getString("sub") == saved.getString("subject")) { appText("ChatGPT 刷新账号不匹配，请重新登录", "ChatGPT refresh account mismatch. Sign in again") }
         }
         val updated = tokenRecord(tokens, saved)
         change { it.getJSONObject("accounts").put(id, updated) }
@@ -128,7 +129,7 @@ class ChatGptAccounts private constructor(context: Context) {
         val body = request(Request.Builder().url("${ChatGptOAuth.RESOURCE}/models").header("Authorization", "Bearer ${accessToken(id)}").build())
         val models = body.getJSONArray("models")
         return (0 until models.length()).map { models.getJSONObject(it) }.filter { it.optString("visibility") == "list" }
-            .map { Model(it.getString("slug"), it.optString("display_name", it.getString("slug"))) }.also { check(it.isNotEmpty()) { "此 ChatGPT 账号暂无可用模型" } }
+            .map { Model(it.getString("slug"), it.optString("display_name", it.getString("slug"))) }.also { check(it.isNotEmpty()) { appText("此 ChatGPT 账号暂无可用模型", "No models available for this ChatGPT account") } }
     }
     /** Preserve registration identity and host; revoke and remove only renewable credentials. */
     fun signOut(id: String): Boolean = synchronized(refreshLock) {
@@ -156,7 +157,7 @@ class ChatGptAccounts private constructor(context: Context) {
         val text = it.body?.string().orEmpty()
         if (!it.isSuccessful) {
             val code = runCatching { JSONObject(text).optString("error") }.getOrDefault("")
-            error(if (code in listOf("invalid_grant", "invalid_token")) "ChatGPT 授权已失效，请重新登录" else "ChatGPT 请求失败 · HTTP ${it.code}")
+            error(if (code in listOf("invalid_grant", "invalid_token")) appText("ChatGPT 授权已失效，请重新登录", "ChatGPT authorization expired. Sign in again") else appText("ChatGPT 请求失败 · HTTP ${it.code}", "ChatGPT request failed · HTTP ${it.code}"))
         }
         if (text.isBlank()) JSONObject() else JSONObject(text)
     }

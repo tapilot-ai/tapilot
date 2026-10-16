@@ -8,16 +8,20 @@ class VoiceConversationTest {
     private class Mic : SpeechRecognition {
         override val canRetry = false
         var starts = 0
+        var cancels = 0
+        var readyImmediately = true
+        var ready: ((Result<Unit>) -> Unit)? = null
         var level: (Float) -> Unit = {}
         var transcript: (String) -> Unit = {}
         var finished: ((Result<String>) -> Unit)? = null
         override fun start(provider: String, apiKey: String, language: String, onLevel: (Float) -> Unit,
             onError: (Throwable) -> Unit, onTranscript: (String) -> Unit, callback: (Result<Unit>) -> Unit) {
-            starts++; level = onLevel; transcript = onTranscript; callback(Result.success(Unit))
+            starts++; level = onLevel; transcript = onTranscript; ready = callback
+            if (readyImmediately) callback(Result.success(Unit))
         }
         override fun finish(callback: (Result<String>) -> Unit) { finished = callback }
         override fun retry(apiKey: String, callback: (Result<String>) -> Unit) = Unit
-        override fun cancel() = Unit
+        override fun cancel() { cancels++ }
         override fun close() = Unit
     }
     private class Player : SpeechPlayback {
@@ -33,8 +37,9 @@ class VoiceConversationTest {
         val mic = Mic(); val player = Player(); var time = 1L; val questions = mutableListOf<String>()
         val session = VoiceConversation(mic, player, { time }, { it() }, { questions.add(it) }, {})
         fun start(history: List<VoiceReply> = emptyList()) = session.start("volcengine", "test-key", "zh-CN", history)
+        fun quiet() { repeat(17) { time += 100; mic.level(.02f); session.tick() } }
         fun ask(text: String) {
-            mic.transcript(text); repeat(4) { mic.level(.7f); time += 100 }; time += 1200
+            mic.transcript(text); repeat(4) { mic.level(.7f); time += 100 }; quiet()
             session.tick(); mic.finished!!(Result.success(text)); player.completed!!(Result.success(Unit)); player.spoken.clear()
         }
     }
@@ -68,13 +73,75 @@ class VoiceConversationTest {
         val s = Setup(); s.start(); s.mic.transcript("还没说完")
         repeat(20) { s.time += 100; s.mic.level(.35f); s.session.tick() }
         assertEquals(VoicePhase.Listening, s.session.state.phase)
-        s.time += 1201; s.session.tick(); assertEquals(VoicePhase.Recognizing, s.session.state.phase)
+        s.quiet(); assertEquals(VoicePhase.Recognizing, s.session.state.phase)
     }
     @Test fun quietRecognizedSpeechEndsAfterPauseWithoutReachingVolumeThreshold() {
         val s = Setup(); s.start(); s.mic.level(.1f); s.mic.transcript("小声回答")
-        s.time += 1201; s.session.tick()
+        s.quiet()
         assertEquals(VoicePhase.Recognizing, s.session.state.phase)
         s.mic.finished!!(Result.success("小声回答")); assertEquals(listOf("小声回答"), s.questions)
+    }
+    @Test fun quietOpeningSpeechNeedsAnActualDropBeforeSending() {
+        val s = Setup(); s.start(); s.mic.transcript("小声说话")
+        repeat(30) { s.time += 100; s.mic.level(.2f); s.session.tick() }
+        assertEquals(VoicePhase.Listening, s.session.state.phase)
+        s.quiet(); assertEquals(VoicePhase.Recognizing, s.session.state.phase)
+    }
+    @Test fun preparationDeadlineCancelsAndIgnoresLateCallbacks() {
+        val s = Setup(); s.mic.readyImmediately = false; s.start()
+        val cancels = s.mic.cancels
+        s.time += 30_000; s.session.tick()
+        assertEquals(cancels + 1, s.mic.cancels)
+        s.mic.ready!!(Result.success(Unit)); s.mic.transcript("迟到结果"); s.mic.level(.8f)
+        assertEquals(VoicePhase.Paused, s.session.state.phase)
+        assertEquals("", s.session.state.transcript)
+        assertTrue(s.questions.isEmpty())
+    }
+    @Test fun missingAudioCallbacksAreNotSilence() {
+        val s = Setup(); s.start(); s.mic.transcript("还在说")
+        repeat(4) { s.mic.level(.7f); s.time += 100 }
+        s.time += 2000; s.session.tick()
+        assertEquals(VoicePhase.Listening, s.session.state.phase)
+        assertNull(s.mic.finished)
+    }
+    @Test fun resumingSpeechCancelsPendingSilence() {
+        val s = Setup(); s.start(); s.mic.transcript("第一句")
+        repeat(12) { s.time += 100; s.mic.level(.02f); s.session.tick() }
+        repeat(25) { s.time += 100; s.mic.level(.15f); s.session.tick() }
+        assertEquals(VoicePhase.Listening, s.session.state.phase)
+        s.quiet(); assertEquals(VoicePhase.Recognizing, s.session.state.phase)
+    }
+    @Test fun steadyBackgroundAboveOldThresholdCanEndAnUtterance() {
+        val s = Setup(); s.start()
+        repeat(5) { s.time += 100; s.mic.level(.28f) }
+        s.mic.transcript("画好了")
+        repeat(5) { s.time += 100; s.mic.level(.65f) }
+        repeat(17) { s.time += 100; s.mic.level(.28f); s.session.tick() }
+        assertEquals(VoicePhase.Recognizing, s.session.state.phase)
+    }
+    @Test fun continuousSpeechTimesOutWithoutSendingOrRestarting() {
+        val s = Setup(); s.start(); s.mic.transcript("尚未说完的内容")
+        repeat(300) { s.time += 100; s.mic.level(.7f); s.session.tick() }
+        assertEquals(VoicePhase.Paused, s.session.state.phase)
+        assertTrue(s.session.state.listeningTimedOut)
+        assertEquals("尚未说完的内容", s.session.state.transcript)
+        assertNull(s.mic.finished); assertTrue(s.questions.isEmpty()); assertEquals(1, s.mic.starts)
+        s.session.setForeground(false); s.session.setForeground(true)
+        assertEquals(1, s.mic.starts)
+        s.session.resume(); assertEquals(2, s.mic.starts)
+        assertFalse(s.session.state.listeningTimedOut)
+    }
+    @Test fun holdModeAlsoHasListeningDeadline() {
+        val s = Setup(); s.start(); s.time += 30_000; s.session.tick(autoSend = false)
+        assertEquals(VoicePhase.Paused, s.session.state.phase)
+        assertTrue(s.session.state.listeningTimedOut)
+    }
+    @Test fun emptyRecognitionNeverAutomaticallyReopensPaidStream() {
+        for (result in listOf(Result.success(""), Result.failure(Exception("No speech recognized")))) {
+            val s = Setup(); s.start(); s.session.finishUtterance(); s.mic.finished!!(result)
+            assertEquals(VoicePhase.Paused, s.session.state.phase)
+            assertEquals(1, s.mic.starts); assertTrue(s.questions.isEmpty())
+        }
     }
     @Test fun oldRepliesAndRepeatedPublishesAreNotRead() {
         val s = Setup(); val old = VoiceReply("old", "旧回答", true); s.start(listOf(old)); s.ask("新问题")

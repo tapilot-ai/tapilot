@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.voice
 
+import lifeos.md.tapilot.AppText.text as appText
 import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
@@ -28,7 +29,7 @@ class VoiceEntryActivity : Activity() {
             if (isFinishing || !resumed) return
             if (!runtime.floatingVoice || entryGeneration != runtime.floatingEntryGeneration) { opened = true; finish(); return }
             if (!runtime.state.ready) {
-                if (SystemClock.elapsedRealtime() - started > 5_000) failEntry("语音启动失败，请重试")
+                if (SystemClock.elapsedRealtime() - started > 5_000) failEntry(appText("语音启动失败，请重试", "Unable to start voice input. Try again"))
                 else handler.postDelayed(this, 16)
                 return
             }
@@ -40,7 +41,7 @@ class VoiceEntryActivity : Activity() {
                     requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 7103)
                     return
                 }
-                if (key.isNullOrBlank() || !runtime.state.configured) { failEntry("请先在设置中配置模型和转写服务"); return }
+                if (key.isNullOrBlank() || !runtime.state.configured) { failEntry(appText("请先在设置中配置模型和转写服务", "Configure the model and transcription service in settings first")); return }
                 runtime.prepareVoiceEntry()
                 if (runtime.voiceState.active) {
                     when (runtime.voiceState.phase) {
@@ -109,7 +110,7 @@ class VoiceEntryActivity : Activity() {
             handler.post {
                 if (opened || isFinishing || entryGeneration != runtime.floatingEntryGeneration) return@post
                 result.getOrNull()?.let { capture ->
-                    LaunchContext.put(org.json.JSONObject().put("kind", "screen").put("label", "当前屏幕")
+                    LaunchContext.put(org.json.JSONObject().put("kind", "screen").put("label", appText("当前屏幕", "Current screen"))
                         .put("dataUrl", capture.dataUrl).put("fromPanel", true).put("voice", true))
                 }
                 completeEntry()
@@ -134,7 +135,7 @@ class VoiceEntryActivity : Activity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 7103) {
             if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) handler.post(connect)
-            else failEntry("需要麦克风权限才能语音对话")
+            else failEntry(appText("需要麦克风权限才能语音对话", "Microphone permission is required for voice conversations"))
         }
     }
     override fun onDestroy() {

@@ -10,7 +10,7 @@ class CredentialReadTest {
     @Test fun damagedProviderDoesNotAffectAnotherProviderAndHasRecoveryMessage() {
         val failure = runCatching { readCredential("speech-volcengine", "damaged") { error("invalid tag") } }.exceptionOrNull()!!
         assertTrue(failure.message!!.contains("speech-volcengine"))
-        assertTrue(failure.message!!.contains("重置"))
+        assertTrue(failure.message!!.contains("reset"))
         assertEquals("healthy", readCredential("qwen", "encrypted") { "healthy" })
         assertNull(failure.message!!.takeIf { it.contains("damaged") })
     }

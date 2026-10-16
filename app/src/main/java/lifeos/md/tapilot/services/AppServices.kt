@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.services
 
+import lifeos.md.tapilot.AppText.text as appText
 import lifeos.md.tapilot.bridge.*
 import lifeos.md.tapilot.device.*
 
@@ -67,7 +68,7 @@ class AppServices(
     }
 
     private val attachments = AttachmentStore(File(activity.filesDir, "chat-attachments"))
-    private val modelTransport = ModelTransport()
+    private val modelTransport = ModelTransport(onTiming = { android.util.Log.i("TapilotPerformance", it.toString()) })
     private val modelCredentialStore = ModelCredentialStore(activity)
     private val speech = SpeechService(appContext, modelCredentialStore)
     private val reportRepository = ReportRepository(File(activity.filesDir, "reports")).apply {
@@ -278,7 +279,7 @@ class AppServices(
                 }
             }
             "app.openAccessibilitySettings" -> {
-                android.widget.Toast.makeText(activity, "辅助功能 → 已安装／已下载的应用 → Tapilot 设备控制 → 打开开关并确认，然后返回 Tapilot", android.widget.Toast.LENGTH_LONG).show()
+                android.widget.Toast.makeText(activity, appText("辅助功能 → 已安装／已下载的应用 → Tapilot 设备控制 → 打开开关并确认，然后返回 Tapilot", "Accessibility → Installed/Downloaded apps → Tapilot device control → Enable and confirm, then return to Tapilot"), android.widget.Toast.LENGTH_LONG).show()
                 open(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                 respondSuccess(requestId, JSONObject.NULL)
             }

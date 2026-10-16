@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.conversation
 
+import lifeos.md.tapilot.AppText.text as appText
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.os.Handler
@@ -59,7 +60,7 @@ class LegacyConversationImport(private val activity: Activity, private val store
             }
             loadDataWithBaseURL("https://appassets.androidplatform.net/assets/legacy-import.html", "<html><body></body></html>", "text/html", "UTF-8", null)
         }
-        handler.postDelayed({ complete(Result.failure(IllegalStateException("旧数据导入超时，请重试；原数据已保留"))) }, 15_000)
+        handler.postDelayed({ complete(Result.failure(IllegalStateException(appText("旧数据导入超时，请重试；原数据已保留", "Import timed out. Try again; original data has been kept")))) }, 15_000)
     }
     private fun complete(outcome: Result<Unit>) {
         if (!finished.compareAndSet(false, true)) return
@@ -70,5 +71,5 @@ class LegacyConversationImport(private val activity: Activity, private val store
         result = null
         worker.shutdown()
     }
-    override fun close() { complete(Result.failure(IllegalStateException("导入已关闭"))) }
+    override fun close() { complete(Result.failure(IllegalStateException(appText("导入已关闭", "Import closed")))) }
 }

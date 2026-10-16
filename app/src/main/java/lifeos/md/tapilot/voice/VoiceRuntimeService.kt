@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.voice
 
+import lifeos.md.tapilot.AppText.text as appText
 import android.app.*
 import android.content.Intent
 import android.content.pm.ServiceInfo
@@ -19,7 +20,7 @@ class VoiceRuntimeService : Service() {
     override fun onCreate() {
         super.onCreate()
         getSystemService(NotificationManager::class.java).createNotificationChannel(
-            NotificationChannel(CHANNEL, "语音对话", NotificationManager.IMPORTANCE_LOW).apply { setSound(null, null) })
+            NotificationChannel(CHANNEL, appText("语音对话", "Voice conversation"), NotificationManager.IMPORTANCE_LOW).apply { setSound(null, null) })
     }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == STOP) { runtime.stopAudio(); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); return START_NOT_STICKY }
