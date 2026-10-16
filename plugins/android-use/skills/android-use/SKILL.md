@@ -33,7 +33,11 @@ connection open after the task. Runtime control uses Tapilot Wi-Fi; do not use A
 In default `steps` mode, use `tapilot_midscene(action="screenshot")` and explicit
 Midscene actions. Reuse its `report_id` throughout the same task and the latest
 `geometry.frameId` for coordinate actions. Inspect each returned screenshot before
-choosing the next action. Use `record` with the actual observed verdict at completion.
+choosing the next action. Step actions briefly observe subsequent frames and return
+`observation.state` (`stable`, `unchanged`, or `timeout`). This is a pixel-stability
+hint, not task verification; inspect the returned image. If it is inconclusive,
+obtain a fresh screenshot without replaying the action. `timing.rpc` contains
+aggregate capture/action timings, not host model inference time. Use `record` with the actual observed verdict at completion.
 The legacy tools do not generate Midscene reports; use them only in explicit `off`
 mode or when the user requests that fallback. AI mode requires separate consent
 and authorization; never enable it implicitly.

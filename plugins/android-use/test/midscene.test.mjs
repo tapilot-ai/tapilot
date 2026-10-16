@@ -6,8 +6,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MidsceneController } from "../server/midscene.mjs";
 import { WirelessDevice } from "../server/midscene/device.mjs";
-const png =
-  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==";
+import sharp from "sharp";
+const png = "data:image/png;base64," + (await sharp({ create: {
+  width: 1, height: 1, channels: 3, background: "white",
+} }).png().toBuffer()).toString("base64");
 async function fixture(t) {
   const root = await mkdtemp(join(tmpdir(), "android-midscene-"));
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -56,7 +58,7 @@ test("real SDK worker writes native report and borrows one phone session", async
     await c.run(phone, { action: "screenshot", report_id: "real-sdk" }),
   );
   assert.equal(observation.ok, true);
-  assert.equal(observation.geometry.frameId, "frame-2");
+  assert.equal(observation.geometry.frameId, "frame-1");
   const result = await c.run(phone, {
     action: "tap",
     x: 0,
@@ -65,7 +67,7 @@ test("real SDK worker writes native report and borrows one phone session", async
     report_id: "real-sdk",
   });
   const data = metadata(result);
-  assert.equal(data.ok, true);
+  assert.equal(data.ok, true, JSON.stringify(data));
   assert.equal(result.structuredContent.report_link, data.report_link);
   assert.match(result.structuredContent.final_response_instruction, /final reply/);
   assert.equal(data.report_link, `[View Midscene HTML report](<${data.report}>)`);
@@ -77,7 +79,7 @@ test("real SDK worker writes native report and borrows one phone session", async
   assert.equal(calls.filter((c) => c.method === "device.execute").length, 1);
   assert.equal(
     calls.find((c) => c.method === "device.execute").params.frameId,
-    "frame-2",
+    "frame-1",
   );
   const html = await readFile(data.report, "utf8");
   assert.match(html, /Tap/);

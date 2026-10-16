@@ -1,6 +1,6 @@
 {
   "name": "@tapilot/android-use",
-  "version": "0.5.10",
+  "version": "0.5.12",
   "private": true,
   "type": "module",
   "engines": {
@@ -24,7 +24,8 @@
     "proper-lockfile": "4.1.2",
     "qrcode": "1.5.4",
     "selfsigned": "5.5.0",
-    "zod": "3.25.76"
+    "zod": "3.25.76",
+    "sharp": "0.35.5"
   },
   "devDependencies": {
     "esbuild": "0.25.11"

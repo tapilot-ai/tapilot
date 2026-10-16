@@ -1,3 +1,6 @@
+import { settledFrame } from "./settled-frame.mjs";
+import { performance } from "node:perf_hooks";
+import { defaultChatGPTModel } from "./model-selection.mjs";
 import { WirelessDevice } from "./device.mjs";
 import { ActionReport } from "./action-report.mjs";
 import { randomUUID } from "node:crypto";
@@ -31,7 +34,17 @@ process.on("message", (message) => {
     );
 });
 async function run(request) {
-  const device = new WirelessDevice(rpc);
+  const started = performance.now();
+  const rpcTimings = {};
+  const device = new WirelessDevice(async (method, params) => {
+    const start = performance.now();
+    try { return await rpc(method, params); }
+    finally {
+      const metric = rpcTimings[method] ??= { count: 0, totalMs: 0 };
+      metric.count++;
+      metric.totalMs += Math.round(performance.now() - start);
+    }
+  });
   let report,
     agent,
     screenshot,
@@ -52,9 +65,7 @@ async function run(request) {
       const { TapProgressGuard } = await import("./ai-budget.mjs");
       const { compactPlanningContext } = await import("./compact-planning.mjs");
       const auth = new ChatGPTAuth(`${process.cwd()}/chatgpt`);
-      const model = (await auth.models()).find((m) =>
-        /^gpt-/.test(m.slug),
-      )?.slug;
+      const model = defaultChatGPTModel(await auth.models());
       if (!model) throw new Error("no_compatible_model");
       const controller = new AbortController();
       timer = setTimeout(
@@ -138,7 +149,7 @@ async function run(request) {
       report = new ActionReport(reportId, action, args, screenshot, viewport);
       await report.flush();
       report.startAction();
-      screenshot = undefined;
+      const before = screenshot;
       const names = {
         tap: "Tap",
         swipe: "Swipe",
@@ -169,7 +180,12 @@ async function run(request) {
         await sdkAction.call(param);
       }
       report.endAction();
-      screenshot = await device.screenshotBase64();
+      let observation;
+      if (sdkAction) {
+        const settled = await settledFrame(() => device.screenshotBase64(), before);
+        screenshot = settled.screenshot;
+        observation = settled.observation;
+      }
       viewport = await device.size();
       const error =
         action === "record" && !args.passed
@@ -180,6 +196,7 @@ async function run(request) {
         ok: !error,
         action_complete: true,
         decision_source: "chat_host",
+        ...(observation ? { observation } : {}),
         ...(error ? { error } : {}),
       };
     }
@@ -217,6 +234,7 @@ async function run(request) {
   }
   return {
     ...result,
+    timing: { totalMs: Math.round(performance.now() - started), rpc: rpcTimings },
     ...(screenshot ? { screenshot, viewport: await device.size() } : {}),
     frame: device.frame,
     report_id: request.reportId,

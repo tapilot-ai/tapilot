@@ -369,3 +369,23 @@ rendering and real-provider sign-in still require host acceptance.
 
 These paths are covered by local regression tests. Real ChatGPT/Codex host
 acceptance remains pending a host reload.
+
+## Faster step observations (0.5.11)
+
+Screenshot-only requests no longer capture twice. After a host-directed step,
+the plugin briefly observes the screen and returns a changed, stable frame when
+possible, reducing extra screenshot/model round trips. `observation.state` reports
+`stable`, `unchanged` or `timeout`; inspect the image to verify the actual outcome.
+The observer never replays an action. `timing` includes aggregate worker and RPC
+durations without screenshots, coordinates or credentials in timing fields.
+
+See [measured results and limitations](../../docs/development/performance.md#wireless-steps-post-action-observation-2026-10-16).
+
+### Small screen changes (0.5.12)
+
+The observer also detects concentrated local changes, such as calculator digits
+and small controls, rather than requiring 1% of the entire screen to change.
+Initial and inter-frame waits are shorter; a changed frame still needs a second
+stable observation. Unchanged screens and continuing animations retain the bounded
+wait and an inconclusive result. This affects host-directed steps, not the phone's
+independent AI planner. Pixel stability never replaces visual task verification.

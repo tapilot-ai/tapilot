@@ -2,7 +2,7 @@ import { t, setLanguage, localize } from './i18n.mjs';
 import { App } from '@modelcontextprotocol/ext-apps';
 import { imagePoint } from './geometry.mjs';
 import { PreviewActivity } from './preview-activity.mjs';
-const app = new App({ name: 'Android Use', version: '0.5.10' }, {});
+const app = new App({ name: 'Android Use', version: '0.5.12' }, {});
 const image = document.querySelector('img');
 const status = document.querySelector('[role=status]');
 const resume = document.querySelector('#resume');
