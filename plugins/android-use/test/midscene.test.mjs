@@ -68,7 +68,7 @@ test("real SDK worker writes native report and borrows one phone session", async
   assert.equal(data.ok, true);
   assert.equal(result.structuredContent.report_link, data.report_link);
   assert.match(result.structuredContent.final_response_instruction, /final reply/);
-  assert.equal(data.report_link, `[查看 Midscene HTML 报告](<${data.report}>)`);
+  assert.equal(data.report_link, `[View Midscene HTML report](<${data.report}>)`);
   assert.ok(result.content.some(item => item.type === "text" && item.text === data.report_link));
   const resource = result.content.find(item => item.type === "resource_link");
   assert.equal(resource.mimeType, "text/html");
@@ -256,6 +256,7 @@ test("real AI SDK uses Responses fixture and wireless adapter for act/assert/wai
 test("removed plugin worker tells the host to reload before touching the phone", async (t) => {
   const { controller: original, phone, calls } = await fixture(t);
   const source = (await readFile(new URL('../server/midscene.mjs', import.meta.url), 'utf8'))
+    .replace("'../ui/i18n.mjs'", JSON.stringify(new URL('../ui/i18n.mjs', import.meta.url).href))
     .replace('"./midscene/chatgpt-auth.mjs"', JSON.stringify(new URL('../server/midscene/chatgpt-auth.mjs', import.meta.url).href))
     .replace('"./installation.mjs"', JSON.stringify(new URL('../server/installation.mjs', import.meta.url).href));
   const modulePath = join(original.root, 'removed-version.mjs');
@@ -302,8 +303,8 @@ test("installation guidance includes both APK sources and needs no phone", async
   assert.equal(result.structuredContent.state, 'setup_required');
   assert.equal(result.structuredContent.downloads.feishu, 'https://www.feishu.cn/file/Ig0KbUKlJoADozxRbOocm5iqnXf');
   assert.equal(result.structuredContent.downloads.github, 'https://github.com/quanru/tapilot/releases');
-  assert.match(result.structuredContent.download_links, /\[飞书下载/);
-  assert.match(result.structuredContent.compatibility, /无线控制/);
+  assert.match(result.structuredContent.download_links, /\[Download Tapilot APK from Feishu/);
+  assert.match(result.structuredContent.compatibility, /wireless control/);
   assert.equal(result.structuredContent.pairing.command, 'node');
   assert.match(result.structuredContent.pairing.script, /server\/pair\.mjs$/);
   assert.equal(calls.length, 0);

@@ -96,6 +96,8 @@ test('real MCP stdio handshake, image content, schema and disconnect', async t =
   const resource = await client.readResource({ uri: resources.resources[0].uri });
   assert.match(resource.contents[0].text, /Android Use/);
   assert.deepEqual(resource.contents[0]._meta.ui.csp.connectDomains, []);
+  const initial = await client.callTool({ name: 'tapilot_preview_frame', arguments: {} });
+  assert.equal(initial.structuredContent.state, 'live', 'An existing panel reconnects after a host restart without an open/resume call');
   const result = await client.callTool({ name: 'tapilot_screen', arguments: {} });
   assert.equal(result.isError, undefined);
   assert.equal(result.content[1].type, 'image'); assert.equal(result.content[1].data, png);
@@ -110,7 +112,11 @@ test('real MCP stdio handshake, image content, schema and disconnect', async t =
   const repeated = await client.callTool({ name: 'tapilot_preview_control', arguments: args });
   assert.equal(repeated.isError, true);
   await client.callTool({ name: 'tapilot_disconnect', arguments: {} });
-  assert.deepEqual(requests.map(r => r.method), ['authenticate', 'device.capture', 'device.preview', 'device.capture', 'device.execute', 'device.preview', 'disconnect']);
+  const requestCount = requests.length;
+  const released = await client.callTool({ name: 'tapilot_preview_frame', arguments: {} });
+  assert.equal(released.structuredContent.state, 'disconnected');
+  assert.equal(requests.length, requestCount, 'Polling must not undo explicit release');
+  assert.deepEqual(requests.map(r => r.method), ['authenticate', 'device.preview', 'device.capture', 'device.preview', 'device.capture', 'device.execute', 'device.preview', 'disconnect']);
 });
 
 test('pairing links validate endpoint and credentials without echoing secrets', () => {
@@ -125,6 +131,7 @@ test('preview uses independent capture, pauses on lock and requires explicit res
     methods.push(method); if (locked) throw new Error('Phone is locked. Unlock it on the device.');
     return { dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', capturedAt: 1 };
   } };
+  preview.pause('disconnected');
   assert.equal((await preview.frame(phone)).structuredContent.state, 'disconnected');
   assert.equal(methods.length, 0);
   preview.observe(); assert.equal((await preview.frame(phone)).structuredContent.state, 'live');
@@ -143,7 +150,7 @@ test('unlock interaction waits for actual acceptance and never repeats mutations
   const declined = await unlockRequired(server, preview, {}, 'tapilot_screen', retry);
   assert.equal(JSON.parse(declined.content[0].text).needs_user_input, true);
   assert.equal(repeated, 0);
-  answer = { action: 'accept', content: { completion: '已完成继续' } };
+  answer = { action: 'accept', content: { completion: 'Continue' } };
   await unlockRequired(server, preview, {}, 'tapilot_tap', retry);
   assert.equal(repeated, 0);
   await unlockRequired(server, preview, {}, 'tapilot_screen', retry);
@@ -161,12 +168,12 @@ test('real MCP lock elicits once then returns fresh screen after user completion
   const path = join(dir, 'config.json'); await saveConfig(config, path);
   const client = new Client({ name: 'unlock-test', version: '1' }, { capabilities: { elicitation: { form: {} } } });
   client.setRequestHandler(ElicitRequestSchema, async request => {
-    prompts++; assert.match(request.params.message, /手动解锁/);
+    prompts++; assert.match(request.params.message, /Unlock your phone/);
     const paused = await client.callTool({ name: 'tapilot_preview_frame', arguments: {} });
     assert.equal(paused.structuredContent.state, 'device_locked');
     assert.equal(paused.structuredContent.dataUrl, undefined);
     locked = false;
-    return { action: 'accept', content: { completion: '已完成继续' } };
+    return { action: 'accept', content: { completion: 'Continue' } };
   });
   t.after(() => client.close());
   await client.connect(new StdioClientTransport({ command: process.execPath, args: [new URL('../server/index.mjs', import.meta.url).pathname], env: { ...process.env, TAPILOT_CONFIG: path, ANDROID_USE_STATE_DIR: join(dir,'state') }, stderr: 'pipe' }));
@@ -180,7 +187,7 @@ test('real MCP lock elicits once then returns fresh screen after user completion
 test('a newer privacy pause or disconnect wins over an old unlock dialog', async () => {
   const preview = new Preview(); let retried = false;
   const server = { getClientCapabilities: () => ({ elicitation: { form: {} } }), elicitInput: async () => {
-    preview.pause('manual'); return { action: 'accept', content: { completion: '已完成继续' } };
+    preview.pause('manual'); return { action: 'accept', content: { completion: 'Continue' } };
   } };
   await unlockRequired(server, preview, {}, 'tapilot_screen', async () => { retried = true; });
   assert.equal(retried, false); assert.equal(preview.reason, 'manual');
@@ -231,11 +238,39 @@ test('LAN source selection excludes VPNs and refuses ambiguous interfaces', asyn
 
 test('pause during unlock observation discards its late screen', async () => {
   const preview = new Preview();
-  const server = {getClientCapabilities:()=>({elicitation:{form:{}}}),elicitInput:async()=>({action:'accept',content:{completion:'已完成继续'}})};
+  const server = {getClientCapabilities:()=>({elicitation:{form:{}}}),elicitInput:async()=>({action:'accept',content:{completion:'Continue'}})};
   const response=await unlockRequired(server,preview,{},'tapilot_screen',async()=>{
     preview.pause('manual');return {content:[{type:'image',data:'private',mimeType:'image/png'}]};
   });
   assert.equal(preview.reason,'manual');
   assert.deepEqual(response.content,[]);
   assert.equal(response.structuredContent.state,'manual');
+});
+
+test('existing panel automatically recovers after first pairing and external credential replacement', async t => {
+  const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
+  const {dir,config,requests} = await fixture(t, (request,reply) => reply({dataUrl:`data:image/png;base64,${png}`,capturedAt:Date.now(),language:'zh'}));
+  const path=join(dir,'new-pair.json');
+  const client=new Client({name:'pair-recovery',version:'1'});
+  t.after(()=>client.close());
+  await client.connect(new StdioClientTransport({command:process.execPath,args:[new URL('../server/index.mjs',import.meta.url).pathname],env:{...process.env,TAPILOT_CONFIG:path,ANDROID_USE_STATE_DIR:join(dir,'state')},stderr:'pipe'}));
+  const call = name => client.callTool({name,arguments:{}});
+  assert.equal((await call('tapilot_preview_open')).structuredContent.state,'setup_required');
+  await saveConfig({...config,token:'b'.repeat(43)},path);
+  assert.equal((await call('tapilot_preview_frame')).structuredContent.state,'pairing_required');
+  await saveConfig({...config,language:'zh'},path);
+  const frame=await call('tapilot_preview_frame');
+  assert.equal(frame.structuredContent.state,'live');
+  assert.equal(frame.structuredContent.language,'zh');
+  assert.equal(requests.filter(r=>r.method==='device.execute').length,0);
+  await client.callTool({name:'tapilot_preview',arguments:{action:'pause'}});
+  const count=requests.length;
+  await saveConfig({...config,token:'c'.repeat(43)},path);
+  assert.equal((await call('tapilot_preview_frame')).structuredContent.state,'manual');
+  assert.equal(requests.length,count,'credential replacement cannot bypass privacy pause');
+});
+
+test('pairing invalidates old frames without bypassing a locked phone', () => {
+  const p=new Preview(); p.pause('device_locked'); p.lastFrame={id:'old'};
+  p.reconnect(); assert.equal(p.reason,'device_locked'); assert.equal(p.lastFrame,undefined);
 });

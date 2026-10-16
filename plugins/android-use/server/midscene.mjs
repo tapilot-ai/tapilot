@@ -1,3 +1,4 @@
+import { t } from '../ui/i18n.mjs';
 import { existsSync } from "node:fs";
 import { fork, execFile } from "node:child_process";
 import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
@@ -5,7 +6,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
-import { installationGuide } from "./installation.mjs";
+import { getInstallationGuide } from "./installation.mjs";
 import { ChatGPTAuth } from "./midscene/chatgpt-auth.mjs";
 const text = (value) => ({
   content: [{ type: "text", text: JSON.stringify(value) }],
@@ -154,7 +155,7 @@ export class MidsceneController {
     this.validate(args);
     await mkdir(this.root, { recursive: true, mode: 0o700 });
     const { action } = args;
-    if (action === "setup") return text(installationGuide);
+    if (action === "setup") return text(getInstallationGuide());
     if (action === "status") {
       const mode = await this.mode();
       const status = await this.auth.status();
@@ -165,7 +166,7 @@ export class MidsceneController {
           needs_user_input: false,
           next_action: mode === "steps" ? "continue_steps" : "respect_saved_mode",
         }),
-        ...(this.active ? { next_action: "wait_or_pause", message: "任务正在执行。可继续查看实时画面；如需接管，先暂停任务，勿重复提交。" } : {}),
+        ...(this.active ? { next_action: "wait_or_pause", message: t("任务正在执行。可继续查看实时画面；如需接管，先暂停任务，勿重复提交。") } : {}),
       });
     }
     if (action === "discover") {
@@ -253,10 +254,10 @@ export class MidsceneController {
       ...(pending ? { authorization_url: status.login.url } : {}),
       retry_requires_user_request: ["cancelled", "failed", "expired", "signed_out"].includes(status.login?.status),
       message: mode !== "ai"
-        ? "Midscene AI 可以自动识别和规划操作，需要通过 OpenAI 页面登录授权；也可继续使用当前聊天模型决策的单步模式。请选择后再继续。"
+        ? t("Midscene AI 可以自动识别和规划操作，需要通过 OpenAI 页面登录授权；也可继续使用当前聊天模型决策的单步模式。请选择后再继续。")
         : pending
-          ? "请在已打开的 OpenAI 页面完成 Android Use 授权，完成后再检查授权状态。不要在聊天里提供密码、验证码或令牌。"
-          : "Midscene AI 尚未授权。通过 auth_login 打开 OpenAI 登录授权页；聊天窗口的登录不会自动授权给插件，无需填写 API Key。",
+          ? t("请在已打开的 OpenAI 页面完成 Android Use 授权，完成后再检查授权状态。不要在聊天里提供密码、验证码或令牌。")
+          : t("Midscene AI 尚未授权。通过 auth_login 打开 OpenAI 登录授权页；聊天窗口的登录不会自动授权给插件，无需填写 API Key。"),
       host_instruction: mode !== "ai"
         ? "Ask whether the user wants Midscene AI or steps. Explicit AI/login requests already count as consent: set mode=ai then check auth_status. Otherwise wait for their choice."
         : pending
@@ -401,7 +402,7 @@ export class MidsceneController {
       if (result.frame) this.observation = result.frame;
       const { screenshot, frame, ...metadata } = result;
       const reportLink = result.report
-        ? `[查看 Midscene HTML 报告](<${result.report}>)`
+        ? `[${t('查看 Midscene HTML 报告')}](<${result.report}>)`
         : undefined;
       return {
         structuredContent: {
@@ -428,7 +429,7 @@ export class MidsceneController {
               type: "resource_link",
               uri: pathToFileURL(result.report).href,
               name: `android-use-${reportId}.html`,
-              title: "Midscene HTML 报告",
+              title: t("Midscene HTML 报告"),
               description: "Local Midscene execution report with screenshots and action replay.",
               mimeType: "text/html",
             },

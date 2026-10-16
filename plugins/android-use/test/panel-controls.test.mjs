@@ -182,7 +182,7 @@ test('privacy pause during action preparation prevents the gesture from dispatch
 test('missing plugin modules explain host recovery without exposing local paths', async () => {
   const error = Object.assign(new Error("Cannot find module '/private/cache/old/server/discovery.mjs'"), {code:'ERR_MODULE_NOT_FOUND'});
   assert.equal(connectionState(error), 'host_reload_required');
-  assert.match(connectionMessage(error), /重载/);
+  assert.match(connectionMessage(error), /Reload/);
   assert.doesNotMatch(connectionMessage(error), /private\/cache/);
   const phone=device(); phone.open=async()=>{throw error;};
   const preview=new Preview();preview.observe();

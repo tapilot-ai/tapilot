@@ -1,3 +1,4 @@
+import { t } from '../../ui/i18n.mjs';
 // Public-client OAuth for ChatGPT plan usage. No Codex credentials or API keys.
 import {
   createHash,
@@ -393,7 +394,7 @@ export class ChatGPTAuth {
           });
           await this.write("login.json", { status: "authorized" });
           res.end(
-            "Android Use 已获得 ChatGPT 推理授权。可以关闭此页面并返回聊天。",
+            t("Android Use 已获得 ChatGPT 推理授权。可以关闭此页面并返回聊天。"),
           );
           finish();
         } catch (error) {
@@ -408,7 +409,7 @@ export class ChatGPTAuth {
             finish();
           }
           res.writeHead(400);
-          res.end("授权未完成，请返回 Android Use 查看状态并重试。");
+          res.end(t("授权未完成，请返回 Android Use 查看状态并重试。"));
         }
       });
       await new Promise((resolve, reject) => {

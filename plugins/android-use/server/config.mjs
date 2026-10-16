@@ -11,7 +11,9 @@ export function validateConfig(value) {
       || !/^[a-f0-9]{64}$/.test(value.fingerprint) || !/^[A-Za-z0-9_-]{43}$/.test(value.token)) {
     throw new Error('Invalid Tapilot pairing data');
   }
-  return { version: 1, host: value.host, port: value.port, fingerprint: value.fingerprint, token: value.token };
+  if (value.language !== undefined && !['en', 'zh'].includes(value.language)) throw new Error('Invalid pairing language');
+  return { version: 1, host: value.host, port: value.port, fingerprint: value.fingerprint, token: value.token,
+    ...(value.language ? {language:value.language} : {}) };
 }
 export function parsePairingLink(link) {
   if (!link.startsWith('tapilot://pair/') || link.length > 2048) throw new Error('Paste the pairing link copied from Tapilot settings');

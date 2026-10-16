@@ -1,3 +1,4 @@
+import { t } from '../ui/i18n.mjs';
 import { createServer } from 'node:http';
 import { createServer as createSecureServer } from 'node:https';
 import { randomBytes, createHash, X509Certificate } from 'node:crypto';
@@ -26,7 +27,7 @@ export async function createPairingWindow({ host = pairingAddress(), pair = pair
   const fingerprint = createHash('sha256').update(new X509Certificate(certificate.cert).raw).digest('hex');
   const nonce = randomBytes(32).toString('base64url');
   const expiresAt = Date.now()+lifetimeMs;
-  let pending, paired = false, pairing = false, offers = 0, html, qr;
+  let pending, language, paired = false, pairing = false, offers = 0, html, qr;
   const handler = async (req,res) => {
     res.setHeader('Cache-Control','no-store'); res.setHeader('Referrer-Policy','no-referrer');
     res.setHeader('X-Content-Type-Options','nosniff');
@@ -39,7 +40,7 @@ export async function createPairingWindow({ host = pairingAddress(), pair = pair
         if (paired || pairing || pending || ++offers > 10 || req.headers.origin) return json(409,{error:'Pairing offer unavailable'});
         if (!req.socket.encrypted) return json(403,{error:'TLS required'});
         const config = validateConfig(JSON.parse(await body(req)));
-        pending = config; return json(200,{received:true});
+        pending = config; language = config.language; return json(200,{received:true});
       }
       // Browser controls are loopback-only, origin checked, and capability protected.
       if (req.socket.encrypted || !['127.0.0.1','::ffff:127.0.0.1','::1'].includes(req.socket.remoteAddress) || req.headers.host !== `127.0.0.1:${server.address().port}`) return json(403,{error:'Open the pairing window on this computer'});
@@ -48,9 +49,10 @@ export async function createPairingWindow({ host = pairingAddress(), pair = pair
       const route = url.pathname.slice(nonce.length+2);
       if(req.method==='GET' && route==='') {res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});res.end(html);return;}
       if(req.method==='GET' && route==='pairing.mjs') {res.writeHead(200,{'Content-Type':'text/javascript'});res.end(await readFile(new URL('../ui/pairing.mjs',import.meta.url)));return;}
+      if(req.method==='GET' && route==='i18n.mjs') {res.writeHead(200,{'Content-Type':'text/javascript'});res.end(await readFile(new URL('../ui/i18n.mjs',import.meta.url)));return;}
       if(req.method==='GET' && route==='pairing.css') {res.writeHead(200,{'Content-Type':'text/css'});res.end(await readFile(new URL('../ui/pairing.css',import.meta.url)));return;}
       if(req.method==='GET' && route==='qr.svg') {res.writeHead(200,{'Content-Type':'image/svg+xml'});res.end(qr);return;}
-      if(req.method==='GET' && route==='status') return json(200,{paired,pairing,expiresAt,pending:pending?{host:pending.host,fingerprint:pending.fingerprint}:null});
+      if(req.method==='GET' && route==='status') return json(200,{paired,pairing,expiresAt,language,pending:pending?{host:pending.host,fingerprint:pending.fingerprint}:null});
       if(req.method==='POST' && route==='discover') return json(200,{devices:await discover()});
       if(req.method==='POST' && route==='confirm') {
         if (!pending || paired || pairing) return json(409,{error:'No pending phone'});
