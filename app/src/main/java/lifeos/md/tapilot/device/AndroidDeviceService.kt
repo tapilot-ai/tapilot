@@ -22,7 +22,7 @@ class AndroidDeviceService(context: Context) : DeviceService {
                     complete(Result.success(JSONObject().put("width", size.widthPixels).put("height", size.heightPixels)))
                 }
                 is DeviceCommand.Capture -> (service ?: throw AccessibilityDisabledException()).capture(sessionId,
-                    metadataOnly = command.metadataOnly, recordFrame = !command.preview, jpeg = command.jpeg) { result ->
+                    metadataOnly = command.metadataOnly, recordFrame = !command.preview, jpeg = command.jpeg, hideOverlays = !command.preview) { result ->
                     complete(result.map { frame ->
                         if (command.preview) JSONObject().put("dataUrl", frame.dataUrl).put("capturedAt", frame.capturedAt)
                         else JSONObject().put("dataUrl", frame.dataUrl).put("geometry", frame.geometry())

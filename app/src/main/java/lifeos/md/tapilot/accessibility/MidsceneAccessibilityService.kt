@@ -162,8 +162,14 @@ class MidsceneAccessibilityService : AccessibilityService() {
         if (::floatingBall.isInitialized) { floatingBall.updatePosition(); floatingBall.refreshTheme() }
     }
 
-    fun capture(sessionId: String, recordFrame: Boolean = true, jpeg: Boolean = false, metadataOnly: Boolean = false, callback: (Result<CapturePayload>) -> Unit) {
+    fun capture(sessionId: String, recordFrame: Boolean = true, jpeg: Boolean = false, metadataOnly: Boolean = false, hideOverlays: Boolean = true, callback: (Result<CapturePayload>) -> Unit) {
         if (isCancelled(sessionId, callback)) return
+        // Live preview is for the user: preserve phone overlays instead of blinking
+        // them off and on for every frame. Model captures retain the clean path.
+        if (!hideOverlays) {
+            captureFullDisplay(sessionId, callback, recordFrame = recordFrame, jpeg = jpeg, metadataOnly = metadataOnly, hideOverlays = false)
+            return
+        }
         if (continuousEffectCapture.tryCapture(deliver = { result ->
             if (cancelledSessions.contains(sessionId)) {
                 result.hardwareBuffer.close()
@@ -211,17 +217,18 @@ class MidsceneAccessibilityService : AccessibilityService() {
         recordFrame: Boolean = true,
         jpeg: Boolean = false,
         metadataOnly: Boolean = false,
+        hideOverlays: Boolean = true,
     ) {
         if (isCancelled(sessionId, callback)) return
         // Full-display capture includes accessibility overlays. Hide only while
         // Android latches the frame so AI input and report-player frames stay
         // clean. The animator keeps advancing and resumes at its current phase.
-        val hiddenTaskEffect = taskEffects.hideForCapture()
-        val hiddenFloatingBall = floatingBall.hideForCapture()
+        val hiddenTaskEffect = if (hideOverlays) taskEffects.hideForCapture() else null
+        val hiddenFloatingBall = if (hideOverlays) floatingBall.hideForCapture() else false
         handler.postDelayed({
             if (isCancelled(sessionId, callback)) {
-                taskEffects.restoreAfterCapture(hiddenTaskEffect)
-                floatingBall.restoreAfterCapture(hiddenFloatingBall)
+                hiddenTaskEffect?.let { taskEffects.restoreAfterCapture(it) }
+                if (hideOverlays) floatingBall.restoreAfterCapture(hiddenFloatingBall)
                 return@postDelayed
             }
             runCatching { takeScreenshot(
@@ -237,21 +244,21 @@ class MidsceneAccessibilityService : AccessibilityService() {
                         } catch (error: Throwable) {
                             callback(Result.failure(error))
                         } finally {
-                            taskEffects.restoreAfterCapture(hiddenTaskEffect)
-                            floatingBall.restoreAfterCapture(hiddenFloatingBall)
+                            hiddenTaskEffect?.let { taskEffects.restoreAfterCapture(it) }
+                            if (hideOverlays) floatingBall.restoreAfterCapture(hiddenFloatingBall)
                         }
                     }
 
                     override fun onFailure(errorCode: Int) {
-                        taskEffects.restoreAfterCapture(hiddenTaskEffect)
-                        floatingBall.restoreAfterCapture(hiddenFloatingBall)
+                        hiddenTaskEffect?.let { taskEffects.restoreAfterCapture(it) }
+                        if (hideOverlays) floatingBall.restoreAfterCapture(hiddenFloatingBall)
                         val retryDelay = ScreenshotFailurePolicy.retryDelayMillis(
                             errorCode,
                             retryAttempt,
                         )
                         if (retryDelay != null) {
                             handler.postDelayed(
-                                { captureFullDisplay(sessionId, callback, retryAttempt + 1, recordFrame, jpeg, metadataOnly) },
+                                { captureFullDisplay(sessionId, callback, retryAttempt + 1, recordFrame, jpeg, metadataOnly, hideOverlays) },
                                 retryDelay,
                             )
                             return
@@ -265,11 +272,11 @@ class MidsceneAccessibilityService : AccessibilityService() {
                     }
                 },
             ) }.onFailure {
-                taskEffects.restoreAfterCapture(hiddenTaskEffect)
-                floatingBall.restoreAfterCapture(hiddenFloatingBall)
+                hiddenTaskEffect?.let { taskEffects.restoreAfterCapture(it) }
+                if (hideOverlays) floatingBall.restoreAfterCapture(hiddenFloatingBall)
                 callback(Result.failure(it))
             }
-        }, OVERLAY_SETTLE_MS)
+        }, if (hideOverlays) OVERLAY_SETTLE_MS else 0L)
     }
 
     fun execute(sessionId: String, action: NativeAction, callback: (Result<Unit>) -> Unit) {
