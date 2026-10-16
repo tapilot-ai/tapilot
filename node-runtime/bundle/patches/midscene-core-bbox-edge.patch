@@ -1,0 +1,32 @@
+diff --git a/dist/es/ai-model/shared/model-locate-result/validation.mjs b/dist/es/ai-model/shared/model-locate-result/validation.mjs
+--- a/dist/es/ai-model/shared/model-locate-result/validation.mjs
++++ b/dist/es/ai-model/shared/model-locate-result/validation.mjs
+@@ -42,6 +42,12 @@
+     const coordinatesMeta = result.coordinatesMeta;
+     const { normalizedBy } = coordinatesMeta;
+     const limits = resolveCoordinateLimits(result, maxX, maxY);
++    // Pixel bbox far edges may be exclusive (width/height). The pixel mapper
++    // clamps them to the last pixel; points and bbox origins remain strict.
++    if (coordinatesMeta.shape === 'bbox' && normalizedBy === undefined) {
++        limits[2] += 1;
++        limits[3] += 1;
++    }
+     const outOfRange = result.coordinates.some((value, index)=>value < 0 || value > limits[index]);
+     if (outOfRange) {
+         const source = void 0 !== normalizedBy ? `normalized range [0, ${normalizedBy}]` : `image size [0, ${maxX}]x[0, ${maxY}]`;
+diff --git a/dist/lib/ai-model/shared/model-locate-result/validation.js b/dist/lib/ai-model/shared/model-locate-result/validation.js
+--- a/dist/lib/ai-model/shared/model-locate-result/validation.js
++++ b/dist/lib/ai-model/shared/model-locate-result/validation.js
+@@ -71,6 +71,12 @@
+     const coordinatesMeta = result.coordinatesMeta;
+     const { normalizedBy } = coordinatesMeta;
+     const limits = resolveCoordinateLimits(result, maxX, maxY);
++    // Pixel bbox far edges may be exclusive (width/height). The pixel mapper
++    // clamps them to the last pixel; points and bbox origins remain strict.
++    if (coordinatesMeta.shape === 'bbox' && normalizedBy === undefined) {
++        limits[2] += 1;
++        limits[3] += 1;
++    }
+     const outOfRange = result.coordinates.some((value, index)=>value < 0 || value > limits[index]);
+     if (outOfRange) {
+         const source = void 0 !== normalizedBy ? `normalized range [0, ${normalizedBy}]` : `image size [0, ${maxX}]x[0, ${maxY}]`;

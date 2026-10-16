@@ -5,6 +5,7 @@ minimumReleaseAgeExclude:
   - '@midscene/shared@1.15.2'
   - '@midscene/test@1.15.2'
 patchedDependencies:
+  '@midscene/core@1.15.2': patches/midscene-core-bbox-edge.patch
   '@midscene/test@1.15.2': patches/midscene-test-unbounded.patch
 supportedArchitectures:
   cpu:
