@@ -6,6 +6,8 @@ import com.journeyapps.barcodescanner.ScanOptions
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -25,6 +27,7 @@ internal fun WirelessControlSettings(context: Context, zh: Boolean) {
     fun label(a: String, b: String) = if (zh) a else b
     var status by rememberSaveable { mutableStateOf("") }
     var pairingDialog by rememberSaveable { mutableStateOf(false) }
+    val detailInset = Modifier.padding(horizontal = 12.dp)
     val stage = WirelessState.pairingStage
     val pairingBusy = stage == PairingStage.SENDING || stage == PairingStage.WAITING
     val pairingMessage = when (stage) {
@@ -73,7 +76,7 @@ internal fun WirelessControlSettings(context: Context, zh: Boolean) {
         }) { Text(label("打开系统辅助功能", "Open Accessibility settings")) }
         Text(if (WirelessState.connected) label("已连接电脑", "Computer connected")
             else if (WirelessState.address.isNotEmpty()) (if (WirelessState.paired) label("已配对 · 等待电脑连接", "Paired · Waiting for computer") else label("未配对 · 请扫描电脑二维码", "Not paired · Scan computer QR")) + " · ${WirelessState.address}"
-            else if (WirelessState.enabled) label("正在开启…", "Starting…") else label("未开启", "Off"))
+            else if (WirelessState.enabled) label("正在开启…", "Starting…") else label("未开启", "Off"), modifier = detailInset)
         TextButton(onClick = {
             status = ""
             runCatching {
@@ -92,9 +95,9 @@ internal fun WirelessControlSettings(context: Context, zh: Boolean) {
         if (WirelessState.enabled && WirelessState.paired) TextButton(onClick = { WirelessControlService.current?.revoke(); status = label("已撤销配对", "Pairing revoked") }) {
             Text(label("撤销电脑配对", "Revoke computer pairing"))
         }
-        if (pairingMessage.isNotEmpty()) Text(pairingMessage, fontSize = 14.sp,
+        if (pairingMessage.isNotEmpty()) Text(pairingMessage, modifier = detailInset, fontSize = 14.sp,
             color = if (stage == PairingStage.FAILED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
-        if (status.isNotEmpty()) Text(status, fontSize = 12.sp)
-        if (WirelessState.error.isNotEmpty()) Text(WirelessState.error, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+        if (status.isNotEmpty()) Text(status, modifier = detailInset, fontSize = 12.sp)
+        if (WirelessState.error.isNotEmpty()) Text(WirelessState.error, modifier = detailInset, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
     }
 }
