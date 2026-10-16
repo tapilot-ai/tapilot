@@ -448,3 +448,39 @@ restored after diagnosis. Latest compact-output runtime and model telemetry beta
 were built, locally verified and installed on OPPO; live speed acceptance is
 still pending a working phone model connection. Desktop plugin login is not a
 prerequisite for this native-only target.
+
+### Restored native baseline and bbox retry root cause (2026-10-16 evening)
+
+After the user updated the phone VPN subscription and selected a working region,
+a native OK-only request succeeded. Three subsequent native Settings tasks used
+actual gpt-6-luna for outer and visual requests, full-resolution screenshots and
+independent final visual queries. Settings was reset to its root before each run.
+The task navigated to Display and brightness and read auto-brightness without
+changing settings. Full wall times were 84.016, 50.960 and 55.119 s, all verified
+successful; median 55.119 s gives a 27.560 s half-latency target for this task.
+Same conversation was reused, so outer input grew slightly across samples;
+sequential network variance remains a limitation, not an optimization benefit.
+
+All three runs made an unnecessary semantic retry before the first scroll:
+the model supplied a bounding box ending at y=1972 on a 1972-pixel image, while
+validation required every coordinate <=1971. Private planning logs confirm the
+same error in each run. The retry request plus wait took approximately 7–19 s.
+The deployment patch accepts width/height only as pixel bbox far-edge limits;
+the existing mapper clips the rectangle to valid pixels. Points, bbox origins,
+normalized ranges, reversed boxes and larger overflow remain rejected. ESM and
+CommonJS codec regressions cover this boundary.
+
+Patched runs completed in 47.743, 36.958 and 37.611 s, each with four visual
+requests and an independent successful final Query (baseline: five requests).
+The median decreased to 37.611 s, a 31.8% observed reduction. The semantic retry
+is eliminated; sequential network variability means the entire difference cannot
+be attributed to code. The 50% target is not reached. Both variants requested
+and returned gpt-6-luna for every recorded outer and visual call.
+
+All 65 runtime tests and the complete local `pnpm check` passed. The patched
+non-debuggable beta was verified and installed on OPPO. Remaining work: reduce
+model-request and image-preparation overhead, then repeat controlled runs and
+validate a second task; do not remove screenshot reasoning or final verification.
+
+Local evidence: `artifacts/native-half-20261016/README.md`. Raw reports, private
+planning logs and screenshots stay ignored and must not be published.
