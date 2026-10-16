@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { ElicitRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { Preview, unlockRequired } from '../server/preview.mjs';
+import { Preview, unlockRequired, connectionState } from '../server/preview.mjs';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { PhoneConnection } from '../server/transport.mjs';
@@ -275,4 +275,9 @@ test('existing panel automatically recovers after first pairing and external cre
 test('pairing invalidates old frames without bypassing a locked phone', () => {
   const p=new Preview(); p.pause('device_locked'); p.lastFrame={id:'old'};
   p.reconnect(); assert.equal(p.reason,'device_locked'); assert.equal(p.lastFrame,undefined);
+});
+
+
+test('accessibility service failures have a distinct recovery state', () => {
+  assert.equal(connectionState(new Error('Enable Tapilot device control in Accessibility settings')), 'accessibility_required');
 });

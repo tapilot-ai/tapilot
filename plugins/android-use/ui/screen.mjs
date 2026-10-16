@@ -2,7 +2,7 @@ import { t, setLanguage, localize } from './i18n.mjs';
 import { App } from '@modelcontextprotocol/ext-apps';
 import { imagePoint } from './geometry.mjs';
 import { PreviewActivity } from './preview-activity.mjs';
-const app = new App({ name: 'Android Use', version: '0.5.8' }, {});
+const app = new App({ name: 'Android Use', version: '0.5.9' }, {});
 const image = document.querySelector('img');
 const status = document.querySelector('[role=status]');
 const resume = document.querySelector('#resume');
@@ -37,6 +37,7 @@ const activity = new PreviewActivity({
 function updateActivity() { activity.update(!document.hidden && windowFocused); }
 
 const labels = () => ({
+  accessibility_required: t("手机的设备控制服务未连接"),
   host_reload_required: t("请重载电脑上的 Android Use 插件"),
   setup_required: t("尚未配对手机"),
   live: t("已连接 · 点击或拖动屏幕操作"), disconnected: t("已断开，点击重新连接"),
@@ -58,11 +59,12 @@ function render(data) {
   if (state === 'live' && !pairingQr.hidden) { notice.hidden = true; notice.textContent = ''; }
   if (state === 'live' || Date.now() >= pairingExpiresAt) clearPairingQr();
   if (state === 'live') { pairingLink.hidden = true; pairingLink.removeAttribute('href'); }
-  status.textContent = labels()[state] ?? labels().unavailable;
+  status.textContent = (labels()[state] ?? labels().unavailable) + (data?.device_host ? ` · ${data.device_host}` : '');
   resume.hidden = ['live', 'host_reload_required'].includes(state);
-  pair.hidden = !['setup_required', 'pairing_required', 'unavailable', 'disconnected'].includes(state);
+  pair.hidden = !pairingQr.hidden || !['setup_required', 'pairing_required', 'unavailable', 'disconnected'].includes(state);
   recovery.hidden = state === 'live';
   recovery.textContent = ({
+    accessibility_required: t("请在手机系统辅助功能中开启 Tapilot 设备控制；若开关已开启，请关闭再开启。恢复后会自动连接，无需重新配对。"),
     host_reload_required: t("插件已更新或安装文件缺失。重载插件或重新打开客户端后继续，无需重新配对手机。"),
     setup_required: t("在手机 Tapilot 设置中开启无线控制，再点击下方按钮，用手机扫描电脑二维码。无需 USB。"),
     pairing_required: t("在手机上重新扫描电脑二维码，并在电脑窗口确认。完成后点击重新连接。"),
@@ -87,7 +89,7 @@ async function poll() {
   if (stopped || !activity.canPoll || busy || pointer || polling) return;
   polling = true; const generation = epoch;
   try {
-    if (!pairingQr.hidden) await refreshPairing();
+    if (!pairingQr.hidden) { await refreshPairing(); if (!pairingQr.hidden) return; }
     const r = await app.callServerTool({ name: 'tapilot_preview_frame', arguments: {} }); if (generation === epoch && !busy && !pointer) render(r.structuredContent); }
   catch { if (generation === epoch) render({ state: 'unavailable' }); }
   finally { polling = false; if (!busy && !pointer) schedule(); }
@@ -173,7 +175,7 @@ pair.onclick = async () => {
     pairingExpiresAt = result.structuredContent.expires_at ?? 0;
     clearPairingQr();
     if (/^data:image\/png;base64,/.test(result._meta?.pairingQr ?? '') && pairingExpiresAt > Date.now()) {
-      pairingQr.src = result._meta.pairingQr; pairingQr.hidden = false;
+      pairingQr.src = result._meta.pairingQr; pairingQr.hidden = false; pair.hidden = true;
       pairingStatus.textContent = t("等待手机扫码…"); pairingStatus.hidden = false;
     }
     if (pairingQr.hidden) pairingLink.hidden = false;

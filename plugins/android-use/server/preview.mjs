@@ -1,13 +1,13 @@
 import { t } from '../ui/i18n.mjs';
 import { randomUUID } from 'node:crypto';
 import { control, imageSize } from './panel-controls.mjs';
-export const SCREEN_URI = 'ui://android-use/screen-0.5.8.html';
+export const SCREEN_URI = 'ui://android-use/screen-0.5.9.html';
 export const SCREEN_META = { ui: { csp: { connectDomains: [], resourceDomains: [] }, prefersBorder: false }, 'openai/ui': { availableDisplayModes: ['fullscreen'], preferredDisplayMode: 'fullscreen' } };
 export const PANEL_META = { 'openai/widgetSessionId': 'android-use-screen' };
 export const isLocked = error => /^(Unlock the phone first|Phone is locked\. Unlock it on the device\.)$/.test(error.message);
 export const needsHostReload = error => ['ERR_MODULE_NOT_FOUND', 'MODULE_NOT_FOUND'].includes(error.code) || /updated while this session|Worker files or dependencies are missing/.test(error.message);
 export const connectionMessage = error => needsHostReload(error) ? t("Android Use 已更新或安装文件缺失。请重载电脑上的插件或客户端；重启手机不会修复此问题。") : error.message;
-export const connectionState = error => needsHostReload(error) ? 'host_reload_required' : error.code === 'setup_required' ? 'setup_required' : /Another task is already registered|already owned/i.test(error.message) ? 'occupied' : /certificate changed|Not paired|Pair this computer first/i.test(error.message) ? 'pairing_required' : 'unavailable';
+export const connectionState = error => needsHostReload(error) ? 'host_reload_required' : /Enable Tapilot device control in Accessibility settings/i.test(error.message) ? 'accessibility_required' : error.code === 'setup_required' ? 'setup_required' : /Another task is already registered|already owned/i.test(error.message) ? 'occupied' : /certificate changed|Not paired|Pair this computer first/i.test(error.message) ? 'pairing_required' : 'unavailable';
 const result = data => ({ content: [], structuredContent: data });
 
 export class Preview {

@@ -172,6 +172,7 @@ test('inline scan waits for user confirmation and restores frames without openin
   };
   await f.element('#pair').onclick();
   assert.equal(f.element('#pairing-link').hidden, true);
+  assert.equal(f.element('#pair').hidden, true);
   await f.timers.at(-1).fn();
   assert.equal(confirmed, false);
   assert.equal(f.element('#pair-confirm').hidden, false);
@@ -194,4 +195,12 @@ test('hidden page releases transport and foreground starts fresh polling', async
   f.client.respond = async () => ({structuredContent:live});
   await f.timers.at(-1).fn();
   assert.equal(f.element('img').hidden, false);
+});
+
+test('accessibility failure explains service recovery instead of Wi-Fi or pairing', async () => {
+  const f=await fixture('zh-CN');
+  f.client.ontoolresult({structuredContent:{state:'accessibility_required'}});
+  assert.match(f.element('[role=status]').textContent,/设备控制服务未连接/);
+  assert.match(f.element('#recovery').textContent,/辅助功能/);
+  assert.equal(f.element('#pair').hidden,true);
 });
