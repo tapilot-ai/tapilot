@@ -3,8 +3,6 @@ package lifeos.md.tapilot.settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
@@ -31,7 +29,7 @@ internal fun WirelessControlSettings(context: Context, zh: Boolean) {
     val pairingBusy = stage == PairingStage.SENDING || stage == PairingStage.WAITING
     val pairingMessage = when (stage) {
         PairingStage.SENDING -> label("正在向电脑发送配对信息…", "Sending pairing information to your computer…")
-        PairingStage.WAITING -> label("扫码成功。请在电脑配对窗口点击确认，完成后这里会显示配对成功。", "QR received. Confirm this phone in the computer window; pairing success will appear here.")
+        PairingStage.WAITING -> label("扫码成功。请在 ChatGPT / Codex 的二维码页面点击“确认连接”，完成后这里会显示配对成功。", "QR received. Select Confirm connection on the QR page in ChatGPT / Codex; pairing success will appear here.")
         PairingStage.PAIRED -> label("配对成功。现在可以回到 ChatGPT 使用 Android Use；电脑开始控制时会显示已连接。", "Paired successfully. Return to Android Use in ChatGPT. Connected appears when the computer starts controlling.")
         PairingStage.FAILED -> label("配对失败：", "Pairing failed: ") + WirelessState.pairingError
         PairingStage.IDLE -> ""
@@ -91,16 +89,7 @@ internal fun WirelessControlSettings(context: Context, zh: Boolean) {
         }) { Text(label("扫描电脑二维码配对", "Scan computer QR to pair")) }
         if (WirelessState.address.isEmpty()) Text(label("请先开启无线控制，再扫描电脑上的 Android Use 配对二维码。",
             "Enable wireless control first, then scan the Android Use pairing QR on your computer."), fontSize = 12.sp)
-        if (WirelessState.address.isNotEmpty() && !WirelessState.connected) {
-            TextButton(enabled = !pairingBusy, onClick = {
-                runCatching {
-                    val link = checkNotNull(WirelessControlService.current).pairingLink()
-                    context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("Tapilot pairing", link))
-                    status = label("已复制。请在电脑的配对窗口粘贴，5 分钟内有效；不要发到聊天中。", "Copied. Paste into the computer's pairing prompt within 5 minutes, not into a chat.")
-                }.onFailure { status = it.message.orEmpty() }
-            }) { Text(label("复制配对链接", "Copy pairing link")) }
-        }
-        if (WirelessState.enabled) TextButton(onClick = { WirelessControlService.current?.revoke(); status = label("已撤销配对", "Pairing revoked") }) {
+        if (WirelessState.enabled && WirelessState.paired) TextButton(onClick = { WirelessControlService.current?.revoke(); status = label("已撤销配对", "Pairing revoked") }) {
             Text(label("撤销电脑配对", "Revoke computer pairing"))
         }
         if (pairingMessage.isNotEmpty()) Text(pairingMessage, fontSize = 14.sp,
