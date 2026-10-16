@@ -9,6 +9,9 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.AlertDialog
+import androidx.compose.runtime.saveable.rememberSaveable
+import lifeos.md.tapilot.wireless.PairingStage
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -22,20 +25,45 @@ import lifeos.md.tapilot.wireless.WirelessState
 @Composable
 internal fun WirelessControlSettings(context: Context, zh: Boolean) {
     fun label(a: String, b: String) = if (zh) a else b
-    var status by remember { mutableStateOf("") }
-    var pairingBusy by remember { mutableStateOf(false) }
+    var status by rememberSaveable { mutableStateOf("") }
+    var pairingDialog by rememberSaveable { mutableStateOf(false) }
+    val stage = WirelessState.pairingStage
+    val pairingBusy = stage == PairingStage.SENDING || stage == PairingStage.WAITING
+    val pairingMessage = when (stage) {
+        PairingStage.SENDING -> label("正在向电脑发送配对信息…", "Sending pairing information to your computer…")
+        PairingStage.WAITING -> label("扫码成功。请在电脑配对窗口点击确认，完成后这里会显示配对成功。", "QR received. Confirm this phone in the computer window; pairing success will appear here.")
+        PairingStage.PAIRED -> label("配对成功。现在可以回到 ChatGPT 使用 Android Use；电脑开始控制时会显示已连接。", "Paired successfully. Return to Android Use in ChatGPT. Connected appears when the computer starts controlling.")
+        PairingStage.FAILED -> label("配对失败：", "Pairing failed: ") + WirelessState.pairingError
+        PairingStage.IDLE -> ""
+    }
     val scanner = rememberLauncherForActivityResult(ScanContract()) { result ->
-        result.contents?.let { qr ->
-            pairingBusy = true
-            status = label("正在向电脑发送配对信息…", "Sending pairing information…")
+        val qr = result.contents
+        if (qr == null) {
+            status = label("已取消扫码，未更改配对。", "Scan cancelled. Pairing unchanged.")
+            android.widget.Toast.makeText(context, status, android.widget.Toast.LENGTH_SHORT).show()
+        } else {
+            pairingDialog = true
             runCatching {
-                checkNotNull(WirelessControlService.current).pairComputer(qr) { outcome ->
-                    pairingBusy = false
-                    status = outcome.fold({ label("已发送，请在电脑配对窗口确认连接。", "Sent. Confirm on the computer's pairing window.") }, { it.message.orEmpty() })
-                }
-            }.onFailure { pairingBusy = false; status = it.message.orEmpty() }
+                checkNotNull(WirelessControlService.current) {
+                    label("无线控制未开启，请开启后重新扫码。", "Enable wireless control, then scan again.")
+                }.pairComputer(qr)
+            }.onFailure {
+                WirelessState.pairingError = it.message.orEmpty()
+                WirelessState.pairingStage = PairingStage.FAILED
+            }
         }
     }
+    if (pairingDialog && pairingMessage.isNotEmpty()) AlertDialog(
+        onDismissRequest = { pairingDialog = false },
+        title = { Text(when (stage) {
+            PairingStage.PAIRED -> label("配对成功", "Paired")
+            PairingStage.FAILED -> label("配对失败", "Pairing failed")
+            PairingStage.WAITING -> label("请在电脑确认", "Confirm on your computer")
+            else -> label("正在配对", "Pairing")
+        }) },
+        text = { Text(pairingMessage) },
+        confirmButton = { TextButton(onClick = { pairingDialog = false }) { Text(label("知道了", "OK")) } },
+    )
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(label("让电脑上的 ChatGPT 通过 Wi-Fi 查看屏幕、点击和输入。保持手机解锁；可随时从通知中停止。",
             "Let ChatGPT on your computer view and operate this phone over Wi-Fi. Keep the phone unlocked; stop at any time from the notification."), fontSize = 12.sp)
@@ -46,7 +74,7 @@ internal fun WirelessControlSettings(context: Context, zh: Boolean) {
             context.startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }) { Text(label("打开系统辅助功能", "Open Accessibility settings")) }
         Text(if (WirelessState.connected) label("已连接电脑", "Computer connected")
-            else if (WirelessState.address.isNotEmpty()) label("等待连接", "Waiting for connection") + " · ${WirelessState.address}"
+            else if (WirelessState.address.isNotEmpty()) (if (WirelessState.paired) label("已配对 · 等待电脑连接", "Paired · Waiting for computer") else label("未配对 · 请扫描电脑二维码", "Not paired · Scan computer QR")) + " · ${WirelessState.address}"
             else if (WirelessState.enabled) label("正在开启…", "Starting…") else label("未开启", "Off"))
         TextButton(onClick = {
             status = ""
@@ -58,12 +86,13 @@ internal fun WirelessControlSettings(context: Context, zh: Boolean) {
         TextButton(enabled = WirelessState.address.isNotEmpty() && !pairingBusy, onClick = {
                 scanner.launch(ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE)
                     .setPrompt(label("扫描电脑 Android Use 配对二维码", "Scan the Android Use pairing QR on your computer"))
-                    .setBeepEnabled(false).setOrientationLocked(false))
+                    .setCaptureActivity(PairingCaptureActivity::class.java)
+                    .setBeepEnabled(false).setOrientationLocked(true))
         }) { Text(label("扫描电脑二维码配对", "Scan computer QR to pair")) }
         if (WirelessState.address.isEmpty()) Text(label("请先开启无线控制，再扫描电脑上的 Android Use 配对二维码。",
             "Enable wireless control first, then scan the Android Use pairing QR on your computer."), fontSize = 12.sp)
         if (WirelessState.address.isNotEmpty() && !WirelessState.connected) {
-            TextButton(onClick = {
+            TextButton(enabled = !pairingBusy, onClick = {
                 runCatching {
                     val link = checkNotNull(WirelessControlService.current).pairingLink()
                     context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("Tapilot pairing", link))
@@ -74,6 +103,8 @@ internal fun WirelessControlSettings(context: Context, zh: Boolean) {
         if (WirelessState.enabled) TextButton(onClick = { WirelessControlService.current?.revoke(); status = label("已撤销配对", "Pairing revoked") }) {
             Text(label("撤销电脑配对", "Revoke computer pairing"))
         }
+        if (pairingMessage.isNotEmpty()) Text(pairingMessage, fontSize = 14.sp,
+            color = if (stage == PairingStage.FAILED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
         if (status.isNotEmpty()) Text(status, fontSize = 12.sp)
         if (WirelessState.error.isNotEmpty()) Text(WirelessState.error, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
     }

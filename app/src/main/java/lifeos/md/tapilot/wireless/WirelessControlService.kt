@@ -29,7 +29,12 @@ internal object WirelessState {
     var address by mutableStateOf("")
     var connected by mutableStateOf(false)
     var error by mutableStateOf("")
+    var paired by mutableStateOf(false)
+    var pairingStage by mutableStateOf(PairingStage.IDLE)
+    var pairingError by mutableStateOf("")
 }
+
+internal enum class PairingStage { IDLE, SENDING, WAITING, PAIRED, FAILED }
 
 class WirelessControlService : Service() {
     private val handler = Handler(Looper.getMainLooper())
@@ -56,8 +61,18 @@ class WirelessControlService : Service() {
         WirelessState.error = ""
         WirelessState.enabled = true
         val preferences = getSharedPreferences("wireless-pairing", Context.MODE_PRIVATE)
+        WirelessState.paired = preferences.getString("credentialHash", "").orEmpty().isNotEmpty()
+        WirelessState.pairingStage = PairingStage.IDLE
+        WirelessState.pairingError = ""
         pairing = WirelessPairing({ preferences.getString("credentialHash", "").orEmpty() }, {
             check(preferences.edit().putString("credentialHash", it).commit()) { "Unable to save pairing" }
+            val paired = it.isNotEmpty()
+            handler.post {
+                if (!stopping && current === this) {
+                    WirelessState.paired = paired
+                    WirelessState.pairingStage = if (paired) PairingStage.PAIRED else PairingStage.IDLE
+                }
+            }
         })
         getSystemService(NotificationManager::class.java).createNotificationChannel(NotificationChannel(
             CHANNEL, label("无线控制", "Wireless control"), NotificationManager.IMPORTANCE_LOW))
@@ -117,12 +132,33 @@ class WirelessControlService : Service() {
         return "tapilot://pair/" + Base64.getUrlEncoder().withoutPadding().encodeToString(data.toString().toByteArray())
     }
 
-    internal fun pairComputer(qr: String, completion: (Result<Unit>) -> Unit) {
-        val link = pairingLink()
-        val network = checkNotNull(wifi) { "请先连接 Wi-Fi" }
-        worker.execute {
-            val result = runCatching { ComputerPairing.send(qr, link, network) }
-            handler.post { completion(result) }
+    internal fun pairComputer(qr: String) {
+        check(WirelessState.pairingStage != PairingStage.SENDING &&
+            WirelessState.pairingStage != PairingStage.WAITING) { "Pairing is already in progress" }
+        WirelessState.pairingStage = PairingStage.SENDING
+        WirelessState.pairingError = ""
+        val prepared = runCatching { pairingLink() to checkNotNull(wifi) { "请先连接 Wi-Fi" } }
+        fun fail(error: Throwable) {
+            WirelessState.pairingStage = PairingStage.FAILED
+            WirelessState.pairingError = error.message?.takeIf { it.isNotBlank() }
+                ?: label("配对失败，请检查 Wi-Fi 并重新扫码。", "Pairing failed. Check Wi-Fi and scan again.")
+        }
+        prepared.onFailure { fail(it) }.onSuccess { (link, network) ->
+            worker.execute {
+                val result = runCatching { ComputerPairing.send(qr, link, network) }
+                handler.post {
+                    if (stopping || current !== this || WirelessState.pairingStage == PairingStage.PAIRED) return@post
+                    result.fold({
+                        WirelessState.pairingStage = PairingStage.WAITING
+                        handler.postDelayed({
+                            if (!stopping && current === this && WirelessState.pairingStage == PairingStage.WAITING) {
+                                fail(IllegalStateException(label("等待电脑确认超时，请重新打开电脑配对窗口并扫码。",
+                                    "Computer confirmation timed out. Open a new pairing window and scan again.")))
+                            }
+                        }, 300_000)
+                    }, { fail(it) })
+                }
+            }
         }
     }
 
@@ -136,6 +172,10 @@ class WirelessControlService : Service() {
         runCatching { getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(networkCallback) }
         if (current === this) current = null
         WirelessState.enabled = false; WirelessState.connected = false; WirelessState.address = ""
+        if (WirelessState.pairingStage == PairingStage.SENDING || WirelessState.pairingStage == PairingStage.WAITING) {
+            WirelessState.pairingStage = PairingStage.FAILED
+            WirelessState.pairingError = label("无线控制已停止，请重新开启后配对。", "Wireless control stopped. Enable it and pair again.")
+        }
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
     }

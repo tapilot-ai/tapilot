@@ -18,6 +18,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -60,7 +61,7 @@ fun ChatScreen(controller: ChatController, compact: Boolean = false, dismissible
                     }
                     Box {
                         IconButton(onClick = { sessions = true }, enabled = !busy) {
-                            ChatIcon("history", colors.onSurfaceVariant, label("对话列表", "Conversations"))
+                            ChatIcon("conversations", colors.onSurfaceVariant, label("会话管理", "Manage conversations"))
                         }
                         ConversationDropdown(controller, sessions, onDismiss = { sessions = false })
                     }
@@ -153,7 +154,16 @@ internal fun ChatIcon(kind: String, color: Color, description: String? = null, m
         fun point(x: Float, y: Float) = Offset(x * unit, y * unit)
         fun line(x: Float, y: Float, x2: Float, y2: Float) = drawLine(color, point(x, y), point(x2, y2), 2f * unit, StrokeCap.Round)
         when (kind) {
-            "history" -> { line(4f, 6f, 20f, 6f); line(4f, 12f, 20f, 12f); line(4f, 18f, 14f, 18f) }
+            "conversations" -> {
+                val bubble = Path().apply {
+                    moveTo(3 * unit, 3 * unit); lineTo(17 * unit, 3 * unit)
+                    lineTo(17 * unit, 13 * unit); lineTo(7 * unit, 13 * unit)
+                    lineTo(3 * unit, 17 * unit); close()
+                }
+                drawPath(bubble, color, style = Stroke(1.8f * unit, join = StrokeJoin.Round))
+                line(8f, 17f, 17f, 17f); line(17f, 17f, 21f, 21f)
+                line(21f, 21f, 21f, 7f)
+            }
             "plus" -> { line(12f, 5f, 12f, 19f); line(5f, 12f, 19f, 12f) }
             "send" -> { line(12f, 19f, 12f, 5f); line(6f, 11f, 12f, 5f); line(18f, 11f, 12f, 5f) }
             "stop" -> drawRect(color, point(6f, 6f), androidx.compose.ui.geometry.Size(12 * unit, 12 * unit))

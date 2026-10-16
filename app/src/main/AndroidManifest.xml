@@ -60,6 +60,12 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".settings.PairingCaptureActivity"
+            android:screenOrientation="portrait"
+            android:exported="false"
+            android:stateNotNeeded="true"
+            android:theme="@style/zxing_CaptureTheme" />
         <activity android:name=".voice.VoiceEntryActivity" android:theme="@style/Theme.Tapilot.Panel" android:taskAffinity=""
             android:excludeFromRecents="true" android:exported="false" />
         <activity
