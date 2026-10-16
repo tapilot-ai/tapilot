@@ -413,3 +413,20 @@ and deepLocate settings changed. New outer requests log gpt-6-luna with provider
 default reasoning effort. Host-Codex plugin/XML/comparator runs are not verified
 to use the same model; their timings must not be presented as a controlled
 same-model end-to-end ranking.
+
+
+### Half-latency target and current connectivity boundary
+
+Target: reduce a comparable successful task median by 50%, using the same model,
+reasoning configuration, device, network and initial state. The 43.453 s single
+sample suggests a provisional 21.727 s target, not an established baseline
+median. Keep independent final visual verification and retain failed runs.
+
+The next candidate reduces redundant model-written planning/log output and uses
+short memory deltas for observed facts, preserving requested final observations.
+This changes prompting, not model selection or final verification. It is not a
+measured speed improvement. Full checks passed before this candidate; focused
+runtime checks validate it separately. A fresh OPPO connectivity probe requesting
+only OK failed before any phone operation: 31.041 s full, 30.060 s HTTP elapsed
+without recorded response headers. Desktop OAuth preflight also requires login.
+Controlled performance acceptance remains pending working model connectivity.
