@@ -493,3 +493,27 @@ APKs compile. On OPPO, instrumentation startup left accessibility unbound and th
 experiment timed out before any sample. No screenshot-size benefit is established.
 The verified non-debuggable beta was restored; Tapilot accessibility is bound and
 the crashed-service set is empty. Production screenshot factor remains 1.
+
+### Live debug experiments without instrumentation restart
+
+The debug APK alone exposes `PerformanceExperimentReceiver`, protected by
+`android.permission.DUMP` (ADB shell). Open and configure Tapilot first; keep the
+phone unlocked and its accessibility service bound. Set up and visually check the
+same Settings start page before each sample, outside the measured interval.
+
+```sh
+adb -s SERIAL shell am broadcast \
+  -n lifeos.md.tapilot/.performance.PerformanceExperimentReceiver \
+  --es screenshot_shrink_factor 1 --ez run_benchmark true
+```
+
+This starts a new conversation with a fixed read-only Display/auto-brightness
+request through the normal native coordinator. It cannot inject arbitrary tasks
+or gestures. Use `1.5` for the alternate screenshot size; omit `run_benchmark` to
+change only the next task's experiment setting. Active tasks reject changes.
+Reset with `--es screenshot_shrink_factor reset`. This receiver is absent from
+beta/release APKs. Record the installed build and actual returned model, alternate
+samples, collect **all** operation reports in the task interval (including failed
+verification and recovery), and retain independent final screenshot verification.
+A successful final task must not hide an earlier failed operation in its timings.
+
