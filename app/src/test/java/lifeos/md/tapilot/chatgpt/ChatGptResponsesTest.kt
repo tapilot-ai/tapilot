@@ -50,6 +50,17 @@ data: {"type":"response.output_item.done","output_index":0,"item":{"type":"reaso
         assertTrue(error.message!!.contains("quota exhausted"))
         assertThrows(IllegalStateException::class.java) { ChatGptResponses.decode(response("data: {\"type\":\"response.incomplete\"}\n\n")) }
     }
+    @Test fun responseMetricsPreserveActualModelAndOnlyNumericUsage() {
+        val event = """data: {"type":"response.completed","response":{"status":"completed","model":"actual-model","usage":{"input_tokens":12,"output_tokens":4,"total_tokens":16,"secret":"never-log","output_tokens_details":{"reasoning_tokens":2}},"output":[{"type":"message","content":[{"type":"output_text","text":"OK"}]}]}}
+
+"""
+        val metrics = ChatGptResponses.decode(response(event)).getJSONObject("modelMetrics")
+        assertEquals("actual-model", metrics.getString("model"))
+        assertEquals(12, metrics.getInt("input_tokens"))
+        assertEquals(2, metrics.getInt("reasoning_tokens"))
+        assertFalse(metrics.toString().contains("never-log"))
+        assertEquals(5, metrics.length())
+    }
     @Test fun authorizationFailureAsksForLoginWithoutEchoingResponseSecrets() {
         val error = assertThrows(IllegalStateException::class.java) { ChatGptResponses.decode(response("{\"error\":{\"message\":\"secret-token\"}}", 401)) }
         assertTrue(error.message!!.contains("Sign in again")); assertFalse(error.message!!.contains("secret-token"))

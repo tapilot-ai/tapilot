@@ -117,7 +117,16 @@ object ChatGptResponses {
         check(textParts.isNotEmpty() || calls.length() > 0) { appText("ChatGPT 未返回文字或操作指令", "ChatGPT returned no text or actions") }
         val message = JSONObject().put("role", "assistant").put("content", textParts.joinToString("\n"))
         if (calls.length() > 0) message.put("tool_calls", calls)
-        return JSONObject().put("tapilotResponsesOutput", output).put("choices", JSONArray().put(JSONObject().put("message", message)
+        val metrics = JSONObject()
+        result.optString("model").takeIf { it.isNotBlank() }?.let { metrics.put("model", it) }
+        result.optJSONObject("usage")?.let { usage ->
+            for (key in listOf("input_tokens", "output_tokens", "total_tokens")) {
+                (usage.opt(key) as? Number)?.let { metrics.put(key, it) }
+            }
+            (usage.optJSONObject("output_tokens_details")?.opt("reasoning_tokens") as? Number)
+                ?.let { metrics.put("reasoning_tokens", it) }
+        }
+        return JSONObject().put("modelMetrics", metrics).put("tapilotResponsesOutput", output).put("choices", JSONArray().put(JSONObject().put("message", message)
             .put("finish_reason", if (calls.length() > 0) "tool_calls" else "stop")))
     }
     private fun failure(error: JSONObject?, status: Int = 0): String = when (error?.optString("code")) {

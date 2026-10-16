@@ -430,3 +430,21 @@ runtime checks validate it separately. A fresh OPPO connectivity probe requestin
 only OK failed before any phone operation: 31.041 s full, 30.060 s HTTP elapsed
 without recorded response headers. Desktop OAuth preflight also requires login.
 Controlled performance acceptance remains pending working model connectivity.
+
+The 50% target is specifically for the standalone Android app's full task wall
+time, not desktop plugin latency. Native Responses decoding now retains actual
+returned model and numeric token usage; outer timing logs expose these without
+response text or credentials. `scripts/native-latency-summary.mjs` compares at
+least three samples per variant and requires equal task/device/network/start
+state/model/reasoning/warmth metadata. Failed or unverified runs invalidate a
+half-latency claim even when the successful-run median is low.
+
+The October 16 follow-up identified a phone network prerequisite: direct IPv4 and
+IPv6 TCP connections timed out. Starting the existing phone VPN allowed TCP but
+TLS still failed, including a general HTTPS probe. A native OK-only task failed
+before any phone action (10.894 s after network change). These are connectivity
+failures, not performance gains. Original proxy selection and stopped state were
+restored after diagnosis. Latest compact-output runtime and model telemetry beta
+were built, locally verified and installed on OPPO; live speed acceptance is
+still pending a working phone model connection. Desktop plugin login is not a
+prerequisite for this native-only target.

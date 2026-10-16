@@ -494,7 +494,12 @@ class NativeConversationCoordinator(
     private fun requestChatGpt(account: String, model: String, messages: JSONArray, tools: JSONArray, sessionId: String, stopped: AtomicBoolean): JSONObject {
         android.util.Log.i("TapilotPerformance", JSONObject().put("phase", "model.config")
             .put("role", "outer").put("model", model).put("reasoningEffort", "provider-default").toString())
-        return models.chatGpt(account, model, messages, tools, sessionId, stopped)
+        val result = models.chatGpt(account, model, messages, tools, sessionId, stopped)
+        result.optJSONObject("modelMetrics")?.let { metrics ->
+            android.util.Log.i("TapilotPerformance", JSONObject(metrics.toString())
+                .put("phase", "model.response").put("role", "outer").put("requestedModel", model).toString())
+        }
+        return result
     }
     fun testChatGpt() = settings.testChatGpt()
     private fun requestCompletion(model: JSONObject, key: String, messages: JSONArray, sessionId: String, stopped: AtomicBoolean, tools: JSONArray = JSONArray().put(NativeConversationAgent.tool)) =
