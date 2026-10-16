@@ -2,7 +2,7 @@ import { t, setLanguage, localize } from './i18n.mjs';
 import { App } from '@modelcontextprotocol/ext-apps';
 import { imagePoint } from './geometry.mjs';
 import { PreviewActivity } from './preview-activity.mjs';
-const app = new App({ name: 'Android Use', version: '0.5.9' }, {});
+const app = new App({ name: 'Android Use', version: '0.5.10' }, {});
 const image = document.querySelector('img');
 const status = document.querySelector('[role=status]');
 const resume = document.querySelector('#resume');
@@ -55,6 +55,7 @@ function clear() { frame = displayedFrame = undefined; image.removeAttribute('sr
 function render(data) {
   lastData = data; applyLocale(data);
   if (stopped || document.hidden || !windowFocused) { clear(); syncControls(); return; }
+  if (!pairingQr.hidden && Date.now() < pairingExpiresAt) return;
   state = data?.state ?? 'unavailable';
   if (state === 'live' && !pairingQr.hidden) { notice.hidden = true; notice.textContent = ''; }
   if (state === 'live' || Date.now() >= pairingExpiresAt) clearPairingQr();
@@ -165,6 +166,7 @@ form.onsubmit = async event => {
 };
 pair.onclick = async () => {
   if (busy) return;
+  ++epoch; clearTimeout(timer); clear();
   busy = true; syncControls(); notice.hidden = true; pairingLink.hidden = true; pairingLink.removeAttribute('href');
   try {
     const result = await app.callServerTool({ name: 'tapilot_midscene', arguments: { action: 'pair' } });

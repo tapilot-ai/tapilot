@@ -38,7 +38,10 @@ test('phone scans computer QR, pins TLS, and waits for explicit local confirmati
   assert.equal((await controller.configure({action:'pair_status'})).structuredContent.pending.host,config.host);
   assert.equal(calls.length,0);
   const result=await controller.configure({action:'pair_confirm'});assert.equal(result.structuredContent.paired,true);assert.deepEqual(calls,[config]);
+  assert.equal(controller.pairWindow.completed,true);
   await assert.rejects(controller.configure({action:'pair_confirm'}),/No pending phone/);
+  controller.pairProcess.kill=()=>{throw Error('Starting a fresh pairing session');};
+  await assert.rejects(controller.configure({action:'pair'}),/Starting a fresh pairing session/);
   assert.equal((await offer(qr.url,config,qr.fingerprint)).status,409);assert.equal(calls.length,1);
 });
 test('discovery metadata contains no pairing secret and ignores malformed services',()=>{

@@ -183,10 +183,11 @@ export class MidsceneController {
         headers:{Origin:url.origin}, signal:AbortSignal.timeout(15000), redirect:"error"});
       const data = await response.json();
       if (!response.ok) throw Error(data.error ?? "Pairing failed");
+      if (data.paired) this.pairWindow.completed = true;
       return text(data);
     }
     if (action === "pair") {
-      if (this.pairWindow && this.pairProcess?.connected && this.pairWindow.expires_at > Date.now()) return {...text(this.pairWindow), _meta:{pairingQr:this.pairQr}};
+      if (this.pairWindow && !this.pairWindow.completed && this.pairProcess?.connected && this.pairWindow.expires_at > Date.now()) return {...text(this.pairWindow), _meta:{pairingQr:this.pairQr}};
       this.pairProcess?.kill();
       const child = fork(new URL("./pair-ui.mjs", import.meta.url), [], { execArgv: [], stdio: ["ignore", "ignore", "ignore", "ipc"] });
       this.pairProcess = child;
@@ -195,7 +196,7 @@ export class MidsceneController {
         child.on("error", error => { clearTimeout(timer); reject(error); });
         child.on("exit", () => { clearTimeout(timer); reject(Error("Pairing window closed before it was ready.")); });
         child.on("message", message => {
-          if (message.paired) { this.pairRevision++; this.invalidate(); return; }
+          if (message.paired) { if (this.pairProcess === child && this.pairWindow) this.pairWindow.completed = true; this.pairRevision++; this.invalidate(); return; }
           clearTimeout(timer);
           if (message.error) return reject(Error(message.error));
           if (!message.url) return;

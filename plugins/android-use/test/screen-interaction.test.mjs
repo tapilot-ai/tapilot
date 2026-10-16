@@ -142,7 +142,7 @@ test('unreachable phone offers pairing and renders expiring QR from UI-only meta
   assert.equal(f.element('#pairing-qr').hidden, false);
   assert.equal(f.element('#pairing-qr').src, 'data:image/png;base64,AA==');
   f.client.ontoolresult({structuredContent:live});
-  assert.equal(f.element('#pairing-qr').hidden, true);
+  assert.equal(f.element('#pairing-qr').hidden, false);
   f.client.respond = async () => ({structuredContent:{url:'http://127.0.0.1:1234/pair',expires_at:Date.now()-1},_meta:{pairingQr:'data:image/png;base64,AA=='}});
   await f.element('#pair').onclick();
   assert.equal(f.element('#pairing-qr').hidden, true);
@@ -203,4 +203,13 @@ test('accessibility failure explains service recovery instead of Wi-Fi or pairin
   assert.match(f.element('[role=status]').textContent,/设备控制服务未连接/);
   assert.match(f.element('#recovery').textContent,/辅助功能/);
   assert.equal(f.element('#pair').hidden,true);
+});
+
+test('late live results cannot dismiss an active pairing QR', async () => {
+  const f=await fixture();
+  f.client.respond=async()=>({structuredContent:{url:'http://127.0.0.1:1234/pair/',expires_at:Date.now()+300000},_meta:{pairingQr:'data:image/png;base64,AA=='}});
+  await f.element('#pair').onclick();
+  f.client.ontoolresult({structuredContent:live});
+  assert.equal(f.element('#pairing-qr').hidden,false);
+  assert.equal(f.element('img').hidden,true);
 });

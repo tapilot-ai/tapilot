@@ -356,7 +356,7 @@ Reload the plugin host after updating to load the new server and panel resource.
 Local regression tests cover these transitions; native ChatGPT/Codex panel
 rendering and real-provider sign-in still require host acceptance.
 
-## Recovery and privacy fixes (0.5.9)
+## Recovery and privacy fixes (0.5.10)
 
 - Updating a running plugin can leave the host using removed files. Missing-module
   errors now ask for a host reload instead of suggesting phone reconnection.
