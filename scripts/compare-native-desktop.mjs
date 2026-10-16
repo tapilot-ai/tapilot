@@ -1,0 +1,107 @@
+#!/usr/bin/env node
+// Run the phone's exact Midscene bundle on the desktop, using its paired device.
+// Auth preflight happens before acquiring the phone. Never replay failed actions.
+import { spawn } from 'node:child_process';
+import { createInterface } from 'node:readline';
+import { readFile, mkdir, writeFile, copyFile } from 'node:fs/promises';
+import { resolve, join } from 'node:path';
+import { homedir } from 'node:os';
+import { createHash } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import { ChatGPTAuth } from '../plugins/android-use/server/midscene/chatgpt-auth.mjs';
+import { PhoneConnection } from '../plugins/android-use/server/transport.mjs';
+import { controlledEvidence } from './lib/controlled-evidence.mjs';
+import { verifyRuntime, sourceFingerprint } from './runtime-integrity.mjs';
+import { loadConfig, validateConfig } from '../plugins/android-use/server/config.mjs';
+
+const root = fileURLToPath(new URL('../', import.meta.url));
+const mode = process.argv[2] ?? 'preflight';
+if (!['preflight', 'run'].includes(mode)) throw Error('Use preflight or run');
+const auth = new ChatGPTAuth(process.env.TAPILOT_BENCH_AUTH_DIR ?? join(homedir(), '.local/share/android-use/chatgpt'));
+const captureFormat = process.env.TAPILOT_BENCH_CAPTURE_FORMAT ?? 'png';
+if (!['png', 'jpeg'].includes(captureFormat)) throw Error('Unsupported capture format');
+try { await auth.accessToken(); } catch (error) {
+  console.error(JSON.stringify({ status: 'blocked', reason: error.code ?? 'authorization-unavailable' }));
+  process.exit(1);
+}
+if (mode === 'preflight') { console.log('Desktop authorization ready; no phone action performed'); process.exit(0); }
+const expectedAccount = process.env.TAPILOT_BENCH_ACCOUNT;
+if (!expectedAccount || (await auth.status()).account !== expectedAccount) throw Error('Set TAPILOT_BENCH_ACCOUNT to the verified phone account; desktop login must match');
+if (process.version !== 'v24.18.0') throw Error('Use Node 24.18.0 to match the phone runtime');
+verifyRuntime(root);
+const out = resolve(root, 'artifacts/controlled-execution', new Date().toISOString().replaceAll(':', '-'));
+await mkdir(out, { recursive: true });
+const fixture = join(root, 'app/src/debug/assets/performance/read-auto-brightness.json');
+await copyFile(fixture, join(out, 'task.yaml'));
+const fixtureSha256 = createHash('sha256').update(await readFile(fixture)).digest('hex');
+const bundle = join(root, 'build/node-runtime-bundle');
+const runtimeManifest = JSON.parse(await readFile(join(bundle, 'manifest.json'), 'utf8'));
+if (runtimeManifest.sourceFingerprint !== sourceFingerprint(root)) throw Error('Desktop runtime bundle is stale');
+const pairing = await loadConfig();
+const connection = new PhoneConnection(validateConfig({ ...pairing, ...(process.env.TAPILOT_BENCH_HOST ? { host: process.env.TAPILOT_BENCH_HOST } : {}) }));
+const events = []; let child, completed, rpcFailure;
+let timer;
+const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('MIDSCENE_') && !k.startsWith('TAPILOT_SCREENSHOT_')));
+Object.assign(env, {
+  MIDSCENE_MODEL_NAME: 'gpt-6-luna', MIDSCENE_MODEL_FAMILY: 'gpt-6',
+  MIDSCENE_MODEL_BASE_URL: 'https://api.openai.com/v1', MIDSCENE_MODEL_API_KEY: 'oauth-managed',
+  MIDSCENE_MODEL_PROTOCOL: 'openai-responses', MIDSCENE_MODEL_STREAM_MODE: 'stream',
+  MIDSCENE_MODEL_TIMEOUT: '45000', MIDSCENE_MODEL_RETRY_COUNT: '1',
+  MIDSCENE_CHATGPT_ACCOUNT_ID: 'desktop-authorized', MIDSCENE_ANDROID_ASSISTANT_LANGUAGE: 'zh',
+  TAPILOT_SCREENSHOT_SHRINK_FACTOR: '1',
+});
+let started;
+try {
+  await connection.open();
+  // Caller resets Settings and visually checks its root before this invocation.
+  // Connection setup is reported separately from execution; no reset in the timer.
+  started = performance.now();
+  child = spawn(process.execPath, [join(bundle, 'runner.mjs'), 'test', '--project-root', out,
+    '--result-dir', join(out, 'results'), '--config', join(bundle, 'android.config.mjs'),
+    '--project', 'android-accessibility'], { cwd: bundle, env, stdio: ['pipe', 'pipe', 'ignore'] });
+  const exit = new Promise((resolve, reject) => { child.once('error', reject); child.once('exit', code => resolve(code)); });
+  timer = setTimeout(() => child.kill('SIGTERM'), 240000);
+  const reader = createInterface({ input: child.stdout });
+  for await (const line of reader) {
+    if (!line.startsWith('MIDSCENE_EVENT ')) continue;
+    const event = JSON.parse(line.slice('MIDSCENE_EVENT '.length));
+    if (event.type !== 'rpc.request') {
+      events.push(event);
+      if (event.type === 'test.completed') completed = event;
+      continue;
+    }
+    const { requestId, method, params } = event;
+    try {
+      let result;
+      if (method === 'model.accessToken') result = await auth.accessToken();
+      else if (['task.status', 'task.complete'].includes(method)) result = {};
+      else if (['device.getCapabilities', 'device.getSize', 'device.capture', 'device.execute'].includes(method)) {
+        result = await connection.request(method, method === 'device.capture' ? { ...params, format: captureFormat } : params);
+        if (method === 'device.capture') {
+          const g = result.geometry;
+          if (g.imageWidth !== g.screenWidth || g.imageHeight !== g.screenHeight) throw Error('Geometry differs; controlled benchmark requires unscaled native captures');
+        }
+      } else throw Error('Unsupported benchmark RPC');
+      child.stdin.write(JSON.stringify({ requestId, ok: true, result }) + '\n');
+    } catch (error) {
+      rpcFailure = error.message;
+      child.stdin.write(JSON.stringify({ requestId, ok: false, error: { message: error.message } }) + '\n');
+      // A failed transport mutation has unknown outcome. End this sample, never replan/replay.
+      if (method === 'device.execute') { child.kill('SIGTERM'); break; }
+    }
+  }
+  const code = await exit;
+  const executionWallMs = Math.round(performance.now() - started);
+  if (code !== 0 || !completed || rpcFailure) throw Error(rpcFailure ?? 'Incomplete execution');
+  const result = JSON.parse(await readFile(join(out, 'results/android-runner-result.json'), 'utf8'));
+  const queries = result.projects.flatMap(p => p.cases ?? []).flatMap(c => c.run?.steps ?? [])
+    .filter(s => s.node === 'aiQuery').map(s => s.output?.data);
+  if (queries.length !== 1 || queries[0]?.success !== true || !queries[0]?.observation) throw Error('Independent screenshot verification did not pass');
+  const evidence = controlledEvidence(await readFile(completed.reportPath, 'utf8'));
+  await writeFile(join(out, 'measurement.json'), JSON.stringify({ fixtureSha256, captureFormat, sourceFingerprint: sourceFingerprint(root), executionWallMs, queries, evidence,
+    status: 'verified', nodeVersion: process.version, events }, null, 2));
+  console.log(JSON.stringify({ out, executionWallMs, status: 'verified' }));
+} catch (error) {
+  await writeFile(join(out, 'measurement.json'), JSON.stringify({ fixtureSha256, status: 'failed', error: error.message, events }, null, 2));
+  console.error(JSON.stringify({ out, status: 'failed', reason: error.message })); process.exitCode = 1;
+} finally { clearTimeout(timer); child?.kill(); connection.close(); }

@@ -196,7 +196,7 @@ class MidsceneAccessibilityService : AccessibilityService() {
         try {
             val dataUrl = if (metadataOnly) "" else {
                 val output = ByteArrayOutputStream()
-                check(bitmap.compress(if (jpeg) Bitmap.CompressFormat.JPEG else Bitmap.CompressFormat.PNG, if (jpeg) 75 else 100, output)) { "Unable to encode screenshot" }
+                check(bitmap.compress(if (jpeg) Bitmap.CompressFormat.JPEG else Bitmap.CompressFormat.PNG, if (jpeg) (if (recordFrame) 90 else 75) else 100, output)) { "Unable to encode screenshot" }
                 (if (jpeg) "data:image/jpeg;base64," else "data:image/png;base64,") + Base64.getEncoder().encodeToString(output.toByteArray())
             }
             val metrics = deviceDisplayMetrics()

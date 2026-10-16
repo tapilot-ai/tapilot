@@ -22,6 +22,11 @@ class DeviceProtocolTest {
         assertEquals(DeviceCommand.Capture(metadataOnly = true), DeviceProtocol.parse("device.prepareAction", JSONObject()))
         assertEquals(DeviceCommand.Cancel, DeviceProtocol.parse("task.cancel", JSONObject()))
     }
+    @Test fun fullFrameCaptureCodecIsExplicitAndValidated() {
+        assertEquals(DeviceCommand.Capture(), DeviceProtocol.parse("device.capture", JSONObject()))
+        assertEquals(DeviceCommand.Capture(jpeg = true), DeviceProtocol.parse("device.capture", JSONObject().put("format", "jpeg")))
+        assertThrows(IllegalArgumentException::class.java) { DeviceProtocol.parse("device.capture", JSONObject().put("format", "gif")) }
+    }
     @Test fun rejectsUnknownOperationsAtTheBoundary() {
         assertThrows(UnsupportedOperationException::class.java) { DeviceProtocol.parse("device.shell", JSONObject()) }
         assertThrows(Exception::class.java) { DeviceProtocol.parse("device.execute", JSONObject()) }

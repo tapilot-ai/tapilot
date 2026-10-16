@@ -548,3 +548,73 @@ replaying tasks. These exploratory samples do not establish a screenshot-size
 speedup or a 50% reduction. Keep the full-resolution production default. The cold
 sample must not be mixed into a warm-start comparison. All local artifacts are under
 `artifacts/native-live-ab-20261016/` (ignored; not redistributed).
+
+### Controlled desktop/native execution experiment
+
+Use the same bundled `android.config.mjs`, adapter, task file and screenshot
+settling on both hosts. The fixed fixture is
+`app/src/debug/assets/performance/read-auto-brightness.json`. It launches Settings,
+navigates visually and independently queries the final screen. It bypasses the
+outer conversation model **on both sides** to isolate execution cost; these numbers
+must never be labelled full Codex-versus-native conversation latency. Follow with
+full-agent validation after locating execution differences.
+
+The OPPO experiment requires actual `gpt-6-luna` responses, 988×1972 screenshots,
+shrink factor 1, matching ChatGPT account, Chinese assistant context, Responses
+streaming, provider-default reasoning and the same pinned runtime bundle. Desktop
+runs require Node 24.18.0, matching the embedded phone Node version. Hardware,
+OS, Sharp native/WASM backend and network routes remain measured differences.
+Use alternating repetitions, the same visually verified Settings root, an unlocked
+phone, no concurrent controller, and separate cold runtime installation.
+
+```sh
+# Phone debug APK only; normal coordinator, fixed task, no arbitrary task injection.
+adb -s SERIAL shell am broadcast \
+  -n lifeos.md.tapilot/.performance.PerformanceExperimentReceiver \
+  --es screenshot_shrink_factor 1 --ez controlled true --es capture_format png
+
+# Desktop: use the authorized paired phone's CURRENT Wi-Fi IP, preserving TLS pin.
+# Optional isolated auth directory keeps the ordinary plugin login intact.
+TAPILOT_BENCH_AUTH_DIR=/private/authorized/test-account \
+TAPILOT_BENCH_ACCOUNT=phone-account-email \
+TAPILOT_BENCH_HOST=current-phone-ip \
+node scripts/compare-native-desktop.mjs run
+```
+
+The desktop script gates account and runtime versions, records fixture/source
+fingerprints, uses the exact native runner and validates actual returned model,
+image dimensions and independent query success. Failed/unknown transport mutations
+terminate the sample without replay. Outputs are private ignored artifacts. The
+runner's own `durationMs` is the common inner boundary; phone task wall also
+includes app persistence/dispatch, while desktop `executionWallMs` includes child
+startup. Report these separately. Connection/reset/login are setup, not task time.
+
+An explicit `device.capture` format can now request JPEG. PNG remains the default;
+clean JPEG captures use quality 90, existing preview JPEG remains quality 75.
+Debug phone `capture_format=jpeg` and desktop `TAPILOT_BENCH_CAPTURE_FORMAT=jpeg`
+select the experimental native encoder. The SDK already passes valid JPEG through
+when shrink factor is 1, avoiding another WASM PNG-to-JPEG conversion. Production
+native tasks still use PNG until accuracy and latency acceptance completes.
+
+`benchmark-image-pipeline.mjs IMAGE ABSOLUTE_SHARP_MODULE [SAMPLES]` measures the
+same input bytes, warmup plus ten retained samples, without any model/network call.
+Initial CPU-only measurements used matching input SHA-256 and Sharp/libvips but
+Node 22.16 on Mac versus 24.18 on Android, so they are diagnostic, not a fully
+controlled platform ranking: full JPEG encoding medians 8.86 versus 476.97 ms;
+stability fingerprint 28.81 versus 215.76 ms. Repeat with matching Node versions.
+
+Initial phone-only fixture samples passed final visual verification: PNG task wall
+41.855 s / inner runner 38.657 s (5 visual requests, 23.232 s HTTP); experimental
+JPEG wall 48.409 s / inner 45.076 s (4 requests, 34.176 s HTTP). Settling totals
+were 6.361 and 3.994 s but also differed in samples/actions. These two runs do not
+prove an end-to-end speedup. The first desktop execution attempt failed to connect
+before phone actions; wireless control was subsequently enabled. Strict paired
+model comparison remains pending a matching-account desktop authorization. Existing
+phone and ordinary desktop plugin accounts were observed to differ; do not merge
+their results into a controlled ranking.
+
+Repeating the identical-image microbenchmark with **Node 24.18.0 on both hosts**
+still measured desktop medians of 9.53 ms full JPEG encoding / 31.18 ms stability
+fingerprint, versus Android 476.97 / 215.76 ms. Sharp is 0.35.5 and libvips 8.18.7
+on both. These are processing-only measurements; hardware/OS and native versus
+WASM backend remain the variables, and the ratios are not task speedup ratios.

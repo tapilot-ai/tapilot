@@ -295,6 +295,13 @@ class NodeTestRunCoordinator(
         val sessionId = request.getString("sessionId")
         activeSessionId = sessionId
         val params = request.optJSONObject("params") ?: JSONObject()
+        // Debug-only codec experiment; production captures retain PNG by default.
+        if (request.optString("method") == "device.capture" &&
+            appContext.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) {
+            val format = appContext.getSharedPreferences("tapilot-performance", Context.MODE_PRIVATE)
+                .getString("capture-format", "png")
+            if (format == "jpeg") params.put("format", "jpeg")
+        }
         if (request.getString("method") == "model.accessToken") {
             val account = chatGptAccountId
             authorizationExecutor.execute {

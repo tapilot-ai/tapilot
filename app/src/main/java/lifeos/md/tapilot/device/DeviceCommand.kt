@@ -19,7 +19,11 @@ object DeviceProtocol {
     fun parse(method: String, params: JSONObject): DeviceCommand = when (method) {
         "device.getCapabilities" -> DeviceCommand.Capabilities
         "device.getSize" -> DeviceCommand.Size
-        "device.capture" -> DeviceCommand.Capture()
+        "device.capture" -> {
+            val format = params.optString("format", "png")
+            require(format in setOf("png", "jpeg")) { "Unsupported capture format" }
+            DeviceCommand.Capture(jpeg = format == "jpeg")
+        }
         "device.prepareAction" -> DeviceCommand.Capture(metadataOnly = true)
         "device.preview" -> DeviceCommand.Capture(preview = true, jpeg = params.optString("format") == "jpeg")
         "device.execute" -> DeviceCommand.Execute(NativeActionParser.parse(params.getJSONObject("action")), params.optString("frameId").takeIf { it.isNotBlank() })
