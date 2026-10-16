@@ -72,6 +72,21 @@ Midscene 负责视觉规划、目标定位、动作执行和报告。Tapilot 负
 输入框支持自动执行（YOLO）、关键操作确认和每次操作确认。
 **新安装默认使用 YOLO。** 发送任务前，请根据任务选择合适的确认方式。
 
+### 配置语音输入（可选）
+
+在 **设置 → 语音输入** 中选择服务商。应用内也提供控制台和官方指南的跳转入口：
+
+- **火山引擎：**登录并完成实名认证，在豆包语音中开通流式语音识别 2.0 服务，
+  然后进入 [API Key 管理](https://console.volcengine.com/speech/new/setting/apikeys) 创建密钥。
+  这里需要豆包语音 API Key，不能使用方舟模型密钥或旧版 APP ID。
+  [官方指南](https://docs.volcengine.com/docs/DoubaoVoice/QuickStartNewConsole?lang=zh)。
+- **Deepgram：**登录 [控制台](https://console.deepgram.com/)，选择项目，进入
+  **Settings → API Keys → Create a New API Key**，创建允许语音转写的密钥。
+  密钥只显示一次，请及时复制。
+  [官方指南](https://developers.deepgram.com/docs/create-additional-api-keys)。
+
+将密钥粘贴到应用中，点击 **检查连接** 即可保存并验证。
+
 ## 构建与开发
 
 使用 Node.js 24、pnpm 12.4.1、JDK 17、Android SDK Platform 35 和 Build Tools 35.0.0，

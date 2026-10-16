@@ -83,6 +83,23 @@ The composer offers automatic execution (YOLO), confirmation for critical
 operations, or confirmation for every phone operation. **New installations default
 to YOLO.** Choose the confirmation mode appropriate to your task before sending it.
 
+### Set up voice input (optional)
+
+In **Settings → Voice input**, choose a provider. The app includes links to its
+console and official setup guide:
+
+- **Volcengine:** sign in and complete identity verification, enable Streaming
+  Speech Recognition 2.0 in Doubao Voice, then create a key in
+  [API Key management](https://console.volcengine.com/speech/new/setting/apikeys).
+  Use a Doubao Voice API Key, not an Ark model key or legacy APP ID.
+  [Official guide](https://docs.volcengine.com/docs/DoubaoVoice/QuickStartNewConsole?lang=en).
+- **Deepgram:** sign in to the [console](https://console.deepgram.com/), select a
+  project, then open **Settings → API Keys → Create a New API Key** and grant
+  transcription access. Copy the secret when created; it is only shown once.
+  [Official guide](https://developers.deepgram.com/docs/create-additional-api-keys).
+
+Paste the key into the app and select **Check connection** to save and verify it.
+
 ## Build and develop
 
 Use Node.js 24, pnpm 12.4.1, JDK 17, Android SDK Platform 35 and Build Tools 35.0.0.

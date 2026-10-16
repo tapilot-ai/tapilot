@@ -97,6 +97,7 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
                 Group(label("语音输入", "Voice input")) {
                     SettingRow(label("转写服务", "Provider"), if (provider == "volcengine") label("火山引擎", "Volcengine") else "Deepgram") { if (!busy) picker = "speech" }
                     Text(if (provider == "volcengine") label("Seed ASR 2.0 小时版 · API 接入", "Seed ASR 2.0 duration · API") else "Deepgram Nova-3 · API", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    SpeechApiKeyHelp(provider, zh)
                     OutlinedTextField(speechKey, { speechKey = it }, label = { Text("API Key") },
                         placeholder = { Text(if (coordinator.hasKey("speech-$provider")) label("已保存；留空保留", "Saved; leave empty to retain") else label("输入 API Key", "Enter API Key")) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
