@@ -22,6 +22,7 @@ class NativeTaskPerformanceHarness : Instrumentation() {
     private var manualRebind = false
     private var screenshotAb = false
     private var taskOverride: String? = null
+    private var resetPackage: String? = null
     override fun onCreate(arguments: Bundle?) {
         super.onCreate(arguments)
         samples = arguments?.getString("samples")?.toInt() ?: 3
@@ -29,6 +30,10 @@ class NativeTaskPerformanceHarness : Instrumentation() {
         manualRebind = arguments?.getString("manual_accessibility_rebind") == "1"
         screenshotAb = arguments?.getString("screenshot_ab") == "1"
         taskOverride = arguments?.getString("task")?.also { require(it.isNotBlank()) }
+        resetPackage = arguments?.getString("reset_package")?.also {
+            require(it.matches(Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+")))
+            require(it != targetContext.packageName)
+        }
         require(samples in 1..10)
         start()
     }
@@ -116,6 +121,19 @@ class NativeTaskPerformanceHarness : Instrumentation() {
                 stage = "sample-$index"
                 val factor = if (screenshotAb && index % 2 == 1) "1.5" else "1"
                 check(experiment.edit().putString("screenshot-shrink-factor", factor).commit())
+                resetPackage?.let { packageName ->
+                    val launch = targetContext.packageManager.getLaunchIntentForPackage(packageName)
+                        ?: error("Reset package has no launcher activity")
+                    automation.executeShellCommand("am force-stop $packageName").use {
+                        android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes()
+                    }
+                    runOnMainSync { targetContext.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                    Thread.sleep(750)
+                    val screenshot = checkNotNull(automation.takeScreenshot()) { "Missing initial screenshot" }
+                    try { File(output, "$index-start.png").outputStream().use {
+                        check(screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
+                    } } finally { screenshot.recycle() }
+                }
                 // MainActivity is singleTask: startActivitySync would wait forever
                 // when Android delivers onNewIntent instead of creating an activity.
                 runOnMainSync { targetContext.startActivity(Intent(targetContext, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
@@ -135,6 +153,7 @@ class NativeTaskPerformanceHarness : Instrumentation() {
                     entry.getString("id") == taskId && entry.optString("status") !in listOf("running", "queued")
                 }
                 val sample = JSONObject().put("index", index).put("wallMs", SystemClock.elapsedRealtime() - started)
+                    .put("resetPackage", resetPackage ?: JSONObject.NULL)
                     .put("screenshotShrinkFactor", factor.toDouble())
                     .put("status", entry.optString("status")).put("modelTurns", entry.optInt("modelTurns"))
                     .put("phoneOperations", entry.optInt("phoneOperations"))

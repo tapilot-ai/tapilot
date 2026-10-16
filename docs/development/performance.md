@@ -484,3 +484,12 @@ validate a second task; do not remove screenshot reasoning or final verification
 
 Local evidence: `artifacts/native-half-20261016/README.md`. Raw reports, private
 planning logs and screenshots stay ignored and must not be published.
+
+A follow-up screenshot-size experiment added an optional `reset_package` argument
+to the test-only native instrumentation harness. It force-stops and launches the
+specified app and saves each initial screenshot before task timing; package names
+are validated and Tapilot itself cannot be selected. The debug and AndroidTest
+APKs compile. On OPPO, instrumentation startup left accessibility unbound and the
+experiment timed out before any sample. No screenshot-size benefit is established.
+The verified non-debuggable beta was restored; Tapilot accessibility is bound and
+the crashed-service set is empty. Production screenshot factor remains 1.
