@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import https from 'node:https';
 import { createHash } from 'node:crypto';
 import { createPairingWindow } from '../server/pairing-window.mjs';
+import { MidsceneController } from '../server/midscene.mjs';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { discoveredPhones } from '../server/discovery.mjs';
 
 function offer(url, config, fingerprint) {
@@ -29,7 +33,12 @@ test('phone scans computer QR, pins TLS, and waits for explicit local confirmati
   assert.equal((await offer(qr.url,config,qr.fingerprint)).status,200);assert.equal(calls.length,0);
   const state=await(await fetch(window.url+'status')).json();assert.equal(state.pending.host,config.host);assert.ok(!JSON.stringify(state).includes(config.token));
   const denied=await fetch(window.url+'confirm',{method:'POST',headers:{Origin:'https://evil.example'}});assert.equal(denied.status,403);assert.equal(calls.length,0);
-  const result=await fetch(window.url+'confirm',{method:'POST',headers:{Origin:new URL(window.url).origin}});assert.equal(result.status,200);assert.deepEqual(calls,[config]);
+  const root=await mkdtemp(join(tmpdir(),'pair-panel-'));t.after(()=>rm(root,{recursive:true,force:true}));
+  const controller=new MidsceneController({root});controller.pairWindow={url:window.url,expires_at:window.expiresAt};controller.pairProcess={connected:true};
+  assert.equal((await controller.configure({action:'pair_status'})).structuredContent.pending.host,config.host);
+  assert.equal(calls.length,0);
+  const result=await controller.configure({action:'pair_confirm'});assert.equal(result.structuredContent.paired,true);assert.deepEqual(calls,[config]);
+  await assert.rejects(controller.configure({action:'pair_confirm'}),/No pending phone/);
   assert.equal((await offer(qr.url,config,qr.fingerprint)).status,409);assert.equal(calls.length,1);
 });
 test('discovery metadata contains no pairing secret and ignores malformed services',()=>{

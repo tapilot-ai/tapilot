@@ -2,7 +2,7 @@ import { t, setLanguage, localize } from './i18n.mjs';
 import { App } from '@modelcontextprotocol/ext-apps';
 import { imagePoint } from './geometry.mjs';
 import { PreviewActivity } from './preview-activity.mjs';
-const app = new App({ name: 'Android Use', version: '0.5.6' }, {});
+const app = new App({ name: 'Android Use', version: '0.5.7' }, {});
 const image = document.querySelector('img');
 const status = document.querySelector('[role=status]');
 const resume = document.querySelector('#resume');
@@ -13,15 +13,25 @@ const recovery = document.querySelector('#recovery');
 const pair = document.querySelector('#pair');
 const pairingLink = document.querySelector('#pairing-link');
 const pairingQr = document.querySelector('#pairing-qr');
+const pairingStatus = document.querySelector('#pairing-status');
+const pairConfirm = document.querySelector('#pair-confirm');
+let hostLocale, lastData;
+function applyLocale(data) {
+  const locale = hostLocale || app.getHostContext?.()?.locale || data?.language || globalThis.navigator?.language || 'en';
+  setLanguage(/^zh(?:[-_]|$)/i.test(locale) ? 'zh' : 'en'); localize();
+}
 let pairingExpiresAt = 0;
-function clearPairingQr() { pairingQr.hidden = true; pairingQr.removeAttribute('src'); }
+function clearPairingQr() { pairingQr.hidden = true; pairingQr.removeAttribute('src'); pairConfirm.hidden = true; pairingStatus.hidden = true; }
 const controls = [...document.querySelectorAll('[data-control]')];
 const form = document.querySelector('form');
 const text = document.querySelector('textarea');
 let stopped = false, timer, busy = false, polling = false, epoch = 0, frame, displayedFrame, pointer, state = 'disconnected';
 let windowFocused = true;
 const activity = new PreviewActivity({
-  onSuspend: () => { ++epoch; clearTimeout(timer); pointer = undefined; clear(); syncControls(); },
+  graceMs: 0, setTimer: setTimeout, clearTimer: clearTimeout,
+  onSuspend: () => { ++epoch; clearTimeout(timer); pointer = undefined; clear(); syncControls();
+    app.callServerTool({name:'tapilot_preview',arguments:{action:'suspend'}}).catch(() => {});
+  },
   onResume: () => { ++epoch; pointer = undefined; clear(); syncControls(); schedule(0); },
 });
 function updateActivity() { activity.update(!document.hidden && windowFocused); }
@@ -42,7 +52,7 @@ function syncControls() {
 }
 function clear() { frame = displayedFrame = undefined; image.removeAttribute('src'); image.hidden = true; }
 function render(data) {
-  if (data?.language) { setLanguage(data.language); localize(); }
+  lastData = data; applyLocale(data);
   if (stopped || document.hidden || !windowFocused) { clear(); syncControls(); return; }
   state = data?.state ?? 'unavailable';
   if (state === 'live' && !pairingQr.hidden) { notice.hidden = true; notice.textContent = ''; }
@@ -76,7 +86,9 @@ function render(data) {
 async function poll() {
   if (stopped || !activity.canPoll || busy || pointer || polling) return;
   polling = true; const generation = epoch;
-  try { const r = await app.callServerTool({ name: 'tapilot_preview_frame', arguments: {} }); if (generation === epoch && !busy && !pointer) render(r.structuredContent); }
+  try {
+    if (!pairingQr.hidden) await refreshPairing();
+    const r = await app.callServerTool({ name: 'tapilot_preview_frame', arguments: {} }); if (generation === epoch && !busy && !pointer) render(r.structuredContent); }
   catch { if (generation === epoch) render({ state: 'unavailable' }); }
   finally { polling = false; if (!busy && !pointer) schedule(); }
 }
@@ -157,20 +169,46 @@ pair.onclick = async () => {
     if (result.isError || !result.structuredContent?.url) throw new Error('pairing unavailable');
     const url = new URL(result.structuredContent.url);
     if (url.protocol !== 'http:' || !['127.0.0.1', 'localhost'].includes(url.hostname)) throw new Error('invalid pairing window');
-    pairingLink.href = url.href; pairingLink.hidden = false;
+    pairingLink.href = url.href; pairingLink.hidden = true;
     pairingExpiresAt = result.structuredContent.expires_at ?? 0;
     clearPairingQr();
     if (/^data:image\/png;base64,/.test(result._meta?.pairingQr ?? '') && pairingExpiresAt > Date.now()) {
       pairingQr.src = result._meta.pairingQr; pairingQr.hidden = false;
+      pairingStatus.textContent = t("等待手机扫码…"); pairingStatus.hidden = false;
     }
+    if (pairingQr.hidden) pairingLink.hidden = false;
     pairingLink.onclick = async event => {
       event.preventDefault();
       try { const opened = await app.openLink({ url: url.href }); if (opened?.isError) throw new Error('open failed'); }
       catch { notice.textContent = t("无法打开配对窗口，请让聊天助手提供配对链接。"); notice.hidden = false; }
     };
-    notice.textContent = t("用手机扫描二维码，再打开配对窗口确认连接。配对成功后画面会自动恢复，二维码 5 分钟内有效。"); notice.hidden = false;
+    notice.textContent = t("用手机扫描二维码，然后在此页面确认连接。配对成功后画面会自动恢复，二维码 5 分钟内有效。"); notice.hidden = false;
   } catch { notice.textContent = t("无法创建配对窗口，请检查电脑 Wi-Fi 后重试。"); notice.hidden = false; }
   finally { busy = false; syncControls(); schedule(0); }
+};
+async function refreshPairing() {
+  if (Date.now() >= pairingExpiresAt) { clearPairingQr(); return; }
+  const result = await app.callServerTool({name:'tapilot_midscene', arguments:{action:'pair_status'}});
+  if (result.isError) { clearPairingQr(); notice.textContent = t("配对已过期或无法继续，请重新生成二维码。"); notice.hidden = false; return; }
+  const data = result.structuredContent;
+  if (data?.paired) { clearPairingQr(); pairingExpiresAt = 0; notice.hidden = true; return; }
+  pairConfirm.hidden = !data?.pending; pairConfirm.disabled = busy || !!data?.pairing;
+  pairingStatus.textContent = data?.pending ? `${data.pending.host} · ${t('手机已扫码，请确认配对')}` : t("等待手机扫码…");
+}
+pairConfirm.onclick = async () => {
+  if (busy) return;
+  busy = true; pairConfirm.disabled = true; syncControls(); notice.hidden = true;
+  try {
+    const result = await app.callServerTool({name:'tapilot_midscene', arguments:{action:'pair_confirm'}});
+    if (result.isError) throw Error('pairing failed');
+    clearPairingQr(); pairingExpiresAt = 0;
+  } catch { notice.textContent = t("无法完成配对，请保持手机解锁、确认 Wi-Fi 后重新扫码。"); notice.hidden = false; }
+  finally { busy = false; syncControls(); schedule(0); }
+};
+app.onhostcontextchanged = context => {
+  if (context.locale) hostLocale = context.locale;
+  applyLocale(lastData);
+  if (lastData) render(lastData);
 };
 resume.onclick = () => action('tapilot_preview_resume');
 pause.onclick = () => action('tapilot_preview', { action: 'pause' });
@@ -182,7 +220,8 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden) windowFocused = true;
   ++epoch; pointer = undefined; clear(); syncControls(); updateActivity();
 });
-window.addEventListener('blur', () => { windowFocused = false; ++epoch; pointer = undefined; clear(); syncControls(); updateActivity(); });
+// iframe blur also fires when the user types in the host chat. It is not app backgrounding.
+window.addEventListener('blur', () => {});
 window.addEventListener('focus', () => { windowFocused = true; updateActivity(); });
 window.addEventListener('pagehide', () => { stopped = true; ++epoch; clearTimeout(timer); clear(); clearPairingQr(); text.value = ''; });
 window.addEventListener('pageshow', () => { stopped = false; windowFocused = true; updateActivity(); schedule(0); });
@@ -190,6 +229,8 @@ localize();
 syncControls();
 try {
   await app.connect();
+  applyLocale(lastData);
+  if (lastData) render(lastData);
   // The sole open tool requests the panel. Repeated frame/tool results must not
   // request another fullscreen host tab.
   updateActivity(); schedule(0);

@@ -98,6 +98,8 @@ test('real MCP stdio handshake, image content, schema and disconnect', async t =
   assert.deepEqual(resource.contents[0]._meta.ui.csp.connectDomains, []);
   const initial = await client.callTool({ name: 'tapilot_preview_frame', arguments: {} });
   assert.equal(initial.structuredContent.state, 'live', 'An existing panel reconnects after a host restart without an open/resume call');
+  const suspended = await client.callTool({name:'tapilot_preview',arguments:{action:'suspend'}});
+  assert.equal(suspended.structuredContent.suspended,true);
   const result = await client.callTool({ name: 'tapilot_screen', arguments: {} });
   assert.equal(result.isError, undefined);
   assert.equal(result.content[1].type, 'image'); assert.equal(result.content[1].data, png);
@@ -116,7 +118,7 @@ test('real MCP stdio handshake, image content, schema and disconnect', async t =
   const released = await client.callTool({ name: 'tapilot_preview_frame', arguments: {} });
   assert.equal(released.structuredContent.state, 'disconnected');
   assert.equal(requests.length, requestCount, 'Polling must not undo explicit release');
-  assert.deepEqual(requests.map(r => r.method), ['authenticate', 'device.preview', 'device.capture', 'device.preview', 'device.capture', 'device.execute', 'device.preview', 'disconnect']);
+  assert.deepEqual(requests.map(r => r.method), ['authenticate', 'device.preview', 'authenticate', 'device.capture', 'device.preview', 'device.capture', 'device.execute', 'device.preview', 'disconnect']);
 });
 
 test('pairing links validate endpoint and credentials without echoing secrets', () => {

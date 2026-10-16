@@ -29,6 +29,8 @@ const fields = {
 const admin = new Set([
   "status",
   "pair",
+  "pair_status",
+  "pair_confirm",
   "discover",
   "setup",
   "settings",
@@ -173,6 +175,16 @@ export class MidsceneController {
       const { discoverPhones } = await import("./discovery.mjs");
       return text({ devices: await discoverPhones(), requires_pairing: true });
     }
+    if (action === "pair_status" || action === "pair_confirm") {
+      if (!this.pairWindow || !this.pairProcess?.connected || this.pairWindow.expires_at <= Date.now())
+        throw Error("Pairing expired; open a new pairing window.");
+      const url = new URL(action === "pair_confirm" ? "confirm" : "status", this.pairWindow.url);
+      const response = await fetch(url, {method:action === "pair_confirm" ? "POST" : "GET",
+        headers:{Origin:url.origin}, signal:AbortSignal.timeout(15000), redirect:"error"});
+      const data = await response.json();
+      if (!response.ok) throw Error(data.error ?? "Pairing failed");
+      return text(data);
+    }
     if (action === "pair") {
       if (this.pairWindow && this.pairProcess?.connected && this.pairWindow.expires_at > Date.now()) return {...text(this.pairWindow), _meta:{pairingQr:this.pairQr}};
       this.pairProcess?.kill();
@@ -188,8 +200,8 @@ export class MidsceneController {
           if (message.error) return reject(Error(message.error));
           if (!message.url) return;
           this.pairWindow = { url: message.url, expires_at: message.expires_at, needs_user_input: true,
-            host_instruction: "Show the local pairing window link. On the phone enable wireless control, choose Scan computer QR to pair, scan this computer's QR, then confirm the phone in the computer window. Wait for completion before checking status. Never ask for pairing tokens in chat." };
-          execFile(process.platform === "darwin" ? "open" : process.platform === "win32" ? "explorer" : "xdg-open", [message.url], () => {});
+            host_instruction: "Show the QR in the Android Use panel. On the phone enable wireless control and scan the computer QR, then confirm the phone in the same panel. Use the local window link only as an explicit fallback. Wait for completion before checking status. Never ask for pairing tokens in chat." };
+
           this.pairQr = message.qr_data_url;
           resolve({...text(this.pairWindow), _meta:{pairingQr:this.pairQr}});
         });
