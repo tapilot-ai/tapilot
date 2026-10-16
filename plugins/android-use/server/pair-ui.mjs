@@ -2,7 +2,7 @@ import {execFile} from 'node:child_process';
 import {createPairingWindow} from './pairing-window.mjs';
 try {
  const window=await createPairingWindow({onPaired:()=>{if(process.connected)process.send({paired:true});}});
- if(process.send)process.send({url:window.url,expires_in_seconds:300});
+ if(process.send)process.send({url:window.url,expires_in_seconds:300,expires_at:window.expiresAt,qr_data_url:window.qrDataUrl});
  else {process.stdout.write(`Open this computer's pairing window: ${window.url}\n`);execFile(process.platform==='darwin'?'open':process.platform==='win32'?'explorer':'xdg-open',[window.url],()=>{});}
  process.on('SIGTERM',()=>window.close());process.on('SIGINT',()=>window.close());
  if(process.send)process.on('disconnect',()=>window.close());

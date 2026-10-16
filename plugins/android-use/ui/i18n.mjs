@@ -84,6 +84,8 @@ const messages = {
   "安装后必须能找到“ChatGPT 无线控制”。若下载包没有此功能，需要包含无线控制的新版本；不要用重启或 ADB 代替兼容版本。下载入口本身不证明 APK 已包含插件需要的功能。": "The installed app must include ChatGPT wireless control. If missing, install a compatible version; restarting or using ADB is not a substitute. A download link alone does not prove plugin compatibility.",
   "飞书下载 Tapilot APK": "Download Tapilot APK from Feishu"
 };
+messages["用手机扫描二维码，再打开配对窗口确认连接。配对成功后画面会自动恢复，二维码 5 分钟内有效。"] = "Scan the QR code with your phone, then open the pairing window to confirm. The screen reconnects automatically after pairing. The QR code expires in 5 minutes.";
+messages["配对二维码"] = "Pairing QR code";
 const chinese = {"在手机上重新扫描电脑二维码，并在电脑窗口确认。完成后点击重新连接。": "在手机上重新扫描电脑二维码，并在电脑窗口确认。完成后会自动连接并显示画面。", "请检查手机无线控制已开启、两端 Wi-Fi 可互通。恢复后点击重新连接；不会重放之前的操作。": "请检查手机无线控制已开启、两端 Wi-Fi 可互通。恢复后会自动连接；不会重放之前的操作。", "请先在另一控制端结束任务或释放手机，然后重新连接。": "请先在另一控制端结束任务或释放手机，画面会自动恢复。", "打开配对窗口，用手机扫描二维码并在电脑确认，然后点击重新连接。窗口 5 分钟内有效。": "打开配对窗口，用手机扫描二维码并在电脑确认，画面会自动连接。窗口 5 分钟内有效。", "已配对，可以返回 ChatGPT 查看手机画面": "配对成功。返回 ChatGPT 后会自动连接并显示手机画面。"};
 let language = /^zh(?:-|$)/i.test(globalThis.navigator?.language ?? '') ? 'zh' : 'en';
 export function setLanguage(value) { if (value === 'zh' || value === 'en') language = value; }

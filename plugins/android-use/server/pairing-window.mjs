@@ -76,7 +76,7 @@ export async function createPairingWindow({ host = pairingAddress(), pair = pair
   server.requestTimeout=10000;server.headersTimeout=10000;receiver.requestTimeout=10000;receiver.headersTimeout=10000;
   const close=()=>{clearTimeout(timer);pending=undefined;server.closeAllConnections();server.close();receiver.closeAllConnections();receiver.close();};
   const timer=setTimeout(close,lifetimeMs);
-  return {url:`http://127.0.0.1:${port}/${nonce}/`,close, payload};
+  return {url:`http://127.0.0.1:${port}/${nonce}/`,close, payload, expiresAt, qrDataUrl: await QRCode.toDataURL(payload,{errorCorrectionLevel:'M',margin:4,width:360})};
 }
 async function body(req) {
   let size=0;const chunks=[];

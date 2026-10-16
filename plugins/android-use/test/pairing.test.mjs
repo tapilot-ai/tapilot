@@ -21,6 +21,8 @@ function offer(url, config, fingerprint) {
 const config={version:1,host:'192.168.1.10',port:39877,fingerprint:'a'.repeat(64),token:'b'.repeat(43)};
 test('phone scans computer QR, pins TLS, and waits for explicit local confirmation',async t=>{
   const calls=[];const window=await createPairingWindow({host:'127.0.0.1',discover:async()=>[],pair:async c=>calls.push(c)});t.after(()=>window.close());
+  assert.match(window.qrDataUrl, /^data:image\/png;base64,/);
+  assert.ok(window.expiresAt > Date.now());
   const qr=JSON.parse(Buffer.from(window.payload.slice('tapilot://computer/'.length),'base64url'));
   assert.ok(qr.url.startsWith('https://127.0.0.1:'));assert.match(qr.fingerprint,/^[a-f0-9]{64}$/);
   const wrong=await offer(qr.url,config,'f'.repeat(64)).then(()=>false,()=>true);assert.equal(wrong,true);

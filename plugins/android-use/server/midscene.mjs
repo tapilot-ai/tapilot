@@ -174,7 +174,7 @@ export class MidsceneController {
       return text({ devices: await discoverPhones(), requires_pairing: true });
     }
     if (action === "pair") {
-      if (this.pairWindow && this.pairProcess?.connected && this.pairWindow.expires_at > Date.now()) return text(this.pairWindow);
+      if (this.pairWindow && this.pairProcess?.connected && this.pairWindow.expires_at > Date.now()) return {...text(this.pairWindow), _meta:{pairingQr:this.pairQr}};
       this.pairProcess?.kill();
       const child = fork(new URL("./pair-ui.mjs", import.meta.url), [], { execArgv: [], stdio: ["ignore", "ignore", "ignore", "ipc"] });
       this.pairProcess = child;
@@ -187,10 +187,11 @@ export class MidsceneController {
           clearTimeout(timer);
           if (message.error) return reject(Error(message.error));
           if (!message.url) return;
-          this.pairWindow = { url: message.url, expires_at: Date.now()+300000, needs_user_input: true,
+          this.pairWindow = { url: message.url, expires_at: message.expires_at, needs_user_input: true,
             host_instruction: "Show the local pairing window link. On the phone enable wireless control, choose Scan computer QR to pair, scan this computer's QR, then confirm the phone in the computer window. Wait for completion before checking status. Never ask for pairing tokens in chat." };
           execFile(process.platform === "darwin" ? "open" : process.platform === "win32" ? "explorer" : "xdg-open", [message.url], () => {});
-          resolve(text(this.pairWindow));
+          this.pairQr = message.qr_data_url;
+          resolve({...text(this.pairWindow), _meta:{pairingQr:this.pairQr}});
         });
       });
     }

@@ -2,7 +2,7 @@ import { t, setLanguage, localize } from './i18n.mjs';
 import { App } from '@modelcontextprotocol/ext-apps';
 import { imagePoint } from './geometry.mjs';
 import { PreviewActivity } from './preview-activity.mjs';
-const app = new App({ name: 'Android Use', version: '0.5.5' }, {});
+const app = new App({ name: 'Android Use', version: '0.5.6' }, {});
 const image = document.querySelector('img');
 const status = document.querySelector('[role=status]');
 const resume = document.querySelector('#resume');
@@ -12,6 +12,9 @@ const notice = document.querySelector('[role=alert]');
 const recovery = document.querySelector('#recovery');
 const pair = document.querySelector('#pair');
 const pairingLink = document.querySelector('#pairing-link');
+const pairingQr = document.querySelector('#pairing-qr');
+let pairingExpiresAt = 0;
+function clearPairingQr() { pairingQr.hidden = true; pairingQr.removeAttribute('src'); }
 const controls = [...document.querySelectorAll('[data-control]')];
 const form = document.querySelector('form');
 const text = document.querySelector('textarea');
@@ -42,10 +45,12 @@ function render(data) {
   if (data?.language) { setLanguage(data.language); localize(); }
   if (stopped || document.hidden || !windowFocused) { clear(); syncControls(); return; }
   state = data?.state ?? 'unavailable';
+  if (state === 'live' && !pairingQr.hidden) { notice.hidden = true; notice.textContent = ''; }
+  if (state === 'live' || Date.now() >= pairingExpiresAt) clearPairingQr();
   if (state === 'live') { pairingLink.hidden = true; pairingLink.removeAttribute('href'); }
   status.textContent = labels()[state] ?? labels().unavailable;
   resume.hidden = ['live', 'host_reload_required'].includes(state);
-  pair.hidden = !['setup_required', 'pairing_required'].includes(state);
+  pair.hidden = !['setup_required', 'pairing_required', 'unavailable', 'disconnected'].includes(state);
   recovery.hidden = state === 'live';
   recovery.textContent = ({
     host_reload_required: t("插件已更新或安装文件缺失。重载插件或重新打开客户端后继续，无需重新配对手机。"),
@@ -153,12 +158,17 @@ pair.onclick = async () => {
     const url = new URL(result.structuredContent.url);
     if (url.protocol !== 'http:' || !['127.0.0.1', 'localhost'].includes(url.hostname)) throw new Error('invalid pairing window');
     pairingLink.href = url.href; pairingLink.hidden = false;
+    pairingExpiresAt = result.structuredContent.expires_at ?? 0;
+    clearPairingQr();
+    if (/^data:image\/png;base64,/.test(result._meta?.pairingQr ?? '') && pairingExpiresAt > Date.now()) {
+      pairingQr.src = result._meta.pairingQr; pairingQr.hidden = false;
+    }
     pairingLink.onclick = async event => {
       event.preventDefault();
       try { const opened = await app.openLink({ url: url.href }); if (opened?.isError) throw new Error('open failed'); }
       catch { notice.textContent = t("无法打开配对窗口，请让聊天助手提供配对链接。"); notice.hidden = false; }
     };
-    notice.textContent = t("打开配对窗口，用手机扫描二维码并在电脑确认，然后点击重新连接。窗口 5 分钟内有效。"); notice.hidden = false;
+    notice.textContent = t("用手机扫描二维码，再打开配对窗口确认连接。配对成功后画面会自动恢复，二维码 5 分钟内有效。"); notice.hidden = false;
   } catch { notice.textContent = t("无法创建配对窗口，请检查电脑 Wi-Fi 后重试。"); notice.hidden = false; }
   finally { busy = false; syncControls(); schedule(0); }
 };
@@ -166,15 +176,15 @@ resume.onclick = () => action('tapilot_preview_resume');
 pause.onclick = () => action('tapilot_preview', { action: 'pause' });
 disconnect.onclick = () => action('tapilot_disconnect');
 app.ontoolresult = result => { ++epoch; pointer = undefined; frame = undefined; if (stopped || document.hidden || !windowFocused) { clear(); syncControls(); return; } if (result.isError) render(result.structuredContent ?? { state: 'unavailable' }); else if (result.structuredContent) render(result.structuredContent); schedule(0); };
-app.onteardown = async () => { activity.close(); stopped = true; ++epoch; clearTimeout(timer); clear(); text.value = ''; return {}; };
-app.onclose = () => { activity.close(); stopped = true; clearTimeout(timer); clear(); text.value = ''; render({ state: 'disconnected' }); };
+app.onteardown = async () => { activity.close(); stopped = true; ++epoch; clearTimeout(timer); clear(); clearPairingQr(); text.value = ''; return {}; };
+app.onclose = () => { activity.close(); stopped = true; clearTimeout(timer); clear(); clearPairingQr(); text.value = ''; render({ state: 'disconnected' }); };
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) windowFocused = true;
   ++epoch; pointer = undefined; clear(); syncControls(); updateActivity();
 });
 window.addEventListener('blur', () => { windowFocused = false; ++epoch; pointer = undefined; clear(); syncControls(); updateActivity(); });
 window.addEventListener('focus', () => { windowFocused = true; updateActivity(); });
-window.addEventListener('pagehide', () => { stopped = true; ++epoch; clearTimeout(timer); clear(); text.value = ''; });
+window.addEventListener('pagehide', () => { stopped = true; ++epoch; clearTimeout(timer); clear(); clearPairingQr(); text.value = ''; });
 window.addEventListener('pageshow', () => { stopped = false; windowFocused = true; updateActivity(); schedule(0); });
 localize();
 syncControls();

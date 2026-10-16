@@ -132,3 +132,18 @@ test('failed reconnect shows connection recovery without an ambiguous phone-acti
   assert.match(f.element('#recovery').textContent, /Reload the plugin/);
   assert.equal(f.element('#resume').hidden, true);
 });
+
+test('unreachable phone offers pairing and renders expiring QR from UI-only metadata', async () => {
+  const f = await fixture();
+  f.client.ontoolresult({structuredContent:{state:'unavailable'}});
+  assert.equal(f.element('#pair').hidden, false);
+  f.client.respond = async () => ({structuredContent:{url:'http://127.0.0.1:1234/pair',expires_at:Date.now()+300000},_meta:{pairingQr:'data:image/png;base64,AA=='}});
+  await f.element('#pair').onclick();
+  assert.equal(f.element('#pairing-qr').hidden, false);
+  assert.equal(f.element('#pairing-qr').src, 'data:image/png;base64,AA==');
+  f.client.ontoolresult({structuredContent:live});
+  assert.equal(f.element('#pairing-qr').hidden, true);
+  f.client.respond = async () => ({structuredContent:{url:'http://127.0.0.1:1234/pair',expires_at:Date.now()-1},_meta:{pairingQr:'data:image/png;base64,AA=='}});
+  await f.element('#pair').onclick();
+  assert.equal(f.element('#pairing-qr').hidden, true);
+});
