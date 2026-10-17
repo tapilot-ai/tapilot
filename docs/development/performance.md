@@ -1891,3 +1891,37 @@ work toward 50% should target measured shared model/observation costs, rather
 than assuming a persistent large Android-only penalty or removing final checks.
 
 [Version-task samples and phase breakdown](performance-controlled-version-20261017.json)
+
+### Prompt-format ablation did not establish a repeatable speedup (2026-10-17)
+
+After the matched task cohorts, a diagnostic compared two representations of the
+same saved visual planning request on OPPO. Thirteen repeated bounding-box type
+strings were replaced by one shared definition, and seventeen valid JSON action
+examples were minified. Reversing the type substitution reproduced the original
+text exactly; parsing before/after minification produced equal JSON values.
+All request fields other than system text were equal, including the image and
+reasoning settings. System text decreased from 37,231 to 34,940 characters;
+measured input tokens decreased from 11,234 to 10,542 (6.2%).
+
+Both variants used one Android Node worker and one connection pool per cohort,
+the same account/auth provider, and gpt-6-luna. Each cohort retained one socket
+for all eight calls. The first call on each fresh worker includes connection
+setup; order was reversed for the second cohort. Token refresh was not separately
+instrumented. These requests do not execute phone actions.
+
+| Order | Original median | Compact median |
+| --- | ---: | ---: |
+| Original / compact / compact / original, repeated | 6.985 s | 4.833 s |
+| Compact / original / original / compact, repeated | 5.036 s | 5.190 s |
+
+All sixteen responses completed and proposed a downward Scroll with parseable
+JSON parameters. This only checks one planning frame; it does not prove complete
+task behavior or all action schemas. Original requests reported 8,192 or 10,624
+cached tokens; compact requests reported zero. Generated outputs also differed.
+The latency direction reversed, so the initial large gain is not sufficient
+causal evidence to change production prompts. No prompt patch was shipped and
+no task-level speedup is claimed. Both workers were confirmed gone afterward.
+The local ignored `prompt-ablation-20261017` artifact directory retains the
+transformation and diagnostic drivers alongside the private candidate request.
+
+[Sanitized samples, controls and transformation metadata](performance-prompt-ablation-20261017.json)

@@ -1,0 +1,495 @@
+{
+  "experiment": "same-phone prompt representation ablation, no device actions executed",
+  "controls": {
+    "device": "e7ed3f17",
+    "model": "gpt-6-luna",
+    "singleWorkerAndConnectionPoolPerCohort": true,
+    "identicalRequestExceptSystemPrompt": true,
+    "reasoning": {
+      "effort": "low",
+      "context": "current_turn"
+    },
+    "savedRequest": "2026-10-17T02-58-44.242Z/model-requests/request-1.json",
+    "sameAccountAndAuthProvider": true,
+    "tokenRefreshNotSeparatelyInstrumented": true
+  },
+  "transform": {
+    "originalSystemChars": 37231,
+    "compactSystemChars": 34940,
+    "aliasedTypeOccurrences": 13,
+    "minifiedValidJsonSamples": 17
+  },
+  "cohorts": [
+    {
+      "artifact": "model-path-2026-10-17T06-13-06.008Z",
+      "order": [
+        "phone-original",
+        "phone-compact",
+        "phone-compact",
+        "phone-original",
+        "phone-original",
+        "phone-compact",
+        "phone-compact",
+        "phone-original"
+      ],
+      "mediansMs": {
+        "phone-original": 6985.354841,
+        "phone-compact": 4833.179868
+      },
+      "rows": [
+        {
+          "host": "phone-original",
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "requestBytes": 211296,
+          "totalMs": 6746.317185,
+          "headersMs": 3617.797134,
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 103,
+            "cachedTokens": 10624,
+            "reasoningTokens": 19
+          },
+          "connectionTrace": [
+            {
+              "socketId": 1,
+              "previousRequests": 0,
+              "sendHeadersMs": 1360.02401,
+              "negotiatedProtocol": "http/1.1",
+              "tlsSessionReused": false
+            }
+          ],
+          "actionTypes": [
+            "Scroll"
+          ],
+          "actionParameterJsonValid": true,
+          "direction": "down"
+        },
+        {
+          "host": "phone-compact",
+          "requestSha256": "becf6ce6460dd9a55deecd091d8c2cddd8f6679af091859d11085bd28385f1bd",
+          "requestBytes": 208925,
+          "totalMs": 5506.242185000001,
+          "headersMs": 2638.4002070000006,
+          "usage": {
+            "inputTokens": 10542,
+            "outputTokens": 81,
+            "cachedTokens": 0,
+            "reasoningTokens": 19
+          },
+          "connectionTrace": [
+            {
+              "socketId": 1,
+              "previousRequests": 1,
+              "sendHeadersMs": 1.8159890000006271,
+              "negotiatedProtocol": "http/1.1",
+              "tlsSessionReused": false
+            }
+          ],
+          "actionTypes": [
+            "Scroll"
+          ],
+          "actionParameterJsonValid": true,
+          "direction": "down"
+        },
+        {
+          "host": "phone-compact",
+          "requestSha256": "becf6ce6460dd9a55deecd091d8c2cddd8f6679af091859d11085bd28385f1bd",
+          "requestBytes": 208925,
+          "totalMs": 4681.081039999999,
+          "headersMs": 2429.165676999999,
+          "usage": {
+            "inputTokens": 10542,
+            "outputTokens": 82,
+            "cachedTokens": 0,
+            "reasoningTokens": 20
+          },
+          "connectionTrace": [
+            {
+              "socketId": 1,
+              "previousRequests": 2,
+              "sendHeadersMs": 1.8078130000012607,
+              "negotiatedProtocol": "http/1.1",
+              "tlsSessionReused": false
+            }
+          ],
+          "actionTypes": [
+            "Scroll"
+          ],
+          "actionParameterJsonValid": true,
+          "direction": "down"
+        },
+        {
+          "host": "phone-original",
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "requestBytes": 211296,
+          "totalMs": 7224.392497000001,
+          "headersMs": 4475.807758999999,
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 98,
+            "cachedTokens": 10624,
+            "reasoningTokens": 13
+          },
+          "connectionTrace": [
+            {
+              "socketId": 1,
+              "previousRequests": 3,
+              "sendHeadersMs": 1.662292000000889,
+              "negotiatedProtocol": "http/1.1",
+              "tlsSessionReused": false
+            }
+          ],
+          "actionTypes": [
+            "Scroll"
+          ],
+          "actionParameterJsonValid": true,
+          "direction": "down"
+        },
+        {
+          "host": "phone-original",
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "requestBytes": 211296,
+          "totalMs": 4731.472237000002,
+          "headersMs": 2341.9857800000027,
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 97,
+            "cachedTokens": 8192,
+            "reasoningTokens": 12
+          },
+          "connectionTrace": [
+            {
+              "socketId": 1,
+              "previousRequests": 4,
+              "sendHeadersMs": 3.1978649999982736,
+              "negotiatedProtocol": "http/1.1",
+              "tlsSessionReused": false
+            }
+          ],
+          "actionTypes": [
+            "Scroll"
+          ],
+          "actionParameterJsonValid": true,
+          "direction": "down"
+        },
+        {
+          "host": "phone-compact",
+          "requestSha256": "becf6ce6460dd9a55deecd091d8c2cddd8f6679af091859d11085bd28385f1bd",
+          "requestBytes": 208925,
+          "totalMs": 4469.095207000002,
+          "headersMs": 2001.8380720000023,
+          "usage": {
+            "inputTokens": 10542,
+            "outputTokens": 107,
+            "cachedTokens": 0,
+            "reasoningTokens": 22
+          },
+          "connectionTrace": [
+            {
+              "socketId": 1,
+              "previousRequests": 5,
+              "sendHeadersMs": 3.0038020000029064,
+              "negotiatedProtocol": "http/1.1",
+              "tlsSessionReused": false
+            }
+          ],
+          "actionTypes": [
+            "Scroll"
+          ],
+          "actionParameterJsonValid": true,
+          "direction": "down"
+        },
+        {
+          "host": "phone-compact",
+          "requestSha256": "becf6ce6460dd9a55deecd091d8c2cddd8f6679af091859d11085bd28385f1bd",
+          "requestBytes": 208925,
+          "totalMs": 4985.278696000001,
+          "headersMs": 2414.706874000003,
+          "usage": {
+            "inputTokens": 10542,
+            "outputTokens": 106,
+            "cachedTokens": 0,
+            "reasoningTokens": 22
+          },
+          "connectionTrace": [
+            {
+              "socketId": 1,
+              "previousRequests": 6,
+              "sendHeadersMs": 1.8142179999995278,
+              "negotiatedProtocol": "http/1.1",
+              "tlsSessionReused": false
+            }
+          ],
+          "actionTypes": [
+            "Scroll"
+          ],
+          "actionParameterJsonValid": true,
+          "direction": "down"
+        },
+        {
+          "host": "phone-original",
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "requestBytes": 211296,
+          "totalMs": 7617.064215999999,
+          "headersMs": 4867.688436000004,
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 104,
+            "cachedTokens": 8192,
+            "reasoningTokens": 19
+          },
+          "connectionTrace": [
+            {
+              "socketId": 1,
+              "previousRequests": 7,
+              "sendHeadersMs": 2.8773440000004484,
+              "negotiatedProtocol": "http/1.1",
+              "tlsSessionReused": false
+            }
+          ],
+          "actionTypes": [
+            "Scroll"
+          ],
+          "actionParameterJsonValid": true,
+          "direction": "down"
+        }
+      ]
+    },
+    {
+      "artifact": "model-path-2026-10-17T06-14-01.704Z",
+      "order": [
+        "phone-compact",
+        "phone-original",
+        "phone-original",
+        "phone-compact",
+        "phone-compact",
+        "phone-original",
+        "phone-original",
+        "phone-compact"
+      ],
+      "mediansMs": {
+        "phone-original": 5036.178826000001,
+        "phone-compact": 5190.128305500001
+      },
+      "rows": [
+        {
+          "host": "phone-compact",
+          "requestSha256": "becf6ce6460dd9a55deecd091d8c2cddd8f6679af091859d11085bd28385f1bd",
+          "requestBytes": 208925,
+          "totalMs": 5430.686977,
+          "headersMs": 3433.386249,
+          "usage": {
+            "inputTokens": 10542,
+            "outputTokens": 82,
+            "cachedTokens": 0,
+            "reasoningTokens": 20
+          },
+          "connectionTrace": [
+            {
+              "socketId": 1,
+              "previousRequests": 0,
+              "sendHeadersMs": 786.106042,
+              "negotiatedProtocol": "http/1.1",
+              "tlsSessionReused": false
+            }
+          ],
+          "actionTypes": [
+            "Scroll"
+          ],
+          "actionParameterJsonValid": true,
+          "direction": "down"
+        },
+        {
+          "host": "phone-original",
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "requestBytes": 211296,
+          "totalMs": 4909.481873,
+          "headersMs": 2931.9076030000006,
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 99,
+            "cachedTokens": 8192,
+            "reasoningTokens": 14
+          },
+          "connectionTrace": [
+            {
+              "socketId": 1,
+              "previousRequests": 1,
+              "sendHeadersMs": 2.9897399999999834,
+              "negotiatedProtocol": "http/1.1",
+              "tlsSessionReused": false
+            }
+          ],
+          "actionTypes": [
+            "Scroll"
+          ],
+          "actionParameterJsonValid": true,
+          "direction": "down"
+        },
+        {
+          "host": "phone-original",
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "requestBytes": 211296,
+          "totalMs": 4648.445571,
+          "headersMs": 2503.7653120000014,
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 106,
+            "cachedTokens": 10624,
+            "reasoningTokens": 21
+          },
+          "connectionTrace": [
+            {
+              "socketId": 1,
+              "previousRequests": 2,
+              "sendHeadersMs": 3.3082290000002104,
+              "negotiatedProtocol": "http/1.1",
+              "tlsSessionReused": false
+            }
+          ],
+          "actionTypes": [
+            "Scroll"
+          ],
+          "actionParameterJsonValid": true,
+          "direction": "down"
+        },
+        {
+          "host": "phone-compact",
+          "requestSha256": "becf6ce6460dd9a55deecd091d8c2cddd8f6679af091859d11085bd28385f1bd",
+          "requestBytes": 208925,
+          "totalMs": 5309.025779000001,
+          "headersMs": 3448.550258999998,
+          "usage": {
+            "inputTokens": 10542,
+            "outputTokens": 102,
+            "cachedTokens": 0,
+            "reasoningTokens": 16
+          },
+          "connectionTrace": [
+            {
+              "socketId": 1,
+              "previousRequests": 3,
+              "sendHeadersMs": 3.6433340000003227,
+              "negotiatedProtocol": "http/1.1",
+              "tlsSessionReused": false
+            }
+          ],
+          "actionTypes": [
+            "Scroll"
+          ],
+          "actionParameterJsonValid": true,
+          "direction": "down"
+        },
+        {
+          "host": "phone-compact",
+          "requestSha256": "becf6ce6460dd9a55deecd091d8c2cddd8f6679af091859d11085bd28385f1bd",
+          "requestBytes": 208925,
+          "totalMs": 5071.230832000001,
+          "headersMs": 2591.9307279999994,
+          "usage": {
+            "inputTokens": 10542,
+            "outputTokens": 80,
+            "cachedTokens": 0,
+            "reasoningTokens": 18
+          },
+          "connectionTrace": [
+            {
+              "socketId": 1,
+              "previousRequests": 4,
+              "sendHeadersMs": 2.016562000000704,
+              "negotiatedProtocol": "http/1.1",
+              "tlsSessionReused": false
+            }
+          ],
+          "actionTypes": [
+            "Scroll"
+          ],
+          "actionParameterJsonValid": true,
+          "direction": "down"
+        },
+        {
+          "host": "phone-original",
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "requestBytes": 211296,
+          "totalMs": 5162.875779000002,
+          "headersMs": 2940.0568209999983,
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 96,
+            "cachedTokens": 10624,
+            "reasoningTokens": 11
+          },
+          "connectionTrace": [
+            {
+              "socketId": 1,
+              "previousRequests": 5,
+              "sendHeadersMs": 1.6838019999995595,
+              "negotiatedProtocol": "http/1.1",
+              "tlsSessionReused": false
+            }
+          ],
+          "actionTypes": [
+            "Scroll"
+          ],
+          "actionParameterJsonValid": true,
+          "direction": "down"
+        },
+        {
+          "host": "phone-original",
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "requestBytes": 211296,
+          "totalMs": 5712.005415,
+          "headersMs": 3388.3791649999985,
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 97,
+            "cachedTokens": 8192,
+            "reasoningTokens": 13
+          },
+          "connectionTrace": [
+            {
+              "socketId": 1,
+              "previousRequests": 6,
+              "sendHeadersMs": 1.7407289999973727,
+              "negotiatedProtocol": "http/1.1",
+              "tlsSessionReused": false
+            }
+          ],
+          "actionTypes": [
+            "Scroll"
+          ],
+          "actionParameterJsonValid": true,
+          "direction": "down"
+        },
+        {
+          "host": "phone-compact",
+          "requestSha256": "becf6ce6460dd9a55deecd091d8c2cddd8f6679af091859d11085bd28385f1bd",
+          "requestBytes": 208925,
+          "totalMs": 4200.001455999998,
+          "headersMs": 2059.5294779999967,
+          "usage": {
+            "inputTokens": 10542,
+            "outputTokens": 83,
+            "cachedTokens": 0,
+            "reasoningTokens": 21
+          },
+          "connectionTrace": [
+            {
+              "socketId": 1,
+              "previousRequests": 7,
+              "sendHeadersMs": 1.5533329999962007,
+              "negotiatedProtocol": "http/1.1",
+              "tlsSessionReused": false
+            }
+          ],
+          "actionTypes": [
+            "Scroll"
+          ],
+          "actionParameterJsonValid": true,
+          "direction": "down"
+        }
+      ]
+    }
+  ],
+  "decision": "Not adopted: input tokens reduced 11234 to 10542, but latency direction reversed. Cache counts and generated outputs were not controlled. No full-task benefit established."
+}
