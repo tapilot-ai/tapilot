@@ -11,7 +11,7 @@ fingerprint includes patch content and configuration. Remove the patch and its
 lockfile entry together once an upstream version supports this behavior, then run
 the deployment tests, YAML smoke projects and device cancellation acceptance.
 
-`midscene-core-bbox-edge.patch` applies to `@midscene/core@1.15.2` (ESM and
+`midscene-core-runtime.patch` applies to `@midscene/core@1.15.2` (ESM and
 CommonJS). Pixel bounding boxes may use the image width/height as exclusive far
 edges, with at most one further pixel of edge rounding tolerated. The existing
 pixel mapper clips those edges to the last pixel. Origins,
@@ -24,3 +24,12 @@ avoids discarding that otherwise valid on-screen region. Overflow of two or more
 pixels past the exclusive edge remains rejected. This is bounded robustness for
 model region output, not permission to clamp arbitrary off-screen targets.
 Remove this patch when the upstream codec supports these boundary semantics.
+
+The core patch also corrects malformed model responses without a fixed delay.
+Semantic validation received a valid HTTP response; the transport retry loop
+continues to apply network backoff independently. Retry limits, feedback, abort
+checks and error propagation remain intact. Bare prose is still rejected and
+independent final screenshot verification is unchanged. The real brightness
+trace otherwise waited two seconds after a plain-text response before asking
+for the required completion marker. `semantic-retry.test.mjs` verifies immediate
+correction, bounded failure and cancellation for both ESM and CommonJS.

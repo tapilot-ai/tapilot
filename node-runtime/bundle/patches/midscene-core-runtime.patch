@@ -1,0 +1,93 @@
+diff --git a/dist/es/ai-model/shared/model-locate-result/validation.mjs b/dist/es/ai-model/shared/model-locate-result/validation.mjs
+--- a/dist/es/ai-model/shared/model-locate-result/validation.mjs
++++ b/dist/es/ai-model/shared/model-locate-result/validation.mjs
+@@ -42,6 +42,12 @@
+     const coordinatesMeta = result.coordinatesMeta;
+     const { normalizedBy } = coordinatesMeta;
+     const limits = resolveCoordinateLimits(result, maxX, maxY);
++    // Allow exclusive pixel bbox edges plus one pixel of edge rounding. Mapper
++    // clamps to the last pixel; points, origins and normalized ranges stay strict.
++    if (coordinatesMeta.shape === 'bbox' && normalizedBy === undefined) {
++        limits[2] += 2;
++        limits[3] += 2;
++    }
+     const outOfRange = result.coordinates.some((value, index)=>value < 0 || value > limits[index]);
+     if (outOfRange) {
+         const source = void 0 !== normalizedBy ? `normalized range [0, ${normalizedBy}]` : `image size [0, ${maxX}]x[0, ${maxY}]`;
+diff --git a/dist/lib/ai-model/shared/model-locate-result/validation.js b/dist/lib/ai-model/shared/model-locate-result/validation.js
+--- a/dist/lib/ai-model/shared/model-locate-result/validation.js
++++ b/dist/lib/ai-model/shared/model-locate-result/validation.js
+@@ -71,6 +71,12 @@
+     const coordinatesMeta = result.coordinatesMeta;
+     const { normalizedBy } = coordinatesMeta;
+     const limits = resolveCoordinateLimits(result, maxX, maxY);
++    // Allow exclusive pixel bbox edges plus one pixel of edge rounding. Mapper
++    // clamps to the last pixel; points, origins and normalized ranges stay strict.
++    if (coordinatesMeta.shape === 'bbox' && normalizedBy === undefined) {
++        limits[2] += 2;
++        limits[3] += 2;
++    }
+     const outOfRange = result.coordinates.some((value, index)=>value < 0 || value > limits[index]);
+     if (outOfRange) {
+         const source = void 0 !== normalizedBy ? `normalized range [0, ${normalizedBy}]` : `image size [0, ${maxX}]x[0, ${maxY}]`;
+diff --git a/dist/es/ai-model/service-caller/semantic-retry.mjs b/dist/es/ai-model/service-caller/semantic-retry.mjs
+--- a/dist/es/ai-model/service-caller/semantic-retry.mjs
++++ b/dist/es/ai-model/service-caller/semantic-retry.mjs
+@@ -1,4 +1,3 @@
+-import { waitForRetry } from "./request-timeout.mjs";
+ function withSemanticRetryFeedback(messages, previousParseError) {
+     if (!previousParseError) return messages;
+     const errorMessage = previousParseError instanceof Error ? previousParseError.message : String(previousParseError);
+@@ -10,9 +9,10 @@
+         }
+     ];
+ }
+-async function callAiAndParseWithRetry({ callAi, parseResponse, toParseError, parseRetryTimes = 0, parseRetryInterval = 0, abortSignal, onParseRetry }) {
++async function callAiAndParseWithRetry({ callAi, parseResponse, toParseError, parseRetryTimes = 0, abortSignal, onParseRetry }) {
+     const normalizedRetryTimes = Number.isFinite(parseRetryTimes) ? Math.max(0, Math.floor(parseRetryTimes)) : 0;
+-    const normalizedRetryInterval = Number.isFinite(parseRetryInterval) ? Math.max(0, parseRetryInterval) : 0;
++    // The HTTP response succeeded; correct its format immediately. Network
++    // backoff belongs to the transport retry loop, not semantic validation.
+     const callAndParseOnce = async (remainingRetries, retryAttempt, previousParseError)=>{
+         abortSignal?.throwIfAborted();
+         const response = await callAi(retryAttempt, previousParseError);
+@@ -24,7 +24,6 @@
+             abortSignal?.throwIfAborted();
+             if (remainingRetries > 0) {
+                 onParseRetry?.(error, response);
+-                if (normalizedRetryInterval > 0) await waitForRetry(normalizedRetryInterval, abortSignal);
+                 abortSignal?.throwIfAborted();
+                 return callAndParseOnce(remainingRetries - 1, retryAttempt + 1, error);
+             }
+diff --git a/dist/lib/ai-model/service-caller/semantic-retry.js b/dist/lib/ai-model/service-caller/semantic-retry.js
+--- a/dist/lib/ai-model/service-caller/semantic-retry.js
++++ b/dist/lib/ai-model/service-caller/semantic-retry.js
+@@ -27,7 +27,6 @@
+     callAiAndParseWithRetry: ()=>callAiAndParseWithRetry,
+     withSemanticRetryFeedback: ()=>withSemanticRetryFeedback
+ });
+-const external_request_timeout_js_namespaceObject = require("./request-timeout.js");
+ function withSemanticRetryFeedback(messages, previousParseError) {
+     if (!previousParseError) return messages;
+     const errorMessage = previousParseError instanceof Error ? previousParseError.message : String(previousParseError);
+@@ -39,9 +38,10 @@
+         }
+     ];
+ }
+-async function callAiAndParseWithRetry({ callAi, parseResponse, toParseError, parseRetryTimes = 0, parseRetryInterval = 0, abortSignal, onParseRetry }) {
++async function callAiAndParseWithRetry({ callAi, parseResponse, toParseError, parseRetryTimes = 0, abortSignal, onParseRetry }) {
+     const normalizedRetryTimes = Number.isFinite(parseRetryTimes) ? Math.max(0, Math.floor(parseRetryTimes)) : 0;
+-    const normalizedRetryInterval = Number.isFinite(parseRetryInterval) ? Math.max(0, parseRetryInterval) : 0;
++    // The HTTP response succeeded; correct its format immediately. Network
++    // backoff belongs to the transport retry loop, not semantic validation.
+     const callAndParseOnce = async (remainingRetries, retryAttempt, previousParseError)=>{
+         abortSignal?.throwIfAborted();
+         const response = await callAi(retryAttempt, previousParseError);
+@@ -53,7 +53,6 @@
+             abortSignal?.throwIfAborted();
+             if (remainingRetries > 0) {
+                 onParseRetry?.(error, response);
+-                if (normalizedRetryInterval > 0) await (0, external_request_timeout_js_namespaceObject.waitForRetry)(normalizedRetryInterval, abortSignal);
+                 abortSignal?.throwIfAborted();
+                 return callAndParseOnce(remainingRetries - 1, retryAttempt + 1, error);
+             }
