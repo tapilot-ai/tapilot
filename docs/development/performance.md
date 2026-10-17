@@ -1106,3 +1106,63 @@ A native brightness regression on the same candidate runtime succeeded in
 read the visible auto-brightness switch as on. This is a functional regression
 sample, not a new brightness speedup cohort. Its evidence is included in the
 linked JSON. No settings were intentionally changed by either task.
+
+### Stop redundant read-only navigation and observe serving edges (2026-10-17)
+
+General bilingual guidance now asks a read-only agent to stop navigating once
+the requested label/value is clear and the requested navigation is complete.
+It must continue if evidence is missing or ambiguous. The separate final visual
+query remains mandatory. This targets the extra version-detail navigation in
+the preceding cohort without hardcoding a task, screen, coordinate or answer.
+
+Transport diagnostics now retain only a validated three-letter `cf-ray` edge
+suffix and a finite nonnegative `openai-processing-ms` value when supplied.
+They do not retain request IDs or arbitrary response headers. Tests cover
+stream preservation, cancellation, telemetry errors and malformed/private
+header values. An edge code describes the response edge, not the inference
+server location; response-header waiting cannot by itself separate network
+latency, service queueing and model processing.
+
+The first phone task after updating completed in 63.904 s, including 10.631 s
+runtime preparation. Its observer exited before task completion; the same
+running task was observed again and its terminal result/report recovered.
+No task was restarted. All six visual requests returned HTTP 200 via SIN,
+and independent verification read Android version 14. No server-processing
+header was present. The first desktop task completed in 54.937 s but included
+one HTTP 504 and a model-only retry; no device action was replayed. This sample
+is retained and cannot by itself support a phone-versus-desktop parity claim.
+
+[Complete measurements including cold runs and retries](performance-visible-evidence-20261017.json)
+
+The two warm phone samples were **59.046 s and 53.046 s** (median 56.046 s),
+both five device actions, six visual HTTP requests and no retries. Desktop
+samples were **54.937 s and 58.573 s** (median 56.755 s), but each had one
+model retry: the first includes HTTP 504, the second has seven HTTP-200
+responses and the report marks one retry. The latter retry's precise cause is
+not established. Their similar medians therefore do not prove steady-state
+parity or a 50% speedup. All independently read Android version 14 via SIN.
+
+The slower warm phone sample's outer completion phase was 10.576 s, but its
+HTTP transport measured only 5.558 s. About 4.9 s preceded the persistence
+barrier and HTTP request; it must not be attributed entirely to model serving.
+`ConversationModelClient` now records credential acquisition, encoding,
+request and decoding durations separately, with only phase/duration/success.
+Telemetry errors cannot fail or repeat the request. Tests cover that boundary
+and credential failures issuing no HTTP request. The first instrumented real
+run measured 23 ms credentials, 38 ms encoding and 49 ms decoding, so the
+preceding five-second delay was not reproduced and its cause remains open.
+
+Runtime checks, local quick checks, Kotlin unit tests and debug builds passed.
+The updated APK is installed on the OPPO. No second-device or GitHub CI claim
+is made. The existing fixed-request replay and these full-task samples are
+complementary evidence, not interchangeable measurements.
+
+The first task after the diagnostic-only APK update completed in **60.904 s**,
+with five actions, six successful visual requests and independent Android-14
+verification. Runtime preparation was already warm; app/process startup and
+first-task persistence were not. It is reported separately from the earlier
+warm pair. Visual HTTP time was 32.982 s and inner non-HTTP time 17.535 s.
+The final evidence screenshot was also manually inspected. The four native
+runs in this cohort all stopped on the About device page rather than opening
+the version detail page; this is promising coverage, not a guarantee for all
+read-only tasks.
