@@ -79,8 +79,14 @@ class WirelessControlService : Service() {
             CHANNEL, label("无线控制", "Wireless control"), NotificationManager.IMPORTANCE_LOW))
         startForeground(NOTIFICATION, notification())
         val connectivity = getSystemService(ConnectivityManager::class.java)
+        // VPN capabilities can also include WIFI for their underlying network.
+        // Pairing and the LAN listener must use the physical Wi-Fi interface.
         wifi = connectivity.allNetworks.firstOrNull {
-            connectivity.getNetworkCapabilities(it)?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+            connectivity.getNetworkCapabilities(it)?.let { capabilities ->
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                    !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
+                    capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+            } == true
         }
         val address = wifi?.let { connectivity.getLinkProperties(it) }?.linkAddresses
             ?.map { it.address }?.filterIsInstance<Inet4Address>()?.firstOrNull { !it.isLoopbackAddress }
