@@ -58,6 +58,25 @@ test('transport measurement forwards cancellation and telemetry failures are har
   assert.equal(cancelled, true);
 });
 
+test('transport diagnostics retain only validated server timing and edge code', async () => {
+  const { measuredFetch } = await import('./siwc-fetch.mjs');
+  const records = [];
+  for (const headers of [
+    { 'cf-ray': '123abc-SIN', 'openai-processing-ms': '123.5', 'x-request-id': 'private-id', 'set-cookie': 'private-cookie' },
+    { 'cf-ray': 'private-value', 'openai-processing-ms': '-1' },
+    { 'openai-processing-ms': '9'.repeat(400) },
+  ]) {
+    await (await measuredFetch(async () => new Response(null, { headers }), value => records.push(value))('https://example.test')).text();
+  }
+  assert.equal(records[0].edge, 'SIN');
+  assert.equal(records[0].serverProcessingMs, 123.5);
+  for (const record of records.slice(1)) {
+    assert.equal(record.edge, undefined);
+    assert.equal(record.serverProcessingMs, undefined);
+  }
+  assert.ok(!JSON.stringify(records).includes('private'));
+});
+
 test('real fetch diagnostics measure upload and response boundaries without retaining secrets', async () => {
   const { createServer } = await import('node:http');
   const { once } = await import('node:events');

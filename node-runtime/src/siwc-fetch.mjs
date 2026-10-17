@@ -42,6 +42,13 @@ export function measuredFetch(fetch, record, now = () => performance.now()) {
       const response = await fetch(input, init);
       timing.headersMs = now() - start;
       timing.status = response.status;
+      // Keep only the edge code, never request IDs, credentials or arbitrary headers.
+      const edge = response.headers.get('cf-ray')?.match(/^[a-f0-9]+-([A-Z]{3})$/)?.[1];
+      if (edge) timing.edge = edge;
+      const processing = response.headers.get('openai-processing-ms');
+      if (processing && /^\d+(?:\.\d+)?$/.test(processing) && Number.isFinite(Number(processing))) {
+        timing.serverProcessingMs = Number(processing);
+      }
       if (!response.body) { finish('complete'); return response; }
       const reader = response.body.getReader();
       timing.responseBytes = 0;

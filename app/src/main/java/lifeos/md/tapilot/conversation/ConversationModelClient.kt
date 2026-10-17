@@ -18,16 +18,26 @@ internal class ConversationModelClient(
     private val accessToken: (String) -> String,
     private val request: (JSONObject, String, AtomicBoolean) -> JSONObject,
     private val apiFailure: (JSONObject, String) -> Unit = { _, _ -> },
+    private val onTiming: (String, Long, Boolean) -> Unit = { _, _, _ -> },
 ) {
+    private fun <T> measured(phase: String, action: () -> T): T {
+        val started = System.nanoTime()
+        var success = false
+        try { return action().also { success = true } }
+        finally { runCatching { onTiming(phase, (System.nanoTime() - started) / 1_000_000, success) } }
+    }
     fun chatGpt(account: String, model: String, messages: JSONArray, tools: JSONArray, session: String, stopped: AtomicBoolean): JSONObject {
         check(!stopped.get()) { appText("任务已停止", "Task stopped") }
-        val token = accessToken(account)
-        val history = JSONArray(messages.toString())
-        for (i in 0 until history.length()) history.getJSONObject(i).let { message ->
-            if (message.optString("tapilotResponsesAccount") != account) message.remove("tapilotResponsesOutput")
+        val token = measured("credentials") { accessToken(account) }
+        val params = measured("encode") {
+            val history = JSONArray(messages.toString())
+            for (i in 0 until history.length()) history.getJSONObject(i).let { message ->
+                if (message.optString("tapilotResponsesAccount") != account) message.remove("tapilotResponsesOutput")
+            }
+            ChatGptResponses.params(model, token, history, tools)
         }
-        val params = ChatGptResponses.params(model, token, history, tools)
-        return ChatGptResponses.decode(request(params, session, stopped)).put("tapilotResponsesAccount", account)
+        val response = measured("request") { request(params, session, stopped) }
+        return measured("decode") { ChatGptResponses.decode(response).put("tapilotResponsesAccount", account) }
     }
     fun complete(model: ModelProfile, key: String, messages: JSONArray, tools: JSONArray, session: String, stopped: AtomicBoolean): JSONObject {
         val response = request(NativeModelRequest.params(model.json(), key, messages, tools), session, stopped)

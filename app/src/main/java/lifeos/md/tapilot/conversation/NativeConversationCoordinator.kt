@@ -76,7 +76,9 @@ class NativeConversationCoordinator(
     private val session get() = execution.sessionId
     private val effects = ConversationEffects(services, persistence::flush) { closed }
     private val models = ConversationModelClient({ chatGpt.store.accessToken(it) },
-        { params, session, stopped -> await("model.request", params, session, stopped) as JSONObject }, ::recordModelFailure)
+        { params, session, stopped -> await("model.request", params, session, stopped) as JSONObject }, ::recordModelFailure,
+        { phase, duration, success -> android.util.Log.i("TapilotPerformance", JSONObject()
+            .put("phase", "model.$phase").put("role", "outer").put("durationMs", duration).put("success", success).toString()) })
     private val queuedContexts = ArrayDeque<JSONObject>()
 
     private val settings = ConversationSettings(activity, { data }, { running }, { closed }, credentials, chatGpt, models, services, worker, handler, ::save, ::publish, ::local)
