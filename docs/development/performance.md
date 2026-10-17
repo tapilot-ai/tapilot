@@ -1974,3 +1974,42 @@ All task workers were gone after acceptance; the user's auto-read preference was
 restored and wireless control re-enabled after installation.
 
 [Action-level timings, full-task evidence and limitations](performance-action-delay-20261017.json)
+
+### Matched-host recheck after action-delay removal (2026-10-17)
+
+Repeated the read-auto-brightness full task in desktop / phone / phone / desktop
+order with runtime `0.1.0-1d468b0142a2`. All four runs share the source fingerprint,
+gpt-6-luna for outer and visual models, the same account (separate OAuth sessions),
+Node 24.18.0, JPEG90 988×1972 screenshots without shrinking, task instruction,
+execution policies and independent final visual verification. Settings was reset
+outside each timer and its root screenshot visually checked. Phone benchmark
+playback was muted through the debug receiver; desktop has no playback. No
+production code changed during the cohort. The phone battery fell from 14% to
+13%, without charging; starting temperature was 34°C.
+
+| Host / order | Full task | Outer model calls | Visual calls | Result |
+| --- | ---: | ---: | ---: | --- |
+| Desktop 1 | 37.859 s | 2 | 4 | Auto-brightness enabled, verified |
+| Phone 1 | 41.804 s | 1 | 4 | Auto-brightness enabled, verified |
+| Phone 2 | 36.159 s | 1 | 4 | Auto-brightness enabled, verified |
+| Desktop 2 | 37.585 s | 1 | 4 | Auto-brightness enabled, verified |
+
+Median full-task duration was desktop 37.722 s versus phone 38.982 s (+3.3%).
+The inner execution's non-model-HTTP portion was 8.982 s versus 8.814 s;
+outside the outer model and inner runner, overhead was 0.690 s versus 1.672 s.
+The phone therefore still has about one second of additional surrounding work,
+but this cohort does not show a large phone-only execution penalty. The dominant
+time remains model requests, which include provider processing and transport;
+these timings cannot isolate network latency from inference.
+
+Desktop 1 elected an extra summary turn (`finishWhenVerified` omitted). This is
+retained, not silently discarded. Equal model configuration does not make live
+model decisions, generated prompts, provider routing or caching identical. Among
+the one-outer-call runs, desktop 2 took 37.585 s and the two phone runs spanned
+36.159–41.804 s. Two samples per host do not establish statistical equivalence.
+This is the same-agent desktop harness, not Codex UI latency, and this short
+read-only task does not establish long-task parity or a 50% overall reduction.
+All four final visual checks passed with no model parse retries; no Node task
+worker remained on the phone afterward.
+
+[Sanitized samples and phase breakdown](performance-parity-recheck-20261017.json)

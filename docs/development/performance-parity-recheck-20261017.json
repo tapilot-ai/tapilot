@@ -1,0 +1,230 @@
+{
+  "controls": {
+    "fixture": "read-auto-brightness",
+    "device": "e7ed3f17",
+    "model": "gpt-6-luna",
+    "node": "24.18.0",
+    "sameAccountSeparateOAuthSessions": true,
+    "screenshot": "988x1972 JPEG, quality 90, shrink factor 1",
+    "initialScreen": "Settings root, visually checked before every sample",
+    "independentFinalVisualQuery": true,
+    "phoneRuntimePreload": "production default enabled",
+    "order": [
+      "desktop",
+      "phone",
+      "phone",
+      "desktop"
+    ],
+    "limitations": [
+      "Desktop same-agent harness, not Codex UI timing",
+      "Same image processing, but live screenshots and generated requests are not byte-identical",
+      "Provider routing, cache, model output and OAuth session remain uncontrolled",
+      "Two samples per host; no stable parity or causal speedup claim",
+      "Outer model may choose an extra summary turn; report call counts rather than treating live model decisions as controlled",
+      "Battery 13-14 percent; no charging; this cohort does not establish behavior at normal battery levels"
+    ],
+    "preflightFailure": null,
+    "voiceControl": "Phone debug receiver stopAudio; desktop harness has no playback",
+    "runtime": "0.1.0-1d468b0142a2",
+    "batteryAtStart": 14,
+    "temperatureCAtStart": 34
+  },
+  "rows": [
+    {
+      "id": "full-desktop-2026-10-17T06-33-09.607Z",
+      "host": "desktop",
+      "wallMs": 37858.9285,
+      "sourceFingerprint": "3418a56901e0e65aed192099bdcd4f828c64eaaebf67c2b00f193ed7c4e23add",
+      "outerMs": 11136.156166,
+      "outerModelCalls": 2,
+      "runnerMs": 26058,
+      "httpMs": 16992.646916,
+      "innerNonHttpMs": 9065.353083999998,
+      "outsideMs": 664.7723340000011,
+      "httpRequests": 4,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "“显示与亮度”页面可见。“自动调节”开关显示为开启。"
+      },
+      "finishWhenVerifiedRequested": null
+    },
+    {
+      "id": "native-full-parity-p1-20261017",
+      "host": "phone",
+      "wallMs": 41804,
+      "sourceFingerprint": "3418a56901e0e65aed192099bdcd4f828c64eaaebf67c2b00f193ed7c4e23add",
+      "outerMs": 6922,
+      "outerModelCalls": 1,
+      "runnerMs": 33274,
+      "httpMs": 24084.946238999997,
+      "innerNonHttpMs": 9189.053761000003,
+      "outsideMs": 1608,
+      "httpRequests": 4,
+      "actions": 3,
+      "planningParseRetries": 0,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "“显示与亮度”页面中可见“自动调节”，其开关为开启状态。"
+      },
+      "lifecycle": [
+        {
+          "phase": "runner.queue",
+          "durationMs": 1
+        },
+        {
+          "phase": "runner.prepareRuntime",
+          "durationMs": 3
+        },
+        {
+          "phase": "runner.prepareProject",
+          "durationMs": 1
+        },
+        {
+          "phase": "runner.preparedReuse",
+          "reused": true
+        },
+        {
+          "phase": "runner.startToFirstEvent",
+          "durationMs": 3
+        },
+        {
+          "type": "runtime.prepared",
+          "timestamp": "2026-10-17T06:34:09.580Z",
+          "durationMs": 791.694115,
+          "phase": "runner.preload"
+        },
+        {
+          "phase": "runner.startToFirstRpc",
+          "durationMs": 65
+        },
+        {
+          "phase": "runner.completedToExit",
+          "durationMs": 63
+        },
+        {
+          "phase": "runner.importReports",
+          "durationMs": 43
+        }
+      ]
+    },
+    {
+      "id": "native-full-parity-p2-20261017",
+      "host": "phone",
+      "wallMs": 36159,
+      "sourceFingerprint": "3418a56901e0e65aed192099bdcd4f828c64eaaebf67c2b00f193ed7c4e23add",
+      "outerMs": 4914,
+      "outerModelCalls": 1,
+      "runnerMs": 29509,
+      "httpMs": 21070.870357000003,
+      "innerNonHttpMs": 8438.129642999997,
+      "outsideMs": 1736,
+      "httpRequests": 4,
+      "actions": 3,
+      "planningParseRetries": 0,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "“显示与亮度”页面可见；亮度区域显示“自动调节”，其开关为蓝色开启状态。"
+      },
+      "lifecycle": [
+        {
+          "phase": "runner.queue",
+          "durationMs": 1
+        },
+        {
+          "phase": "runner.prepareRuntime",
+          "durationMs": 2
+        },
+        {
+          "phase": "runner.prepareProject",
+          "durationMs": 0
+        },
+        {
+          "phase": "runner.startToFirstEvent",
+          "durationMs": 2
+        },
+        {
+          "type": "runtime.prepared",
+          "timestamp": "2026-10-17T06:35:09.959Z",
+          "durationMs": 796.8232290000001,
+          "phase": "runner.preload"
+        },
+        {
+          "phase": "runner.preparedReuse",
+          "reused": true
+        },
+        {
+          "phase": "runner.startToFirstRpc",
+          "durationMs": 61
+        },
+        {
+          "phase": "runner.completedToExit",
+          "durationMs": 68
+        },
+        {
+          "phase": "runner.importReports",
+          "durationMs": 63
+        }
+      ]
+    },
+    {
+      "id": "full-desktop-2026-10-17T06-36-09.295Z",
+      "host": "desktop",
+      "wallMs": 37584.5115,
+      "sourceFingerprint": "3418a56901e0e65aed192099bdcd4f828c64eaaebf67c2b00f193ed7c4e23add",
+      "outerMs": 4943.85725,
+      "outerModelCalls": 1,
+      "runnerMs": 31926,
+      "httpMs": 23027.592708,
+      "innerNonHttpMs": 8898.407292,
+      "outsideMs": 714.6542499999996,
+      "httpRequests": 4,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "显示与亮度页面可见；“自动调节”当前为开启状态。"
+      },
+      "finishWhenVerifiedRequested": true
+    }
+  ],
+  "medians": {
+    "desktop": {
+      "wallMs": 37721.72,
+      "outerMs": 8040.006708000001,
+      "runnerMs": 28992,
+      "httpMs": 20010.119812,
+      "innerNonHttpMs": 8981.880188,
+      "outsideMs": 689.7132920000004
+    },
+    "phone": {
+      "wallMs": 38981.5,
+      "outerMs": 5918,
+      "runnerMs": 31391.5,
+      "httpMs": 22577.908298000002,
+      "innerNonHttpMs": 8813.591702,
+      "outsideMs": 1672
+    }
+  }
+}
