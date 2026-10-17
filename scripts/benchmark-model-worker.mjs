@@ -14,9 +14,12 @@ try {
     const started = performance.now();
     const measurement = { id, requestSha256: createHash('sha256').update(body).digest('hex'), requestBytes: Buffer.byteLength(body) };
     try {
+      const probe = transport === 'transport-probe';
       const request = transport === 'siwc-request' ? siwcFetch(fetch, async () => token) : fetch;
       measurement.transport = transport;
-      const response = await request('https://api.openai.com/v1/responses', {
+      const response = await request(probe ? 'https://api.openai.com/v1/models' : 'https://api.openai.com/v1/responses', probe ? {
+        method: 'GET', signal: AbortSignal.timeout(15000),
+      } : {
         method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'text/event-stream' },
         body, signal: AbortSignal.timeout(45000),
       });
@@ -32,6 +35,14 @@ try {
       text += decoder.decode();
       measurement.totalMs = performance.now() - started;
       measurement.responseBytes = bytes;
+      if (probe) {
+        // Unauthenticated API rejection measures a path floor, not model inference.
+        if (response.status !== 401) throw Error('Unexpected probe status');
+        measurement.outcome = 'complete';
+        measurement.network = network;
+        console.log(JSON.stringify(measurement));
+        continue;
+      }
       let completed; const items = new Map();
       for (const line of text.split('\n')) {
         if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;

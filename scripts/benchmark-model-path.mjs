@@ -9,19 +9,22 @@ import { createHash } from 'node:crypto';
 import { ChatGPTAuth } from '../plugins/android-use/server/midscene/chatgpt-auth.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const [serial, report] = process.argv.slice(2);
+const probe = report === '--transport-probe';
 // Explicit diagnostic only: compare Android VPN/TUN routing with its local HTTP proxy.
 // Never accept a remote proxy or credentials in a command-line environment value.
 const phoneProxy = process.env.TAPILOT_BENCH_PHONE_PROXY;
 if (phoneProxy && !/^http:\/\/127\.0\.0\.1:([1-9]\d{0,4})$/.test(phoneProxy)) throw Error('Phone proxy must be localhost HTTP');
 if (phoneProxy && Number(new URL(phoneProxy).port) > 65535) throw Error('Invalid phone proxy port');
-if (!serial || !report || !process.env.TAPILOT_BENCH_AUTH_DIR || !process.env.TAPILOT_BENCH_ACCOUNT) throw Error('Specify serial, saved report, benchmark auth/account');
+if (!serial || !report || (!probe && (!process.env.TAPILOT_BENCH_AUTH_DIR || !process.env.TAPILOT_BENCH_ACCOUNT))) throw Error('Specify serial, saved report, benchmark auth/account');
 if (process.version !== 'v24.18.0') throw Error('Use Node 24.18.0');
-const auth = new ChatGPTAuth(process.env.TAPILOT_BENCH_AUTH_DIR);
-if ((await auth.status()).account !== process.env.TAPILOT_BENCH_ACCOUNT) throw Error('Account mismatch');
-const source = await readFile(report, 'utf8');
+const auth = probe ? null : new ChatGPTAuth(process.env.TAPILOT_BENCH_AUTH_DIR);
+if (!probe && (await auth.status()).account !== process.env.TAPILOT_BENCH_ACCOUNT) throw Error('Account mismatch');
+const source = probe ? '' : await readFile(report, 'utf8');
 let image, body;
 const savedRequest = report.endsWith('.json');
-if (savedRequest) {
+if (probe) {
+  body = '';
+} else if (savedRequest) {
   const parsed = JSON.parse(source);
   if (parsed.model !== 'gpt-6-luna' || parsed.store !== false || parsed.stream !== true) throw Error('Unsupported saved request');
   image = source.match(/data:image\/jpeg;base64,[A-Za-z0-9+/=]+/)?.[0];
@@ -31,7 +34,7 @@ if (savedRequest) {
   body = JSON.stringify({ model: 'gpt-6-luna', store: false, stream: true, include: ['reasoning.encrypted_content'],
     input: [{ role: 'user', content: [{ type: 'input_text', text: 'Read the auto-brightness switch from this screenshot. Reply with its visible label and on/off state. If absent, say unknown. Do not perform any action.' }, { type: 'input_image', image_url: image }] }] });
 }
-if (!image?.startsWith('data:image/jpeg;base64,')) throw Error('JPEG screenshot missing');
+if (!probe && !image?.startsWith('data:image/jpeg;base64,')) throw Error('JPEG screenshot missing');
 const out = join(root, 'artifacts/controlled-execution', `model-path-${new Date().toISOString().replaceAll(':', '-')}`);
 await mkdir(out, { recursive: true });
 const adb = (...args) => execFileSync('adb', ['-s', serial, ...args], { encoding: 'utf8', timeout: 15000 });
@@ -88,11 +91,11 @@ try {
       readiness[1].environmentProxyEnabled !== Boolean(phoneProxy)) throw Error('Worker proxy configuration mismatch');
   for (const host of ['desktop', 'phone', 'phone', 'desktop', 'desktop', 'phone', 'phone', 'desktop']) {
     const id = `${host}-${measurements.length + 1}`;
-    const result = await ({ desktop, phone }[host]).request({ id, token: await auth.accessToken(), body, transport: savedRequest ? 'siwc-request' : 'direct' });
+    const result = await ({ desktop, phone }[host]).request({ id, token: probe ? undefined : await auth.accessToken(), body, transport: probe ? 'transport-probe' : savedRequest ? 'siwc-request' : 'direct' });
     if (result.id !== id || result.receiptMs === undefined) throw Error('Missing or mismatched worker receipt');
     if (result.requestSha256 !== createHash('sha256').update(body).digest('hex')) throw Error('Request byte mismatch');
     measurements.push({ host, ...result });
-    await writeFile(join(out, 'measurement.json'), JSON.stringify({ requestKind: savedRequest ? 'saved-model-request' : 'short-visual-query', screenshotSha256: createHash('sha256').update(image).digest('hex'), requestSha256: result.requestSha256,
+    await writeFile(join(out, 'measurement.json'), JSON.stringify({ requestKind: probe ? 'unauthenticated-transport-probe' : savedRequest ? 'saved-model-request' : 'short-visual-query', screenshotSha256: probe ? null : createHash('sha256').update(image).digest('hex'), requestSha256: result.requestSha256,
       nodeVersion: process.version, desktopEnvironmentProxyEnabled: process.env.NODE_USE_ENV_PROXY === '1', phoneLocalProxyEnabled: Boolean(phoneProxy), measurements }, null, 2));
     console.log(JSON.stringify({ host, outcome: result.outcome, headersMs: result.headersMs, totalMs: result.totalMs }));
     if (result.outcome !== 'complete') throw Error('Request failed; sample retained, no automatic retry');

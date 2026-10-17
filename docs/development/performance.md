@@ -1479,3 +1479,39 @@ warm run used the same task ID after its observer expired; no action was replaye
 Stable desktop parity and the original 50% full-task goal remain unproven.
 
 [All intermediate and final device samples](performance-history-cache-20261017.json)
+
+
+### Recheck model routing after cache optimization (2026-10-17)
+
+Two more eight-request alternating cohorts replayed the same saved planning
+body, screenshot, bearer credential and Node 24.18.0 on desktop and Android.
+All 16 model calls completed as gpt-6-luna with 11,234 input tokens.
+
+| Route | Desktop median | Phone median | Desktop/phone headers |
+| --- | ---: | ---: | ---: |
+| Existing routes | 5.671 s | 7.293 s | 2.815 / 3.954 s |
+| Explicit phone localhost HTTP proxy | 5.292 s | 6.843 s | 2.532 / 4.345 s |
+
+The proxy cohort retained a 29.3% phone gap (existing routes: 28.6%), so the
+previous near-parity proxy observation did not reproduce. No production proxy
+configuration was changed. Baseline phone requests all cached 10,624 input
+tokens, while desktop cache counts were 8,192 or 10,624; the phone difference
+cannot be explained by a larger input or less cached input in these samples.
+Outputs, server scheduling and route behavior still vary.
+
+The replay harness now accepts `--transport-probe` in place of a saved request.
+It sends unauthenticated GET requests to /v1/models, checks the expected 401,
+and records timing without reading or transmitting credentials or screenshots.
+Eight alternating probes had 0.474 s desktop / 0.550 s phone median total time.
+This is evidence against attributing the entire model gap to generic connection
+latency, but the different endpoint and authentication path make it an imperfect
+network reference. Do not subtract these medians from model time and label the
+remainder inference. The server did not provide a processing-time breakdown.
+
+Both scripts passed syntax checks and the new probe passed live verification
+on both hosts. Worker files were cleaned up. This cohort executes no phone
+UI actions and supplies no new complete-task latency or parity result. Further
+work must separate model-specific request handling and generation from transport
+rather than repeatedly tuning a generic keepalive/proxy setting.
+
+[Request timings and usage counts](performance-route-refresh-20261017.json)
