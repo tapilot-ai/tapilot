@@ -121,6 +121,7 @@ try {
     boundary: 'Desktop same-agent full conversation; includes catalog, Kotlin IPC, Pi startup, inner harness auth/connection/startup; excludes preflight and JVM warmup. Not Codex UI timing.' }, null, 2));
   console.log(JSON.stringify({ out, status: 'verified', wallMs }));
 } catch (error) {
-  await writeFile(join(out, 'measurement.json'), JSON.stringify({ status: 'failed', fixtureName, source, error: error.message, phases, modelMetrics, executions }, null, 2));
+  await writeFile(join(out, 'measurement.json'), JSON.stringify({ status: 'failed', fixtureName, source, error: error.message,
+    ...(started === undefined ? {} : { failedAfterMs: performance.now() - started }), phases, modelMetrics, executions }, null, 2));
   console.error(JSON.stringify({ out, status: 'failed', reason: error.message })); process.exitCode = 1;
 } finally { clearTimeout(watchdog); agent?.kill(); runner?.kill(); codec?.kill(); connection.close(); }

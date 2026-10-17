@@ -104,14 +104,16 @@ try {
   const executionWallMs = Math.round(performance.now() - started);
   if (code !== 0 || !completed || rpcFailure) throw Error(rpcFailure ?? 'Incomplete execution');
   const result = JSON.parse(await readFile(join(out, 'results/android-runner-result.json'), 'utf8'));
+  // Preserve failed visual checks too: rebuilding the shared runtime removes
+  // its temporary agent report, while the sample directory remains available.
+  const report = await readFile(completed.reportPath, 'utf8');
+  await writeFile(join(out, 'report.html'), report);
   const queries = result.projects.flatMap(p => p.cases ?? []).flatMap(c => c.run?.steps ?? [])
     .filter(s => s.node === 'aiQuery').map(s => s.output?.data);
   if (queries.length !== 1 || queries[0]?.success !== true || !queries[0]?.observation) throw Error('Independent screenshot verification did not pass');
-  const report = await readFile(completed.reportPath, 'utf8');
   const evidence = controlledEvidence(report);
   if (sourceFingerprint(root) !== runtimeSourceFingerprint) throw Error('Runtime sources changed during the sample');
   const modelHttpRequests = events.filter(e => e.type === 'model.timing').length;
-  await writeFile(join(out, 'report.html'), report);
   await writeFile(join(out, 'measurement.json'), JSON.stringify({ fixtureName, fixtureSha256, captureFormat, sourceFingerprint: runtimeSourceFingerprint, modelHttpRequests, executionWallMs, runnerDurationMs: result.durationMs, environmentProxyEnabled: process.env.NODE_USE_ENV_PROXY === '1', queries, evidence,
     status: 'verified', nodeVersion: process.version, events }, null, 2));
   console.log(JSON.stringify({ out, executionWallMs, status: 'verified' }));
