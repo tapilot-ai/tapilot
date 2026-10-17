@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createConversation, checkpointMessages, resumableTranscript } from './pi-conversation.mjs';
 const input = text => [{ role: 'system', content: 'Tapilot' }, { role: 'user', content: text }];
 const answer = content => ({ choices: [{ message: { content } }] });
-const tool = (name, args) => ({ choices: [{ message: { tool_calls: [{ id: `call-${name}`, function: { name, arguments: JSON.stringify(name === 'operate_phone' ? { mode: 'act', app: '', ...args } : args) } }] } }] });
+const tool = (name, args) => ({ choices: [{ message: { tool_calls: [{ id: `call-${name}`, function: { name, arguments: JSON.stringify(name === 'operate_phone' ? { mode: 'act', app: '', finishWhenVerified: false, ...args } : args) } }] } }] });
 
 test('Pi pushes a planned phone task to verified completion through native RPC', async () => {
   let count = 0;
@@ -12,7 +12,7 @@ test('Pi pushes a planned phone task to verified completion through native RPC',
     methods.push(method);
     if (method === 'phone.execute') return { success: true, result: '计算器已显示' };
     assert.deepEqual(params.tools.map(t => t.function.name), ['operate_phone', 'find_apps', 'set_plan', 'finish_task']);
-    assert.deepEqual(params.tools[0].function.parameters.required, ['instruction', 'success_condition', 'mode', 'app']);
+    assert.deepEqual(params.tools[0].function.parameters.required, ['instruction', 'success_condition', 'mode', 'finishWhenVerified', 'app']);
     if (count === 2) {
       const verified = JSON.parse(params.messages.at(-1).content).result;
       assert.equal(verified, '已独立看图核验：计算器已显示');
@@ -278,6 +278,37 @@ test('single whole-goal operation finishes with real visual evidence without a s
   const result = await conversation.run();
   assert.equal(models, 1); assert.equal(result.phase, 'completed');
   assert.equal(result.reply, '屏幕显示 9×6 = 54');
+});
+
+test('explicit continuation preserves multi-page facts and a synthesized answer', async () => {
+  let models = 0, phones = 0;
+  const conversation = createConversation({ messages: input('读取两个页面并比较'), emit: () => {},
+    rpc: async (method, params) => {
+      if (method === 'phone.execute') return { success: true, result: ++phones === 1 ? '页面甲：12' : '页面乙：9' };
+      if (models++ < 2) return tool('operate_phone', { instruction: '读取下一页', success_condition: '数值可见', finishWhenVerified: false });
+      const history = JSON.stringify(params.messages);
+      assert.match(history, /页面甲：12/);
+      assert.match(history, /页面乙：9/);
+      return tool('finish_task', { outcome: 'completed', summary: '甲比乙多 3' });
+    } });
+  const result = await conversation.run();
+  assert.equal(models, 3);
+  assert.equal(phones, 2);
+  assert.equal(result.reply, '甲比乙多 3');
+  assert.equal(result.phase, 'completed');
+});
+
+test('missing completion choice is rejected before a phone action', async () => {
+  let models = 0, phones = 0;
+  const conversation = createConversation({ messages: input('读取页面'), emit: () => {},
+    rpc: async method => {
+      if (method === 'phone.execute') { phones++; return { success: true, result: '不应执行' }; }
+      return models++ === 0
+        ? tool('operate_phone', { instruction: '读取', success_condition: '页面可见', finishWhenVerified: undefined })
+        : tool('finish_task', { outcome: 'waiting_user', summary: '需要澄清' });
+    } });
+  assert.equal((await conversation.run()).phase, 'waiting_user');
+  assert.equal(phones, 0);
 });
 
 for (const condition of ['failed', 'steering', 'followUp', 'planned', 'batch', 'resume', 'empty']) {

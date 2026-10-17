@@ -2013,3 +2013,33 @@ All four final visual checks passed with no model parse retries; no Node task
 worker remained on the phone afterward.
 
 [Sanitized samples and phase breakdown](performance-parity-recheck-20261017.json)
+
+### Explicit completion choice (2026-10-17)
+
+The preceding matched-host cohort exposed an avoidable extra summary inference:
+desktop sample 1 omitted the optional `finishWhenVerified` field and spent
+4.809 s in a second outer model request after the verified phone operation.
+The tool now requires an explicit boolean choice. This does not default omitted
+values to true or remove the independent final screenshot query. False still
+continues reasoning for intermediate steps, multi-page facts and synthesis; all
+existing cancellation, steering, plan, batch and resume guards remain in place.
+Malformed calls missing the choice are rejected before native phone execution.
+
+The 87 runtime tests include multi-page synthesis with explicit false and missing
+choice rejection, alongside the existing completion and interruption tests. Local
+quick checks, Kotlin tests, APK build and runtime integrity passed. The runtime
+`0.1.0-54ddd2454585` was installed on OPPO for real acceptance. This change makes
+the completion decision explicit; it does not force the model to choose true or
+establish a stable percentage speedup from a small acceptance cohort.
+
+All three real tasks succeeded with one outer model call and independent final
+visual checks, using full-size screenshots and zero reported model retries.
+The warm brightness task took 37.272 s (four visual calls), and the version task
+took 48.355 s (six visual calls, Android 14 confirmed). The first post-install
+brightness run took 50.015 s, including 9.304 s runtime preparation, and is kept
+separate from warm measurements. No task worker remained after these runs.
+These samples verify the explicit-choice path; they do not show that it removes
+a summary turn from every task, nor isolate a causal wall-time improvement from
+model latency variation.
+
+[Real-device samples and validation](performance-explicit-completion-20261017.json)
