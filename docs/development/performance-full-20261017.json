@@ -1,0 +1,305 @@
+{
+  "task": "Read auto-brightness without changing settings",
+  "model": "gpt-6-luna",
+  "sourceFingerprint": "c605b1cb56f756f6ec6af1fe7139ebb36b313aabaeebb32e7950d29ecbb39a36",
+  "conditions": {
+    "phone": "OPPO PEUM00",
+    "node": "24.18.0",
+    "image": "JPEG quality 90, 988x1972, factor 1",
+    "history": "empty",
+    "language": "zh",
+    "reasoning": "provider default",
+    "outerInputTokens": 2872,
+    "account": "matched authorized account"
+  },
+  "native": [
+    {
+      "id": "native-full-brightness-1-20261017",
+      "cohort": "pre-install-reference",
+      "wallMs": 40496,
+      "outerMs": 6535,
+      "phoneExecuteMs": 31384,
+      "runnerMs": 29962,
+      "innerHttpMs": 18756.535826,
+      "innerHttpRequests": 4,
+      "actions": 3,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "“显示与亮度”页面可见；“自动调节”开关处于开启状态。"
+      },
+      "modelMetrics": [
+        {
+          "model": "gpt-6-luna",
+          "input_tokens": 2872,
+          "output_tokens": 101,
+          "total_tokens": 2973,
+          "reasoning_tokens": 0,
+          "phase": "model.response",
+          "role": "outer",
+          "requestedModel": "gpt-6-luna"
+        }
+      ]
+    },
+    {
+      "id": "native-full-brightness-2-20261017",
+      "cohort": "alternating",
+      "wallMs": 42916,
+      "outerMs": 5539,
+      "phoneExecuteMs": 33599,
+      "runnerMs": 31920,
+      "innerHttpMs": 21036.956973,
+      "innerHttpRequests": 4,
+      "actions": 3,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "显示与亮度页面可见；“自动调节”开关为开启状态。"
+      },
+      "modelMetrics": [
+        {
+          "model": "gpt-6-luna",
+          "input_tokens": 2872,
+          "output_tokens": 95,
+          "total_tokens": 2967,
+          "reasoning_tokens": 0,
+          "phase": "model.response",
+          "role": "outer",
+          "requestedModel": "gpt-6-luna"
+        }
+      ]
+    },
+    {
+      "id": "native-full-brightness-3-20261017",
+      "cohort": "alternating",
+      "wallMs": 36677,
+      "outerMs": 4448,
+      "phoneExecuteMs": 29819,
+      "runnerMs": 28435,
+      "innerHttpMs": 18140.355722,
+      "innerHttpRequests": 4,
+      "actions": 3,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "显示与亮度；自动调节：开启。"
+      },
+      "modelMetrics": [
+        {
+          "model": "gpt-6-luna",
+          "input_tokens": 2872,
+          "output_tokens": 100,
+          "total_tokens": 2972,
+          "reasoning_tokens": 0,
+          "phase": "model.response",
+          "role": "outer",
+          "requestedModel": "gpt-6-luna"
+        }
+      ]
+    },
+    {
+      "id": "native-full-brightness-4-20261017",
+      "cohort": "alternating",
+      "wallMs": 49781,
+      "outerMs": 8677,
+      "phoneExecuteMs": 39087,
+      "runnerMs": 37895,
+      "innerHttpMs": 26823.429989999997,
+      "innerHttpRequests": 4,
+      "actions": 3,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "页面标题：显示与亮度；自动调节：已开启。"
+      },
+      "modelMetrics": [
+        {
+          "model": "gpt-6-luna",
+          "input_tokens": 2872,
+          "output_tokens": 102,
+          "total_tokens": 2974,
+          "reasoning_tokens": 0,
+          "phase": "model.response",
+          "role": "outer",
+          "requestedModel": "gpt-6-luna"
+        }
+      ]
+    }
+  ],
+  "desktop": [
+    {
+      "id": "full-desktop-2026-10-17T02-00-01.342Z",
+      "route": "phone-proxy",
+      "wallMs": 44623.124874999994,
+      "outerMs": 6469.727875,
+      "phoneExecuteMs": 37724.350458,
+      "runnerMs": 37361,
+      "innerHttpMs": 27520.831459,
+      "innerHttpRequests": 4,
+      "actions": 3,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "自动调节：已开启"
+      },
+      "modelMetrics": [
+        {
+          "total_tokens": 2991,
+          "model": "gpt-6-luna",
+          "output_tokens": 119,
+          "reasoning_tokens": 0,
+          "input_tokens": 2872
+        }
+      ]
+    },
+    {
+      "id": "full-desktop-2026-10-17T02-02-05.145Z",
+      "route": "phone-proxy",
+      "wallMs": 39549.647833,
+      "outerMs": 10833.110333,
+      "phoneExecuteMs": 28332.088541999998,
+      "runnerMs": 27944,
+      "innerHttpMs": 17915.505249999995,
+      "innerHttpRequests": 4,
+      "actions": 3,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "显示与亮度设置页面可见；“自动调节”开关为开启状态。"
+      },
+      "modelMetrics": [
+        {
+          "total_tokens": 2972,
+          "model": "gpt-6-luna",
+          "output_tokens": 100,
+          "reasoning_tokens": 0,
+          "input_tokens": 2872
+        },
+        {
+          "total_tokens": 3065,
+          "model": "gpt-6-luna",
+          "output_tokens": 44,
+          "reasoning_tokens": 0,
+          "input_tokens": 3021
+        }
+      ]
+    },
+    {
+      "id": "full-desktop-2026-10-17T02-03-55.255Z",
+      "route": "phone-proxy",
+      "wallMs": 38868.739624999995,
+      "outerMs": 9918.759999999995,
+      "phoneExecuteMs": 28515.478875,
+      "runnerMs": 28112,
+      "innerHttpMs": 17432.201750000007,
+      "innerHttpRequests": 4,
+      "actions": 3,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "“显示与亮度”页面可见；“自动调节”开关已开启。亮度滑块可见，但未显示具体数值。"
+      },
+      "modelMetrics": [
+        {
+          "total_tokens": 2970,
+          "model": "gpt-6-luna",
+          "output_tokens": 98,
+          "reasoning_tokens": 0,
+          "input_tokens": 2872
+        },
+        {
+          "total_tokens": 3092,
+          "model": "gpt-6-luna",
+          "output_tokens": 61,
+          "reasoning_tokens": 0,
+          "input_tokens": 3031
+        }
+      ]
+    },
+    {
+      "id": "full-desktop-2026-10-17T02-06-07.914Z",
+      "route": "desktop-original",
+      "wallMs": 32634.630333,
+      "outerMs": 4323.556667000001,
+      "phoneExecuteMs": 27912.626167000002,
+      "runnerMs": 27512,
+      "innerHttpMs": 16424.893458000002,
+      "innerHttpRequests": 4,
+      "actions": 3,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "当前为“显示与亮度”页面；“自动调节”开关显示为开启。"
+      },
+      "modelMetrics": [
+        {
+          "total_tokens": 2973,
+          "model": "gpt-6-luna",
+          "output_tokens": 101,
+          "reasoning_tokens": 0,
+          "input_tokens": 2872
+        }
+      ]
+    }
+  ],
+  "failed": [
+    {
+      "id": "full-desktop-2026-10-17T01-57-29.653Z",
+      "error": "Phone execution failed; inspect screen, no replay"
+    },
+    {
+      "id": "full-desktop-2026-10-17T01-59-04.188Z",
+      "error": "Unable to connect to phone"
+    }
+  ],
+  "medians": {
+    "nativeWallMs": 42916,
+    "desktopSharedProxyWallMs": 39549.647833
+  },
+  "limitations": [
+    "Same Tapilot agent on both hosts, not Codex UI timing.",
+    "Small sequential sample set; provider latency/cache/queue and model-generated wording are not deterministic.",
+    "Shared proxy is an attribution experiment, not a speed improvement.",
+    "Historical 50% full-task goal remains unproven."
+  ]
+}

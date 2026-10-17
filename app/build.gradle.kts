@@ -242,3 +242,19 @@ tasks.configureEach {
         }
     }
 }
+
+// Only the desktop comparison harness consumes this JVM test classpath.
+// It reuses production request/verification policies without duplicating them in JS.
+tasks.register("prepareBenchmarkCodec") {
+    dependsOn("testDebugUnitTest")
+    val destination = layout.buildDirectory.file("benchmark-codec/classpath.txt")
+    outputs.file(destination)
+    inputs.files(provider { tasks.named<Test>("testDebugUnitTest").get().classpath })
+    doLast {
+        val unitTests = tasks.named<Test>("testDebugUnitTest").get()
+        destination.get().asFile.apply {
+            parentFile.mkdirs()
+            writeText(unitTests.classpath.asPath)
+        }
+    }
+}

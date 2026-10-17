@@ -737,3 +737,88 @@ not infer a 50% improvement or a stable median from this single retained pair.
 pre-fix parsing failure. Updated runtime tests (69), Kotlin unit tests, debug/beta
 builds and local non-debuggable beta APK verification passed; distribution signing
 is outside this performance acceptance.
+
+### Full conversation comparison (2026-10-17)
+
+`scripts/compare-full-conversation.mjs` runs the phone's actual Pi bundle on the
+computer. A persistent, test-only JVM codec calls `NativeConversationAgent` and
+`ChatGptResponses` directly, so system instructions, tool declarations, app
+resolution, verified-task construction and Responses decoding are not replaced
+by a simpler desktop agent. Both outer and visual models must actually report
+`gpt-6-luna`; both use the same authorized account, Chinese language, empty chat
+history, provider-default reasoning, full-size JPEG and the same OPPO. The
+native debug receiver submits the identical read-only brightness prompt.
+
+Prepare the codec with `./gradlew :app:prepareBenchmarkCodec` using Java 17 and
+the configured Android SDK. Set `TAPILOT_BENCH_AUTH_DIR`,
+`TAPILOT_BENCH_ACCOUNT`, and `TAPILOT_BENCH_HOST`, then run the desktop script
+with Node 24.18.0. Collect a standalone phone run with:
+
+```sh
+python3 scripts/collect-native-benchmark.py unique-sample-name --serial e7ed3f17
+```
+
+Reset Settings and visually confirm its root before each run. Never operate both
+agents concurrently. The collector clears performance overrides to exercise
+production capture defaults. It uses **device time** to identify completion;
+using Mac time previously missed a successful task because the phone clock was
+about one second behind. Observer timeout is not proof of task failure and never
+causes automatic replay. Existing output directories are rejected.
+
+The full desktop timer includes app catalog, Pi startup, outer model, generated
+visual task, inner harness startup/auth/connection and final verification. JVM
+warmup and initial pairing/auth preflight are excluded. Phone task wall also
+includes Android dispatch and persistence. This compares the same agent on two
+hosts, **not** the Codex application's own assistant or rendered UI latency.
+Network experiments are recorded separately: directing desktop HTTPS through
+the phone's proxy controls the configured proxy route but does not make model
+queueing, cache state or every packet path identical. It must not be presented as
+phone acceleration. Keep original-desktop-route reference runs separate.
+
+The first full desktop attempt revealed that wireless launch rejected the exact
+launcher component emitted by the native policy. Wireless launch now accepts
+components only when they occur in Android's installed launcher catalog; URLs
+and arbitrary/private activities remain rejected. This matches native task
+routing without replacing its launch instruction with a benchmark shortcut.
+Failed attempts and report paths remain in private `artifacts/controlled-execution`.
+
+Three alternating, post-install full-task pairs all passed independent screen
+verification, with 3 device actions and 4 visual HTTP requests per task (plus
+one outer model request). Outer input was 2872 tokens on both hosts.
+
+| Full task | Run 1 (s) | Run 2 (s) | Run 3 (s) | Median (s) |
+| --- | ---: | ---: | ---: | ---: |
+| Standalone phone | 42.916 | 36.677 | 49.781 | 42.916 |
+| Desktop, phone proxy | 44.623 | 39.550 | 38.869 | 39.550 |
+
+The phone median is 8.5% higher. Inner runner time excluding visual HTTP has a
+10.883 s phone median versus 10.028 s desktop median: a 0.855 s difference.
+Full wall minus outer-model and inner-runner time has a 3.794 s phone median
+versus 0.792 s desktop median. That residual includes native dispatch, runtime
+startup, intermediate work and persistence; it is **not** a measured single
+function or proof of a particular UI bottleneck. Profiling this boundary is the
+next local optimization target. Stage medians need not sum to median wall time.
+
+The phone's slowest retained run spent 26.823 s in visual HTTP and 8.677 s in
+outer completion, so waiting for model requests remains the largest part of
+that sample. HTTP includes provider processing/queueing and network time, not
+just network latency. These results establish proximity for this task under the
+stated controls, not a general 50% speedup. A pre-install 40.496 s reference is
+preserved separately and excluded from the post-install median.
+
+[Machine-readable measurements](performance-full-20261017.json) retain sample
+identifiers, phase timings, actual model identity, independent observations and
+failed desktop attempts. Kotlin unit tests, `pnpm check:quick`, debug APK build,
+and real-device full-task checks passed. No GitHub CI or distribution claim is
+made by these local checks.
+
+The original desktop network route also passed the identical full task in
+**32.635 s** (one reference sample, not a stable median). It used the same 3
+actions and 4 visual requests. This is faster than the shared-proxy cohort, so
+8.5% must not be claimed as parity with the fastest original desktop route.
+Comparing the 42.916 s phone sample with this reference, the 10.281 s gap consists
+of 5.828 s more in outer completion plus visual HTTP, 4.658 s more outside those
+phases and the inner runner, and 0.204 s **less** inner non-HTTP work on the phone.
+This decomposition identifies where to profile next; sequential provider
+variation prevents attributing the request difference solely to the proxy.
+The temporary ADB proxy forward was removed after testing.
