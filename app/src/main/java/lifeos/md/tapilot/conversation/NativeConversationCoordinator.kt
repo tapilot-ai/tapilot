@@ -131,10 +131,13 @@ class NativeConversationCoordinator(
                     e.optInt("phoneOperations"), e.optInt("attempt", 1), e.optJSONArray("completedOperations")?.objects().orEmpty()
                         .map { ChatOperation(it.optString("instruction"), it.optBoolean("success"), it.optString("result")) })))
         }.sortedBy { it.first }.map { it.second }
-        val conversations = history.sortedByDescending { it.optLong("createdAt") }.distinctBy { conversation(it) }.map { e ->
-            val first = history.filter { conversation(it) == conversation(e) }.minBy { it.optLong("createdAt") }
-            ChatConversation(conversation(e), first.optString("inputText", first.optString("source")).take(28).ifBlank { local("新对话", "New conversation") })
-        }.toMutableList()
+        // Build each conversation once; repeated capture progress must not scan
+        // the entire history for every sidebar entry.
+        val conversations = history.sortedByDescending { it.optLong("createdAt") }
+            .groupBy(::conversation).map { (id, entries) ->
+                val first = entries.minBy { it.optLong("createdAt") }
+                ChatConversation(id, first.optString("inputText", first.optString("source")).take(28).ifBlank { local("新对话", "New conversation") })
+            }.toMutableList()
         if (conversations.none { it.id == active() }) conversations.add(0, ChatConversation(active(), local("新对话", "New conversation")))
         val model = profile()
         emit(ChatState(ready = ready, language = AppLanguage.resolved(activity), dark = AppTheme.isDark(activity), paletteId = AppTheme.paletteId(activity),
@@ -485,7 +488,15 @@ class NativeConversationCoordinator(
     }
     fun phoneProgress(method: String) {
         if (!running || cancellation.get()) return
-        progress = progress?.copy(operation = if (method == "device.capture") local("正在查看屏幕", "Viewing screen") else if (method == "device.execute") local("正在执行屏幕操作", "Performing action") else progress!!.operation); publish()
+        val current = progress ?: return
+        val operation = when (method) {
+            "device.capture" -> local("正在查看屏幕", "Viewing screen")
+            "device.execute" -> local("正在执行屏幕操作", "Performing action")
+            else -> return
+        }
+        if (current.operation == operation) return
+        progress = current.copy(operation = operation)
+        publish()
     }
     private fun confirmOperation(text: String, stopped: AtomicBoolean): String {
         if (!ExecutionMode.from(data).requiresConfirmation(text)) return text

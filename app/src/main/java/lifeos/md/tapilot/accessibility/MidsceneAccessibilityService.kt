@@ -38,6 +38,7 @@ import java.util.concurrent.CopyOnWriteArraySet
 @Suppress("DEPRECATION")
 class MidsceneAccessibilityService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
+    private val screenshotPacer = ScreenshotRequestPacer()
     private val cancelledSessions = ConcurrentHashMap.newKeySet<String>()
     private lateinit var taskEffects: TaskEffectController
     private lateinit var floatingBall: FloatingBallController
@@ -189,17 +190,25 @@ class MidsceneAccessibilityService : AccessibilityService() {
     }
 
     private fun encodeCapture(result: ScreenshotResult, recordFrame: Boolean, jpeg: Boolean, metadataOnly: Boolean): CapturePayload {
+        val started = android.os.SystemClock.elapsedRealtime()
         val hardwareBuffer = result.hardwareBuffer
         val bitmap = try {
             Bitmap.wrapHardwareBuffer(hardwareBuffer, result.colorSpace)?.copy(Bitmap.Config.ARGB_8888, false)
                 ?: error("Unable to copy screenshot buffer")
         } finally { hardwareBuffer.close() }
+        val copied = android.os.SystemClock.elapsedRealtime()
         try {
             val dataUrl = if (metadataOnly) "" else {
                 val output = ByteArrayOutputStream()
                 check(bitmap.compress(if (jpeg) Bitmap.CompressFormat.JPEG else Bitmap.CompressFormat.PNG, if (jpeg) (if (recordFrame) 90 else 75) else 100, output)) { "Unable to encode screenshot" }
                 (if (jpeg) "data:image/jpeg;base64," else "data:image/png;base64,") + Base64.getEncoder().encodeToString(output.toByteArray())
             }
+            val encoded = android.os.SystemClock.elapsedRealtime()
+            val fingerprint = if (recordFrame && !metadataOnly) FrameFingerprint.capture(bitmap) else null
+            captureTiming("encode", started, org.json.JSONObject()
+                .put("copyMs", copied - started).put("encodeMs", encoded - copied)
+                .put("fingerprintMs", android.os.SystemClock.elapsedRealtime() - encoded)
+                .put("jpeg", jpeg).put("metadataOnly", metadataOnly))
             val metrics = deviceDisplayMetrics()
             return CapturePayload(
                 dataUrl = dataUrl,
@@ -207,9 +216,18 @@ class MidsceneAccessibilityService : AccessibilityService() {
                 rotation = getSystemService(DisplayManager::class.java).getDisplay(Display.DEFAULT_DISPLAY)?.rotation ?: 0,
                 screenWidth = metrics.widthPixels, screenHeight = metrics.heightPixels,
                 imageWidth = bitmap.width, imageHeight = bitmap.height,
-                fingerprint = if (recordFrame && !metadataOnly) FrameFingerprint.capture(bitmap) else null,
+                fingerprint = fingerprint,
             ).also { if (recordFrame) latestCapture = it }
         } finally { bitmap.recycle() }
+    }
+
+    // Debug numeric diagnostics only. Never record frame contents or session identifiers.
+    private fun captureTiming(stage: String, started: Long, fields: org.json.JSONObject = org.json.JSONObject()) {
+        if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE == 0) return
+        runCatching {
+            android.util.Log.i("TapilotPerformance", fields.put("phase", "capture.$stage")
+                .put("durationMs", android.os.SystemClock.elapsedRealtime() - started).toString())
+        }
     }
 
     private fun captureFullDisplay(
@@ -220,11 +238,27 @@ class MidsceneAccessibilityService : AccessibilityService() {
         jpeg: Boolean = false,
         metadataOnly: Boolean = false,
         hideOverlays: Boolean = true,
+        paced: Boolean = false,
     ) {
         if (isCancelled(sessionId, callback)) return
+        // After an observed Android rate limit, wait the remaining interval
+        // before hiding overlays. Avoid a predictably rejected request followed
+        // by a full backoff; retain the bounded retry policy for OEM differences.
+        val pacingDelay = screenshotPacer.delayMillis(android.os.SystemClock.elapsedRealtime())
+        // One pacing wait per attempt: concurrent preview traffic must not
+        // postpone an AI capture indefinitely by moving the deadline again.
+        if (!paced && pacingDelay > 0L) {
+            val started = android.os.SystemClock.elapsedRealtime()
+            handler.postDelayed({
+                captureTiming("pacing", started)
+                captureFullDisplay(sessionId, callback, retryAttempt, recordFrame, jpeg, metadataOnly, hideOverlays, paced = true)
+            }, pacingDelay)
+            return
+        }
         // Full-display capture includes accessibility overlays. Hide only while
         // Android latches the frame so AI input and report-player frames stay
         // clean. The animator keeps advancing and resumes at its current phase.
+        val queued = android.os.SystemClock.elapsedRealtime()
         val hiddenTaskEffect = if (hideOverlays) taskEffects.hideForCapture() else null
         val hiddenFloatingBall = if (hideOverlays) floatingBall.hideForCapture() else false
         handler.postDelayed({
@@ -233,11 +267,15 @@ class MidsceneAccessibilityService : AccessibilityService() {
                 if (hideOverlays) floatingBall.restoreAfterCapture(hiddenFloatingBall)
                 return@postDelayed
             }
+            captureTiming("overlayWait", queued)
+            val requested = android.os.SystemClock.elapsedRealtime()
+            screenshotPacer.requested(requested)
             runCatching { takeScreenshot(
                 Display.DEFAULT_DISPLAY,
                 mainExecutor,
                 object : TakeScreenshotCallback {
                     override fun onSuccess(result: ScreenshotResult) {
+                        captureTiming("system", requested)
                         try {
                             if (cancelledSessions.contains(sessionId)) {
                                 result.hardwareBuffer.close()
@@ -252,6 +290,8 @@ class MidsceneAccessibilityService : AccessibilityService() {
                     }
 
                     override fun onFailure(errorCode: Int) {
+                        if (errorCode == ERROR_TAKE_SCREENSHOT_INTERVAL_TIME_SHORT) screenshotPacer.rateLimited()
+                        captureTiming("systemFailure", requested, org.json.JSONObject().put("errorCode", errorCode))
                         hiddenTaskEffect?.let { taskEffects.restoreAfterCapture(it) }
                         if (hideOverlays) floatingBall.restoreAfterCapture(hiddenFloatingBall)
                         val retryDelay = ScreenshotFailurePolicy.retryDelayMillis(

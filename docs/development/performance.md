@@ -933,3 +933,52 @@ script syntax checks and real paired-device task validation passed; this does
 not claim GitHub CI or other-device validation.
 
 [Raw controlled measurements and boundaries](performance-network-20261017.json)
+
+### Screenshot scheduling and redundant UI work (2026-10-17)
+
+Debug-only numeric capture probes distinguish overlay scheduling, Android
+screenshot callbacks, bitmap copy/encoding/fingerprint work and rate-limit
+failures. In the instrumented full task, 15 successful captures used only 330 ms
+in Android screenshot callbacks and 1099 ms in bitmap processing. Overlay waits
+(including main-thread scheduling) totaled 1632 ms, and three rate-limit failures
+introduced the existing 350 ms backoffs. These are nested measurements, not
+independent additions to task wall time.
+
+Two unnecessary costs were removed:
+
+- Identical phone-progress notifications no longer rebuild the entire chat
+  state. Conversation sidebar construction groups history once instead of
+  filtering all history separately for every conversation. Latest-message order,
+  equal-timestamp ordering and the earliest-message title remain preserved.
+- After Android actually reports a screenshot rate limit, subsequent display
+  captures wait only the remaining 350 ms request interval before hiding
+  overlays. Devices without an observed limit retain their existing path.
+  Each attempt has at most one pacing wait, so concurrent previews cannot
+  postpone it indefinitely. Cancellation is checked again after that wait;
+  the original bounded failure retries remain for OEM differences. Every
+  successful capture still takes a fresh screenshot.
+
+The progress-only experiment did not demonstrate an end-to-end speedup and is
+retained in the data. The first pacing run reduced capture RPC time from
+4.958 s to 4.335 s for the same 15 frames, and Android rate-limit failures from
+three to one. Inner non-HTTP time fell from 10.532 s to 9.814 s. Full task time
+was 37.390 s versus 39.936 s before the changes, but model HTTP wait also fell;
+that entire difference must not be attributed to the implementation.
+
+All recorded tasks retain full-size JPEG quality 90, actual `gpt-6-luna`, four
+visual model calls and an independent final visual check. Unit tests verify
+that pacing is inactive before a real limit, only waits the remaining interval,
+and does not survive a new service instance. Debug APK build, Kotlin unit tests
+and local quick checks passed. This is not a new desktop-parity or 50% claim.
+
+[Capture phase measurements, including the intermediate experiment](performance-capture-20261017.json)
+
+The repeat after installing the final APK completed in **43.951 s**: 15 capture
+RPCs took **4.509 s**, with one Android rate-limit failure. Visual HTTP time was
+23.429 s, so local savings did not prevent a slower end-to-end result. The next
+continuous run (no reinstall) completed in **35.553 s**: 15 captures took
+**4.020 s**, zero rate-limit failures, and inner non-HTTP work took **9.708 s**.
+All samples are retained. The roughly 19% capture reduction compares a first-run
+baseline with a warm run and must not be presented as an overall 19% speedup.
+The two first-run pacing samples separately show lower capture totals than the
+instrumented baseline. More full-task controlled samples are still needed.
