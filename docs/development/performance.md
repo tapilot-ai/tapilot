@@ -1717,3 +1717,59 @@ overhead and use identical-request transport experiments to separate model-path
 variance, while preserving visual verification and recording slow/failed samples.
 
 [Samples, phase breakdown and limitations](performance-matched-refresh-20261017.json)
+
+
+### Task-scoped runtime preparation and same-APK A/B (2026-10-17)
+
+The native conversation now queues a prepared runner during its first outer model
+call. The runner imports the product config in the actual future project directory
+with the same environment, then waits for explicit activation before test setup,
+model requests or phone RPC. Adoption checks runtime, project, arguments and model
+environment. Mismatches or an already-exited unused worker start normally; once
+activated, failures never replay the task. Unused preparation expires after 45 s,
+and conversation completion, cancellation and service close discard it.
+
+The debug-only `--runtime-preload on|off|reset` collector flag changes one variable
+inside the same installed APK. Production uses preparation; `reset` restores that
+default. This experiment changes neither prompts, model, image quality nor final
+verification. The four warm samples ran off/on/on/off, from the visually checked
+Settings root, on the same OPPO, account and gpt-6-luna model. All four succeeded
+with three actions, four visual requests, no planning parse retries and an
+independent query confirming auto-brightness on.
+
+| Measurement | Preparation off | Preparation on |
+| --- | ---: | ---: |
+| Full task samples | 40.078 / 35.758 s | 41.704 / 37.606 s |
+| Median full task | 37.918 s | 39.655 s |
+| Activation/start to first native RPC | 1057 / 1029 ms | 54 / 60 ms |
+| Median outer model boundary | 4.780 s | 4.976 s |
+| Median visual model HTTP | 21.339 s | 23.636 s |
+| Median inner non-HTTP work | 9.571 s | 9.406 s |
+| Median outside model/runner work | 2.229 s | 1.638 s |
+
+First native RPC improves by 986 ms at the median. Non-HTTP inner work plus
+outside-model/runner work drops by 757 ms. Module initialization (773–804 ms)
+occurs during outer model waiting. However, the enabled cohort's full task median
+is 1.737 s slower, with model-boundary time higher by about 2.494 s. This establishes
+a repeatable local critical-path reduction, **not** a stable full-task speedup or
+50% improvement. More model-path work and matched retesting remain necessary.
+There is no new desktop cohort here; do not compare these samples with an older
+fastest desktop result as proof of parity.
+
+The first post-install task succeeded in 52.186 s, including 9.071 s runtime update
+and a 3.511 s credential lookup/refresh boundary. It is retained separately from
+warm samples. Its first RPC took 71 ms. A 20% battery prompt appeared before the
+last off sample and was dismissed without enabling power saving, outside timing.
+Battery was 20%, 34.4 C, USB power false after acceptance; no thermal equivalence
+with previous days is claimed.
+
+Validation: Kotlin unit tests, the runtime suite and activation-specific tests,
+product config import without fetch/phone RPC, a real runner activation/stdio
+round trip, APK build, runtime integrity and local quick checks passed. On OPPO,
+a pure-chat `OK` response completed in 4.046 s with zero remaining Node workers.
+A stop during outer-model waiting, before any phone execution, terminated both
+workers; zero remained one second after the notification stop action. A separate
+post-activation stop also left zero workers (excluded from latency samples).
+The debug experiment preference was restored to the production default.
+
+[Complete samples and lifecycle evidence](performance-prepared-runtime-20261017.json)
