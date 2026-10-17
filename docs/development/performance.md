@@ -1672,3 +1672,48 @@ worker. These boundaries and full-task latency must be verified before claiming
 this projected saving. Stable desktop parity and the 50% target remain unmet.
 
 [Raw prototype timings and memory observations](performance-preload-prototype-20261017.json)
+
+
+### Refresh matched full-task comparison (2026-10-17, 05:24–05:29 UTC)
+
+At unchanged runtime fingerprint `d7b9023be558f1a079e9f1532d8ef8f22d7949a1a4a84dc7d7b1dcd17354e2fa`,
+run the complete brightness task in desktop / phone / phone / desktop order.
+Every run begins at the visually checked Settings root on the same OPPO.
+Both hosts use gpt-6-luna, Node 24.18.0, the same account (separate OAuth
+sessions), Kotlin conversation policies, full-size JPEG capture and an
+independent final visual query. Desktop is the same-agent harness, not Codex UI.
+All four succeeded with four visual model requests and reported auto-brightness
+on. The two phone runs each executed three actions and had no planning parse retry.
+
+| Duration | Desktop | Standalone phone | Phone minus desktop |
+| --- | ---: | ---: | ---: |
+| First sample | 38.118 s | 41.907 s | |
+| Second sample | 37.239 s | 42.408 s | |
+| Median full task | 37.678 s | 42.158 s | +4.479 s (+11.9%) |
+| Outer model | 9.109 s | 5.069 s | -4.040 s |
+| Visual model HTTP | 18.304 s | 25.142 s | +6.838 s |
+| Inner runner excluding HTTP | 9.646 s | 9.927 s | +0.282 s |
+| Outside model and runner | 0.619 s | 2.019 s | +1.400 s |
+
+The observed gap is not explained by a large phone screenshot/action CPU penalty:
+inner non-HTTP work differs by only 282 ms. Model-request time moves in opposite
+directions for outer and visual calls, so HTTP must not be labeled pure network
+latency or a fixed device penalty. There is also about 1.4 s of local conversation,
+startup and persistence overhead to investigate. The isolated preload prototype
+can potentially move about 0.86 s off the critical path, but is not yet enabled
+and cannot account for the whole remaining gap.
+
+A preflight connection failure occurred with wireless control disabled, before
+the task timer; it is retained separately. The second phone collector timed out
+while the task continued. Its same task ID, final wall event and runtime report
+were recovered without replay; the 42.408 s sample remains in the cohort.
+
+Two runs per host do not establish stable parity. Same image processing does not
+make live screenshots or generated requests byte-identical; cloud cache, routing,
+OAuth sessions and model output remain uncontrolled. No product change occurred
+within this cohort and no speedup is attributed to this measurement. The original
+27.560 s target remains unmet. Follow-up changes should address measured local
+overhead and use identical-request transport experiments to separate model-path
+variance, while preserving visual verification and recording slow/failed samples.
+
+[Samples, phase breakdown and limitations](performance-matched-refresh-20261017.json)
