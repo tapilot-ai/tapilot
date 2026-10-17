@@ -1,0 +1,236 @@
+{
+  "controls": {
+    "fixture": "read-auto-brightness",
+    "device": "e7ed3f17",
+    "model": "gpt-6-luna",
+    "node": "24.18.0",
+    "sameAccountSeparateOAuthSessions": true,
+    "screenshot": "988x1972 JPEG, quality 90, shrink factor 1",
+    "initialScreen": "Settings root, visually checked before every sample",
+    "independentFinalVisualQuery": true,
+    "phoneRuntimePreload": "production default enabled",
+    "order": [
+      "desktop",
+      "phone",
+      "phone",
+      "desktop"
+    ],
+    "limitations": [
+      "Desktop same-agent harness, not Codex UI timing",
+      "Same image processing, but live screenshots and generated requests are not byte-identical",
+      "Provider routing, cache, model output and OAuth session remain uncontrolled",
+      "Two samples per host; no stable parity or causal speedup claim"
+    ],
+    "preflightFailure": "Wireless control was disabled; initial desktop attempt failed before timing. Enabled via visible app settings before cohort.",
+    "phoneAccountVisuallyReverifiedAfterCohorts": true,
+    "actualOuterAndInnerModelsVerified": true
+  },
+  "rows": [
+    {
+      "id": "full-desktop-2026-10-17T06-01-19.768Z",
+      "host": "desktop",
+      "wallMs": 35600.249167,
+      "sourceFingerprint": "46a67ab1461082aeae7a7d0c97cd6dfb2c26ccaeccbe409ffd8ec873f2a4f8ac",
+      "outerMs": 4921.34025,
+      "runnerMs": 30028,
+      "httpMs": 19665.270416999996,
+      "innerNonHttpMs": 10362.729583000004,
+      "outsideMs": 650.9089170000007,
+      "httpRequests": 4,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "“显示与亮度”页面可见；“自动调节”右侧开关为蓝色开启状态。"
+      },
+      "finishWhenVerifiedRequested": true,
+      "actions": 3,
+      "outerResponseModels": [
+        "gpt-6-luna"
+      ]
+    },
+    {
+      "id": "native-full-controlled-refresh-p1-20261017",
+      "host": "phone",
+      "wallMs": 35693,
+      "sourceFingerprint": "46a67ab1461082aeae7a7d0c97cd6dfb2c26ccaeccbe409ffd8ec873f2a4f8ac",
+      "outerMs": 5443,
+      "runnerMs": 28179,
+      "httpMs": 18888.245981999993,
+      "innerNonHttpMs": 9290.754018000007,
+      "outsideMs": 2071,
+      "httpRequests": 4,
+      "actions": 3,
+      "planningParseRetries": 0,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "“显示与亮度”页面可见。“自动调节”开关为开启状态。"
+      },
+      "lifecycle": [
+        {
+          "phase": "runner.queue",
+          "durationMs": 1
+        },
+        {
+          "phase": "runner.prepareRuntime",
+          "durationMs": 13
+        },
+        {
+          "phase": "runner.prepareProject",
+          "durationMs": 2
+        },
+        {
+          "phase": "runner.preparedReuse",
+          "reused": true
+        },
+        {
+          "phase": "runner.startToFirstEvent",
+          "durationMs": 10
+        },
+        {
+          "type": "runtime.prepared",
+          "timestamp": "2026-10-17T06:02:16.320Z",
+          "durationMs": 790.447552,
+          "phase": "runner.preload"
+        },
+        {
+          "phase": "runner.startToFirstRpc",
+          "durationMs": 86
+        },
+        {
+          "phase": "runner.completedToExit",
+          "durationMs": 70
+        },
+        {
+          "phase": "runner.importReports",
+          "durationMs": 70
+        }
+      ],
+      "outerResponseModels": [
+        "gpt-6-luna"
+      ]
+    },
+    {
+      "id": "native-full-controlled-refresh-p2-20261017",
+      "host": "phone",
+      "wallMs": 33805,
+      "sourceFingerprint": "46a67ab1461082aeae7a7d0c97cd6dfb2c26ccaeccbe409ffd8ec873f2a4f8ac",
+      "outerMs": 4883,
+      "runnerMs": 27227,
+      "httpMs": 18242.18192,
+      "innerNonHttpMs": 8984.818080000001,
+      "outsideMs": 1695,
+      "httpRequests": 4,
+      "actions": 3,
+      "planningParseRetries": 0,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "页面标题：显示与亮度；自动调节：开启。"
+      },
+      "lifecycle": [
+        {
+          "phase": "runner.queue",
+          "durationMs": 1
+        },
+        {
+          "phase": "runner.prepareRuntime",
+          "durationMs": 11
+        },
+        {
+          "phase": "runner.prepareProject",
+          "durationMs": 1
+        },
+        {
+          "phase": "runner.preparedReuse",
+          "reused": true
+        },
+        {
+          "phase": "runner.startToFirstEvent",
+          "durationMs": 7
+        },
+        {
+          "type": "runtime.prepared",
+          "timestamp": "2026-10-17T06:03:12.151Z",
+          "durationMs": 778.6979680000001,
+          "phase": "runner.preload"
+        },
+        {
+          "phase": "runner.startToFirstRpc",
+          "durationMs": 69
+        },
+        {
+          "phase": "runner.completedToExit",
+          "durationMs": 65
+        },
+        {
+          "phase": "runner.importReports",
+          "durationMs": 49
+        }
+      ],
+      "outerResponseModels": [
+        "gpt-6-luna"
+      ]
+    },
+    {
+      "id": "full-desktop-2026-10-17T06-04-09.997Z",
+      "host": "desktop",
+      "wallMs": 35011.189209000004,
+      "sourceFingerprint": "46a67ab1461082aeae7a7d0c97cd6dfb2c26ccaeccbe409ffd8ec873f2a4f8ac",
+      "outerMs": 4850.0223750000005,
+      "runnerMs": 29462,
+      "httpMs": 19338.874207999997,
+      "innerNonHttpMs": 10123.125792000003,
+      "outsideMs": 699.1668340000033,
+      "httpRequests": 4,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "“显示与亮度”页面已打开；“自动调节”已开启。"
+      },
+      "finishWhenVerifiedRequested": true,
+      "actions": 3,
+      "outerResponseModels": [
+        "gpt-6-luna"
+      ]
+    }
+  ],
+  "medians": {
+    "desktop": {
+      "wallMs": 35305.719188,
+      "outerMs": 4885.681312500001,
+      "runnerMs": 29745,
+      "httpMs": 19502.072312499997,
+      "innerNonHttpMs": 10242.927687500003,
+      "outsideMs": 675.037875500002
+    },
+    "phone": {
+      "wallMs": 34749,
+      "outerMs": 5163,
+      "runnerMs": 27703,
+      "httpMs": 18565.213950999998,
+      "innerNonHttpMs": 9137.786049000004,
+      "outsideMs": 1883
+    }
+  }
+}

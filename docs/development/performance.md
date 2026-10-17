@@ -1827,3 +1827,67 @@ and neither benchmark Node nor app_process workers remained afterward. These
 are model-path diagnostics, not a new full-task or 50% improvement result.
 
 [Sanitized connection traces and samples](performance-connection-reuse-20261017.json)
+
+### Fresh controlled full-task comparison (2026-10-17, production preload enabled)
+
+The same installed APK and runtime fingerprint were held fixed throughout a
+new desktop/phone/phone/desktop cohort. Both hosts used gpt-6-luna, Node 24.18.0,
+the same account (separate OAuth sessions), the same full-task instruction and
+Kotlin agent policies, and 988×1972 JPEG quality-90 screenshots without shrinking.
+Every run started from a visually checked Settings root, with app reset outside
+timing. Phone runtime preparation used its production default. The desktop is
+the same-agent harness, **not a measurement of the Codex client UI**.
+
+| Read auto-brightness | First run | Second run | Median |
+| --- | ---: | ---: | ---: |
+| Desktop | 35.600 s | 35.011 s | 35.306 s |
+| Standalone phone | 35.693 s | 33.805 s | 34.749 s |
+
+All four tasks succeeded with four visual model calls, including an independent
+final visual query, and reported the switch enabled. Phone planning logs contain
+no parsing retries. The phone median was 0.557 s (1.6%) lower in this cohort;
+this establishes closeness for this task/window, not a persistent phone advantage.
+No product source changes were made between these samples or since the preceding
+connection diagnostics. Do not attribute this cohort's lower times entirely to
+an optimization: provider routing, cache and model outputs still vary.
+
+Median phase totals were desktop/phone: outer model 4.886/5.163 s, visual-model
+HTTP 19.502/18.565 s, inner non-HTTP 10.243/9.138 s, and remaining task overhead
+0.675/1.883 s. The phone's local execution is not showing a large penalty here.
+The initial connection preflight failed before task timing because wireless
+control was off; it was enabled through visible app settings, then all four
+samples were collected. Initial battery was 18%, temperature 34.0 C, and USB
+power false. This is not a continuously controlled thermal experiment.
+
+The phone median is 37.0% below the historical 55.119 s baseline, but that is a
+cross-cohort comparison, not isolated causal attribution, and still misses the
+27.560 s / 50% target. Screenshot stabilization and independent final verification
+remain enabled; old-screen protection was not removed to obtain these numbers.
+
+[All four samples and phase breakdown](performance-controlled-refresh-20261017.json)
+
+A second task, reading the Android version, used the same controls and another
+independent desktop/phone/phone/desktop sequence:
+
+| Read Android version | First run | Second run | Median |
+| --- | ---: | ---: | ---: |
+| Desktop | 62.139 s | 48.909 s | 55.524 s |
+| Standalone phone | 56.399 s | 51.138 s | 53.769 s |
+
+All four succeeded with six visual model requests and an independent final query
+confirming Android 14; both phone runs performed five device actions without
+planning parse retries. The phone median was 1.756 s (3.2%) lower. Median visual
+HTTP totals were 31.151 s desktop and 30.923 s phone; inner non-HTTP totals were
+17.048 s and 16.552 s respectively. The desktop's own 13.230 s spread is larger
+than the median host gap, so fastest-run comparisons would be misleading.
+Actual outer-model response metadata and inner-report model identities were
+checked for all eight runs. The phone's visible settings were also checked after
+the cohort: same benchmark account, ChatGPT SIWC, gpt-6-luna. Battery ended at 16%.
+
+These two short cohorts support current task-level parity with the desktop
+same-agent harness. They do not establish statistical equivalence across apps,
+long tasks, different network conditions, or the Codex client itself. Further
+work toward 50% should target measured shared model/observation costs, rather
+than assuming a persistent large Android-only penalty or removing final checks.
+
+[Version-task samples and phase breakdown](performance-controlled-version-20261017.json)
