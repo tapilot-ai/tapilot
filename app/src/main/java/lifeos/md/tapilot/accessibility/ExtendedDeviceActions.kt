@@ -28,14 +28,19 @@ internal class ExtendedDeviceActions(
     }
 
     fun apps(): JSONArray {
+        val started = android.os.SystemClock.elapsedRealtime()
         val pm = service.packageManager
         val entries = pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
-        return JSONArray(entries.distinctBy { "${it.activityInfo.packageName}/${it.activityInfo.name}" }
-            .sortedBy { it.loadLabel(pm).toString() }.map {
+        // Loading labels may involve resource/binder work. Do it once per app,
+        // not on both sides of every sorting comparison. Query fresh each time.
+        return JSONArray(entries.distinctBy { "${it.activityInfo.packageName}/${it.activityInfo.name}" }.map {
                 JSONObject().put("label", it.loadLabel(pm).toString())
                     .put("packageName", it.activityInfo.packageName)
                     .put("component", "${it.activityInfo.packageName}/${it.activityInfo.name}")
-            })
+            }.sortedBy { it.getString("label") }).also {
+                android.util.Log.i("TapilotPerformance", JSONObject().put("phase", "device.appCatalog")
+                    .put("durationMs", android.os.SystemClock.elapsedRealtime() - started).toString())
+            }
     }
 
     fun system(name: String) {

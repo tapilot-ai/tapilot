@@ -63,11 +63,17 @@ class NodeTestRunCoordinator(
         completion = CompletableFuture()
         stopRequested.set(false)
         updateStatus(TaskExecutionStatus.STARTING)
+        val queuedAt = android.os.SystemClock.elapsedRealtime()
         executor.execute {
+            recordTiming("queue", queuedAt)
             runCatching {
+                val installStarted = android.os.SystemClock.elapsedRealtime()
                 val runtime = NodeRuntimeProvisioner(appContext).install()
+                recordTiming("prepareRuntime", installStarted)
                 throwIfStopRequested()
+                val projectStarted = android.os.SystemClock.elapsedRealtime()
                 val projectRoot = prepareProject(source, kind)
+                recordTiming("prepareProject", projectStarted)
                 throwIfStopRequested()
                 start(runtime, projectRoot, environment, callback)
             }.onFailure { error ->
@@ -100,6 +106,11 @@ class NodeTestRunCoordinator(
         val stopped = stop()
         finished.get(8, TimeUnit.SECONDS)
         return stopped
+    }
+
+    private fun recordTiming(phase: String, started: Long) {
+        Log.i("TapilotPerformance", JSONObject().put("phase", "runner.$phase")
+            .put("durationMs", android.os.SystemClock.elapsedRealtime() - started).toString())
     }
 
     private fun throwIfStopRequested() {
@@ -148,6 +159,10 @@ class NodeTestRunCoordinator(
             callback(result)
         }
 
+        val processStarted = android.os.SystemClock.elapsedRealtime()
+        var firstEvent = true
+        var firstRpc = true
+        var completedAt: Long? = null
         supervisor.runTest(
             runtime,
             NodeTestRunRequest(
@@ -170,6 +185,10 @@ class NodeTestRunCoordinator(
                 }
 
                 override fun onEvent(event: NodeRuntimeEvent) {
+                    if (firstEvent) { recordTiming("startToFirstEvent", processStarted); firstEvent = false }
+                    if (firstRpc && event.type == "rpc.request") {
+                        recordTiming("startToFirstRpc", processStarted); firstRpc = false
+                    }
                     val payload = JSONObject(event.payload)
                     when (event.type) {
                         "rpc.request" -> dispatchRpc(payload)
@@ -181,6 +200,7 @@ class NodeTestRunCoordinator(
                             .put("phase", "midscene.model.http").toString())
                         "test.started" -> updateStatus(TaskExecutionStatus.RUNNING)
                         "test.completed" -> {
+                            completedAt = android.os.SystemClock.elapsedRealtime()
                             nativeRpcTimings = payload.optJSONObject("nativeRpcTimings") ?: JSONObject()
                             Log.i("TapilotPerformance", JSONObject().put("phase", "midscene.nativeRpc").put("timings", nativeRpcTimings).toString())
                             reportPath = payload.optString("reportPath")
@@ -196,6 +216,7 @@ class NodeTestRunCoordinator(
                 }
 
                 override fun onComplete(exitCode: Int) {
+                    completedAt?.let { recordTiming("completedToExit", it) }
                     if (stopRequested.get()) {
                         updateStatus(TaskExecutionStatus.STOPPED)
                         finish(Result.failure(NodeRunStoppedException()))

@@ -380,7 +380,13 @@ class AppServices(
     private fun respondSuccess(requestId: String, result: Any?) = respond(requestId, Result.success(result.takeUnless { it == JSONObject.NULL }))
     private fun respondError(requestId: String, error: Throwable) = respond(requestId, Result.failure(error))
     private fun respond(requestId: String, result: Result<Any?>) {
-        handler.post { callbacks.remove(requestId)?.invoke(result) }
+        // call() already dispatches asynchronously to main. A main-thread result
+        // need not wait behind another UI frame; background results still hop back.
+        if (android.os.Looper.myLooper() == handler.looper) {
+            callbacks.remove(requestId)?.invoke(result)
+        } else {
+            handler.post { callbacks.remove(requestId)?.invoke(result) }
+        }
     }
 
     override fun close() {

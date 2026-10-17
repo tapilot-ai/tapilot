@@ -535,8 +535,15 @@ class NativeConversationCoordinator(
         }
     }
 
-    private fun await(method: String, params: JSONObject = JSONObject(), sessionId: String = "native", stopped: AtomicBoolean = AtomicBoolean(false), seconds: Long = 120): Any? =
-        effects.call(method, params, sessionId, stopped, seconds)
+    private fun await(method: String, params: JSONObject = JSONObject(), sessionId: String = "native", stopped: AtomicBoolean = AtomicBoolean(false), seconds: Long = 120): Any? {
+        val started = android.os.SystemClock.elapsedRealtime()
+        try { return effects.call(method, params, sessionId, stopped, seconds) }
+        finally {
+            // Fixed internal method name only; never log arguments or returned data.
+            android.util.Log.i("TapilotPerformance", JSONObject().put("phase", "conversation.effect")
+                .put("method", method).put("durationMs", android.os.SystemClock.elapsedRealtime() - started).toString())
+        }
+    }
     private fun <T> waitFor(promise: CompletableFuture<T>, stopped: AtomicBoolean, seconds: Long): T = effects.await(promise, stopped, seconds)
     private fun onMain(action: () -> Unit) {
         if (closed) return
