@@ -2,8 +2,11 @@ package lifeos.md.tapilot.wireless
 
 import org.json.JSONObject
 
-/** Coordinates on the wire refer to PNG pixels, never the desktop preview's rendered size. */
-internal class WirelessActionPolicy(private val clock: () -> Long = { System.nanoTime() / 1_000_000 }) {
+/** Coordinates on the wire refer to screenshot pixels, never the desktop preview's rendered size. */
+internal class WirelessActionPolicy(
+    private val isLauncherComponent: (String) -> Boolean = { false },
+    private val clock: () -> Long = { System.nanoTime() / 1_000_000 },
+) {
     private var frame: JSONObject? = null
     private var captured = 0L
     fun observe(geometry: JSONObject) { frame = JSONObject(geometry.toString()); captured = clock() }
@@ -42,7 +45,13 @@ internal class WirelessActionPolicy(private val clock: () -> Long = { System.nan
                 require(!action.has("x") && !action.has("y")) { "Focus the field with a tap first" }
             }
         }
-        if (type == "launch") require(action.getString("uri").matches(Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+"))) { "Use an exact app package name" }
+        if (type == "launch") {
+            val uri = action.getString("uri")
+            val packageName = uri.matches(Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+"))
+            require(packageName || (uri.contains("/") && !uri.contains(":") && isLauncherComponent(uri))) {
+                "Use an exact app package name or installed launcher component"
+            }
+        }
         if (type == "key") require(action.getString("keyName") == "ENTER") { "Unsupported keyboard key" }
         frame = null // Also consume the frame when execution later fails: never blindly retry a mutation.
         return result

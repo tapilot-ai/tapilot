@@ -2,6 +2,8 @@ package lifeos.md.tapilot.wireless
 
 import android.app.KeyguardManager
 import lifeos.md.tapilot.device.*
+import android.content.ComponentName
+import android.content.Intent
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
@@ -20,7 +22,12 @@ internal class WirelessDeviceSession(private val context: Context, private val d
     private val handler = Handler(Looper.getMainLooper())
     private val closed = AtomicBoolean(false)
     private var registration: ActiveTaskStopRegistry.Registration? = null
-    private val actionPolicy = WirelessActionPolicy()
+    private val actionPolicy = WirelessActionPolicy(isLauncherComponent = { uri ->
+        val component = ComponentName.unflattenFromString(uri)
+        component != null && context.packageManager.queryIntentActivities(
+            Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0,
+        ).any { ComponentName(it.activityInfo.packageName, it.activityInfo.name) == component }
+    })
     private var executing = false
 
     fun acquire() = onMain<Unit> { done ->

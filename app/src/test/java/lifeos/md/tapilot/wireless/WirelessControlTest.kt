@@ -52,6 +52,17 @@ class WirelessControlTest {
         assertThrows(IllegalStateException::class.java) { WirelessServer.readLine("{".byteInputStream()) }
         assertThrows(IllegalArgumentException::class.java) { WirelessServer.readLine("a".repeat(65_537).byteInputStream()) }
     }
+    @Test fun `component launch accepts only installed launcher entries`() {
+        val component = "com.android.settings/com.android.settings.Settings"
+        val policy = WirelessActionPolicy(isLauncherComponent = { it == component })
+        fun launch(uri: String) = JSONObject().put("action", JSONObject().put("type", "launch").put("uri", uri))
+        assertEquals(component, policy.prepare(launch(component)).getJSONObject("action").getString("uri"))
+        assertEquals("com.android.settings", policy.prepare(launch("com.android.settings")).getJSONObject("action").getString("uri"))
+        for (uri in listOf("com.android.settings/private.Activity", "intent://settings", "https://example.com", "Settings")) {
+            assertThrows(IllegalArgumentException::class.java) { policy.prepare(launch(uri)) }
+        }
+        assertThrows(IllegalArgumentException::class.java) { WirelessActionPolicy().prepare(launch(component)) }
+    }
     private fun geometry() = JSONObject("""{"frameId":"frame","imageWidth":1000,"imageHeight":2000,"screenWidth":500,"screenHeight":1000}""")
     private fun tap(x: Int, y: Int) = JSONObject().put("frameId", "frame").put("action", JSONObject().put("type", "tap").put("x", x).put("y", y))
 }
