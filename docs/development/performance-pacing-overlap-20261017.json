@@ -1,0 +1,308 @@
+{
+  "change": "Credit guaranteed 32 ms overlay preparation against the existing 350 ms screenshot request interval; retain page stability checks.",
+  "controls": {
+    "device": "e7ed3f17",
+    "model": "gpt-6-luna",
+    "runtime": "0.1.0-54ddd2454585",
+    "screenshot": "988x1972 JPEG90 shrink factor 1",
+    "voice": "debug benchmark stopAudio",
+    "initialScreen": "Settings root visually checked before each sample",
+    "batteryPercent": 11
+  },
+  "validation": {
+    "pacerUnitTests": 6,
+    "runtimeTests": "unchanged from preceding 87-test pass",
+    "quickCheck": "passed",
+    "kotlinTests": "passed",
+    "apkBuild": "passed",
+    "runtimeIntegrity": "passed"
+  },
+  "limitations": [
+    "Kotlin-only change: runtime fingerprint is unchanged; installed APK hash recorded separately",
+    "Small live acceptance cohort, not randomized before/after evidence",
+    "Request intervals estimated from logcat timestamps minus system duration; millisecond rounding applies",
+    "No task-level percentage gain or 50 percent improvement established",
+    "Successful capture intervals do not count failed screenshot attempts; no claim of zero native capture retries"
+  ],
+  "rows": [
+    {
+      "id": "native-full-completion-brightness-20261017",
+      "fixture": "read-auto-brightness",
+      "wallMs": 37272,
+      "pacingWaits": 8,
+      "estimatedShortRequestIntervalsMs": [
+        404,
+        441,
+        423,
+        475,
+        426,
+        659,
+        393,
+        428,
+        432
+      ],
+      "settled": [
+        {
+          "state": "unchanged",
+          "samples": 4,
+          "durationMs": 1544
+        },
+        {
+          "state": "stable",
+          "samples": 3,
+          "durationMs": 1158
+        },
+        {
+          "state": "stable",
+          "samples": 3,
+          "durationMs": 992
+        }
+      ],
+      "sourceFingerprint": "ce67b08c275f072cef1f8151598843d3c96ce5800bfb9227c1bf79f7534d00df",
+      "outerModelCalls": 1,
+      "outerModelMs": 7344,
+      "visualModelHttpMs": 19483.239731,
+      "httpRequests": 4,
+      "prepareRuntime": [
+        {
+          "phase": "runtime.prepare",
+          "durationMs": 6
+        },
+        {
+          "phase": "runner.prepareRuntime",
+          "durationMs": 2
+        }
+      ],
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "“显示与亮度”页面中，“自动调节”开关已开启。"
+      },
+      "revision": "previous-sequential-pacing"
+    },
+    {
+      "id": "native-full-pacing-brightness-20261017",
+      "fixture": "read-auto-brightness",
+      "wallMs": 37176,
+      "pacingWaits": 7,
+      "estimatedShortRequestIntervalsMs": [
+        359,
+        732,
+        382,
+        398,
+        371,
+        404,
+        654,
+        375,
+        393,
+        424
+      ],
+      "settled": [
+        {
+          "state": "unchanged",
+          "samples": 4,
+          "durationMs": 1708
+        },
+        {
+          "state": "stable",
+          "samples": 4,
+          "durationMs": 1410
+        },
+        {
+          "state": "stable",
+          "samples": 3,
+          "durationMs": 905
+        }
+      ],
+      "sourceFingerprint": "ce67b08c275f072cef1f8151598843d3c96ce5800bfb9227c1bf79f7534d00df",
+      "outerModelCalls": 1,
+      "outerModelMs": 5896,
+      "visualModelHttpMs": 20020.341033999997,
+      "httpRequests": 4,
+      "prepareRuntime": [
+        {
+          "phase": "runtime.prepare",
+          "durationMs": 10
+        },
+        {
+          "phase": "runner.prepareRuntime",
+          "durationMs": 4
+        }
+      ],
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "页面标题：显示与亮度；自动调节：开启。"
+      },
+      "revision": "overlapped-pacing"
+    },
+    {
+      "id": "native-full-completion-version-20261017",
+      "fixture": "read-android-version",
+      "wallMs": 48355,
+      "pacingWaits": 14,
+      "estimatedShortRequestIntervalsMs": [
+        417,
+        432,
+        417,
+        417,
+        427,
+        419,
+        421,
+        427,
+        620,
+        417,
+        414,
+        435,
+        416,
+        429,
+        435
+      ],
+      "settled": [
+        {
+          "state": "unchanged",
+          "samples": 4,
+          "durationMs": 1557
+        },
+        {
+          "state": "stable",
+          "samples": 3,
+          "durationMs": 1073
+        },
+        {
+          "state": "stable",
+          "samples": 4,
+          "durationMs": 1473
+        },
+        {
+          "state": "timeout",
+          "samples": 4,
+          "durationMs": 1503
+        },
+        {
+          "state": "stable",
+          "samples": 3,
+          "durationMs": 1047
+        }
+      ],
+      "sourceFingerprint": "ce67b08c275f072cef1f8151598843d3c96ce5800bfb9227c1bf79f7534d00df",
+      "outerModelCalls": 1,
+      "outerModelMs": 4237,
+      "visualModelHttpMs": 27169.21321899999,
+      "httpRequests": 6,
+      "prepareRuntime": [
+        {
+          "phase": "runtime.prepare",
+          "durationMs": 6
+        },
+        {
+          "phase": "runner.prepareRuntime",
+          "durationMs": 2
+        }
+      ],
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 6,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "“关于本机”页面可见；“Android 版本”显示为 14。"
+      },
+      "revision": "previous-sequential-pacing"
+    },
+    {
+      "id": "native-full-pacing-version-20261017",
+      "fixture": "read-android-version",
+      "wallMs": 61943,
+      "pacingWaits": 18,
+      "estimatedShortRequestIntervalsMs": [
+        389,
+        414,
+        372,
+        407,
+        410,
+        399,
+        396,
+        384,
+        419,
+        389,
+        708,
+        379,
+        416,
+        390,
+        406,
+        394,
+        374,
+        409,
+        378
+      ],
+      "settled": [
+        {
+          "state": "unchanged",
+          "samples": 5,
+          "durationMs": 1831
+        },
+        {
+          "state": "stable",
+          "samples": 4,
+          "durationMs": 1416
+        },
+        {
+          "state": "stable",
+          "samples": 4,
+          "durationMs": 1396
+        },
+        {
+          "state": "stable",
+          "samples": 5,
+          "durationMs": 1739
+        },
+        {
+          "state": "stable",
+          "samples": 4,
+          "durationMs": 1415
+        }
+      ],
+      "sourceFingerprint": "ce67b08c275f072cef1f8151598843d3c96ce5800bfb9227c1bf79f7534d00df",
+      "outerModelCalls": 1,
+      "outerModelMs": 5195,
+      "visualModelHttpMs": 38882.670663,
+      "httpRequests": 6,
+      "prepareRuntime": [
+        {
+          "phase": "runtime.prepare",
+          "durationMs": 9
+        },
+        {
+          "phase": "runner.prepareRuntime",
+          "durationMs": 2
+        }
+      ],
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 6,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "当前可见“关于本机”页面；“Android 版本”显示为 14。"
+      },
+      "recovery": "USB transport changed from 307 to 308; original task continued. Recovered logcat ring buffer and unique run report by timestamp; no replay.",
+      "revision": "overlapped-pacing"
+    }
+  ],
+  "installedApkSha256": "7bff585f9501dc1c2f6f7398257b2ac42aaad7a4b85fa8f4a3f6f5ea88126a82"
+}

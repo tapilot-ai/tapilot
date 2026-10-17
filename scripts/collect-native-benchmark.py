@@ -32,7 +32,13 @@ def main():
     log = subprocess.Popen(adb + ['logcat', '-T', '1', '-v', 'threadtime', 'TapilotPerformance:I', '*:S'], stdout=subprocess.PIPE, text=True)
     # createdAt is a device timestamp. A host clock can be ahead and miss the entire task.
     started = int(shell('date', '+%s%3N').strip())
-    timer = threading.Timer(240, log.terminate)
+    observer_expired = threading.Event()
+
+    def expire_observer():
+        observer_expired.set()
+        log.terminate()
+
+    timer = threading.Timer(240, expire_observer)
     timer.start()
     wall = None
     try:
@@ -59,7 +65,8 @@ def main():
         log.terminate()
         log.wait(timeout=5)
     if wall is None:
-        raise RuntimeError('Observer timed out; inspect device task state. Do not replay automatically.')
+        reason = 'Observer timed out' if observer_expired.is_set() else f'Observer log stream ended (exit {log.returncode})'
+        raise RuntimeError(f'{reason}; inspect device task state. Do not replay automatically.')
     print(json.dumps(wall), flush=True)
     manifest = json.loads(shell('run-as', 'lifeos.md.tapilot', 'cat', 'files/node-runtime/manifest.json'))
     (out / 'sample.json').write_text(json.dumps({'mode': args.mode, 'fixture': args.fixture, 'capture': 'product-default', 'runtimePreload': args.runtime_preload, 'runtimeSourceFingerprint': manifest['sourceFingerprint'], 'task': wall}, indent=2))

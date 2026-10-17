@@ -2043,3 +2043,35 @@ a summary turn from every task, nor isolate a causal wall-time improvement from
 model latency variation.
 
 [Real-device samples and validation](performance-explicit-completion-20261017.json)
+
+### Overlap overlay settling with screenshot pacing (2026-10-17)
+
+After Android reports screenshot rate limiting, the native service waits for a
+350 ms request interval. It previously added the 32 ms overlay-settling delay
+after that interval. The pacer now credits only this guaranteed preparation time
+against the remaining interval. The actual screenshot call still follows overlay
+settling, with the 350 ms floor, retry policy and page-stability algorithm retained.
+Calls without overlay hiding receive no credit. Six pacer tests cover the request
+floor, elapsed intervals, no-limit behavior and invalid preparation values; Kotlin
+tests, APK build, local quick checks and runtime integrity passed.
+
+The rebuilt APK was installed on OPPO. Brightness and version tasks both passed
+independent full-size visual verification with one outer model call and four/six
+visual calls. Their walls were 37.176 s and 61.943 s. Estimated short successful
+capture-request intervals (under 1 s, from log timestamps minus system duration)
+had medians 395.5/396 ms versus 428/421 ms in the preceding samples; observed new
+minima were 359/372 ms. Log timestamps have millisecond rounding and do not count
+failed requests. This establishes neither zero native retries nor a causal total
+task speedup. The new version task's visual HTTP time grew to 38.883 s from
+27.169 s, dominating its slower wall time; stable-frame sample counts also vary.
+
+During version collection, the USB log stream ended and the ADB transport ID
+changed. The task's Node processes remained live. Its original completion and
+unique run report were recovered from the device log buffer and run timestamps,
+without replaying any phone actions. The collector now distinguishes an ended
+log stream from its 240 s observation deadline, while retaining the instruction
+to inspect the active task before doing anything else. All task workers exited.
+This Kotlin-only change retains the previous JS runtime fingerprint; the evidence
+file separately records the installed APK hash. No 50% improvement is claimed.
+
+[Request intervals, recovered sample and APK provenance](performance-pacing-overlap-20261017.json)
