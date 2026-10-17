@@ -1325,3 +1325,53 @@ phone model traffic to pass through a computer. This diagnostic option is not
 an end-user proxy setting.
 
 [Per-request timings, usage/cache counts and payload hashes](performance-model-route-20261017.json)
+
+### Bundle Pi startup dependencies (2026-10-17)
+
+The Pi conversation entry imported roughly 700 JavaScript modules on every new
+process. The Android module-load probe measured 593.299 ms median for the
+original entry versus 38.846 ms for an esbuild bundle (four samples each,
+compilation cache disabled). This excludes Node process startup and model work.
+A separate compilation-cache probe had much smaller and variable gains; caching
+was not enabled in the app. Temporary probe files and cache were removed.
+
+The runtime build now bundles pi-conversation.mjs before fingerprinting and
+running the existing tests. The same bundled file ships to Android and runs in
+the desktop harness. The build rejects unexpected external imports or multiple
+outputs. The source agent, tool schemas, prompts, native credential boundary,
+action loop and independent final screenshot query are unchanged. Third-party
+notices remain included. All 70 runtime tests passed against the bundled entry,
+including cancellation, steering, resumable state and verified completion;
+Kotlin unit tests, APK build, bridge smoke and local quick checks also passed.
+
+Installed runtime `0.1.0-fca1d1c93fe0` matched the asset fingerprint
+`e930b59b0bb96104ec63950f441f2d6ae931a439e887209c36376b1b699cb60e`.
+The update task succeeded in 48.144 s, including 9.719 s runtime installation;
+it is not a warm-task sample.
+
+| Brightness sample | Full task | Pi startup | Outer model calls | Visual HTTP requests |
+| --- | ---: | ---: | ---: | ---: |
+| Phone warm 1 | 37.810 s | 222 ms | 1 | 4 |
+| Desktop same runtime | 39.755 s | not separately instrumented | 2 | 4 |
+| Phone warm 2 | 44.776 s | 225 ms | 1 | 5 |
+
+Both native warm tasks performed three device actions and independently read
+auto-brightness as enabled. Pi startup was 222/225 ms versus the previous
+659/543 ms; work outside outer completion and the inner runner was 2.268/2.154 s
+versus 2.698 s in both preceding warm tasks. This is reproducible local-stage
+progress, not proof that the whole-task change is attributable to bundling.
+
+The second warm task encountered an incomplete planning response (no action,
+complete or error marker), then retried planning before the independent query.
+Its SDK task usage says retry_count=0 and contains four successful model tasks,
+but transport telemetry records five HTTP calls. Preserve this sample and count
+the parsing retry separately. Do not report it as zero retries, subtract its
+cost, or treat incomplete text as proof of successful task completion.
+
+The two native warm samples have a 41.293 s median. The desktop's extra outer
+summary round makes the one desktop sample unsuitable for a stable parity claim.
+The original brightness half-latency target of 27.560 s remains unmet. The next
+investigation should address the planning-format retry and keep transport calls
+separate from successful report tasks when comparing performance.
+
+[Startup probes, complete-task timings and retry evidence](performance-pi-bundle-20261017.json)
