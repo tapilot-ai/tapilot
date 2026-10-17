@@ -13,10 +13,12 @@ class ConversationWriter(
 ) : AutoCloseable {
     private val worker = Executors.newSingleThreadExecutor()
     @Volatile private var failure: Throwable? = null
+    private var previousSnapshot: Map<String, Any?>? = null
 
-    fun save(value: JSONObject) {
-        val snapshot = timed("snapshot") { ConversationSnapshot.capture(value) }
+    @Synchronized fun save(value: JSONObject) {
+        val snapshot = timed("snapshot") { ConversationSnapshot.capture(value, previousSnapshot) }
         enqueue { timed("write") { store.saveSnapshot(snapshot) } }
+        previousSnapshot = snapshot
     }
     fun saveDraft(text: String) = enqueue { store.saveDraft(text) }
     private fun enqueue(action: () -> Unit) {
