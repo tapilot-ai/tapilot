@@ -48,3 +48,31 @@ export const siwcFetch = () => async () => new Response(new ReadableStream({
     }
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
+
+test('worker tracks socket reuse without retaining headers or addresses', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'tapilot-model-connection-'));
+  try {
+    const shim = join(dir, 'shim.mjs');
+    await writeFile(shim, `import {channel} from 'node:diagnostics_channel';
+export const observeModelNetwork = () => () => {};
+const socket = {alpnProtocol: 'h2', isSessionReused: () => false, remoteAddress: 'PRIVATE_ADDRESS'};
+export const siwcFetch = () => async () => {
+ const request = {headers: 'PRIVATE_TOKEN'};
+ channel('undici:request:create').publish({request});
+ channel('undici:client:sendHeaders').publish({request, socket, headers: 'PRIVATE_TOKEN'});
+ return new Response('data: '+JSON.stringify({type:'response.completed',response:{model:'gpt-6-luna',usage:{input_tokens:1,output_tokens:1},output:[{content:[{type:'output_text',text:'OK'}]}]}})+'\\n\\n');
+};`);
+    const child = spawn(process.execPath, ['scripts/benchmark-model-worker.mjs', shim], {stdio:['pipe','pipe','pipe']});
+    let stdout = '', stderr = '';
+    child.stdout.on('data', b => {stdout += b;}); child.stderr.on('data', b => {stderr += b;});
+    const done = new Promise((resolve, reject) => {child.on('error', reject); child.on('exit', resolve);});
+    child.stdin.end([1,2].map(id=>JSON.stringify({id:String(id),body:'{}',transport:'siwc-request'})).join('\n')+'\n');
+    assert.equal(await done, 0, stderr);
+    assert.doesNotMatch(stdout, /PRIVATE_TOKEN|PRIVATE_ADDRESS/);
+    const results = stdout.trim().split('\n').map(line=>JSON.parse(line)).filter(x=>x.outcome);
+    assert.equal(results.length, 2);
+    assert.deepEqual(results.map(r=>r.connectionTrace[0].previousRequests), [0,1]);
+    assert.deepEqual(results.map(r=>r.connectionTrace[0].socketId), [1,1]);
+    assert.ok(results.every(r=>r.connectionTrace[0].negotiatedProtocol==='h2' && r.connectionTrace[0].sendHeadersMs>=0));
+  } finally {await rm(dir,{recursive:true,force:true});}
+});

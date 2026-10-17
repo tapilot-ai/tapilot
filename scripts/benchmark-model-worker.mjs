@@ -2,15 +2,38 @@
 import { createInterface } from 'node:readline';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
+import { channel } from 'node:diagnostics_channel';
 const { observeModelNetwork, siwcFetch } = await import(pathToFileURL(process.argv[2]));
 let network = [];
 const stop = observeModelNetwork(value => network.push(value));
+// beforeConnect cannot be assigned to one request in a pooled client. Record
+// socket identity at sendHeaders instead; never inspect raw headers or addresses.
+const sockets = new WeakMap(), requests = new WeakMap();
+let socketSequence = 0, connectionTrace = [];
+const subscriptions = [];
+for (const [name, listener] of [
+  ['undici:request:create', ({ request }) => requests.set(request, performance.now())],
+  ['undici:client:sendHeaders', ({ request, socket }) => {
+    const created = requests.get(request);
+    if (created === undefined) return;
+    let state = sockets.get(socket);
+    if (!state) { state = { id: ++socketSequence, uses: 0 }; sockets.set(socket, state); }
+    connectionTrace.push({ socketId: state.id, previousRequests: state.uses++,
+      sendHeadersMs: performance.now() - created,
+      negotiatedProtocol: ['h2', 'http/1.1'].includes(socket.alpnProtocol) ? socket.alpnProtocol : null,
+      tlsSessionReused: typeof socket.isSessionReused === 'function' ? socket.isSessionReused() : null });
+  }],
+]) {
+  const topic = channel(name);
+  const safe = value => { try { listener(value); } catch { /* diagnostics must not affect transport */ } };
+  topic.subscribe(safe); subscriptions.push(() => topic.unsubscribe(safe));
+}
 console.log(JSON.stringify({ ready: true, node: process.version, environmentProxyEnabled: process.env.NODE_USE_ENV_PROXY === '1' }));
 try {
   for await (const line of createInterface({ input: process.stdin })) {
     const { id, token, body, transport = 'direct' } = JSON.parse(line);
     console.log(JSON.stringify({ received: id }));
-    network = [];
+    network = []; connectionTrace = [];
     const started = performance.now();
     const measurement = { id, requestSha256: createHash('sha256').update(body).digest('hex'), requestBytes: Buffer.byteLength(body) };
     try {
@@ -64,7 +87,7 @@ try {
         // Unauthenticated API rejection measures a path floor, not model inference.
         if (response.status !== 401) throw Error('Unexpected probe status');
         measurement.outcome = 'complete';
-        measurement.network = network;
+        measurement.network = network; measurement.connectionTrace = connectionTrace;
         console.log(JSON.stringify(measurement));
         continue;
       }
@@ -79,7 +102,7 @@ try {
     } catch (error) {
       measurement.outcome = 'failed'; measurement.error = error.name; measurement.totalMs = performance.now() - started;
     }
-    measurement.network = network;
+    measurement.network = network; measurement.connectionTrace = connectionTrace;
     console.log(JSON.stringify(measurement));
   }
-} finally { stop(); }
+} finally { stop(); subscriptions.forEach(unsubscribe => unsubscribe()); }
