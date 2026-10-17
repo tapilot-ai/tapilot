@@ -12,7 +12,7 @@ overrides:
 
 patchedDependencies:
   '@midscene/core@1.15.2': c5ff38cce759a41df5d7305ba11a23183380d6dcd9a14d3bcc72c5d4121e7374
-  '@midscene/test@1.15.2': dcd2ff60e8bfa7231d08eeaefb72ffa0143bd6416701626a61627689dba36342
+  '@midscene/test@1.15.2': e5384f569c6c62103e30b79bbdb9e4a6a5f09a88e6b1b6b31e5912fe8452a249
 
 importers:
 
@@ -35,7 +35,7 @@ importers:
         version: 1.15.2(@types/node@26.6.5)(supports-color@7.2.0)
       '@midscene/test':
         specifier: 1.15.2
-        version: 1.15.2(patch_hash=dcd2ff60e8bfa7231d08eeaefb72ffa0143bd6416701626a61627689dba36342)(@types/node@26.6.5)(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)(ws@8.22.0)
+        version: 1.15.2(patch_hash=e5384f569c6c62103e30b79bbdb9e4a6a5f09a88e6b1b6b31e5912fe8452a249)(@types/node@26.6.5)(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)(ws@8.22.0)
       '@tapilot/android-accessibility':
         specifier: file:../../packages/android-accessibility
         version: file:../../packages/android-accessibility(@types/node@26.6.5)(supports-color@7.2.0)(ws@8.22.0)
@@ -2393,7 +2393,7 @@ snapshots:
       - '@types/node'
       - supports-color
 
-  '@midscene/test@1.15.2(patch_hash=dcd2ff60e8bfa7231d08eeaefb72ffa0143bd6416701626a61627689dba36342)(@types/node@26.6.5)(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)(ws@8.22.0)':
+  '@midscene/test@1.15.2(patch_hash=e5384f569c6c62103e30b79bbdb9e4a6a5f09a88e6b1b6b31e5912fe8452a249)(@types/node@26.6.5)(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)(ws@8.22.0)':
     dependencies:
       '@inquirer/prompts': 7.10.1(@types/node@26.6.5)
       '@midscene/core': 1.15.2(patch_hash=c5ff38cce759a41df5d7305ba11a23183380d6dcd9a14d3bcc72c5d4121e7374)(@types/node@26.6.5)(supports-color@7.2.0)(ws@8.22.0)

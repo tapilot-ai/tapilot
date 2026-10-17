@@ -78,3 +78,81 @@ diff --git a/dist/lib/test-cli.js b/dist/lib/test-cli.js
          const platform = options.platform?.trim();
          const fileSelection = project.files ?? DEFAULT_TEST_FILE_SELECTION;
          const prerequisiteFile = options.prerequisiteFile ? (0, external_node_path_.resolve)(options.prerequisiteFile) : void 0;
+diff --git a/dist/es/cli/index.mjs b/dist/es/cli/index.mjs
+--- a/dist/es/cli/index.mjs
++++ b/dist/es/cli/index.mjs
+@@ -1,6 +1,5 @@
+ import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+ import { pathToFileURL } from "node:url";
+-import { require as api_require } from "tsx/cjs/api";
+ import { NodeRegistry, WorkflowError, WorkflowExecutionFailure, WorkflowParseError, WorkflowPublicationError, asExecutionError, buildTestRunReportDump, buildTestRunReportPlan, classifyWorkflowDocumentFormat, collectTestRunReportSources, createProjectRuntime, decideRetry, isFatalDeviceError, isReportSecretKey, isResourceRecoveryError, normalizeSteps, observeResourceOperations, runConcurrentJobs, runDocumentAttempts, runWorkflowDocument, sanitizeReportError, sanitizeReportText } from "@midscene/core/internal/test-runner";
+ import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+ import { globSync } from "tinyglobby";
+@@ -278,6 +277,7 @@
+     } catch (error) {
+         try {
+             if ('.mjs' === extension || !canRetryWithCjsLoader(error)) throw error;
++            const { require: api_require } = await import("tsx/cjs/api");
+             loaded = api_require(absolutePath, pathToFileURL(absolutePath));
+         } catch (fallbackError) {
+             const message = fallbackError instanceof Error ? `: ${fallbackError.message}` : '';
+diff --git a/dist/es/test-cli.mjs b/dist/es/test-cli.mjs
+--- a/dist/es/test-cli.mjs
++++ b/dist/es/test-cli.mjs
+@@ -4,7 +4,6 @@
+ import { inspect } from "node:util";
+ import { z } from "zod/v4";
+ import { pathToFileURL } from "node:url";
+-import { require as api_require } from "tsx/cjs/api";
+ import { globSync } from "tinyglobby";
+ import { createHash, randomUUID } from "node:crypto";
+ import { JSON_SCHEMA, load } from "js-yaml";
+@@ -500,6 +499,7 @@
+     } catch (error) {
+         try {
+             if ('.mjs' === extension || !canRetryWithCjsLoader(error)) throw error;
++            const { require: api_require } = await import("tsx/cjs/api");
+             loaded = api_require(absolutePath, pathToFileURL(absolutePath));
+         } catch (fallbackError) {
+             const message = fallbackError instanceof Error ? `: ${fallbackError.message}` : '';
+diff --git a/dist/lib/cli/index.js b/dist/lib/cli/index.js
+--- a/dist/lib/cli/index.js
++++ b/dist/lib/cli/index.js
+@@ -36,7 +36,6 @@
+ });
+ const external_node_path_namespaceObject = require("node:path");
+ const external_node_url_namespaceObject = require("node:url");
+-const api_namespaceObject = require("tsx/cjs/api");
+ const test_runner_namespaceObject = require("@midscene/core/internal/test-runner");
+ const NodeRegistry = test_runner_namespaceObject.NodeRegistry;
+ const projectIdFromIndex = (index)=>`project-${index}`;
+@@ -306,7 +305,7 @@
+     } catch (error) {
+         try {
+             if ('.mjs' === extension || !canRetryWithCjsLoader(error)) throw error;
+-            loaded = (0, api_namespaceObject.require)(absolutePath, (0, external_node_url_namespaceObject.pathToFileURL)(absolutePath));
++            loaded = require("tsx/cjs/api").require(absolutePath, (0, external_node_url_namespaceObject.pathToFileURL)(absolutePath));
+         } catch (fallbackError) {
+             const message = fallbackError instanceof Error ? `: ${fallbackError.message}` : '';
+             throw new Error(`Failed to load Midscene config "${absolutePath}"${message}`, {
+diff --git a/dist/lib/test-cli.js b/dist/lib/test-cli.js
+--- a/dist/lib/test-cli.js
++++ b/dist/lib/test-cli.js
+@@ -234,7 +234,6 @@
+         };
+     };
+     const external_node_url_namespaceObject = require("node:url");
+-    const api_namespaceObject = require("tsx/cjs/api");
+     const NodeRegistry = test_runner_namespaceObject.NodeRegistry;
+     const projectIdFromIndex = (index)=>`project-${index}`;
+     const getDefaultExport = (loaded, absolutePath)=>{
+         if ('object' == typeof loaded && null !== loaded && 'default' in loaded) {
+@@ -501,7 +500,7 @@
+         } catch (error) {
+             try {
+                 if ('.mjs' === extension || !canRetryWithCjsLoader(error)) throw error;
+-                loaded = (0, api_namespaceObject.require)(absolutePath, (0, external_node_url_namespaceObject.pathToFileURL)(absolutePath));
++                loaded = require("tsx/cjs/api").require(absolutePath, (0, external_node_url_namespaceObject.pathToFileURL)(absolutePath));
+             } catch (fallbackError) {
+                 const message = fallbackError instanceof Error ? `: ${fallbackError.message}` : '';
+                 throw new Error(`Failed to load Midscene config "${absolutePath}"${message}`, {

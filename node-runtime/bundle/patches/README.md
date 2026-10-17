@@ -5,6 +5,10 @@ It accepts `testTimeout: 0` and translates it to the runner's unbounded timeout,
 so Tapilot's explicit task cancellation and budgets govern long-running tasks.
 Both ESM and CommonJS entrypoints are patched.
 
+It also loads the CommonJS TypeScript fallback only when needed. Native `.mjs`
+configs do not initialize `tsx/cjs/api`; TypeScript and CommonJS fallbacks remain
+available. The lazy-loader runtime test covers module loading and config formats.
+
 The patch is declared in the deployment workspace and verified by pnpm's lockfile.
 `node-runtime/tests/unbounded-runtime.test.mjs` covers its contract. The source
 fingerprint includes patch content and configuration. Remove the patch and its
