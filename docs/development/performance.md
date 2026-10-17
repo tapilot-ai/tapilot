@@ -1925,3 +1925,52 @@ The local ignored `prompt-ablation-20261017` artifact directory retains the
 transformation and diagnostic drivers alongside the private candidate request.
 
 [Sanitized samples, controls and transformation metadata](performance-prompt-ablation-20261017.json)
+
+### Remove generic pre-action idle time, retain readiness (2026-10-17)
+
+The adapter now supplies `delayBeforeRunner: 0` when an action has no explicit
+pre-action delay. Midscene otherwise inserts a generic 200 ms sleep after visual
+planning and before invoking the native action. This sleep performs no readiness
+check and only makes the observed coordinates older. Explicit action delays,
+post-action waits, gesture durations, screenshot stabilization and final visual
+verification are unchanged. Both shipped adapter module formats were rebuilt.
+
+Real SDK TaskBuilder tests exercise ESM and CommonJS, checking the executed
+native action/frame, the retained 300 ms post-action timer, absence of the generic
+200 ms pre-action timer, and cancellation before a second action can execute.
+All 85 runtime tests, adapter tests, local quick checks, Kotlin unit tests,
+runtime integrity verification and APK build passed. An initial APK attempt was
+correctly rejected by runtime integrity while the runtime bundle was still being
+packaged; the completed bundle was verified and the successful APK rebuilt before
+installation. No incomplete artifact was installed.
+
+| On-device task | Previous pre-action waits | New pre-action waits | New post-action waits | New task wall |
+| --- | --- | --- | --- | ---: |
+| Read auto-brightness | 202 / 200 ms | 0 / 0 ms | 303 / 301 ms | 37.192 s |
+| Read Android version | 203 / 201 / 200 / 201 ms | 0 / 1 / 0 / 0 ms | 302 / 302 / 305 / 301 ms | 51.705 s |
+
+Both warm tasks succeeded using gpt-6-luna and 988×1972 screenshots, with four/six
+visual model requests respectively, zero planning parse retries and independent
+final queries confirming enabled auto-brightness / Android 14. These reports
+isolate roughly 0.4/0.8 s of removed idle time. The before/after total durations
+are not a randomized paired comparison: model HTTP time increased from
+18.242 to 22.349 s for the listed brightness samples and 28.213 to 29.098 s for
+version. Thus no stable overall wall-time gain or 50% reduction is claimed.
+The first post-install brightness sample took 46.862 s including 9.419 s runtime
+preparation and is retained separately. Runtime version is
+`0.1.0-1d468b0142a2`; all three new runs share the same source fingerprint.
+
+The cold sample exposed a benchmark-control issue: the instruction's “No voice”
+does not disable application-level automatic playback. The debug receiver bypasses
+`AssistantRuntime.command`, so it now calls `stopAudio()` before creating a
+benchmark conversation. This mutes the run without changing the stored user
+preference; the next normal user send clears that mute through the existing
+runtime path. Before this fix, the warm brightness sample used a manually disabled
+auto-read setting. The setting was restored to enabled after installing the final APK and before
+validating the final version task, which used the new benchmark mute. This is a debug harness
+fix, not a general natural-language speech preference implementation. Prior cohorts
+without voice instrumentation must not be described as guaranteed voice-free.
+All task workers were gone after acceptance; the user's auto-read preference was
+restored and wireless control re-enabled after installation.
+
+[Action-level timings, full-task evidence and limitations](performance-action-delay-20261017.json)

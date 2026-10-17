@@ -47,6 +47,10 @@ class PerformanceExperimentReceiver : BroadcastReceiver() {
         else editor.putBoolean("runtime-preload", preload == "on")
         val saved = editor.commit()
         if (saved && runBenchmark) {
+            // Benchmarks bypass AssistantRuntime.command, so textual "No voice"
+            // cannot disable automatic reply playback. Mute this run without
+            // changing the user's preference; their next normal send unmutes it.
+            runtime.stopAudio()
             // Fixed read-only scenario, no arbitrary commands or gesture injection.
             runtime.coordinator.command(JSONObject().put("action", "new"))
             if (controlled) {

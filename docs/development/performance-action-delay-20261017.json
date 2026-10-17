@@ -1,0 +1,261 @@
+{
+  "change": "Remove only the generic 200 ms pre-action sleep through adapter action metadata. Explicit action delays and post-action waits remain.",
+  "controls": {
+    "device": "e7ed3f17",
+    "model": "gpt-6-luna",
+    "screenshot": "988x1972 JPEG90, no shrinking",
+    "independentFinalVisualQuery": true
+  },
+  "limitations": [
+    "Before/after task wall times are not a paired randomized A/B experiment",
+    "Model latency and output vary",
+    "Cold update includes runtime installation and observed post-task automatic playback",
+    "Voice policy is enforced by the debug benchmark receiver only in the final version sample",
+    "Per-action timing isolates the removed delay; task-level 50% reduction is not established"
+  ],
+  "rows": [
+    {
+      "id": "native-full-controlled-refresh-p2-20261017",
+      "revision": "previous-default",
+      "fixture": "read-auto-brightness",
+      "wallMs": 33805,
+      "sourceFingerprint": "46a67ab1461082aeae7a7d0c97cd6dfb2c26ccaeccbe409ffd8ec873f2a4f8ac",
+      "runnerMs": 27227,
+      "outerModelMs": 4883,
+      "visualModelHttpMs": 18242.18192,
+      "httpRequests": 4,
+      "planningParseRetries": 0,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "\u9875\u9762\u6807\u9898\uff1a\u663e\u793a\u4e0e\u4eae\u5ea6\uff1b\u81ea\u52a8\u8c03\u8282\uff1a\u5f00\u542f\u3002"
+      },
+      "actions": [
+        {
+          "action": "Scroll",
+          "preMs": 202,
+          "callMs": 1073,
+          "readyMs": 302
+        },
+        {
+          "action": "Tap",
+          "preMs": 200,
+          "callMs": 146,
+          "readyMs": 301
+        }
+      ],
+      "prepareRuntimeMs": [
+        6,
+        11
+      ],
+      "coldUpdateSample": false,
+      "voiceControl": "not instrumented"
+    },
+    {
+      "id": "native-full-controlled-version-p2-20261017",
+      "revision": "previous-default",
+      "fixture": "read-android-version",
+      "wallMs": 51138,
+      "sourceFingerprint": "46a67ab1461082aeae7a7d0c97cd6dfb2c26ccaeccbe409ffd8ec873f2a4f8ac",
+      "runnerMs": 44797,
+      "outerModelMs": 4766,
+      "visualModelHttpMs": 28213.342540999995,
+      "httpRequests": 6,
+      "planningParseRetries": 0,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 6,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "\u53ef\u89c1\u6807\u7b7e\u201cAndroid \u7248\u672c\u201d\uff0c\u5bf9\u5e94\u503c\u4e3a\u201c14\u201d\u3002"
+      },
+      "actions": [
+        {
+          "action": "Scroll",
+          "preMs": 203,
+          "callMs": 1105,
+          "readyMs": 301
+        },
+        {
+          "action": "Scroll",
+          "preMs": 201,
+          "callMs": 1052,
+          "readyMs": 302
+        },
+        {
+          "action": "Tap",
+          "preMs": 200,
+          "callMs": 152,
+          "readyMs": 301
+        },
+        {
+          "action": "Scroll",
+          "preMs": 201,
+          "callMs": 1064,
+          "readyMs": 302
+        }
+      ],
+      "prepareRuntimeMs": [
+        8,
+        2
+      ],
+      "coldUpdateSample": false,
+      "voiceControl": "not instrumented"
+    },
+    {
+      "id": "native-full-action-delay-update-20261017",
+      "revision": "zero-generic-pre-action-wait",
+      "fixture": "read-auto-brightness",
+      "wallMs": 46862,
+      "sourceFingerprint": "3418a56901e0e65aed192099bdcd4f828c64eaaebf67c2b00f193ed7c4e23add",
+      "runnerMs": 28685,
+      "outerModelMs": 6773,
+      "visualModelHttpMs": 19573.391241999998,
+      "httpRequests": 4,
+      "planningParseRetries": 0,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "\u663e\u793a\u4e0e\u4eae\u5ea6\u9875\u9762\u53ef\u89c1\uff1b\u201c\u81ea\u52a8\u8c03\u8282\u201d\u5f00\u5173\u4e3a\u5f00\u542f\u72b6\u6001\u3002\u4eae\u5ea6\u6ed1\u5757\u7ea6\u4e3a\u4e00\u534a\u3002\u5b9a\u65f6\u5207\u6362\u663e\u793a\u201c\u5df2\u5173\u95ed\u201d\uff0c\u62a4\u773c\u6a21\u5f0f\u663e\u793a\u201c\u5df2\u5173\u95ed\u201d\u3002"
+      },
+      "actions": [
+        {
+          "action": "Scroll",
+          "preMs": 0,
+          "callMs": 1060,
+          "readyMs": 301
+        },
+        {
+          "action": "Tap",
+          "preMs": 0,
+          "callMs": 135,
+          "readyMs": 301
+        }
+      ],
+      "prepareRuntimeMs": [
+        9419,
+        2
+      ],
+      "coldUpdateSample": true,
+      "voiceControl": "automatic playback observed after task"
+    },
+    {
+      "id": "native-full-action-delay-brightness-20261017",
+      "revision": "zero-generic-pre-action-wait",
+      "fixture": "read-auto-brightness",
+      "wallMs": 37192,
+      "sourceFingerprint": "3418a56901e0e65aed192099bdcd4f828c64eaaebf67c2b00f193ed7c4e23add",
+      "runnerMs": 30875,
+      "outerModelMs": 4679,
+      "visualModelHttpMs": 22349.052492,
+      "httpRequests": 4,
+      "planningParseRetries": 0,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "\u9875\u9762\u6807\u9898\u4e3a\u201c\u663e\u793a\u4e0e\u4eae\u5ea6\u201d\u3002\u201c\u81ea\u52a8\u8c03\u8282\u201d\u5f00\u5173\u5f53\u524d\u4e3a\u5f00\u542f\u72b6\u6001\u3002"
+      },
+      "actions": [
+        {
+          "action": "Scroll",
+          "preMs": 0,
+          "callMs": 1037,
+          "readyMs": 303
+        },
+        {
+          "action": "Tap",
+          "preMs": 0,
+          "callMs": 145,
+          "readyMs": 301
+        }
+      ],
+      "prepareRuntimeMs": [
+        7,
+        3
+      ],
+      "coldUpdateSample": false,
+      "voiceControl": "auto-read disabled manually"
+    },
+    {
+      "id": "native-full-action-delay-version-20261017",
+      "revision": "zero-generic-pre-action-wait",
+      "fixture": "read-android-version",
+      "wallMs": 51705,
+      "sourceFingerprint": "3418a56901e0e65aed192099bdcd4f828c64eaaebf67c2b00f193ed7c4e23add",
+      "runnerMs": 44494,
+      "outerModelMs": 5152,
+      "visualModelHttpMs": 29098.338320999996,
+      "httpRequests": 6,
+      "planningParseRetries": 0,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 6,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "\u201cAndroid \u7248\u672c\u201d\uff1a14\u3002"
+      },
+      "actions": [
+        {
+          "action": "Scroll",
+          "preMs": 0,
+          "callMs": 1067,
+          "readyMs": 302
+        },
+        {
+          "action": "Scroll",
+          "preMs": 1,
+          "callMs": 1054,
+          "readyMs": 302
+        },
+        {
+          "action": "Tap",
+          "preMs": 0,
+          "callMs": 98,
+          "readyMs": 305
+        },
+        {
+          "action": "Scroll",
+          "preMs": 0,
+          "callMs": 1062,
+          "readyMs": 301
+        }
+      ],
+      "prepareRuntimeMs": [
+        13,
+        2
+      ],
+      "coldUpdateSample": false,
+      "voiceControl": "benchmark stopAudio, user auto-read preference restored enabled"
+    }
+  ],
+  "validation": {
+    "runtimeTestsPassed": 85,
+    "adapterTestsPassed": true,
+    "quickChecksPassed": true,
+    "kotlinUnitTestsPassed": true,
+    "apkInstalledOn": "e7ed3f17",
+    "autoReadPreferenceRestored": true,
+    "remainingNodeWorkers": 0
+  }
+}
