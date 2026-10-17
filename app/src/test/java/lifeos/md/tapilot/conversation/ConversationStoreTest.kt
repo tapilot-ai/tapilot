@@ -48,6 +48,12 @@ class ConversationStoreTest {
             store.save(state)
             val initialRevision = state.getString("storageRevision")
             assertEquals(initialRevision, store.read().getString("storageRevision"))
+            val startupSnapshot = store.lastSnapshot
+            ConversationWriter(store) { throw AssertionError(it) }.use { writer ->
+                writer.save(state)
+                writer.flush()
+            }
+            assertSame(startupSnapshot, store.lastSnapshot)
             nested.put("value", "after")
             assertEquals("before", store.read().getJSONArray("history").getJSONObject(0).getJSONObject("result").getString("value"))
             ConversationWriter(store) { throw AssertionError(it) }.use { writer ->
@@ -61,6 +67,30 @@ class ConversationStoreTest {
             assertTrue(result.isNull("nullable"))
             store.saveDraft("draft after worker")
             assertEquals("draft after worker", store.read().getString("draft"))
+        } finally { root.deleteRecursively() }
+    }
+    @Test fun immutableHistoryCacheDoesNotHashOrReencodeUnchangedRecords() {
+        val root = Files.createTempDirectory("tapilot-identity-cache").toFile()
+        try {
+            var reads = 0
+            val record = object : AbstractMap<String, Any?>() {
+                override val entries: Set<Map.Entry<String, Any?>>
+                    get() { reads++; return mapOf<String, Any?>("id" to "one", "result" to "before").entries }
+                override fun hashCode(): Int = error("History content must not be hashed")
+            }
+            val store = ConversationStore(root.resolve("state.json"))
+            val snapshot = mapOf("version" to 1, "history" to listOf(record))
+            store.saveSnapshot(snapshot)
+            val firstReads = reads
+            assertTrue(firstReads > 0)
+            store.saveSnapshot(snapshot)
+            assertEquals(firstReads, reads)
+            // Same ID with changed content has a distinct immutable snapshot.
+            store.saveSnapshot(mapOf("version" to 1, "history" to listOf(
+                record, mapOf("id" to "one", "result" to "after"))))
+            val history = store.read().getJSONArray("history")
+            assertEquals("before", history.getJSONObject(0).getString("result"))
+            assertEquals("after", history.getJSONObject(1).getString("result"))
         } finally { root.deleteRecursively() }
     }
     @Test fun endpointsAreHttpsAndChatCompatible() {

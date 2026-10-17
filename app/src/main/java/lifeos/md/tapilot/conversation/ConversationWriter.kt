@@ -16,7 +16,7 @@ class ConversationWriter(
     private var previousSnapshot: Map<String, Any?>? = null
 
     @Synchronized fun save(value: JSONObject) {
-        val snapshot = timed("snapshot") { ConversationSnapshot.capture(value, previousSnapshot) }
+        val snapshot = timed("snapshot") { ConversationSnapshot.capture(value, previousSnapshot ?: store.lastSnapshot) }
         enqueue { timed("write") { store.saveSnapshot(snapshot) } }
         previousSnapshot = snapshot
     }

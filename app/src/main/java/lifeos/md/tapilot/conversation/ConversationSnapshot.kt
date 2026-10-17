@@ -27,9 +27,19 @@ internal object ConversationSnapshot {
 
     private fun array(value: JSONArray, previous: List<*>?): List<Any?> {
         var changed: MutableList<Any?>? = null
+        // History prepends must not invalidate every unchanged record's identity.
+        // Only unique string IDs are candidates, and capture still checks every field.
+        val byId by lazy {
+            previous.orEmpty().filterIsInstance<Map<*, *>>()
+                .filter { it["id"] is String }.groupBy { it["id"] }
+                .filterValues { it.size == 1 }.mapValues { it.value.single() }
+        }
         for (index in 0 until value.length()) {
             val old = previous?.getOrNull(index)
-            val next = copy(value.get(index), old)
+            val item = value.get(index)
+            val id = (item as? JSONObject)?.opt("id") as? String
+            val candidate = if (id != null && (old as? Map<*, *>)?.get("id") != id) byId[id] else old
+            val next = copy(item, candidate)
             if (previous == null || index >= previous.size || next !== old) {
                 if (changed == null) changed = previous?.toMutableList() ?: mutableListOf()
                 if (index < changed.size) changed[index] = next else changed.add(next)

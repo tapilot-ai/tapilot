@@ -24,6 +24,29 @@ class ConversationSnapshotTest {
         assertEquals(listOf(null, "kept"), (newHistory[0] as Map<*, *>)["value"])
     }
 
+    @Test fun reusesUniqueRecordsAfterPrependAndReorderButChecksChangedContents() {
+        val a = JSONObject().put("id", "a").put("nested", JSONObject().put("value", "before"))
+        val b = JSONObject().put("id", "b")
+        val state = JSONObject().put("history", JSONArray().put(a).put(b))
+        val first = ConversationSnapshot.capture(state)
+        val initial = first["history"] as List<*>
+        state.put("history", JSONArray().put(JSONObject().put("id", "new")).put(b).put(a))
+        val second = ConversationSnapshot.capture(state, first)
+        val moved = second["history"] as List<*>
+        assertSame(initial[1], moved[1]); assertSame(initial[0], moved[2])
+        a.getJSONObject("nested").put("value", "after")
+        state.put("history", JSONArray().put(a).put(b))
+        val third = ConversationSnapshot.capture(state, second)["history"] as List<*>
+        assertNotSame(initial[0], third[0]); assertSame(initial[1], third[1])
+        assertEquals("before", ((initial[0] as Map<*, *>)["nested"] as Map<*, *>)["value"])
+        assertEquals("after", ((third[0] as Map<*, *>)["nested"] as Map<*, *>)["value"])
+        val duplicates = JSONObject().put("history", JSONArray().put(JSONObject().put("id", "a").put("v", 1))
+            .put(JSONObject().put("id", "a").put("v", 2)))
+        val duplicateSnapshot = ConversationSnapshot.capture(duplicates)
+        duplicates.put("history", JSONArray().put(JSONObject().put("id", "new")).put(JSONObject().put("id", "a").put("v", 3)))
+        val result = ConversationSnapshot.capture(duplicates, duplicateSnapshot)["history"] as List<*>
+        assertEquals(3, (result[1] as Map<*, *>)["v"])
+    }
     @Test fun preservesNullsRemovalReorderingAndContainerTypeChanges() {
         val state = JSONObject().put("a", JSONObject.NULL).put("list", JSONArray().put("x").put("y"))
         val first = ConversationSnapshot.capture(state)

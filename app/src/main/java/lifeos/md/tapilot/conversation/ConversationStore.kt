@@ -2,14 +2,17 @@ package lifeos.md.tapilot.conversation
 
 import lifeos.md.tapilot.AppText.text as appText
 import java.io.File
+import java.util.IdentityHashMap
 import org.json.JSONArray
 import org.json.JSONObject
 
 /** Versioned, atomic private storage. API keys continue to live only in Android Keystore. */
 class ConversationStore(private val file: File) {
-    // Immutable worker-owned snapshots are keys: map equality checks all nested values,
-    // so changing any record field invalidates its encoding, including duplicate IDs.
-    private var encodedHistory = emptyMap<Map<*, *>, String>()
+    // Snapshot capture reuses unchanged immutable records and replaces changed ones.
+    // Identity avoids recursively hashing the entire history on every cache lookup.
+    private var encodedHistory = IdentityHashMap<Map<*, *>, String>()
+    @Volatile internal var lastSnapshot: Map<String, Any?>? = null
+        private set
     fun exists() = file.isFile
     private val draftFile = File(file.parentFile, "${file.name}.draft")
     @Synchronized fun read(): JSONObject {
@@ -24,8 +27,7 @@ class ConversationStore(private val file: File) {
         require(value.getInt("version") == 1)
         val revision = java.util.UUID.randomUUID().toString()
         value.put("storageRevision", revision)
-        // Startup recovery already writes every record. Seed the same immutable
-        // encoding cache here instead of encoding all history again on task one.
+        // Startup recovery detaches mutable JSON using the same storage format.
         saveSnapshot(ConversationSnapshot.capture(value), revision)
     }
     /** Called only with detached immutable snapshots from ConversationWriter. */
@@ -34,7 +36,7 @@ class ConversationStore(private val file: File) {
         require(metadata.getInt("version") == 1)
         metadata.put("storageRevision", revision)
         val history = snapshot["history"] as? List<*> ?: error("Conversation history must be a list")
-        val nextCache = mutableMapOf<Map<*, *>, String>()
+        val nextCache = IdentityHashMap<Map<*, *>, String>()
         val encoded = history.map { value ->
             val entry = value as? Map<*, *> ?: error("Conversation entry must be an object")
             (nextCache[entry] ?: encodedHistory[entry] ?: JSONObject(entry).toString())
@@ -43,6 +45,7 @@ class ConversationStore(private val file: File) {
         val prefix = metadata.toString().dropLast(1)
         writeAtomically(file, prefix + ",\"history\":[" + encoded.joinToString(",") + "]}")
         encodedHistory = nextCache // Publish the cache only after the durable write succeeded.
+        lastSnapshot = snapshot
         draftFile.delete()
     }
     @Synchronized fun saveDraft(text: String) {
