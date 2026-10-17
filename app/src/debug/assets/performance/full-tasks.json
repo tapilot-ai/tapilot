@@ -1,0 +1,4 @@
+{
+  "read-auto-brightness": "Open Settings, open Display and brightness, and read the current auto-brightness switch state. Do not change any setting. No voice.",
+  "read-android-version": "Open Settings, open About device, and read the Android version. Do not confuse Android version with ColorOS version or build number. Do not change any setting. No voice."
+}

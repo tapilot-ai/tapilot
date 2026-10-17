@@ -12,7 +12,9 @@ import { loadConfig, validateConfig } from '../plugins/android-use/server/config
 import { verifyRuntime, sourceFingerprint } from './runtime-integrity.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const source = 'Open Settings, open Display and brightness, and read the current auto-brightness switch state. Do not change any setting. No voice.';
+const fixtureName = process.env.TAPILOT_BENCH_FIXTURE ?? 'read-auto-brightness';
+if (!['read-auto-brightness', 'read-android-version'].includes(fixtureName)) throw Error('Unsupported full-task fixture');
+const source = JSON.parse(await readFile(join(root, 'app/src/debug/assets/performance/full-tasks.json'), 'utf8'))[fixtureName];
 if (process.version !== 'v24.18.0') throw Error('Use Node 24.18.0 to match the phone');
 if (!process.env.TAPILOT_BENCH_AUTH_DIR || !process.env.TAPILOT_BENCH_ACCOUNT) throw Error('Explicit matched benchmark auth required');
 verifyRuntime(root);
@@ -113,11 +115,11 @@ try {
   if (await agentExit !== 0 || result?.phase !== 'completed' || result.lastPhoneResult?.success !== true || !executions.length) throw Error('Full task not verified');
   if (sourceFingerprint(root) !== fingerprint) throw Error('Sources changed during measurement');
   const wallMs = performance.now() - started;
-  await writeFile(join(out, 'measurement.json'), JSON.stringify({ status: 'verified', source, sourceFingerprint: fingerprint, nodeVersion: process.version,
+  await writeFile(join(out, 'measurement.json'), JSON.stringify({ status: 'verified', fixtureName, source, sourceFingerprint: fingerprint, nodeVersion: process.version,
     wallMs, phases, modelMetrics, executions, result, environmentProxyEnabled: process.env.NODE_USE_ENV_PROXY === '1',
     boundary: 'Desktop same-agent full conversation; includes catalog, Kotlin IPC, Pi startup, inner harness auth/connection/startup; excludes preflight and JVM warmup. Not Codex UI timing.' }, null, 2));
   console.log(JSON.stringify({ out, status: 'verified', wallMs }));
 } catch (error) {
-  await writeFile(join(out, 'measurement.json'), JSON.stringify({ status: 'failed', error: error.message, phases, modelMetrics, executions }, null, 2));
+  await writeFile(join(out, 'measurement.json'), JSON.stringify({ status: 'failed', fixtureName, source, error: error.message, phases, modelMetrics, executions }, null, 2));
   console.error(JSON.stringify({ out, status: 'failed', reason: error.message })); process.exitCode = 1;
 } finally { clearTimeout(watchdog); agent?.kill(); runner?.kill(); codec?.kill(); connection.close(); }

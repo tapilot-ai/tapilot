@@ -17,8 +17,6 @@ def main():
     args = parser.parse_args()
     if pathlib.Path(args.label).name != args.label or args.label in ('.', '..'):
         parser.error('Label must be a single directory name')
-    if args.mode == 'full' and args.fixture != 'read-auto-brightness':
-        parser.error('Full native benchmark currently supports only brightness')
     out = pathlib.Path(__file__).resolve().parents[1] / 'artifacts/controlled-execution' / args.label
     out.mkdir(parents=True, exist_ok=False)
     adb = ['adb', '-s', args.serial]
@@ -61,7 +59,8 @@ def main():
     if wall is None:
         raise RuntimeError('Observer timed out; inspect device task state. Do not replay automatically.')
     print(json.dumps(wall), flush=True)
-    (out / 'sample.json').write_text(json.dumps({'mode': args.mode, 'fixture': args.fixture, 'capture': 'product-default', 'task': wall}, indent=2))
+    manifest = json.loads(shell('run-as', 'lifeos.md.tapilot', 'cat', 'files/node-runtime/manifest.json'))
+    (out / 'sample.json').write_text(json.dumps({'mode': args.mode, 'fixture': args.fixture, 'capture': 'product-default', 'runtimeSourceFingerprint': manifest['sourceFingerprint'], 'task': wall}, indent=2))
     for index, remote in enumerate(sorted(reports() - before)):
         data = subprocess.check_output(adb + ['exec-out', 'run-as', 'lifeos.md.tapilot', 'cat', remote])
         (out / f'report-{index}.html').write_bytes(data)

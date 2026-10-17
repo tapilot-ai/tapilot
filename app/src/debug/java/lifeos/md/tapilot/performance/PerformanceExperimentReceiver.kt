@@ -45,8 +45,10 @@ class PerformanceExperimentReceiver : BroadcastReceiver() {
             if (controlled) {
                 val source = context.assets.open("performance/$fixture.json").bufferedReader().use { it.readText() }
                 runtime.coordinator.executeYaml(source)
-            } else runtime.coordinator.command(JSONObject().put("action", "send").put("text",
-                "Open Settings, open Display and brightness, and read the current auto-brightness switch state. Do not change any setting. No voice."))
+            } else {
+                val tasks = context.assets.open("performance/full-tasks.json").bufferedReader().use { JSONObject(it.readText()) }
+                runtime.coordinator.command(JSONObject().put("action", "send").put("text", tasks.getString(fixture)))
+            }
             setResult(if (runtime.state.running) 0 else 1,
                 if (runtime.state.running) "Native benchmark accepted: $factor" else "Native benchmark rejected", null)
             return
