@@ -5,11 +5,11 @@ diff --git a/dist/es/ai-model/shared/model-locate-result/validation.mjs b/dist/e
      const coordinatesMeta = result.coordinatesMeta;
      const { normalizedBy } = coordinatesMeta;
      const limits = resolveCoordinateLimits(result, maxX, maxY);
-+    // Pixel bbox far edges may be exclusive (width/height). The pixel mapper
-+    // clamps them to the last pixel; points and bbox origins remain strict.
++    // Allow exclusive pixel bbox edges plus one pixel of edge rounding. Mapper
++    // clamps to the last pixel; points, origins and normalized ranges stay strict.
 +    if (coordinatesMeta.shape === 'bbox' && normalizedBy === undefined) {
-+        limits[2] += 1;
-+        limits[3] += 1;
++        limits[2] += 2;
++        limits[3] += 2;
 +    }
      const outOfRange = result.coordinates.some((value, index)=>value < 0 || value > limits[index]);
      if (outOfRange) {
@@ -21,11 +21,11 @@ diff --git a/dist/lib/ai-model/shared/model-locate-result/validation.js b/dist/l
      const coordinatesMeta = result.coordinatesMeta;
      const { normalizedBy } = coordinatesMeta;
      const limits = resolveCoordinateLimits(result, maxX, maxY);
-+    // Pixel bbox far edges may be exclusive (width/height). The pixel mapper
-+    // clamps them to the last pixel; points and bbox origins remain strict.
++    // Allow exclusive pixel bbox edges plus one pixel of edge rounding. Mapper
++    // clamps to the last pixel; points, origins and normalized ranges stay strict.
 +    if (coordinatesMeta.shape === 'bbox' && normalizedBy === undefined) {
-+        limits[2] += 1;
-+        limits[3] += 1;
++        limits[2] += 2;
++        limits[3] += 2;
 +    }
      const outOfRange = result.coordinates.some((value, index)=>value < 0 || value > limits[index]);
      if (outOfRange) {

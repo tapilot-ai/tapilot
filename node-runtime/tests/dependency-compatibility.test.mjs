@@ -38,7 +38,7 @@ test('native and Android WASM Sharp decode, resize and re-encode screenshot pixe
   }
 });
 
-test('pixel bbox far edges accept image dimensions without accepting out-of-screen targets', async () => {
+test('pixel bbox far edges tolerate one-pixel overflow without accepting out-of-screen targets', async () => {
   const { dirname, resolve } = await import('node:path');
   const { pathToFileURL } = await import('node:url');
   const lib = dirname(require.resolve('@midscene/core'));
@@ -55,6 +55,16 @@ test('pixel bbox far edges accept image dimensions without accepting out-of-scre
       assert.ok(result.center[0] < 988 && result.center[1] < 1972);
       assert.deepEqual(bbox.toPixelResult(order === 'xy' ? [0, 0, 988, 1972] : [0, 0, 1972, 988], context).rect,
         { left: 0, top: 0, width: 988, height: 1972 });
+      // Real OPPO Scroll response: one pixel beyond the exclusive image edge.
+      const rounded = order === 'xy' ? [43, 320, 945, 1973] : [320, 43, 1973, 945];
+      assert.deepEqual(bbox.toPixelResult(rounded, context).rect,
+        { left: 43, top: 320, width: 903, height: 1652 });
+      assert.deepEqual(bbox.toPixelResult(order === 'xy' ? [0, 0, 989, 1973] : [0, 0, 1973, 989], context).rect,
+        { left: 0, top: 0, width: 988, height: 1972 });
+      for (const overflow of [[0, 0, 990, 1972], [0, 0, 988, 1974]]) {
+        const coords = order === 'xy' ? overflow : [overflow[1], overflow[0], overflow[3], overflow[2]];
+        assert.throws(() => bbox.toPixelResult(coords, context));
+      }
       for (const invalid of [[-1, 0, 50, 50], [0, 0, 3000, 3000], [10, 10, 5, 5], [988, 1972, 988, 1972]])
         assert.throws(() => bbox.toPixelResult(invalid, context));
     }

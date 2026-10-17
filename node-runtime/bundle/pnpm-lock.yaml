@@ -11,7 +11,7 @@ overrides:
   glob@>=11.0.0 <11.1.0: 11.1.0
 
 patchedDependencies:
-  '@midscene/core@1.15.2': 6d43b70e7ecca420b68d26c260fab0b16431bf1fb6ec06d495dbcf5c9265c43f
+  '@midscene/core@1.15.2': 41831fd83025db9add7568d4f0aa4cf6a5effbdd29c3f4ccab354d3dbedf5149
   '@midscene/test@1.15.2': dcd2ff60e8bfa7231d08eeaefb72ffa0143bd6416701626a61627689dba36342
 
 importers:
@@ -29,7 +29,7 @@ importers:
         version: 0.35.5
       '@midscene/core':
         specifier: 1.15.2
-        version: 1.15.2(patch_hash=6d43b70e7ecca420b68d26c260fab0b16431bf1fb6ec06d495dbcf5c9265c43f)(@types/node@26.6.5)(supports-color@7.2.0)(ws@8.22.0)
+        version: 1.15.2(patch_hash=41831fd83025db9add7568d4f0aa4cf6a5effbdd29c3f4ccab354d3dbedf5149)(@types/node@26.6.5)(supports-color@7.2.0)(ws@8.22.0)
       '@midscene/shared':
         specifier: 1.15.2
         version: 1.15.2(@types/node@26.6.5)(supports-color@7.2.0)
@@ -2360,7 +2360,7 @@ snapshots:
 
   '@isaacs/cliui@9.0.0': {}
 
-  '@midscene/core@1.15.2(patch_hash=6d43b70e7ecca420b68d26c260fab0b16431bf1fb6ec06d495dbcf5c9265c43f)(@types/node@26.6.5)(supports-color@7.2.0)(ws@8.22.0)':
+  '@midscene/core@1.15.2(patch_hash=41831fd83025db9add7568d4f0aa4cf6a5effbdd29c3f4ccab354d3dbedf5149)(@types/node@26.6.5)(supports-color@7.2.0)(ws@8.22.0)':
     dependencies:
       '@midscene/shared': 1.15.2(@types/node@26.6.5)(supports-color@7.2.0)
       '@ui-tars/action-parser': 1.2.3
@@ -2396,7 +2396,7 @@ snapshots:
   '@midscene/test@1.15.2(patch_hash=dcd2ff60e8bfa7231d08eeaefb72ffa0143bd6416701626a61627689dba36342)(@types/node@26.6.5)(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)(ws@8.22.0)':
     dependencies:
       '@inquirer/prompts': 7.10.1(@types/node@26.6.5)
-      '@midscene/core': 1.15.2(patch_hash=6d43b70e7ecca420b68d26c260fab0b16431bf1fb6ec06d495dbcf5c9265c43f)(@types/node@26.6.5)(supports-color@7.2.0)(ws@8.22.0)
+      '@midscene/core': 1.15.2(patch_hash=41831fd83025db9add7568d4f0aa4cf6a5effbdd29c3f4ccab354d3dbedf5149)(@types/node@26.6.5)(supports-color@7.2.0)(ws@8.22.0)
       '@midscene/shared': 1.15.2(@types/node@26.6.5)(supports-color@7.2.0)
       chalk: 4.1.2
       dotenv: 16.6.1
@@ -2478,7 +2478,7 @@ snapshots:
 
   '@tapilot/android-accessibility@file:../../packages/android-accessibility(@types/node@26.6.5)(supports-color@7.2.0)(ws@8.22.0)':
     dependencies:
-      '@midscene/core': 1.15.2(patch_hash=6d43b70e7ecca420b68d26c260fab0b16431bf1fb6ec06d495dbcf5c9265c43f)(@types/node@26.6.5)(supports-color@7.2.0)(ws@8.22.0)
+      '@midscene/core': 1.15.2(patch_hash=41831fd83025db9add7568d4f0aa4cf6a5effbdd29c3f4ccab354d3dbedf5149)(@types/node@26.6.5)(supports-color@7.2.0)(ws@8.22.0)
     transitivePeerDependencies:
       - '@types/node'
       - supports-color

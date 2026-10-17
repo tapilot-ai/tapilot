@@ -13,9 +13,14 @@ the deployment tests, YAML smoke projects and device cancellation acceptance.
 
 `midscene-core-bbox-edge.patch` applies to `@midscene/core@1.15.2` (ESM and
 CommonJS). Pixel bounding boxes may use the image width/height as exclusive far
-edges. The existing pixel mapper clips those edges to the last pixel. Origins,
+edges, with at most one further pixel of edge rounding tolerated. The existing
+pixel mapper clips those edges to the last pixel. Origins,
 point coordinates, normalized ranges, reversed boxes and larger overflow still
 fail validation. On OPPO, a scroll region ending at y=1972 on a 1972-pixel image
 triggered a redundant planning request in three consecutive native task runs.
 `dependency-compatibility.test.mjs` tests the real codec, including rejection cases.
-Remove this patch when the upstream codec supports image-boundary far edges.
+A later real Scroll response ended at y=1973; the additional one-pixel tolerance
+avoids discarding that otherwise valid on-screen region. Overflow of two or more
+pixels past the exclusive edge remains rejected. This is bounded robustness for
+model region output, not permission to clamp arbitrary off-screen targets.
+Remove this patch when the upstream codec supports these boundary semantics.
