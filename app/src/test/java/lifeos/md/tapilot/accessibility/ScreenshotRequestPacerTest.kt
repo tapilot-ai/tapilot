@@ -27,4 +27,27 @@ class ScreenshotRequestPacerTest {
         assertEquals(350L, previous.delayMillis(100))
         assertEquals(0L, ScreenshotRequestPacer().delayMillis(100))
     }
+
+    @Test fun `guaranteed overlay preparation overlaps pacing without shortening request interval`() {
+        val pacer = ScreenshotRequestPacer().apply { requested(100); rateLimited() }
+        for (elapsed in listOf(0L, 50L, 200L, 325L, 350L, 500L)) {
+            val now = 100L + elapsed
+            val preparation = 50L
+            val delay = pacer.delayMillis(now, preparation)
+            assertEquals((350L - elapsed - preparation).coerceAtLeast(0L), delay)
+            org.junit.Assert.assertTrue(now + delay + preparation >= 450L)
+        }
+        assertEquals(250L, pacer.delayMillis(200, 0))
+    }
+
+    @Test fun `preparation alone can cover the remaining interval without negative delay`() {
+        val pacer = ScreenshotRequestPacer().apply { requested(100); rateLimited() }
+        assertEquals(0L, pacer.delayMillis(420, 50))
+        assertEquals(0L, ScreenshotRequestPacer().delayMillis(100, 50))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `negative preparation cannot change the interval`() {
+        ScreenshotRequestPacer().delayMillis(100, -1)
+    }
 }

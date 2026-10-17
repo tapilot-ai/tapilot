@@ -7,9 +7,12 @@ internal class ScreenshotRequestPacer(private val intervalMs: Long = 350L) {
 
     fun requested(now: Long) { lastRequest = now }
     fun rateLimited() { limited = true }
-    fun delayMillis(now: Long): Long {
+    /** [preparationMs] must still elapse after this delay before the actual request. */
+    fun delayMillis(now: Long, preparationMs: Long = 0L): Long {
+        require(preparationMs >= 0L)
         if (!limited) return 0L
         val last = lastRequest ?: return 0L
-        return (intervalMs - (now - last)).coerceIn(0L, intervalMs)
+        val remaining = (intervalMs - (now - last)).coerceIn(0L, intervalMs)
+        return (remaining - preparationMs).coerceAtLeast(0L)
     }
 }

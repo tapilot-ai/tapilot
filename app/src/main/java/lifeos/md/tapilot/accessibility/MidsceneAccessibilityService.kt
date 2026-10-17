@@ -244,7 +244,12 @@ class MidsceneAccessibilityService : AccessibilityService() {
         // After an observed Android rate limit, wait the remaining interval
         // before hiding overlays. Avoid a predictably rejected request followed
         // by a full backoff; retain the bounded retry policy for OEM differences.
-        val pacingDelay = screenshotPacer.delayMillis(android.os.SystemClock.elapsedRealtime())
+        // Overlay settling happens before takeScreenshot too. Count that guaranteed
+        // delay toward the request interval instead of waiting for it twice.
+        val pacingDelay = screenshotPacer.delayMillis(
+            android.os.SystemClock.elapsedRealtime(),
+            if (hideOverlays) OVERLAY_SETTLE_MS else 0L,
+        )
         // One pacing wait per attempt: concurrent preview traffic must not
         // postpone an AI capture indefinitely by moving the deadline again.
         if (!paced && pacingDelay > 0L) {
