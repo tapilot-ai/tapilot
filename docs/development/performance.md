@@ -1773,3 +1773,57 @@ post-activation stop also left zero workers (excluded from latency samples).
 The debug experiment preference was restored to the production default.
 
 [Complete samples and lifecycle evidence](performance-prepared-runtime-20261017.json)
+
+
+### Isolate connection reuse from model-response waiting (2026-10-17)
+
+A diagnostic-only socket trace now records request creation to `sendHeaders`,
+a numeric socket ID, its previous request count and negotiated protocol. It does
+not inspect or retain raw headers, addresses or credentials. Per the
+[Undici diagnostics contract](https://undici.nodejs.org/api/DiagnosticsChannel),
+`beforeConnect` cannot be assigned to a particular pooled request; therefore
+pre-send waiting must not be presented as an exact DNS/TLS measurement.
+
+Eight identical-byte requests (211,296 bytes, 11,234 input tokens, same bearer,
+gpt-6-luna) alternated desktop/phone/phone/desktop twice. Median response time
+was 5.313 s desktop versus 5.598 s phone. The phone's two first-use sockets waited
+1,023/1,014 ms before request headers were sent; reused sockets took 2/3 ms.
+Desktop opened three sockets, phone two. One reused phone request still waited
+4.009 s between body-sent and response headers, proving that fresh connections
+cannot explain all slow responses. Cache counts and generated token counts vary.
+
+A second eight-request cohort compares **Node fetch versus native OkHttp on the
+same OPPO app UID**, with identical request bytes and bearer. The native worker
+uses the existing `ModelTransport` in a debug-only `app_process` entry point,
+never writes tokens to files and validates the returned model/completion.
+
+| Same-phone transport | Median total | Median headers | Connections | Protocol |
+| --- | ---: | ---: | ---: | --- |
+| Node fetch | 5.743 s | 2.737 s | 3 | HTTP/1.1 |
+| Native OkHttp | 5.675 s | 2.552 s | 1 | HTTP/2 |
+
+OkHttp retained one connection across the entire cohort. The 68 ms (1.2%) total
+median difference is too small and confounded by output/cache variation to claim
+an overall gain. Its request-body-sent boundary may also include HTTP/2 flow control
+and differs from Node's buffered write boundary. Neither this isolated native
+worker nor its warm connection proves integrated outer-to-inner reuse performance.
+Production transport is unchanged. A future transport change must prove task-level
+benefit with cancellation and response semantics preserved, not just fewer sockets.
+
+Reproduce the same-phone diagnostic after building/installing the debug APK:
+
+```sh
+TAPILOT_BENCH_PHONE_TRANSPORT=okhttp TAPILOT_BENCH_BOTH_ON_PHONE=1 \
+TAPILOT_BENCH_AUTH_DIR=/path/to/isolated-benchmark-auth \
+TAPILOT_BENCH_ACCOUNT=matched-account \
+node scripts/benchmark-model-path.mjs DEVICE_SERIAL /path/to/saved-request.json
+```
+
+Use Node 24.18.0. Omitting `TAPILOT_BENCH_BOTH_ON_PHONE` compares desktop Node with
+phone OkHttp; omitting both transport options preserves the original Node/Node
+comparison. The existing local proxy option is rejected for native mode. Both
+new worker tests passed, the debug APK compiled, all 16 model requests completed,
+and neither benchmark Node nor app_process workers remained afterward. These
+are model-path diagnostics, not a new full-task or 50% improvement result.
+
+[Sanitized connection traces and samples](performance-connection-reuse-20261017.json)
