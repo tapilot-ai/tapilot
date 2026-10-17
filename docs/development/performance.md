@@ -1230,3 +1230,55 @@ unchanged and address update cost, not inference latency. Focused pruning and
 integrity tests, runtime bundle tests, Kotlin tests, debug APK build and local
 quick checks passed. Both fixture tasks completed on the real OPPO; no second
 phone or GitHub CI validation is claimed.
+
+### Incremental conversation snapshots and reversed-order comparison (2026-10-17)
+
+ConversationWriter now reuses detached immutable snapshot branches when their
+JSON contents are unchanged. It still traverses nested values, detects in-place
+mutations, and copies changed ancestors; it never caches mutable JSON by identity.
+Durable writes, fsync and the flush barrier before external work are unchanged.
+Tests cover nested mutation, old snapshot isolation, null/removal, same-size key
+replacement, array growth/shrink/reordering and container type changes.
+
+On the OPPO, eight snapshot calls took 421 and 411 ms in the two warm samples,
+versus 683 ms in the preceding warm baseline. Main-dispatch totals were 404 ms
+in both versus 626 ms. These phases overlap and must not be added as independent
+wall-time savings. The first task after APK replacement took 45.730 s and had
+1206 ms of snapshot work; it is retained separately, not discarded as an outlier.
+The warm full task did not improve against the preceding 41.092 s sample.
+
+The same-account, same-model brightness comparison ran sequentially in
+phone/desktop/desktop/phone order, resetting and visually checking Settings root
+before each task. Both sides used gpt-6-luna, Node 24.18.0, full 988×1972 JPEG
+quality 90 screenshots and runtime fingerprint
+`5b8cf98bb40ad634be5101f53bd1660c88884ae5bf7139e886457a00ffbf2605`.
+This fingerprint identifies the JS runtime, not the changed Kotlin snapshot code.
+Every sample performed three device actions and four visual model calls with
+zero reported retries, independently reading auto-brightness as enabled.
+
+| Warm sample | Full task | Outer calls / time | Visual HTTP | Inner non-HTTP | Outside outer / runner |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Phone 1 | 41.790 s | 1 / 4.425 s | 24.735 s | 9.932 s | 2.698 s |
+| Desktop 1 | 40.878 s | 2 / 13.448 s | 16.638 s | 9.797 s | 0.995 s |
+| Desktop 2 | 40.565 s | 2 / 8.626 s | 21.254 s | 9.866 s | 0.819 s |
+| Phone 2 | 41.433 s | 1 / 5.032 s | 23.905 s | 9.798 s | 2.698 s |
+
+The two-sample full-task medians are 41.612 s phone and 40.721 s desktop
+(+2.2%), but **this does not establish stable parity**: both desktop model
+responses chose an additional outer summary round, while phone responses used
+the existing finishWhenVerified path. Do not subtract that round and present the
+result as measured latency. The inner non-HTTP paths are already similar here;
+visual HTTP remains slower on the phone in these samples, and phone startup /
+persistence / completion outside the runner remains about 1.7–1.9 s higher.
+All visual HTTP responses reported SIN, which identifies the response edge,
+not inference location or proof of equivalent network routing.
+
+The original 55.119 s brightness median versus this 41.612 s median is an
+observed 24.5% reduction across revisions/conditions, not a causal estimate of
+this snapshot change. The 27.560 s half-latency target remains unmet. Next
+attribution must keep outer call count visible and replay identical model bodies
+across hosts to distinguish transport/serving variation from orchestration.
+Kotlin unit tests, debug APK build, benchmark codec preparation and local quick
+checks passed. Real acceptance covers this OPPO only; no GitHub CI claim.
+
+[Snapshot measurements and per-request HTTP evidence](performance-snapshot-sharing-20261017.json)
