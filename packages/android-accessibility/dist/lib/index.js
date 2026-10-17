@@ -333,7 +333,10 @@ var __webpack_exports__ = {};
                 launch,
                 searchApps,
                 ...extendedActions((action)=>this.execute(action), this.capabilities)
-            ];
+            ].map((action)=>({
+                    ...action,
+                    delayBeforeRunner: action.delayBeforeRunner ?? 0
+                }));
         }
         describe() {
             return 'Android device controlled by an on-device AccessibilityService';

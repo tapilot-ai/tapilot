@@ -227,7 +227,14 @@ export class AndroidAccessibilityDevice implements AbstractInterface {
         [app.label, app.packageName, app.component].some(value => value.toLowerCase().includes(query.trim().toLowerCase())),
       ).map(app => ({ label: app.label, component: app.component })),
     });
-    return [...defaultActions, pullGesture, launch, searchApps, ...extendedActions(action => this.execute(action), this.capabilities)];
+    return [...defaultActions, pullGesture, launch, searchApps, ...extendedActions(action => this.execute(action), this.capabilities)]
+      .map(action => ({
+        ...action,
+        // Planning has already observed the screen. The SDK's generic 200 ms
+        // pre-action sleep only ages those coordinates; it checks no readiness.
+        // Keep explicit action delays and all post-action stabilization intact.
+        delayBeforeRunner: action.delayBeforeRunner ?? 0,
+      }));
   }
 
   describe(): string {
