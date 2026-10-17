@@ -25,7 +25,13 @@ test('rejects stale source and archive even when all runtime assets exist', () =
     const source=path.join(fixture,'node-runtime/src/pi-runner.mjs');
     const original=fs.readFileSync(source);fs.appendFileSync(source,'\n// changed source');
     assert.throws(()=>verifyRuntime(fixture),/sources changed/);
-    fs.writeFileSync(source,original);fs.appendFileSync(archive,'changed archive');
+    fs.writeFileSync(source,original);
+    const packaging=path.join(fixture,'scripts/android-runtime-tree.mjs');
+    const packagingOriginal=fs.readFileSync(packaging);
+    fs.appendFileSync(packaging,'\n// changed deployment pruning');
+    assert.throws(()=>verifyRuntime(fixture),/sources changed/);
+    fs.writeFileSync(packaging,packagingOriginal);
+    fs.appendFileSync(archive,'changed archive');
     assert.throws(()=>verifyRuntime(fixture),/archive does not match/);
   } finally {fs.rmSync(fixture,{recursive:true,force:true});}
 });

@@ -23,3 +23,22 @@ export function pruneAndroidPackages(modules) {
   visit(modules);
   return removed.sort();
 }
+
+/** Source maps are optional debugger assets; retain executable code, types and licenses. */
+export function pruneAndroidSourceMaps(root) {
+  let files = 0, bytes = 0;
+  function visit(directory) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const file = path.join(directory, entry.name);
+      if (entry.isDirectory()) { visit(file); continue; }
+      if (!entry.isFile() || !/\.(?:c|m)?js\.map$/.test(entry.name)) continue;
+      let map;
+      try { map = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { continue; }
+      if (map?.version !== 3 || !Array.isArray(map.sources) || typeof map.mappings !== 'string') continue;
+      bytes += fs.statSync(file).size;
+      fs.unlinkSync(file); files++;
+    }
+  }
+  visit(root);
+  return { files, bytes };
+}

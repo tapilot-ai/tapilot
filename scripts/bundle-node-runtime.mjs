@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { sourceFingerprint } from './runtime-integrity.mjs';
-import { pruneAndroidPackages } from './android-runtime-tree.mjs';
+import { pruneAndroidPackages, pruneAndroidSourceMaps } from './android-runtime-tree.mjs';
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
@@ -200,10 +200,13 @@ for (const name of workspacePackages) {
     path.join(stagingRoot, 'node_modules/@tapilot', name),
   );
 }
-const fingerprint = fingerprintHash.digest('hex').slice(0, 12);
+// The phone installs by runtimeVersion, so packaging rules and dependency patches
+// must invalidate it too, even when the executable entry files did not change.
+const sources = sourceFingerprint();
+const fingerprint = fingerprintHash.update(sources).digest('hex').slice(0, 12);
 const manifest = {
   ...sourceManifest,
-  sourceFingerprint: sourceFingerprint(),
+  sourceFingerprint: sources,
   runtimeVersion: `${sourceManifest.runtimeVersion}-${fingerprint}`,
 };
 fs.writeFileSync(
@@ -238,6 +241,7 @@ for (const file of [...runtimeFiles, 'manifest.json', 'node_modules']) {
   fs.cpSync(path.join(stagingRoot, file), path.join(deploymentRoot, file), { recursive: true });
 }
 console.log('Removed host-only packages:', pruneAndroidPackages(path.join(deploymentRoot, 'node_modules')));
+console.log('Removed optional JavaScript source maps:', pruneAndroidSourceMaps(path.join(deploymentRoot, 'node_modules')));
 run(process.execPath, [path.join(assistantRoot, 'scripts/third-party-notices.mjs'), 'npm',
   path.join(deploymentRoot, 'node_modules'), path.join(assetRoot, 'third-party/npm')]);
 fs.copyFileSync(path.join(assistantRoot, 'LICENSE'), path.join(assetRoot, 'third-party/Tapilot-LICENSE.txt'));
