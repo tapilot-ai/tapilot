@@ -1,0 +1,293 @@
+{
+  "id": "model-path-2026-10-17T04-56-48.107Z",
+  "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+  "screenshotSha256": "7691378abcc662ebaf6b468194a53bb9386bc55382abb0a39eee5359482faa55",
+  "medians": {
+    "desktop": {
+      "headersMs": 2850.160250000001,
+      "firstOutputMs": 4240.7474165,
+      "outputToCompletedMs": 1734.0404790000011,
+      "totalMs": 6291.538707999998
+    },
+    "phone": {
+      "headersMs": 3140.9289309999986,
+      "firstOutputMs": 4296.8523155,
+      "outputToCompletedMs": 1749.957447499999,
+      "totalMs": 6082.511455499998
+    }
+  },
+  "measurements": [
+    {
+      "host": "desktop",
+      "id": "desktop-1",
+      "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+      "requestBytes": 211296,
+      "headersMs": 2346.904958,
+      "firstBodyMs": 2347.245625,
+      "createdMs": 2347.549583,
+      "inProgressMs": 2720.921791,
+      "firstOutputMs": 3400.157083,
+      "lastOutputMs": 4768.925625,
+      "completedEventMs": 5101.051416,
+      "totalMs": 5101.871166,
+      "outputDeltaEvents": 79,
+      "status": 200,
+      "outcome": "complete",
+      "model": "gpt-6-luna",
+      "usage": {
+        "inputTokens": 11234,
+        "outputTokens": 101,
+        "cachedTokens": 10624,
+        "reasoningTokens": 16
+      },
+      "network": [
+        {
+          "request": 1,
+          "bodySentMs": 351.361,
+          "headersMs": 2323.726667,
+          "status": 200,
+          "totalMs": 5079.5271250000005,
+          "outcome": "complete"
+        }
+      ]
+    },
+    {
+      "host": "phone",
+      "id": "phone-2",
+      "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+      "requestBytes": 211296,
+      "headersMs": 4311.732341999999,
+      "firstBodyMs": 4314.255675999999,
+      "createdMs": 4316.509685999999,
+      "inProgressMs": 4964.433487999999,
+      "firstOutputMs": 5567.145102,
+      "lastOutputMs": 6833.742549999999,
+      "completedEventMs": 7206.89156,
+      "totalMs": 7218.037081,
+      "outputDeltaEvents": 78,
+      "status": 200,
+      "outcome": "complete",
+      "model": "gpt-6-luna",
+      "usage": {
+        "inputTokens": 11234,
+        "outputTokens": 111,
+        "cachedTokens": 10624,
+        "reasoningTokens": 27
+      },
+      "network": [
+        {
+          "request": 1,
+          "bodySentMs": 1804.335677,
+          "headersMs": 4170.830051,
+          "status": 200,
+          "totalMs": 7075.877237,
+          "outcome": "complete"
+        }
+      ]
+    },
+    {
+      "host": "phone",
+      "id": "phone-3",
+      "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+      "requestBytes": 211296,
+      "headersMs": 2643.170832,
+      "firstBodyMs": 2645.6174979999996,
+      "createdMs": 2646.101821,
+      "inProgressMs": 2647.5773420000005,
+      "firstOutputMs": 3933.191769000001,
+      "lastOutputMs": 5169.225987000002,
+      "completedEventMs": 5711.884580999998,
+      "totalMs": 5714.183069999999,
+      "outputDeltaEvents": 79,
+      "status": 200,
+      "outcome": "complete",
+      "model": "gpt-6-luna",
+      "usage": {
+        "inputTokens": 11234,
+        "outputTokens": 96,
+        "cachedTokens": 10624,
+        "reasoningTokens": 11
+      },
+      "network": [
+        {
+          "request": 2,
+          "bodySentMs": 4.104530999999042,
+          "headersMs": 2629.7576549999994,
+          "status": 200,
+          "totalMs": 5704.394788999998,
+          "outcome": "complete"
+        }
+      ]
+    },
+    {
+      "host": "desktop",
+      "id": "desktop-4",
+      "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+      "requestBytes": 211296,
+      "headersMs": 3217.2315420000014,
+      "firstBodyMs": 3217.6841669999994,
+      "createdMs": 3217.7418749999997,
+      "inProgressMs": 3217.8669999999984,
+      "firstOutputMs": 4283.776125,
+      "lastOutputMs": 5868.459500000001,
+      "completedEventMs": 5919.858791999999,
+      "totalMs": 6284.718582999998,
+      "outputDeltaEvents": 78,
+      "status": 200,
+      "outcome": "complete",
+      "model": "gpt-6-luna",
+      "usage": {
+        "inputTokens": 11234,
+        "outputTokens": 110,
+        "cachedTokens": 10624,
+        "reasoningTokens": 21
+      },
+      "network": [
+        {
+          "request": 2,
+          "bodySentMs": 334.95079199999964,
+          "headersMs": 3213.4348339999997,
+          "status": 200,
+          "totalMs": 6281.478749999998,
+          "outcome": "complete"
+        }
+      ]
+    },
+    {
+      "host": "desktop",
+      "id": "desktop-5",
+      "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+      "requestBytes": 211296,
+      "headersMs": 2483.0889580000003,
+      "firstBodyMs": 2483.1860830000005,
+      "createdMs": 2483.2157079999997,
+      "inProgressMs": 2489.4866250000014,
+      "firstOutputMs": 4197.718708,
+      "lastOutputMs": 6256.488333000001,
+      "completedEventMs": 6256.628540999998,
+      "totalMs": 6298.358832999998,
+      "outputDeltaEvents": 100,
+      "status": 200,
+      "outcome": "complete",
+      "model": "gpt-6-luna",
+      "usage": {
+        "inputTokens": 11234,
+        "outputTokens": 111,
+        "cachedTokens": 10624,
+        "reasoningTokens": 0
+      },
+      "network": [
+        {
+          "request": 3,
+          "bodySentMs": 1.871833000001061,
+          "headersMs": 2481.7595409999994,
+          "status": 200,
+          "totalMs": 6297.063333000002,
+          "outcome": "complete"
+        }
+      ]
+    },
+    {
+      "host": "phone",
+      "id": "phone-6",
+      "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+      "requestBytes": 211296,
+      "headersMs": 3638.6870299999973,
+      "firstBodyMs": 3640.987655000001,
+      "createdMs": 3641.2817170000017,
+      "inProgressMs": 4248.819738000002,
+      "firstOutputMs": 4660.512862,
+      "lastOutputMs": 6375.107184999997,
+      "completedEventMs": 6381.734945,
+      "totalMs": 6450.839840999997,
+      "outputDeltaEvents": 78,
+      "status": 200,
+      "outcome": "complete",
+      "model": "gpt-6-luna",
+      "usage": {
+        "inputTokens": 11234,
+        "outputTokens": 107,
+        "cachedTokens": 10624,
+        "reasoningTokens": 18
+      },
+      "network": [
+        {
+          "request": 3,
+          "bodySentMs": 980.8519259999994,
+          "headersMs": 3606.311092,
+          "status": 200,
+          "totalMs": 6419.726298999998,
+          "outcome": "complete"
+        }
+      ]
+    },
+    {
+      "host": "phone",
+      "id": "phone-7",
+      "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+      "requestBytes": 211296,
+      "headersMs": 1879.5257809999966,
+      "firstBodyMs": 1881.2544269999999,
+      "createdMs": 1881.6839580000014,
+      "inProgressMs": 1881.8857290000014,
+      "firstOutputMs": 2389.2713010000007,
+      "lastOutputMs": 4409.793123999996,
+      "completedEventMs": 4413.628904999998,
+      "totalMs": 4415.872498999997,
+      "outputDeltaEvents": 98,
+      "status": 200,
+      "outcome": "complete",
+      "model": "gpt-6-luna",
+      "usage": {
+        "inputTokens": 11234,
+        "outputTokens": 109,
+        "cachedTokens": 10624,
+        "reasoningTokens": 0
+      },
+      "network": [
+        {
+          "request": 4,
+          "bodySentMs": 10.315781999997853,
+          "headersMs": 1854.1533329999947,
+          "status": 200,
+          "totalMs": 4392.357081999995,
+          "outcome": "complete"
+        }
+      ]
+    },
+    {
+      "host": "desktop",
+      "id": "desktop-8",
+      "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+      "requestBytes": 211296,
+      "headersMs": 4034.263500000001,
+      "firstBodyMs": 4034.3466670000053,
+      "createdMs": 4034.414042000004,
+      "inProgressMs": 4034.438833,
+      "firstOutputMs": 5295.2767500000045,
+      "lastOutputMs": 6427.401917000003,
+      "completedEventMs": 7062.463375000007,
+      "totalMs": 7062.659833000005,
+      "outputDeltaEvents": 79,
+      "status": 200,
+      "outcome": "complete",
+      "model": "gpt-6-luna",
+      "usage": {
+        "inputTokens": 11234,
+        "outputTokens": 107,
+        "cachedTokens": 10624,
+        "reasoningTokens": 22
+      },
+      "network": [
+        {
+          "request": 4,
+          "bodySentMs": 917.6521250000005,
+          "headersMs": 4032.695958000004,
+          "status": 200,
+          "totalMs": 7061.245000000003,
+          "outcome": "complete"
+        }
+      ]
+    }
+  ]
+}

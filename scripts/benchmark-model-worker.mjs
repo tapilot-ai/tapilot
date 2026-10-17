@@ -26,13 +26,38 @@ try {
       measurement.headersMs = performance.now() - started;
       measurement.status = response.status;
       measurement.server = Object.fromEntries(['openai-processing-ms', 'x-request-id', 'cf-ray'].flatMap(k => response.headers.has(k) ? [[k, response.headers.get(k)]] : []));
-      let text = '', bytes = 0;
+      let pending = '', bytes = 0, completed;
+      const items = new Map();
+      const consume = line => {
+        if (probe || !line.startsWith('data: ') || line.trim() === 'data: [DONE]') return;
+        const event = JSON.parse(line.slice(6));
+        const elapsed = performance.now() - started;
+        if (event.type === 'response.created') measurement.createdMs ??= elapsed;
+        if (event.type === 'response.in_progress') measurement.inProgressMs ??= elapsed;
+        if (event.type === 'response.output_text.delta' && event.delta) {
+          measurement.firstOutputMs ??= elapsed;
+          measurement.lastOutputMs = elapsed;
+          measurement.outputDeltaEvents = (measurement.outputDeltaEvents ?? 0) + 1;
+        }
+        if (event.type === 'response.completed') {
+          completed = event.response;
+          measurement.completedEventMs = elapsed;
+        }
+        if (event.type === 'response.output_item.done') items.set(event.output_index, event.item);
+      };
       const decoder = new TextDecoder();
       for await (const chunk of response.body) {
         measurement.firstBodyMs ??= performance.now() - started;
-        bytes += chunk.length; text += decoder.decode(chunk, { stream: true });
+        bytes += chunk.length;
+        pending += decoder.decode(chunk, { stream: true });
+        let boundary;
+        while ((boundary = pending.indexOf('\n')) >= 0) {
+          consume(pending.slice(0, boundary));
+          pending = pending.slice(boundary + 1);
+        }
       }
-      text += decoder.decode();
+      pending += decoder.decode();
+      if (pending) consume(pending);
       measurement.totalMs = performance.now() - started;
       measurement.responseBytes = bytes;
       if (probe) {
@@ -42,13 +67,6 @@ try {
         measurement.network = network;
         console.log(JSON.stringify(measurement));
         continue;
-      }
-      let completed; const items = new Map();
-      for (const line of text.split('\n')) {
-        if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
-        const event = JSON.parse(line.slice(6));
-        if (event.type === 'response.completed') completed = event.response;
-        if (event.type === 'response.output_item.done') items.set(event.output_index, event.item);
       }
       if (!response.ok || !completed || completed.model !== 'gpt-6-luna') throw Error('Unverified response');
       measurement.model = completed.model;

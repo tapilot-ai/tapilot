@@ -1515,3 +1515,39 @@ work must separate model-specific request handling and generation from transport
 rather than repeatedly tuning a generic keepalive/proxy setting.
 
 [Request timings and usage counts](performance-route-refresh-20261017.json)
+
+
+### Separate response startup and output delivery (2026-10-17)
+
+The read-only replay worker now timestamps response.created, response.in_progress,
+first/last output text delta and response.completed while consuming the stream.
+It records no extra model content. Incremental UTF-8/SSE parsing is tested across
+single-byte chunks, CRLF and an unterminated final [DONE]; a stream missing the
+completion event remains a failure. This instrumentation is diagnostic-only.
+
+Another eight alternating requests used identical request/image hashes, bearer
+credential, Node and gpt-6-luna. All eight had 11,234 input tokens and 10,624 cached
+tokens and completed successfully.
+
+| Median milestone from request start | Desktop | Phone |
+| --- | ---: | ---: |
+| Headers | 2.850 s | 3.141 s |
+| First output text | 4.241 s | 4.297 s |
+| Complete stream | 6.292 s | 6.083 s |
+| First output to completion event (per-request interval) | 1.734 s | 1.750 s |
+
+The phone was 3.3% faster in this cohort, unlike the preceding roughly 29% gaps.
+This contradicts a fixed phone throughput penalty; output delivery intervals
+are similar when cache counts match. It does not prove stable full-task parity
+or identify provider queueing, transit and inference separately. Different
+milestone medians are not additive phase durations. Completion-event-to-EOF
+also varied; the worker continues to drain and validate the entire stream.
+
+The full native task uses its own phone OAuth session, while these cross-host
+replays share the desktop benchmark credential. Same account is not the same
+credential/session. A next attribution experiment should preserve that
+distinction, without exporting phone credentials, and recheck complete tasks
+alongside the remaining native lifecycle cost. The 50% complete-task target
+remains unmet; no product transport, model or screenshot setting changed.
+
+[Stream milestones, tokens and transport timings](performance-stream-phases-20261017.json)
