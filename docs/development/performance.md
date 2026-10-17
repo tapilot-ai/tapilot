@@ -1551,3 +1551,49 @@ alongside the remaining native lifecycle cost. The 50% complete-task target
 remains unmet; no product transport, model or screenshot setting changed.
 
 [Stream milestones, tokens and transport timings](performance-stream-phases-20261017.json)
+
+
+### Attribute native lifecycle and remove redundant work (2026-10-17)
+
+New numeric-only traces split conversation service calls and runner preparation,
+first event/RPC, exit and report import. They do not log parameters, credentials
+or returned content. The first baseline after restarting the app took 40.133 s;
+its service capability calls took 279/141 ms, runtime/project preparation 9/11 ms,
+process start to first event 183 ms and start to first RPC 975 ms. The latter
+boundaries overlap and must not be summed.
+
+Two local issues were corrected. Launcher labels were loaded inside the sorting
+comparator and then again while serializing; each distinct app now loads its
+label once, sorts that string and still queries fresh on every request. No
+persistent catalog cache or stale-install/locale behavior was introduced.
+Also, service results already on the main thread were being posted back to that
+same queue. They now deliver directly; call entry remains asynchronous and
+background results still dispatch to main. Callback removal still precedes
+invocation so a response is delivered at most once.
+
+The label-only candidate completed in 40.125 s. Catalog work was 115/20/52 ms,
+but the outer capability calls still took 229/139 ms. With direct main-thread
+result delivery, first-after-restart completion was 37.100 s. Capability calls
+were 371/63 ms and status calls 47/14 ms versus 229/139 and 295/50 ms respectively.
+The first capability call got slower; waiting can move to the next queued call.
+Combined capability/status time fell from 713 to 495 ms, not by the sum of only
+the improving calls. Outside-model/runner time fell from 2.971 to 2.812 s.
+Most of the whole-task reduction was lower visual HTTP time (20.911 to 17.906 s),
+so do not attribute the roughly three-second improvement to these code changes.
+
+Kotlin unit tests, APK build and local quick checks passed. The final APK is
+installed on OPPO e7ed3f17. Model, account, full-size visual input and independent
+final query are unchanged. All three initial samples succeeded with three
+actions and four visual requests. These first-after-restart samples are not a
+warm median, and there is no new desktop comparison in this cohort.
+
+The final warm task also succeeded: **39.463 s**, three actions, four visual
+requests, zero parsing retries. Its outer model was 4.626 s, visual HTTP 22.890 s,
+inner non-HTTP work 9.693 s and outside-model/runner work **2.254 s**. Capability
+and status calls summed to 471 ms. First event/RPC timings remained 230/1,044 ms;
+process exit and report import were 74/51 ms. Runner preparation was only 13 ms,
+so runtime extraction/project creation is not the warm bottleneck. Startup/module
+initialization remains worth investigating. This sample does not establish
+stable desktop parity or the 27.560 s complete-task target.
+
+[Lifecycle traces and complete-task evidence](performance-lifecycle-20261017.json)
