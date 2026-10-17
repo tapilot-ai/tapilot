@@ -1597,3 +1597,39 @@ initialization remains worth investigating. This sample does not establish
 stable desktop parity or the 27.560 s complete-task target.
 
 [Lifecycle traces and complete-task evidence](performance-lifecycle-20261017.json)
+
+
+### Defer the unused config transpiler (2026-10-17)
+
+The pinned test runner imported `tsx/cjs/api` at module initialization even
+when loading Tapilot's native `.mjs` config. Its four distributed entrypoints
+now load that fallback only when a compatible non-native config needs it.
+The existing unbounded-timeout patch is preserved. Separate-process tests cover
+ESM/CommonJS package entries with native configs, TypeScript ESM and TypeScript
+CommonJS syntax. Native loading asserts no tsx module was initialized, while
+TypeScript configs still load. The tests failed on the original eager import
+and passed on the patch. All 78 runtime tests, bundle smoke/doctor checks,
+Kotlin tests, APK build, runtime-integrity tests and local quick checks passed.
+
+Runtime `0.1.0-1ed9deaf4fd2` was installed on OPPO, fingerprint
+`d7b9023be558f1a079e9f1532d8ef8f22d7949a1a4a84dc7d7b1dcd17354e2fa`.
+The first complete brightness task succeeded in 49.844 s including runtime
+update preparation; it is not a warm sample.
+
+Four isolated imports per version, compilation cache disabled, measured old
+1,052/1,097/1,070/1,090 ms versus new 1,165/853/1,034/1,094 ms. Medians are
+1,080/1,064 ms: only a 16 ms nominal reduction with substantial variance.
+This establishes removal of unnecessary initialization, not a significant
+startup or whole-task speedup. The update task still took 1,088 ms from process
+start to its first RPC, so the deferred transpiler was not the principal cause
+of that boundary. No model, action protocol or screenshot quality changed.
+
+The update task included 10.693 s runtime preparation. The subsequent warm task
+succeeded in **36.459 s**: one outer model call (4.570 s), four visual requests
+(20.001 s), three actions, zero parsing retries and independent final query.
+Inner non-HTTP work was 9.630 s and outside-model/runner work 2.258 s. Process
+start to first event/RPC was 222/1,064 ms, essentially unchanged from the prior
+230/1,044 ms warm trace. The faster total is not evidence that this loader patch
+caused a material gain. The original 27.560 s target remains unmet.
+
+[Import probes and complete-task results](performance-lazy-loader-20261017.json)
