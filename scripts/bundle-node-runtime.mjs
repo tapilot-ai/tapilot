@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createInterface } from 'node:readline';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const assistantRoot = path.resolve(scriptDirectory, '..');
@@ -172,6 +172,27 @@ for (const file of runtimeFiles) {
     path.join(stagingRoot, file),
   );
 }
+// Pi's public entry points otherwise load hundreds of small modules on every
+// Android process start. Bundle the unchanged agent logic before testing and
+// fingerprinting it; credentials and model requests still belong to native RPC.
+const { build } = await import(pathToFileURL(path.join(stagingRoot, 'node_modules/esbuild/lib/main.js')));
+const piBundle = await build({
+  absWorkingDir: stagingRoot,
+  entryPoints: ['pi-conversation.mjs'],
+  outfile: 'pi-conversation.bundle.mjs',
+  bundle: true,
+  platform: 'node',
+  format: 'esm',
+  target: 'node20',
+  write: false,
+  metafile: true,
+});
+// This entry uses the supplied native stream function, not provider SDKs.
+// Fail explicitly if a future dependency introduces unresolved runtime imports.
+if (piBundle.outputFiles.length !== 1 || Object.values(piBundle.metafile.outputs).some(output => output.imports.length)) {
+  throw new Error('Pi conversation bundle must be a single self-contained module');
+}
+fs.writeFileSync(path.join(stagingRoot, 'pi-conversation.mjs'), piBundle.outputFiles[0].contents);
 fs.cpSync(path.join(sourceRoot, 'smoke'), path.join(stagingRoot, 'smoke'), {
   recursive: true,
 });
