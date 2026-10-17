@@ -9,7 +9,12 @@ import org.json.JSONObject
 /** Debug APK only, shell-permission protected. Uses the real product task coordinator. */
 class PerformanceExperimentReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val format = intent.getStringExtra("capture_format") ?: "png"
+        val fixture = intent.getStringExtra("fixture") ?: "read-auto-brightness"
+        if (fixture !in listOf("read-auto-brightness", "read-android-version")) {
+            setResult(1, "Unsupported benchmark fixture", null)
+            return
+        }
+        val format = intent.getStringExtra("capture_format") ?: "jpeg"
         if (format !in listOf("png", "jpeg")) {
             setResult(1, "Expected capture_format: png or jpeg", null)
             return
@@ -38,7 +43,7 @@ class PerformanceExperimentReceiver : BroadcastReceiver() {
             // Fixed read-only scenario, no arbitrary commands or gesture injection.
             runtime.coordinator.command(JSONObject().put("action", "new"))
             if (controlled) {
-                val source = context.assets.open("performance/read-auto-brightness.json").bufferedReader().use { it.readText() }
+                val source = context.assets.open("performance/$fixture.json").bufferedReader().use { it.readText() }
                 runtime.coordinator.executeYaml(source)
             } else runtime.coordinator.command(JSONObject().put("action", "send").put("text",
                 "Open Settings, open Display and brightness, and read the current auto-brightness switch state. Do not change any setting. No voice."))

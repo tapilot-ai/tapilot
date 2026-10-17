@@ -18,7 +18,7 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const mode = process.argv[2] ?? 'preflight';
 if (!['preflight', 'run'].includes(mode)) throw Error('Use preflight or run');
 const auth = new ChatGPTAuth(process.env.TAPILOT_BENCH_AUTH_DIR ?? join(homedir(), '.local/share/android-use/chatgpt'));
-const captureFormat = process.env.TAPILOT_BENCH_CAPTURE_FORMAT ?? 'png';
+const captureFormat = process.env.TAPILOT_BENCH_CAPTURE_FORMAT ?? 'jpeg';
 if (!['png', 'jpeg'].includes(captureFormat)) throw Error('Unsupported capture format');
 try { await auth.accessToken(); } catch (error) {
   console.error(JSON.stringify({ status: 'blocked', reason: error.code ?? 'authorization-unavailable' }));
@@ -31,12 +31,15 @@ if (process.version !== 'v24.18.0') throw Error('Use Node 24.18.0 to match the p
 verifyRuntime(root);
 const out = resolve(root, 'artifacts/controlled-execution', new Date().toISOString().replaceAll(':', '-'));
 await mkdir(out, { recursive: true });
-const fixture = join(root, 'app/src/debug/assets/performance/read-auto-brightness.json');
+const fixtureName = process.env.TAPILOT_BENCH_FIXTURE ?? 'read-auto-brightness';
+if (!['read-auto-brightness', 'read-android-version'].includes(fixtureName)) throw Error('Unsupported benchmark fixture');
+const fixture = join(root, `app/src/debug/assets/performance/${fixtureName}.json`);
 await copyFile(fixture, join(out, 'task.yaml'));
 const fixtureSha256 = createHash('sha256').update(await readFile(fixture)).digest('hex');
 const bundle = join(root, 'build/node-runtime-bundle');
 const runtimeManifest = JSON.parse(await readFile(join(bundle, 'manifest.json'), 'utf8'));
-if (runtimeManifest.sourceFingerprint !== sourceFingerprint(root)) throw Error('Desktop runtime bundle is stale');
+const runtimeSourceFingerprint = sourceFingerprint(root);
+if (runtimeManifest.sourceFingerprint !== runtimeSourceFingerprint) throw Error('Desktop runtime bundle is stale');
 const pairing = await loadConfig();
 const connection = new PhoneConnection(validateConfig({ ...pairing, ...(process.env.TAPILOT_BENCH_HOST ? { host: process.env.TAPILOT_BENCH_HOST } : {}) }));
 const events = []; let child, completed, rpcFailure;
@@ -100,11 +103,13 @@ try {
   if (queries.length !== 1 || queries[0]?.success !== true || !queries[0]?.observation) throw Error('Independent screenshot verification did not pass');
   const report = await readFile(completed.reportPath, 'utf8');
   const evidence = controlledEvidence(report);
+  if (sourceFingerprint(root) !== runtimeSourceFingerprint) throw Error('Runtime sources changed during the sample');
+  const modelHttpRequests = events.filter(e => e.type === 'model.timing').length;
   await writeFile(join(out, 'report.html'), report);
-  await writeFile(join(out, 'measurement.json'), JSON.stringify({ fixtureSha256, captureFormat, sourceFingerprint: sourceFingerprint(root), executionWallMs, runnerDurationMs: result.durationMs, environmentProxyEnabled: process.env.NODE_USE_ENV_PROXY === '1', queries, evidence,
+  await writeFile(join(out, 'measurement.json'), JSON.stringify({ fixtureName, fixtureSha256, captureFormat, sourceFingerprint: runtimeSourceFingerprint, modelHttpRequests, executionWallMs, runnerDurationMs: result.durationMs, environmentProxyEnabled: process.env.NODE_USE_ENV_PROXY === '1', queries, evidence,
     status: 'verified', nodeVersion: process.version, events }, null, 2));
   console.log(JSON.stringify({ out, executionWallMs, status: 'verified' }));
 } catch (error) {
-  await writeFile(join(out, 'measurement.json'), JSON.stringify({ fixtureSha256, status: 'failed', error: error.message, events }, null, 2));
+  await writeFile(join(out, 'measurement.json'), JSON.stringify({ fixtureName, fixtureSha256, status: 'failed', error: error.message, events }, null, 2));
   console.error(JSON.stringify({ out, status: 'failed', reason: error.message })); process.exitCode = 1;
 } finally { clearTimeout(timer); child?.kill(); connection.close(); }

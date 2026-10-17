@@ -1,0 +1,79 @@
+{
+  "task": "read-android-version",
+  "fixtureSha256": "1d487cbe33291b0405bc3e843989338b74d53d1c18dd80cedbb697231e4b30d0",
+  "accountMatched": true,
+  "model": "gpt-6-luna",
+  "nodeVersion": "24.18.0",
+  "samples": [
+    {
+      "id": "native-version-1-20261017",
+      "host": "phone",
+      "revision": "before",
+      "warmup": false,
+      "wallMs": 73048,
+      "runnerMs": 69779,
+      "httpMs": 42327,
+      "httpRequests": 9,
+      "planningParseRetries": 1,
+      "deviceActions": 7,
+      "success": true
+    },
+    {
+      "id": "native-version-default-warmup-20261017",
+      "host": "phone",
+      "revision": "after",
+      "warmup": true,
+      "wallMs": 77920,
+      "runnerMs": 62694,
+      "httpMs": 41774,
+      "httpRequests": 7,
+      "planningParseRetries": 0,
+      "deviceActions": 6,
+      "success": true
+    },
+    {
+      "id": "native-version-default-1-20261017",
+      "host": "phone",
+      "revision": "after",
+      "warmup": false,
+      "wallMs": 71348,
+      "runnerMs": 68829,
+      "httpMs": 43381,
+      "httpRequests": 8,
+      "planningParseRetries": 0,
+      "deviceActions": 7,
+      "success": true
+    },
+    {
+      "id": "2026-10-17T01-35-32.657Z",
+      "host": "desktop",
+      "revision": "before",
+      "warmup": false,
+      "wallMs": 52132,
+      "runnerMs": 52022,
+      "httpMs": 31036,
+      "httpRequests": 7,
+      "deviceActions": 6,
+      "sourceFingerprint": "786514902ed37becca2d8958a66fd72215f9abf89bdf12855805f3823e120443",
+      "success": true
+    },
+    {
+      "id": "2026-10-17T01-44-56.539Z",
+      "host": "desktop",
+      "revision": "after",
+      "warmup": false,
+      "wallMs": 62161,
+      "runnerMs": 62016,
+      "httpMs": 37321,
+      "httpRequests": 8,
+      "deviceActions": 7,
+      "sourceFingerprint": "c605b1cb56f756f6ec6af1fe7139ebb36b313aabaeebb32e7950d29ecbb39a36",
+      "success": true
+    }
+  ],
+  "limitations": [
+    "One retained repetition per revision; no stable median or causal task speedup established.",
+    "Model action choices and HTTP waiting differ between samples.",
+    "After phone run clears debug preferences and exercises default full-resolution JPEG capture."
+  ]
+}

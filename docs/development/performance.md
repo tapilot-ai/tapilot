@@ -681,3 +681,59 @@ prove a 50% full standalone-task improvement, improvement over the previous APK,
 or parity with the fastest original-route desktop sample. Additional tasks,
 full-conversation timing and isolating model-service wait remain outstanding.
 The temporary proxy forward was removed after testing.
+
+
+### Follow-up: second task and bounded edge recovery
+
+The fixed `read-android-version` fixture adds a longer, read-only navigation task.
+Select it with `TAPILOT_BENCH_FIXTURE=read-android-version` on desktop and
+`--es fixture read-android-version` in the debug receiver. Both paths use the same
+asset and verify the visible Android version label/value, not ColorOS or a build
+number. The allowed fixture list rejects arbitrary asset paths.
+
+This task exposed another planning retry: a Scroll region `[43,320,945,1973]`
+on a 988×1972 screenshot exceeded the exclusive bottom edge by one pixel. The
+codec patch now permits at most one additional pixel on bbox far edges, which the
+existing mapper clips to the last pixel. Origins, points, normalized coordinates,
+reversed boxes and larger overflow still fail. Tests cover the exact observed
+response in ESM/CommonJS, both coordinate orders, and rejection just beyond the
+new tolerance. This is bounded recovery of a model region, not unrestricted
+coordinate clamping.
+
+The pre-fix phone sample had nine HTTP requests but only eight recorded inference
+usages: a parsing retry was absent from the usage total. `modelCalls` and its
+`retries` therefore must not be interpreted as complete transport/planning counts.
+The desktop harness now also records `modelHttpRequests`, retains its HTML report,
+and rejects samples whose runtime source fingerprint changed during execution.
+
+Native AI tasks now default to Android JPEG quality 90 at full resolution, avoiding
+the former PNG-to-JPEG WASM conversion. The public device protocol still defaults
+to PNG. Debug overrides retain PNG for regression comparisons; clearing preferences
+selects the production JPEG path. This supersedes the earlier experimental-only
+status above. Both benchmark entry points default to JPEG to match the app.
+
+The default path was exercised after clearing `tapilot-performance` preferences
+(the file contained an empty map). The real model received clean full-size JPEG
+screenshots without the floating button or task border; the independent final
+query correctly read Android 14. The first updated-bundle run is a warmup and must
+not be mixed with retained task-wall samples.
+
+| Version task sample | Wall (s) | Inner (s) | HTTP (s) | HTTP requests | Device actions |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Phone before edge fix | 73.048 | 69.779 | 42.327 | 9 | 7 |
+| Desktop before edge fix | 52.132 | 52.022 | 31.036 | 7 | 6 |
+| Phone after, cold bundle | 77.920 | 62.694 | 41.774 | 7 | 6 |
+| Phone after, warm default | 71.348 | 68.829 | 43.381 | 8 | 7 |
+| Desktop after, original route | 62.161 | 62.016 | 37.321 | 8 | 7 |
+
+All samples succeeded and independently read Android 14. The two updated phone
+runs have no parsing retries. The retained updated pair has equal request/action
+counts; phone wall is 14.8% slower. Of the 9.187 s wall difference, 6.060 s is in
+HTTP, 0.753 s in the inner non-HTTP residual, and 2.374 s outside the common inner
+runner boundary. This attributes the measured difference, not pure network RTT.
+The before/after samples have different action choices and provider wait, so do
+not infer a 50% improvement or a stable median from this single retained pair.
+[Raw timing summary](performance-version-20261017.json) retains the cold run and
+pre-fix parsing failure. Updated runtime tests (69), Kotlin unit tests, debug/beta
+builds and local non-debuggable beta APK verification passed; distribution signing
+is outside this performance acceptance.

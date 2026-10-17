@@ -295,12 +295,14 @@ class NodeTestRunCoordinator(
         val sessionId = request.getString("sessionId")
         activeSessionId = sessionId
         val params = request.optJSONObject("params") ?: JSONObject()
-        // Debug-only codec experiment; production captures retain PNG by default.
-        if (request.optString("method") == "device.capture" &&
-            appContext.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) {
-            val format = appContext.getSharedPreferences("tapilot-performance", Context.MODE_PRIVATE)
-                .getString("capture-format", "png")
-            if (format == "jpeg") params.put("format", "jpeg")
+        // Midscene sends JPEG to the model anyway. Encode once in Android instead
+        // of PNG here followed by another full-image WASM conversion in Node.
+        // Keep the protocol default PNG; only native AI task captures opt in.
+        if (request.optString("method") == "device.capture" && !params.has("format")) {
+            val debuggable = appContext.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0
+            val format = if (debuggable) appContext.getSharedPreferences("tapilot-performance", Context.MODE_PRIVATE)
+                .getString("capture-format", "jpeg") else "jpeg"
+            params.put("format", format)
         }
         if (request.getString("method") == "model.accessToken") {
             val account = chatGptAccountId
