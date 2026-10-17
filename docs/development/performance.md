@@ -1041,3 +1041,68 @@ worker mutation, draft restoration and the existing cache/failure semantics.
 Kotlin tests, debug APK build, local quick checks and real OPPO full-task visual
 verification passed. The phone has the updated APK; no other-device or GitHub CI
 claim is made. [First-task measurements](performance-startup-cache-20261017.json)
+
+### Full-task scrolling comparison (2026-10-17)
+
+The desktop and debug-phone full-task benchmarks now read their English task
+instructions from `app/src/debug/assets/performance/full-tasks.json`. Select
+`read-android-version` with `TAPILOT_BENCH_FIXTURE` on desktop or `--fixture` in
+`collect-native-benchmark.py`. Brightness remains the default. The native
+collector records the installed runtime source fingerprint with each sample.
+
+Both hosts use gpt-6-luna, Node 24.18.0, the same account, full 988×1972 JPEG
+quality-90 images, the same Tapilot policies, empty conversation history and
+independent final visual verification. Before each sample, Settings is reset to
+its root and inspected from a screenshot outside the timer. Runs are sequential
+and alternate hosts. Full runs use separate login sessions for the same account;
+only the fixed-request replay above also controls the exact bearer and request
+body. Generated agent instructions and navigation can still vary. Desktop runs
+the same agent, not the Codex UI, and excludes preflight/JVM warmup; phone timing
+includes persistence. These boundaries prevent a hardware-only interpretation.
+
+The baseline phone planner made five small scrolls in the main Settings list.
+General bilingual guidance now prefers a normal overlapping scroll when searching
+for an off-screen target, leaves distance to the device default when precision
+is unnecessary, and keeps small adjustments for partially visible targets.
+Every scroll still requires a new screenshot. This changes neither model nor
+image quality and introduces no task-specific coordinates or blind action batch.
+
+The first updated phone run includes 11.876 s of runtime preparation after the
+bundle changed. Its entire 70.445 s is retained as a cold/update sample; it must
+not be presented as a measured warm result by subtracting preparation time.
+
+[All version-task measurements and verification](performance-full-version-20261017.json)
+
+| Version-task sample | Full wall time | Device actions | Visual HTTP requests |
+| --- | ---: | ---: | ---: |
+| Phone baseline | 80.018 s | 8 | 9 |
+| Desktop baseline | 55.819 s | 6 | 7 |
+| Phone updated runtime (cold) | 70.445 s | 5 | 6 |
+| Desktop candidate 1 | 50.244 s | 5 | 6 |
+| Phone candidate warm 1 | 56.777 s | 5 | 6 |
+| Desktop candidate 2 | 53.330 s | 5 | 6 |
+| Phone candidate warm 2 | 63.767 s | 6 | 7 |
+
+Every sample independently read Android version 14. Warm candidate medians are
+60.272 s on phone and 51.787 s on desktop: phone is 16.4% slower. Against the
+single phone baseline, the observed reduction is 24.7%, not evidence of a stable
+50% improvement. The second warm phone run additionally opened the Android
+version detail page, accounting for one additional action/request; it is retained,
+not discarded as an outlier. For the first candidate pair with equal action and
+request counts, phone visual HTTP time is 32.253 s versus desktop 26.437 s,
+while inner non-HTTP time is lower on phone (16.437 s versus 17.880 s).
+The phone's outside-runner/outer-model overhead is 2.887 s versus 0.879 s.
+Thus this pair does not support phone CPU execution as the dominant remaining
+bottleneck. Full-task model requests still differ in content and response, and
+these two warm samples per host cannot isolate model serving variance from
+login-session/network effects. Exact-body replay above controls those variables
+more tightly but does not replace end-to-end measurements.
+
+The runtime bundle checks, local quick checks, Kotlin unit tests and debug APK
+build passed. This cohort covers the OPPO only, not a second phone or GitHub CI.
+
+A native brightness regression on the same candidate runtime succeeded in
+41.067 s with four visual model calls and no retries. Independent visual query
+read the visible auto-brightness switch as on. This is a functional regression
+sample, not a new brightness speedup cohort. Its evidence is included in the
+linked JSON. No settings were intentionally changed by either task.
