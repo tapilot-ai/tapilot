@@ -1633,3 +1633,42 @@ start to first event/RPC was 222/1,064 ms, essentially unchanged from the prior
 caused a material gain. The original 27.560 s target remains unmet.
 
 [Import probes and complete-task results](performance-lazy-loader-20261017.json)
+
+
+### Bound speculative module preload benefit and cost (2026-10-17)
+
+An isolated Android Node prototype alternates fresh-process normal imports and
+preloading the four main SDK/adapter ESM entries before importing android.config.
+It performs no setup, model call or phone action. The diagnostic rejects fetch
+and native RPC output, disables compilation cache, uses the installed runtime,
+and waits one second between preload and config import. Eight samples (four per
+condition) complete under the app UID, with Node 24.18.0 and fingerprint
+`d7b9023be558f1a079e9f1532d8ef8f22d7949a1a4a84dc7d7b1dcd17354e2fa`.
+The reproducible CLI is:
+
+```sh
+python3 scripts/benchmark-runtime-preload.py --serial e7ed3f17
+```
+
+Median remaining config-import time was **1,102 ms normal / 241 ms preloaded**.
+Preload itself took 823 ms. This suggests roughly 861 ms could move off the
+critical path if actual model waiting overlaps it; it does not remove that work.
+An earlier isolated prototype also reduced the remaining import from about
+1,047 to 249 ms. Neither probe is a complete task or a measured overlap with
+an actual model request.
+
+Median RSS immediately before the one-second wait was 45.7 MiB normal / 102.3 MiB
+preloaded. Preloaded processes used 128.8 ms CPU during that first second versus
+5.2 ms normal, including post-import engine work. RSS includes shared pages and
+must not be reported as exact additional physical memory. After the probe the
+phone reported 24% battery, 34 C battery temperature, thermal status 0 and no USB
+power; this does not establish thermal equivalence with earlier tasks.
+
+Production preload is **not enabled**. Integration must preserve the working
+directory and model environment, stop all prepared processes on cancellation or
+unused-task completion, and prevent any native/model request before activation.
+A bounded prepared process during an active task is preferable to a permanent
+worker. These boundaries and full-task latency must be verified before claiming
+this projected saving. Stable desktop parity and the 50% target remain unmet.
+
+[Raw prototype timings and memory observations](performance-preload-prototype-20261017.json)

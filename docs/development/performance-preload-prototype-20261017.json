@@ -1,0 +1,108 @@
+{
+  "serial": "e7ed3f17",
+  "sourceFingerprint": "d7b9023be558f1a079e9f1532d8ef8f22d7949a1a4a84dc7d7b1dcd17354e2fa",
+  "node": "v24.18.0",
+  "compileCache": false,
+  "samples": [
+    {
+      "mode": "cold",
+      "preloadMs": 0.004165999999997894,
+      "remainingImportMs": 1049.7972389999998,
+      "initialRss": 47923200,
+      "standbyRss": 48254976,
+      "rss": 136855552,
+      "idleCpuMs": 5.092
+    },
+    {
+      "mode": "preload",
+      "preloadMs": 786.0477599999999,
+      "remainingImportMs": 258.6719270000001,
+      "initialRss": 47562752,
+      "standbyRss": 107184128,
+      "rss": 136503296,
+      "idleCpuMs": 126.287
+    },
+    {
+      "mode": "preload",
+      "preloadMs": 703.968437,
+      "remainingImportMs": 230.8597400000001,
+      "initialRss": 47452160,
+      "standbyRss": 107454464,
+      "rss": 135241728,
+      "idleCpuMs": 105.646
+    },
+    {
+      "mode": "cold",
+      "preloadMs": 0.0072920000000067375,
+      "remainingImportMs": 1190.227551,
+      "initialRss": 48074752,
+      "standbyRss": 48074752,
+      "rss": 127545344,
+      "idleCpuMs": 4.467
+    },
+    {
+      "mode": "cold",
+      "preloadMs": 0.004739000000000715,
+      "remainingImportMs": 986.3089060000002,
+      "initialRss": 47460352,
+      "standbyRss": 47792128,
+      "rss": 136503296,
+      "idleCpuMs": 5.343
+    },
+    {
+      "mode": "preload",
+      "preloadMs": 859.099271,
+      "remainingImportMs": 239.65275999999972,
+      "initialRss": 47562752,
+      "standbyRss": 107094016,
+      "rss": 137478144,
+      "idleCpuMs": 138.187
+    },
+    {
+      "mode": "preload",
+      "preloadMs": 867.130989,
+      "remainingImportMs": 243.10427100000015,
+      "initialRss": 47443968,
+      "standbyRss": 107479040,
+      "rss": 136290304,
+      "idleCpuMs": 131.383
+    },
+    {
+      "mode": "cold",
+      "preloadMs": 0.009739999999993643,
+      "remainingImportMs": 1154.4603120000002,
+      "initialRss": 47497216,
+      "standbyRss": 47828992,
+      "rss": 127713280,
+      "idleCpuMs": 6.186
+    }
+  ],
+  "id": "runtime-preload-20261017T051910Z",
+  "medians": {
+    "cold": {
+      "preloadMs": 0.006015500000003726,
+      "remainingImportMs": 1102.1287754999998,
+      "standbyRss": 47951872.0,
+      "idleCpuMs": 5.217499999999999
+    },
+    "preload": {
+      "preloadMs": 822.5735155,
+      "remainingImportMs": 241.37851549999993,
+      "standbyRss": 107319296.0,
+      "idleCpuMs": 128.835
+    }
+  },
+  "postProbeDeviceState": {
+    "batteryPercent": 24,
+    "batteryTemperatureC": 34,
+    "thermalStatus": 0,
+    "usbPowered": false
+  },
+  "limitations": [
+    "Module-import probe only; no model or phone action executed.",
+    "The one-second idle is synthetic, not a measured model-wait overlap.",
+    "No production preload implementation and no full-task speedup claim.",
+    "RSS is not equivalent to additional physical memory due to shared pages.",
+    "Post-probe device status is not a continuous thermal trace."
+  ]
+}
