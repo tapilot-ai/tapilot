@@ -1166,3 +1166,67 @@ The final evidence screenshot was also manually inspected. The four native
 runs in this cohort all stopped on the About device page rather than opening
 the version detail page; this is promising coverage, not a guarantee for all
 read-only tasks.
+
+### Remove deployment source maps and invalidate packaging changes (2026-10-17)
+
+Android deployment now removes only valid v3 JavaScript source maps with
+`.js.map`, `.mjs.map` or `.cjs.map` suffixes. Executable files, declarations,
+licenses, unrelated map data and malformed files remain. Directory traversal
+never follows symlinks. The desktop staging tree retains its source maps;
+phone stack traces use the deployed JavaScript. The runtime does not enable
+Node source-map processing. Tests exercise preservation, symlinks, nested
+packages and repeat pruning.
+
+This removes 2588 files / 27,656,145 uncompressed bytes. The original deployment
+archive was 46,189,430 bytes. Archive size is distinct from APK size and task
+latency; pruning cannot reduce warm model serving time.
+
+The first candidate exposed a packaging invalidation bug: sourceFingerprint
+changed, but runtimeVersion hashed only entry files, lockfile and workspace
+package contents. The phone installs by runtimeVersion and therefore retained
+the old runtime. That task succeeded in 55.112 s with a 7 ms prepare phase,
+but is explicitly classified as a stale-runtime diagnostic, not a pruning
+speed measurement. runtimeVersion now also hashes the full source fingerprint,
+which includes packaging rules and dependency patches. This preserves upgrade
+compatibility with existing phone installers and ensures packaging-only changes
+activate their new payload.
+
+After fixing invalidation, the installed runtime version is
+`0.1.0-1ecbb5d246ba`; both its version and source fingerprint matched the APK
+asset manifest. The deployment archive is 39,327,391 bytes, 14.9% smaller.
+All 17,783 retained deployment files matched desktop staging byte-for-byte.
+The genuine update sample prepared in 9.408 s versus 10.631 s in the preceding
+update sample, a single-pair reduction of 1.223 s. Full task time was 67.678 s
+versus the earlier 63.904 s: the smaller preparation time does not establish
+an overall speedup amid other-stage variation. Independent visual verification
+again read Android version 14. The observer ended before the task did; its
+terminal log and report were recovered from the same task without replay.
+
+The original 55.119 s / 27.560 s half-latency baseline is specifically the
+**auto-brightness** task, not the version query. Keep warm-task acceptance,
+runtime-update cost and deployment size as separate metrics.
+
+[Deployment sizes, stale-runtime diagnostic and real task evidence](performance-runtime-pruning-20261017.json)
+
+The final same-runtime brightness pair completed in **41.092 s phone** and
+**34.091 s desktop**, both three device actions, four visual HTTP requests,
+zero model retries and independent confirmation that auto-brightness is on.
+Both requested/returned gpt-6-luna with full 988×1972 screenshots and the same
+account; the native runtime fingerprint matched desktop. This is the Tapilot
+same-agent desktop harness, not Codex UI timing. Settings was reset and visually
+inspected before each run, and the two tasks ran sequentially.
+
+| Brightness phase | Phone | Desktop |
+| --- | ---: | ---: |
+| Outer completion | 6.645 s | 5.849 s |
+| Visual HTTP | 21.394 s | 17.666 s |
+| Inner non-HTTP | 10.084 s | 9.735 s |
+| Outside outer completion / inner runner | 2.969 s | 0.841 s |
+
+The phone's credential acquisition was 15 ms, so the earlier pre-request delay
+did not reproduce. This single pair leaves a 20.5% full-task gap; it is not a
+stable median or 50% improvement. Packaging changes leave warm execution code
+unchanged and address update cost, not inference latency. Focused pruning and
+integrity tests, runtime bundle tests, Kotlin tests, debug APK build and local
+quick checks passed. Both fixture tasks completed on the real OPPO; no second
+phone or GitHub CI validation is claimed.
