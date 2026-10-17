@@ -149,6 +149,71 @@ class NodeRuntimeProcessSupervisorTest {
         }
     }
 
+    @Test fun preparedProcessIsAdoptedOnlyWithMatchingRuntimeDirectoryAndEnvironment() {
+        for (mode in listOf("match", "environment", "runtime", "directory", "expired")) {
+            val children = mutableListOf<PreparedProcess>()
+            val commands = mutableListOf<List<String>>()
+            val supervisor = NodeRuntimeProcessSupervisor { command, _, _ ->
+                commands.add(command); PreparedProcess().also { children.add(it) }
+            }
+            val runtime = InstalledNodeRuntime(File(".", "node"), File("."), File("runner.mjs"), File("."), File("."), NodeRuntimeManifest(1, "test", "runner.mjs", 20))
+            val root = java.nio.file.Files.createTempDirectory("prepared-run").toFile()
+            val other = File(root, "other").apply { mkdirs() }
+            val request = NodeTestRunRequest(root, File(root, "results"), environment = mapOf("MIDSCENE_MODEL_NAME" to "one"))
+            try {
+                supervisor.prepareTest(runtime, request)
+                assertTrue(!supervisor.isRunning())
+                assertEquals("prepare", commands.single()[2])
+                assertEquals(0, children.single().written.size())
+                if (mode == "expired") children.single().destroy()
+                val adopted = supervisor.runTest(
+                    if (mode == "runtime") runtime.copy(entrypoint = File("other-runner.mjs")) else runtime,
+                    when (mode) {
+                        "environment" -> request.copy(environment = mapOf("MIDSCENE_MODEL_NAME" to "two"))
+                        "directory" -> request.copy(projectRoot = other)
+                        else -> request
+                    }, NoOpNodeRuntimeListener)
+                assertEquals(mode == "match", adopted)
+                if (adopted) {
+                    assertTrue(children.single().activated.await(1, TimeUnit.SECONDS))
+                    assertEquals("activate", JSONObject(children.single().written.toString()).getString("type"))
+                } else {
+                    assertEquals(2, children.size)
+                    assertTrue(!children.first().isAlive)
+                    assertEquals("test", commands.last()[2])
+                }
+            } finally { supervisor.close(); root.deleteRecursively() }
+            assertTrue(children.all { !it.isAlive })
+        }
+    }
+
+    @Test fun stoppingUnusedPreparationTerminatesItWithoutActivation() {
+        val child = PreparedProcess()
+        val supervisor = NodeRuntimeProcessSupervisor { _, _, _ -> child }
+        val runtime = InstalledNodeRuntime(File(".", "node"), File("."), File("runner.mjs"), File("."), File("."), NodeRuntimeManifest(1, "test", "runner.mjs", 20))
+        try {
+            supervisor.prepareTest(runtime, NodeTestRunRequest(File("."), File("results").absoluteFile))
+            assertTrue(supervisor.stop())
+            assertTrue(!child.isAlive)
+            assertEquals(0, child.written.size())
+            assertTrue(!supervisor.stop())
+        } finally { supervisor.close() }
+    }
+
+    private class PreparedProcess : Process() {
+        private val done = CountDownLatch(1)
+        val activated = CountDownLatch(1)
+        val written = object : java.io.ByteArrayOutputStream() {
+            override fun flush() { activated.countDown() }
+        }
+        override fun getOutputStream() = written
+        override fun getInputStream() = object : InputStream() { override fun read(): Int { done.await(); return -1 } }
+        override fun getErrorStream() = ByteArrayInputStream(byteArrayOf())
+        override fun waitFor(): Int { done.await(); return 0 }
+        override fun exitValue(): Int { if (done.count != 0L) throw IllegalThreadStateException(); return 0 }
+        override fun destroy() { done.countDown() }
+    }
+
     private class BlockingInputProcess : Process() {
         val writeStarted = CountDownLatch(1)
         private val destroyed = CountDownLatch(1)

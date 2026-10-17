@@ -31,6 +31,25 @@ class NodeRuntimeProcessSupervisor(
     private val lock = Any()
     private var activeProcess: Process? = null
     private var activeInput: BufferedWriter? = null
+    private data class Prepared(val process: Process, val arguments: List<String>, val directory: File,
+        val environment: Map<String, String>, val runtime: InstalledNodeRuntime)
+    private var prepared: Prepared? = null
+
+    /** Imports modules only. No test or native operation runs before adoption. */
+    fun prepareTest(runtime: InstalledNodeRuntime, request: NodeTestRunRequest) = synchronized(lock) {
+        check(activeProcess == null) { "A Node runtime task is already running" }
+        discardPrepared()
+        val arguments = testArguments(request)
+        val environment = childEnvironment(runtime, request.environment)
+        val process = processFactory(listOf(runtime.nodeExecutable.absolutePath, runtime.entrypoint.absolutePath,
+            "prepare") + arguments.drop(1), request.projectRoot, environment)
+        prepared = Prepared(process, arguments, request.projectRoot.canonicalFile, environment, runtime)
+    }
+
+    fun discardPrepared() = synchronized(lock) {
+        prepared?.let { terminate(it.process) }
+        prepared = null
+    }
 
     fun runDoctor(runtime: InstalledNodeRuntime, listener: NodeRuntimeListener) {
         start(runtime, listOf("doctor"), runtime.runtimeDirectory, emptyMap(), listener)
@@ -40,7 +59,9 @@ class NodeRuntimeProcessSupervisor(
         runtime: InstalledNodeRuntime,
         request: NodeTestRunRequest,
         listener: NodeRuntimeListener,
-    ) {
+    ): Boolean = start(runtime, testArguments(request), request.projectRoot, request.environment, listener)
+
+    private fun testArguments(request: NodeTestRunRequest): List<String> {
         require(request.projectRoot.isDirectory) {
             "Project root does not exist: ${request.projectRoot.absolutePath}"
         }
@@ -60,7 +81,18 @@ class NodeRuntimeProcessSupervisor(
             require(it.isNotBlank() && !it.startsWith("-")) { "Invalid project name" }
             arguments += listOf("--project", it)
         }
-        start(runtime, arguments, request.projectRoot, request.environment, listener)
+        return arguments
+    }
+
+    private fun childEnvironment(runtime: InstalledNodeRuntime, environment: Map<String, String>): Map<String, String> {
+        val nativeLibraryDirectory = requireNotNull(runtime.nodeExecutable.parentFile).absolutePath
+        return sanitizeEnvironment(environment) + mapOf(
+            "MIDSCENE_ANDROID_RUNTIME_VERSION" to runtime.manifest.runtimeVersion,
+            "LD_LIBRARY_PATH" to nativeLibraryDirectory,
+            "HOME" to runtime.homeDirectory.absolutePath,
+            "TMPDIR" to runtime.temporaryDirectory.absolutePath,
+            "PATH" to "$nativeLibraryDirectory:/system/bin:/system/xbin",
+        )
     }
 
     private fun start(
@@ -69,26 +101,21 @@ class NodeRuntimeProcessSupervisor(
         workingDirectory: File,
         environment: Map<String, String>,
         listener: NodeRuntimeListener,
-    ) {
-        val command = listOf(
-            runtime.nodeExecutable.absolutePath,
-            runtime.entrypoint.absolutePath,
-            *arguments.toTypedArray(),
-        )
-        val nativeLibraryDirectory = requireNotNull(runtime.nodeExecutable.parentFile).absolutePath
-        val childEnvironment = sanitizeEnvironment(environment) +
-            mapOf(
-                "MIDSCENE_ANDROID_RUNTIME_VERSION" to runtime.manifest.runtimeVersion,
-                "LD_LIBRARY_PATH" to nativeLibraryDirectory,
-                "HOME" to runtime.homeDirectory.absolutePath,
-                "TMPDIR" to runtime.temporaryDirectory.absolutePath,
-                "PATH" to "$nativeLibraryDirectory:/system/bin:/system/xbin",
-            )
-        synchronized(lock) {
+    ): Boolean {
+        val command = listOf(runtime.nodeExecutable.absolutePath, runtime.entrypoint.absolutePath) + arguments
+        val childEnvironment = childEnvironment(runtime, environment)
+        return synchronized(lock) {
             check(activeProcess == null) { "A Node runtime task is already running" }
-            val process = processFactory(command, workingDirectory, childEnvironment)
+            val candidate = prepared?.takeIf {
+                it.runtime == runtime && it.arguments == arguments &&
+                    it.directory == workingDirectory.canonicalFile && it.environment == childEnvironment && it.process.isAlive
+            }
+            if (candidate == null) discardPrepared()
+            val process = candidate?.process ?: processFactory(command, workingDirectory, childEnvironment)
+            prepared = null
             activeProcess = process
             activeInput = process.outputStream.bufferedWriter()
+            if (candidate != null) respondToRpc(JSONObject().put("type", "activate"))
             executor.execute {
                 val result = runCatching {
                     process.inputStream.bufferedReader().useLines { lines ->
@@ -109,11 +136,17 @@ class NodeRuntimeProcessSupervisor(
                 if (terminated.isSuccess) release(process)
                 result.fold(listener::onComplete, listener::onFailure)
             }
+            candidate != null
         }
     }
 
     fun stop(): Boolean {
-        val process = synchronized(lock) { activeProcess } ?: return false
+        val (process, hadPrepared) = synchronized(lock) {
+            val existed = prepared != null
+            discardPrepared()
+            activeProcess to existed
+        }
+        if (process == null) return hadPrepared
         terminate(process)
         release(process)
         return true

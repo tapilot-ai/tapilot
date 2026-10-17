@@ -14,6 +14,7 @@ def main():
     parser.add_argument('--serial', required=True)
     parser.add_argument('--mode', choices=['full', 'execution'], default='full')
     parser.add_argument('--fixture', choices=['read-auto-brightness', 'read-android-version'], default='read-auto-brightness')
+    parser.add_argument('--runtime-preload', choices=['on', 'off', 'reset'], default='reset')
     args = parser.parse_args()
     if pathlib.Path(args.label).name != args.label or args.label in ('.', '..'):
         parser.error('Label must be a single directory name')
@@ -38,7 +39,8 @@ def main():
         mode = 'run_benchmark' if args.mode == 'full' else 'controlled'
         response = shell('am', 'broadcast', '-n', 'lifeos.md.tapilot/.performance.PerformanceExperimentReceiver',
                          '--es', 'screenshot_shrink_factor', 'reset', '--ez', mode, 'true',
-                         '--es', 'capture_format', 'jpeg', '--es', 'fixture', args.fixture)
+                         '--es', 'capture_format', 'jpeg', '--es', 'fixture', args.fixture,
+                         '--es', 'runtime_preload', args.runtime_preload)
         print(response, flush=True)
         if 'result=0' not in response:
             raise RuntimeError('Benchmark rejected')
@@ -60,7 +62,7 @@ def main():
         raise RuntimeError('Observer timed out; inspect device task state. Do not replay automatically.')
     print(json.dumps(wall), flush=True)
     manifest = json.loads(shell('run-as', 'lifeos.md.tapilot', 'cat', 'files/node-runtime/manifest.json'))
-    (out / 'sample.json').write_text(json.dumps({'mode': args.mode, 'fixture': args.fixture, 'capture': 'product-default', 'runtimeSourceFingerprint': manifest['sourceFingerprint'], 'task': wall}, indent=2))
+    (out / 'sample.json').write_text(json.dumps({'mode': args.mode, 'fixture': args.fixture, 'capture': 'product-default', 'runtimePreload': args.runtime_preload, 'runtimeSourceFingerprint': manifest['sourceFingerprint'], 'task': wall}, indent=2))
     for index, remote in enumerate(sorted(reports() - before)):
         data = subprocess.check_output(adb + ['exec-out', 'run-as', 'lifeos.md.tapilot', 'cat', remote])
         (out / f'report-{index}.html').write_bytes(data)

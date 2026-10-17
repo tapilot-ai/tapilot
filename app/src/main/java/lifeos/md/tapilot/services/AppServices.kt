@@ -87,7 +87,7 @@ class AppServices(
     )
 
     private fun handle(requestId: String, sessionId: String, method: String, params: JSONObject) {
-        if (method.startsWith("device.") || method in setOf("runtime.runTest", "task.status")) {
+        if (method.startsWith("device.") || method in setOf("runtime.runTest", "runtime.prepareTest", "task.status")) {
             lifeos.md.tapilot.wireless.DeviceControlLease.checkAccess(sessionId)
         }
         val service = MidsceneAccessibilityService.current()
@@ -197,7 +197,18 @@ class AppServices(
             "report.begin", "report.append", "report.finish", "report.abort", "report.open", "report.openExternal", "report.share", "report.export", "report.delete" ->
                 reports.call(method, params) { it.fold({ value -> respondSuccess(requestId, value) }, { error -> respondError(requestId, error) }) }
             "runtime.doctor" -> executeNodeRuntimeDoctor(requestId)
-            "runtime.runTest" -> executeNodeTestRun(requestId, params)
+            "runtime.prepareTest" -> {
+                val values = params.getJSONObject("environment")
+                nodeTestRunCoordinator.prepare(sessionId, values.keys().asSequence().associateWith { values.getString(it) })
+                respondSuccess(requestId, JSONObject.NULL)
+            }
+            "runtime.discardPrepared" -> nodeRuntimeExecutor.execute {
+                runCatching { nodeTestRunCoordinator.discardPrepared(sessionId) }.fold(
+                    onSuccess = { respondSuccess(requestId, JSONObject.NULL) },
+                    onFailure = { respondError(requestId, it) },
+                )
+            }
+            "runtime.runTest" -> executeNodeTestRun(requestId, sessionId, params)
             "runtime.stop" -> nodeRuntimeExecutor.execute {
                 runCatching { nodeTestRunCoordinator.stopAndWait() }.fold(
                     onSuccess = { respondSuccess(requestId, JSONObject().put("stopped", it)) },
@@ -300,7 +311,7 @@ class AppServices(
         handler.postDelayed({ if (!closed && epoch == navigationEpoch) action() }, delayMillis)
     }
 
-    private fun executeNodeTestRun(requestId: String, params: JSONObject) {
+    private fun executeNodeTestRun(requestId: String, sessionId: String, params: JSONObject) {
         val environmentJson = params.getJSONObject("environment")
         val environment = environmentJson.keys().asSequence().associateWith { name ->
             environmentJson.getString(name)
@@ -311,6 +322,7 @@ class AppServices(
                 kind = params.getString("kind"),
                 environment = environment,
                 reportTaskStatus = params.optBoolean("reportTaskStatus", true),
+                preparationSession = sessionId,
             ) { result ->
                 result.fold(
                     onSuccess = { respondSuccess(requestId, it) },

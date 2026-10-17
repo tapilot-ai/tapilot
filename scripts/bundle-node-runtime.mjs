@@ -20,6 +20,7 @@ const bundleAsset = path.join(assetRoot, 'node-runtime-bundle.zip');
 const manifestAsset = path.join(assetRoot, 'node-runtime-manifest.json');
 const runtimeFiles = [
   'runner.mjs',
+  'prepared-runtime.mjs',
   'pi-runner.mjs',
   'pi-conversation.mjs',
   'pi-context.mjs',

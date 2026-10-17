@@ -371,7 +371,21 @@ class NativeConversationCoordinator(
                     val modelSource = source + saved?.optString("text").orEmpty().takeIf { it.isNotBlank() }?.let { "\n\n文件内容：\n${it.take(30_000)}" }.orEmpty() +
                         if (saved?.optString("name")?.contains("屏幕") == true) "\n图片是用户先前保存的屏幕快照，不是当前实时画面。" else ""
                     val messages = NativeConversationAgent.messages(prior, modelSource, AppLanguage.resolved(activity) == "zh", attachments, saved?.optJSONArray("images")?.strings().orEmpty())
+                    var preparationRequested = false
                     val reply = pi.run(messages, retry?.takeIf { continueOf != null || it.optString("phase") != "completed" }?.optJSONArray("agentContext"), limits, stopped::get, complete = { chat, tools ->
+                        if (!preparationRequested) {
+                            preparationRequested = true
+                            // Only enqueue module loading; never delay the model on preload completion.
+                            onMain {
+                                val debuggable = activity.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0
+                                val enabled = !debuggable || activity.getSharedPreferences(
+                                    "tapilot-performance", android.content.Context.MODE_PRIVATE,
+                                ).getBoolean("runtime-preload", true)
+                                if (enabled && !stopped.get() && !closed) {
+                                    services.call("runtime.prepareTest", JSONObject().put("environment", environment()), runSession) {}
+                                }
+                            }
+                        }
                         updateProgress(if (phoneStarted) local("正在整理结果", "Preparing reply") else local("正在理解任务", "Understanding task"))
                         if (chatGptAccount.isNotBlank()) requestChatGpt(chatGptAccount, chatGptModel, chat, tools, runSession, stopped)
                         else requestCompletion(model, key, chat, runSession, stopped, tools)
@@ -413,6 +427,8 @@ class NativeConversationCoordinator(
                     reply.getString("reply")
                 }
             }
+            // Owner matching makes late cleanup harmless to a subsequent conversation.
+            services.call("runtime.discardPrepared", sessionId = runSession) {}
             // A stop can arrive while completion is waiting for the main thread. If it
             // does, wait for that cancellation barrier before publishing the final state.
             var settled = false

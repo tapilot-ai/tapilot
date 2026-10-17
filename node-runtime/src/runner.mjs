@@ -2,6 +2,8 @@
 
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { waitForActivation } from './prepared-runtime.mjs';
 import { nativeRpcTimings } from './stdio-native-bridge.mjs';
 import {
   collectFailureMessage,
@@ -177,10 +179,20 @@ try {
   const options = parseArguments(process.argv.slice(2));
   if (options.command === 'doctor') {
     await doctor();
+  } else if (options.command === 'prepare') {
+    requireAbsolutePath(options['project-root'], 'project-root');
+    requireAbsolutePath(options['result-dir'], 'result-dir');
+    const config = requireAbsolutePath(options.config, 'config');
+    const started = performance.now();
+    // The product config registers setup; importing it does not construct a
+    // device bridge, fetch a model response, or execute any phone operation.
+    await import(pathToFileURL(config).href);
+    emit('runtime.prepared', { durationMs: performance.now() - started });
+    if (!interrupted && await waitForActivation(process.stdin)) await test(options);
   } else if (options.command === 'test') {
     await test(options);
   } else {
-    throw new Error('Usage: runner.mjs <doctor|test> [options]');
+    throw new Error('Usage: runner.mjs <doctor|test|prepare> [options]');
   }
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);

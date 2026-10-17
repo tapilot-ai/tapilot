@@ -43,11 +43,68 @@ class NodeTestRunCoordinator(
     @Volatile private var stopRegistration: ActiveTaskStopRegistry.Registration? = null
     @Volatile private var reportTaskStatus = true
 
+    private val preparationLock = Any()
+    private var preparationEpoch = 0L
+    private var preparationOwner: String? = null
+    private data class PreparedRun(val owner: String, val runtime: InstalledNodeRuntime,
+        val projectRoot: File, val environment: Map<String, String>)
+    private var preparedRun: PreparedRun? = null
+
+    /** Best effort, task scoped, and queued after Pi has installed the runtime. */
+    fun prepare(owner: String, environment: Map<String, String>) {
+        require(owner.isNotBlank())
+        val effective = executionEnvironment(environment)
+        val epoch = synchronized(preparationLock) {
+            if (!completion.isDone || supervisor.isRunning()) return
+            preparationOwner = owner
+            ++preparationEpoch
+        }
+        executor.execute {
+            runCatching {
+                val runtime = NodeRuntimeProvisioner(appContext).install()
+                synchronized(preparationLock) {
+                    if (epoch != preparationEpoch || preparationOwner != owner || !completion.isDone) return@execute
+                    val root = createProjectDirectory()
+                    supervisor.prepareTest(runtime, request(runtime, root, effective))
+                    preparedRun = PreparedRun(owner, runtime, root, effective)
+                }
+            }.onFailure {
+                // Preparation must not turn an otherwise valid conversation into a failure.
+                synchronized(preparationLock) {
+                    if (epoch == preparationEpoch) {
+                        supervisor.discardPrepared()
+                        preparedRun = null
+                    }
+                }
+            }
+        }
+    }
+
+    fun discardPrepared(owner: String) = synchronized(preparationLock) {
+        if (preparationOwner == owner) {
+            ++preparationEpoch
+            preparationOwner = null
+            preparedRun = null
+            supervisor.discardPrepared()
+        }
+    }
+
+    private fun executionEnvironment(environment: Map<String, String>) = mapOf(
+        "MIDSCENE_MODEL_TIMEOUT" to "45000", "MIDSCENE_MODEL_RETRY_COUNT" to "1",
+    ) + environment + ("MIDSCENE_ANDROID_ASSISTANT_LANGUAGE" to AppLanguage.resolved(appContext)) + screenshotExperimentEnvironment()
+
+    private fun request(runtime: InstalledNodeRuntime, root: File, environment: Map<String, String>) = NodeTestRunRequest(
+        projectRoot = root, resultDirectory = File(root, "results"),
+        configPath = File(runtime.runtimeDirectory, "android.config.mjs").absolutePath,
+        projects = listOf("android-accessibility"), environment = environment,
+    )
+
     fun run(
         source: String,
         kind: String,
         environment: Map<String, String>,
         reportTaskStatus: Boolean = true,
+        preparationSession: String? = null,
         callback: (Result<JSONObject>) -> Unit,
     ) {
         require(source.isNotBlank()) { "YAML or task source must not be blank" }
@@ -71,12 +128,23 @@ class NodeTestRunCoordinator(
                 val runtime = NodeRuntimeProvisioner(appContext).install()
                 recordTiming("prepareRuntime", installStarted)
                 throwIfStopRequested()
-                val projectStarted = android.os.SystemClock.elapsedRealtime()
-                val projectRoot = prepareProject(source, kind)
-                recordTiming("prepareProject", projectStarted)
-                throwIfStopRequested()
-                start(runtime, projectRoot, environment, callback)
+                synchronized(preparationLock) {
+                    throwIfStopRequested()
+                    val effective = executionEnvironment(environment)
+                    val candidate = preparedRun?.takeIf { it.owner == preparationSession && it.runtime == runtime && it.environment == effective }
+                    if (candidate == null) supervisor.discardPrepared()
+                    preparedRun = null
+                    preparationOwner = null
+                    ++preparationEpoch
+                    val projectStarted = android.os.SystemClock.elapsedRealtime()
+                    val projectRoot = candidate?.projectRoot ?: createProjectDirectory()
+                    val testSource = if (kind == "task") NaturalLanguageTaskWorkflow.asYaml(source) else source
+                    File(projectRoot, "task.yaml").writeText(testSource)
+                    recordTiming("prepareProject", projectStarted)
+                    start(runtime, projectRoot, effective, callback)
+                }
             }.onFailure { error ->
+                synchronized(preparationLock) { supervisor.discardPrepared() }
                 val finalError = if (stopRequested.get()) NodeRunStoppedException() else error
                 updateStatus(
                     if (finalError is NodeRunStoppedException) {
@@ -97,7 +165,12 @@ class NodeTestRunCoordinator(
         val taskWasActive = !completion.isDone
         stopRequested.set(true)
         activeSessionId?.let { MidsceneAccessibilityService.current()?.cancelSession(it) }
-        return supervisor.stop() || taskWasActive
+        return synchronized(preparationLock) {
+            ++preparationEpoch
+            preparationOwner = null
+            preparedRun = null
+            supervisor.stop() || taskWasActive
+        }
     }
 
     /** Called off the UI thread; includes cancellation during runtime preparation. */
@@ -123,13 +196,11 @@ class NodeTestRunCoordinator(
         ActiveTaskStopRegistry.unregister(registration)
     }
 
-    private fun prepareProject(source: String, kind: String): File {
+    private fun createProjectDirectory(): File {
         val runsRoot = File(appContext.filesDir, "node-runs")
         check(runsRoot.exists() || runsRoot.mkdirs()) { "Unable to create Node run directory" }
         val projectRoot = File(runsRoot, UUID.randomUUID().toString())
         check(projectRoot.mkdirs()) { "Unable to create Node test project" }
-        val testSource = if (kind == "task") NaturalLanguageTaskWorkflow.asYaml(source) else source
-        File(projectRoot, "task.yaml").writeText(testSource)
         pruneRuns(runsRoot, projectRoot)
         return projectRoot
     }
@@ -163,20 +234,9 @@ class NodeTestRunCoordinator(
         var firstEvent = true
         var firstRpc = true
         var completedAt: Long? = null
-        supervisor.runTest(
+        val reused = supervisor.runTest(
             runtime,
-            NodeTestRunRequest(
-                projectRoot = projectRoot,
-                resultDirectory = File(projectRoot, "results"),
-                configPath = File(runtime.runtimeDirectory, "android.config.mjs").absolutePath,
-                projects = listOf("android-accessibility"),
-                environment = mapOf(
-                    "MIDSCENE_MODEL_TIMEOUT" to "45000",
-                    "MIDSCENE_MODEL_RETRY_COUNT" to "1",
-                ) + environment + (
-                    "MIDSCENE_ANDROID_ASSISTANT_LANGUAGE" to AppLanguage.resolved(appContext)
-                ) + screenshotExperimentEnvironment(),
-            ),
+            request(runtime, projectRoot, environment),
             object : NodeRuntimeListener {
                 override fun onLog(line: String) {
                     if (logs.size == MAX_LOG_LINES) logs.removeFirst()
@@ -192,6 +252,8 @@ class NodeTestRunCoordinator(
                     val payload = JSONObject(event.payload)
                     when (event.type) {
                         "rpc.request" -> dispatchRpc(payload)
+                        "runtime.prepared" -> Log.i("TapilotPerformance", JSONObject(event.payload)
+                            .put("phase", "runner.preload").toString())
                         "capture.settled" -> Log.i("TapilotPerformance", JSONObject(event.payload)
                             .put("phase", "midscene.capture.settled").toString())
                         "model.network" -> Log.i("TapilotPerformance", JSONObject(event.payload)
@@ -312,6 +374,7 @@ class NodeTestRunCoordinator(
                 }
             },
         )
+        Log.i("TapilotPerformance", JSONObject().put("phase", "runner.preparedReuse").put("reused", reused).toString())
     }
 
     private fun dispatchRpc(request: JSONObject) {

@@ -24,6 +24,11 @@ class PerformanceExperimentReceiver : BroadcastReceiver() {
             setResult(1, "Expected screenshot_shrink_factor: 1, 1.5 or reset", null)
             return
         }
+        val preload = intent.getStringExtra("runtime_preload") ?: "reset"
+        if (preload !in listOf("on", "off", "reset")) {
+            setResult(1, "Unsupported runtime preload experiment", null)
+            return
+        }
         val runtime = (context.applicationContext as TapilotApplication).assistant
         if (runtime.state.running) {
             setResult(1, "Wait for the active task to finish", null)
@@ -38,6 +43,8 @@ class PerformanceExperimentReceiver : BroadcastReceiver() {
         val editor = context.getSharedPreferences("tapilot-performance", Context.MODE_PRIVATE).edit()
         if (factor == "reset") editor.remove("screenshot-shrink-factor").remove("capture-format")
         else editor.putString("screenshot-shrink-factor", factor).putString("capture-format", format)
+        if (preload == "reset") editor.remove("runtime-preload")
+        else editor.putBoolean("runtime-preload", preload == "on")
         val saved = editor.commit()
         if (saved && runBenchmark) {
             // Fixed read-only scenario, no arbitrary commands or gesture injection.
