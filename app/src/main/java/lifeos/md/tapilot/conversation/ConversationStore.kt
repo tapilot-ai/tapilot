@@ -7,6 +7,9 @@ import org.json.JSONObject
 
 /** Versioned, atomic private storage. API keys continue to live only in Android Keystore. */
 class ConversationStore(private val file: File) {
+    // Immutable worker-owned snapshots are keys: map equality checks all nested values,
+    // so changing any record field invalidates its encoding, including duplicate IDs.
+    private var encodedHistory = emptyMap<Map<*, *>, String>()
     fun exists() = file.isFile
     private val draftFile = File(file.parentFile, "${file.name}.draft")
     @Synchronized fun read(): JSONObject {
@@ -22,6 +25,23 @@ class ConversationStore(private val file: File) {
         value.put("storageRevision", java.util.UUID.randomUUID().toString())
         writeAtomically(file, value.toString())
         draftFile.delete() // A leftover draft has the old revision and is ignored after a crash.
+    }
+    /** Called only with detached immutable snapshots from ConversationWriter. */
+    @Synchronized internal fun saveSnapshot(snapshot: Map<String, Any?>) {
+        val metadata = JSONObject(snapshot.filterKeys { it != "history" })
+        require(metadata.getInt("version") == 1)
+        metadata.put("storageRevision", java.util.UUID.randomUUID().toString())
+        val history = snapshot["history"] as? List<*> ?: error("Conversation history must be a list")
+        val nextCache = mutableMapOf<Map<*, *>, String>()
+        val encoded = history.map { value ->
+            val entry = value as? Map<*, *> ?: error("Conversation entry must be an object")
+            (nextCache[entry] ?: encodedHistory[entry] ?: JSONObject(entry).toString())
+                .also { nextCache[entry] = it }
+        }
+        val prefix = metadata.toString().dropLast(1)
+        writeAtomically(file, prefix + ",\"history\":[" + encoded.joinToString(",") + "]}")
+        encodedHistory = nextCache // Publish the cache only after the durable write succeeded.
+        draftFile.delete()
     }
     @Synchronized fun saveDraft(text: String) {
         val revision = if (file.isFile) JSONObject(file.readText()).optString("storageRevision") else ""

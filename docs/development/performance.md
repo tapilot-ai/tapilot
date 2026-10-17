@@ -822,3 +822,58 @@ phases and the inner runner, and 0.204 s **less** inner non-HTTP work on the pho
 This decomposition identifies where to profile next; sequential provider
 variation prevents attributing the request difference solely to the proxy.
 The temporary ADB proxy forward was removed after testing.
+
+### Native persistence profiling and encoding cache (2026-10-17)
+
+Numeric phase probes separate immutable snapshot creation, queued writes,
+flush waits, main-thread dispatch, report import and Pi shutdown. A full task
+showed report import at 69 ms and shutdown below 1 ms, while six completed
+persistence writes totaled 3726 ms and six flush barriers waited 1691 ms.
+These phases overlap; their totals must not be added to task wall time.
+
+Two redundant conversions were investigated: cloning all conversations through
+JSON text at task start, and reconstructing every historical record from a Map
+on every write. The final implementation snapshots only the active task's prior
+context, retry state and pending inputs for the worker. UI history is retained.
+The persistence worker still receives a fully detached immutable snapshot, but
+reuses encoded history entries whose complete nested Map values are equal.
+Changed entries are re-encoded. Record order, deletion, duplicate IDs, nulls and
+nested amendments remain meaningful; no ID-only cache or mutable-key cache is
+used. Metadata is freshly serialized and the entire JSON file is still written
+atomically with `fsync` before a flush barrier completes. The cache is replaced
+only after a successful write and retains only the latest history snapshot.
+No history truncation, checkpoint removal or asynchronous success shortcut was
+introduced.
+
+| Native full brightness sample | Wall (s) | Visual HTTP (s) | Outside outer model + inner runner (s) | Flush wait (s) |
+| --- | ---: | ---: | ---: | ---: |
+| Instrumented original | 42.635 | 20.046 | 6.175 | 1.691 |
+| Direct JSON snapshot experiment | 41.147 | 19.869 | 4.914 | 1.346 |
+| Active task snapshot experiment | 43.639 | 22.278 | 5.071 | 1.610 |
+| Final cache, first run after install | 50.797 | 30.262 | 4.596 | 0.920 |
+| Final cache, warm run 1 | 36.801 | 17.724 | 3.023 | 0.063 |
+| Final cache, warm run 2 | 63.257 | 45.127 | 2.695 | 0.039 |
+
+All six runs used the actual `gpt-6-luna` for both layers, 2872-token outer input,
+3 device actions and 4 visual requests, and passed independent screenshot
+verification. The final warm runs completed seven measured background writes in
+568 ms and 392 ms respectively. Collection stops at `task.wall`, so a final
+queued write can be outside the captured window; compare counts as well as sums.
+First-run and warm timings are distinguished, not pooled into a speedup claim.
+
+The slow 63.257 s sample is retained: its 45.127 s visual HTTP wait dominates the
+task despite lower persistence overhead. One visual request spent about 11.07 s
+awaiting headers with a local body-send timing near 4 ms. This is evidence of
+request-path/provider waiting, not proof that the network or provider alone is
+responsible. The full-task goal remains unmet; investigate that path with fixed
+request payloads before attributing it to phone compute. The good 36.801 s sample
+alone does not establish stable parity with the original desktop route or a 50%
+reduction.
+
+[Phase measurements and all samples](performance-persistence-20261017.json)
+include intermediate experiments. Kotlin tests cover nested snapshot isolation,
+retry/continue/amendment semantics, cache invalidation, stale drafts, I/O failure
+barriers and non-disruptive diagnostics. Kotlin tests, debug build and local
+quick checks passed. The direct-snapshot experiment is not the persistence
+implementation: worker snapshots remain immutable Maps for content-based cache
+keys, while task context uses direct JSON copies.

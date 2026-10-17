@@ -1,0 +1,564 @@
+{
+  "scenario": "Full standalone brightness task",
+  "rows": [
+    {
+      "id": "native-full-phase-profile-20261017",
+      "wallMs": 42635,
+      "outerMs": 5436,
+      "runnerMs": 31024,
+      "outsideMs": 6175,
+      "innerHttpMs": 20046.295460999998,
+      "innerHttpRequests": 4,
+      "actions": 3,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "显示与亮度页面可见；“自动调节”开关可见，当前为开启状态。"
+      },
+      "phases": {
+        "persistence.snapshot": {
+          "count": 8,
+          "totalMs": 1141,
+          "maxMs": 198
+        },
+        "persistence.write": {
+          "count": 6,
+          "totalMs": 3726,
+          "maxMs": 1057
+        },
+        "persistence.flush": {
+          "count": 6,
+          "totalMs": 1691,
+          "maxMs": 632
+        },
+        "runtime.prepare": {
+          "count": 1,
+          "totalMs": 6,
+          "maxMs": 6
+        },
+        "phone.appCatalog": {
+          "count": 1,
+          "totalMs": 183,
+          "maxMs": 183
+        },
+        "runtime.startup": {
+          "count": 1,
+          "totalMs": 606,
+          "maxMs": 606
+        },
+        "conversation.mainDispatch": {
+          "count": 9,
+          "totalMs": 1512,
+          "maxMs": 271
+        },
+        "model.complete": {
+          "count": 1,
+          "totalMs": 5436,
+          "maxMs": 5436
+        },
+        "midscene.capture.settled": {
+          "count": 3,
+          "totalMs": 4365,
+          "maxMs": 2182
+        },
+        "runner.importReports": {
+          "count": 1,
+          "totalMs": 69,
+          "maxMs": 69
+        },
+        "phone.execute": {
+          "count": 1,
+          "totalMs": 32925,
+          "maxMs": 32925
+        },
+        "conversation": {
+          "count": 1,
+          "totalMs": 40283,
+          "maxMs": 40283
+        },
+        "runtime.shutdown": {
+          "count": 1,
+          "totalMs": 0,
+          "maxMs": 0
+        },
+        "task.wall": {
+          "count": 1,
+          "totalMs": 42635,
+          "maxMs": 42635
+        }
+      }
+    },
+    {
+      "id": "native-full-snapshot-1-20261017",
+      "wallMs": 41147,
+      "outerMs": 5212,
+      "runnerMs": 31021,
+      "outsideMs": 4914,
+      "innerHttpMs": 19869.167389,
+      "innerHttpRequests": 4,
+      "actions": 3,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "“显示与亮度”页面中可见“自动调节”，右侧开关为蓝色开启状态。亮度滑块也可见，但未显示数值。"
+      },
+      "phases": {
+        "persistence.snapshot": {
+          "count": 8,
+          "totalMs": 1303,
+          "maxMs": 219
+        },
+        "persistence.write": {
+          "count": 6,
+          "totalMs": 2799,
+          "maxMs": 779
+        },
+        "persistence.flush": {
+          "count": 6,
+          "totalMs": 1346,
+          "maxMs": 678
+        },
+        "runtime.prepare": {
+          "count": 1,
+          "totalMs": 7,
+          "maxMs": 7
+        },
+        "phone.appCatalog": {
+          "count": 1,
+          "totalMs": 157,
+          "maxMs": 157
+        },
+        "runtime.startup": {
+          "count": 1,
+          "totalMs": 572,
+          "maxMs": 572
+        },
+        "conversation.mainDispatch": {
+          "count": 9,
+          "totalMs": 1551,
+          "maxMs": 307
+        },
+        "model.complete": {
+          "count": 1,
+          "totalMs": 5212,
+          "maxMs": 5212
+        },
+        "midscene.capture.settled": {
+          "count": 3,
+          "totalMs": 4745,
+          "maxMs": 2164
+        },
+        "runner.importReports": {
+          "count": 1,
+          "totalMs": 77,
+          "maxMs": 77
+        },
+        "phone.execute": {
+          "count": 1,
+          "totalMs": 32546,
+          "maxMs": 32546
+        },
+        "conversation": {
+          "count": 1,
+          "totalMs": 39743,
+          "maxMs": 39743
+        },
+        "runtime.shutdown": {
+          "count": 1,
+          "totalMs": 0,
+          "maxMs": 0
+        },
+        "task.wall": {
+          "count": 1,
+          "totalMs": 41147,
+          "maxMs": 41147
+        }
+      }
+    },
+    {
+      "id": "native-full-active-snapshot-1-20261017",
+      "wallMs": 43639,
+      "outerMs": 5411,
+      "runnerMs": 33157,
+      "outsideMs": 5071,
+      "innerHttpMs": 22278.339574999998,
+      "innerHttpRequests": 4,
+      "actions": 3,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "页面标题为“显示与亮度”。可见“自动调节”标签，右侧开关为蓝色、滑钮位于右侧，当前为开启。"
+      },
+      "phases": {
+        "persistence.snapshot": {
+          "count": 8,
+          "totalMs": 1288,
+          "maxMs": 199
+        },
+        "persistence.write": {
+          "count": 6,
+          "totalMs": 2822,
+          "maxMs": 699
+        },
+        "persistence.flush": {
+          "count": 6,
+          "totalMs": 1610,
+          "maxMs": 829
+        },
+        "runtime.prepare": {
+          "count": 1,
+          "totalMs": 9,
+          "maxMs": 9
+        },
+        "phone.appCatalog": {
+          "count": 1,
+          "totalMs": 171,
+          "maxMs": 171
+        },
+        "runtime.startup": {
+          "count": 1,
+          "totalMs": 565,
+          "maxMs": 565
+        },
+        "conversation.mainDispatch": {
+          "count": 9,
+          "totalMs": 1550,
+          "maxMs": 275
+        },
+        "model.complete": {
+          "count": 1,
+          "totalMs": 5411,
+          "maxMs": 5411
+        },
+        "midscene.capture.settled": {
+          "count": 3,
+          "totalMs": 4352,
+          "maxMs": 2139
+        },
+        "runner.importReports": {
+          "count": 1,
+          "totalMs": 77,
+          "maxMs": 77
+        },
+        "phone.execute": {
+          "count": 1,
+          "totalMs": 34923,
+          "maxMs": 34923
+        },
+        "conversation": {
+          "count": 1,
+          "totalMs": 42268,
+          "maxMs": 42268
+        },
+        "runtime.shutdown": {
+          "count": 1,
+          "totalMs": 0,
+          "maxMs": 0
+        },
+        "task.wall": {
+          "count": 1,
+          "totalMs": 43639,
+          "maxMs": 43639
+        }
+      }
+    },
+    {
+      "id": "native-full-encoding-cache-1-20261017",
+      "wallMs": 50797,
+      "outerMs": 5359,
+      "runnerMs": 40842,
+      "outsideMs": 4596,
+      "innerHttpMs": 30261.816342,
+      "innerHttpRequests": 4,
+      "actions": 3,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "“显示与亮度”页面可见；“自动调节”已开启。"
+      },
+      "phases": {
+        "persistence.snapshot": {
+          "count": 8,
+          "totalMs": 1264,
+          "maxMs": 230
+        },
+        "persistence.write": {
+          "count": 7,
+          "totalMs": 2266,
+          "maxMs": 995
+        },
+        "persistence.flush": {
+          "count": 6,
+          "totalMs": 920,
+          "maxMs": 842
+        },
+        "runtime.prepare": {
+          "count": 1,
+          "totalMs": 9,
+          "maxMs": 9
+        },
+        "phone.appCatalog": {
+          "count": 1,
+          "totalMs": 209,
+          "maxMs": 209
+        },
+        "runtime.startup": {
+          "count": 1,
+          "totalMs": 570,
+          "maxMs": 570
+        },
+        "conversation.mainDispatch": {
+          "count": 9,
+          "totalMs": 1420,
+          "maxMs": 298
+        },
+        "model.complete": {
+          "count": 1,
+          "totalMs": 5359,
+          "maxMs": 5359
+        },
+        "midscene.capture.settled": {
+          "count": 3,
+          "totalMs": 4239,
+          "maxMs": 1540
+        },
+        "runner.importReports": {
+          "count": 1,
+          "totalMs": 72,
+          "maxMs": 72
+        },
+        "phone.execute": {
+          "count": 1,
+          "totalMs": 42096,
+          "maxMs": 42096
+        },
+        "conversation": {
+          "count": 1,
+          "totalMs": 49374,
+          "maxMs": 49374
+        },
+        "runtime.shutdown": {
+          "count": 1,
+          "totalMs": 0,
+          "maxMs": 0
+        },
+        "task.wall": {
+          "count": 1,
+          "totalMs": 50797,
+          "maxMs": 50797
+        }
+      }
+    },
+    {
+      "id": "native-full-encoding-cache-2-20261017",
+      "wallMs": 36801,
+      "outerMs": 4596,
+      "runnerMs": 29182,
+      "outsideMs": 3023,
+      "innerHttpMs": 17723.875046,
+      "innerHttpRequests": 4,
+      "actions": 3,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "显示与亮度页面可见；自动调节：已开启。"
+      },
+      "phases": {
+        "persistence.snapshot": {
+          "count": 8,
+          "totalMs": 612,
+          "maxMs": 140
+        },
+        "persistence.write": {
+          "count": 7,
+          "totalMs": 568,
+          "maxMs": 101
+        },
+        "persistence.flush": {
+          "count": 6,
+          "totalMs": 63,
+          "maxMs": 38
+        },
+        "runtime.prepare": {
+          "count": 1,
+          "totalMs": 7,
+          "maxMs": 7
+        },
+        "phone.appCatalog": {
+          "count": 1,
+          "totalMs": 264,
+          "maxMs": 264
+        },
+        "runtime.startup": {
+          "count": 1,
+          "totalMs": 547,
+          "maxMs": 547
+        },
+        "conversation.mainDispatch": {
+          "count": 9,
+          "totalMs": 737,
+          "maxMs": 116
+        },
+        "model.complete": {
+          "count": 1,
+          "totalMs": 4596,
+          "maxMs": 4596
+        },
+        "midscene.capture.settled": {
+          "count": 3,
+          "totalMs": 4991,
+          "maxMs": 2066
+        },
+        "runner.importReports": {
+          "count": 1,
+          "totalMs": 51,
+          "maxMs": 51
+        },
+        "phone.execute": {
+          "count": 1,
+          "totalMs": 30310,
+          "maxMs": 30310
+        },
+        "conversation": {
+          "count": 1,
+          "totalMs": 36305,
+          "maxMs": 36305
+        },
+        "runtime.shutdown": {
+          "count": 1,
+          "totalMs": 0,
+          "maxMs": 0
+        },
+        "task.wall": {
+          "count": 1,
+          "totalMs": 36801,
+          "maxMs": 36801
+        }
+      }
+    },
+    {
+      "id": "native-full-encoding-cache-3-20261017",
+      "wallMs": 63257,
+      "outerMs": 4848,
+      "runnerMs": 55714,
+      "outsideMs": 2695,
+      "innerHttpMs": 45126.512587,
+      "innerHttpRequests": 4,
+      "actions": 3,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "显示与亮度；自动调节：已开启。"
+      },
+      "phases": {
+        "persistence.snapshot": {
+          "count": 8,
+          "totalMs": 306,
+          "maxMs": 71
+        },
+        "persistence.write": {
+          "count": 7,
+          "totalMs": 392,
+          "maxMs": 87
+        },
+        "persistence.flush": {
+          "count": 6,
+          "totalMs": 39,
+          "maxMs": 37
+        },
+        "runtime.prepare": {
+          "count": 1,
+          "totalMs": 7,
+          "maxMs": 7
+        },
+        "phone.appCatalog": {
+          "count": 1,
+          "totalMs": 316,
+          "maxMs": 316
+        },
+        "runtime.startup": {
+          "count": 1,
+          "totalMs": 551,
+          "maxMs": 551
+        },
+        "conversation.mainDispatch": {
+          "count": 9,
+          "totalMs": 486,
+          "maxMs": 84
+        },
+        "model.complete": {
+          "count": 1,
+          "totalMs": 4848,
+          "maxMs": 4848
+        },
+        "midscene.capture.settled": {
+          "count": 3,
+          "totalMs": 4145,
+          "maxMs": 1601
+        },
+        "runner.importReports": {
+          "count": 1,
+          "totalMs": 72,
+          "maxMs": 72
+        },
+        "phone.execute": {
+          "count": 1,
+          "totalMs": 56768,
+          "maxMs": 56768
+        },
+        "conversation": {
+          "count": 1,
+          "totalMs": 62921,
+          "maxMs": 62921
+        },
+        "runtime.shutdown": {
+          "count": 1,
+          "totalMs": 1,
+          "maxMs": 1
+        },
+        "task.wall": {
+          "count": 1,
+          "totalMs": 63257,
+          "maxMs": 63257
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "First run after each APK install is cold; the last two cache runs are warm.",
+    "Timing sums overlap: snapshot, flush, main dispatch and write must not be added.",
+    "Observer stops at task.wall; final queued persistence writes may be outside this measurement.",
+    "Provider timing varies; task-wall changes are not solely attributable to persistence.",
+    "No 50% overall latency reduction proven."
+  ]
+}

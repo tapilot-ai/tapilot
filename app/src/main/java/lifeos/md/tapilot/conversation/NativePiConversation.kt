@@ -121,8 +121,10 @@ class NativePiConversation(context: Context) : AutoCloseable {
             synchronized(lock) {
                 if (process === child) { accepting = false; writer = null; process = null }
             }
+            val shutdownStarted = SystemClock.elapsedRealtime()
             child.destroy()
             if (!child.waitFor(2, TimeUnit.SECONDS)) { child.destroyForcibly(); child.waitFor(2, TimeUnit.SECONDS) }
+            record("runtime.shutdown", shutdownStarted)
         }
     }
     private fun write(value: JSONObject) {

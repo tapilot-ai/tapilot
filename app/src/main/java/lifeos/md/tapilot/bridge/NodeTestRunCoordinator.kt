@@ -203,6 +203,7 @@ class NodeTestRunCoordinator(
                     }
                     runCatching {
                         updateStatus(TaskExecutionStatus.FINALIZING)
+                        val importStarted = android.os.SystemClock.elapsedRealtime()
                         val importedReports = JSONArray()
                         for (index in 0 until agentReports.length()) {
                             val descriptor = agentReports.getJSONObject(index)
@@ -237,6 +238,8 @@ class NodeTestRunCoordinator(
                                     .put("title", "Execution report"),
                             )
                         }
+                        Log.i("TapilotPerformance", JSONObject().put("phase", "runner.importReports")
+                            .put("durationMs", android.os.SystemClock.elapsedRealtime() - importStarted).toString())
                         val primaryReportId = (0 until importedReports.length())
                             .map { importedReports.getJSONObject(it) }
                             .lastOrNull { it.getString("kind") == "agent" }

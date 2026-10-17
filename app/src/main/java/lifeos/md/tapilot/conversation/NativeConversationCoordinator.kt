@@ -46,7 +46,9 @@ class NativeConversationCoordinator(
     val chinese: Boolean get() = AppLanguage.resolved(activity) == "zh"
     val settingsBusy get() = settings.busy
     private val handler = Handler(Looper.getMainLooper())
-    private val persistence = ConversationWriter(store) { failure -> handler.post {
+    private val persistence = ConversationWriter(store, onTiming = { phase, duration ->
+        android.util.Log.i("TapilotPerformance", JSONObject().put("phase", "persistence.$phase").put("durationMs", duration).toString())
+    }) { failure -> handler.post {
         if (!closed) { stop(clearPending = false); fail(failure) }
     } }
     private val credentials = ModelCredentialStore(activity)
@@ -315,10 +317,10 @@ class NativeConversationCoordinator(
         val stopped = execution.begin(id, runSession)
         val startedAt = System.currentTimeMillis()
         val limits = AgentLimits.from(data)
-        val before = history().map { JSONObject(it.toString()) }
-        val retry = before.find { it.optString("id") == (continueOf ?: retryOf) }
-            ?: if (kind == "task") TaskLifecycle.continuation(before.filter { conversation(it) == cid }, text) else null
-        val prior = before.filter { conversation(it) == cid && (retry == null || (it.optString("id") != retryOf && it.optLong("createdAt") <= retry.optLong("createdAt"))) }
+        val before = history()
+        val taskHistory = TaskHistorySnapshot.capture(before, cid, text, kind, retryOf, continueOf)
+        val retry = taskHistory.retry
+        val prior = taskHistory.prior
         val source = text.trim().ifBlank { local("请查看附件", "Please inspect the attachment") }
         val entry = JSONObject().put("id", id).put("conversationId", cid).put("createdAt", startedAt)
             .put("source", source).put("inputText", text).put("kind", kind).put("modelName", if (useChatGpt) chatGptModel else model.getString("modelName"))
@@ -399,7 +401,7 @@ class NativeConversationCoordinator(
                             title = local("正在推进任务", "Working on task"), detail = event.getJSONArray("steps").strings().joinToString(" · "))
                         if (event.optString("type") == "accepted") find(event.optString("id"))?.put("status", "running")
                         save(); publish()
-                    } }, resumeInputs = TaskLifecycle.pendingInputs(retry?.takeIf { continueOf != null || it.optString("phase") != "completed" }, before), goal = entry.getString("goal"))
+                    } }, resumeInputs = taskHistory.pendingInputs, goal = entry.getString("goal"))
                     finalPhase = reply.getString("phase")
                     check(finalPhase != "failed") { reply.getString("reply") }
                     check(reply.optJSONObject("lastPhoneResult")?.optBoolean("success") != false || finalPhase == "waiting_user") { appText("手机操作未通过最终画面验证", "Phone operation did not pass final screen verification") }
@@ -525,9 +527,12 @@ class NativeConversationCoordinator(
     private fun <T> waitFor(promise: CompletableFuture<T>, stopped: AtomicBoolean, seconds: Long): T = effects.await(promise, stopped, seconds)
     private fun onMain(action: () -> Unit) {
         if (closed) return
+        val started = android.os.SystemClock.elapsedRealtime()
         val done = CompletableFuture<Unit>()
         handler.post { if (!closed) runCatching(action).fold({ done.complete(Unit) }, done::completeExceptionally) else done.complete(Unit) }
         done.get(10, TimeUnit.SECONDS)
+        android.util.Log.i("TapilotPerformance", JSONObject().put("phase", "conversation.mainDispatch")
+            .put("durationMs", android.os.SystemClock.elapsedRealtime() - started).toString())
     }
     fun stop(clearPending: Boolean = true, reason: String = "user") {
         if (clearPending) { pendingTurns.clear(); queuedContexts.clear(); if (ready) save() }
