@@ -22,15 +22,17 @@ class ConversationStore(private val file: File) {
     }
     @Synchronized fun save(value: JSONObject) {
         require(value.getInt("version") == 1)
-        value.put("storageRevision", java.util.UUID.randomUUID().toString())
-        writeAtomically(file, value.toString())
-        draftFile.delete() // A leftover draft has the old revision and is ignored after a crash.
+        val revision = java.util.UUID.randomUUID().toString()
+        value.put("storageRevision", revision)
+        // Startup recovery already writes every record. Seed the same immutable
+        // encoding cache here instead of encoding all history again on task one.
+        saveSnapshot(ConversationSnapshot.capture(value), revision)
     }
     /** Called only with detached immutable snapshots from ConversationWriter. */
-    @Synchronized internal fun saveSnapshot(snapshot: Map<String, Any?>) {
+    @Synchronized internal fun saveSnapshot(snapshot: Map<String, Any?>, revision: String = java.util.UUID.randomUUID().toString()) {
         val metadata = JSONObject(snapshot.filterKeys { it != "history" })
         require(metadata.getInt("version") == 1)
-        metadata.put("storageRevision", java.util.UUID.randomUUID().toString())
+        metadata.put("storageRevision", revision)
         val history = snapshot["history"] as? List<*> ?: error("Conversation history must be a list")
         val nextCache = mutableMapOf<Map<*, *>, String>()
         val encoded = history.map { value ->

@@ -38,6 +38,31 @@ class ConversationStoreTest {
             assertEquals("broken", file.readText())
         } finally { root.deleteRecursively() }
     }
+    @Test fun startupSaveAndWorkerSaveShareRevisionAndDetachedHistorySemantics() {
+        val root = Files.createTempDirectory("tapilot-startup-cache").toFile()
+        try {
+            val store = ConversationStore(root.resolve("state.json"))
+            val nested = JSONObject().put("value", "before").put("nullable", JSONObject.NULL)
+            val state = ConversationStore.empty().put("history", JSONArray().put(
+                JSONObject().put("id", "one").put("result", nested)))
+            store.save(state)
+            val initialRevision = state.getString("storageRevision")
+            assertEquals(initialRevision, store.read().getString("storageRevision"))
+            nested.put("value", "after")
+            assertEquals("before", store.read().getJSONArray("history").getJSONObject(0).getJSONObject("result").getString("value"))
+            ConversationWriter(store) { throw AssertionError(it) }.use { writer ->
+                writer.save(state)
+                writer.flush()
+            }
+            val saved = store.read()
+            assertNotEquals(initialRevision, saved.getString("storageRevision"))
+            val result = saved.getJSONArray("history").getJSONObject(0).getJSONObject("result")
+            assertEquals("after", result.getString("value"))
+            assertTrue(result.isNull("nullable"))
+            store.saveDraft("draft after worker")
+            assertEquals("draft after worker", store.read().getString("draft"))
+        } finally { root.deleteRecursively() }
+    }
     @Test fun endpointsAreHttpsAndChatCompatible() {
         assertEquals("https://example.test/v1/chat/completions", ModelProfiles.endpoint("https://example.test/v1/"))
         assertEquals("https://example.test/chat/completions", ModelProfiles.endpoint("https://example.test/chat"))

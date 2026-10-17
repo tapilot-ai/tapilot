@@ -1014,3 +1014,30 @@ samples, not a new speedup cohort. The benchmark boundary test and local quick
 checks passed.
 
 [Matched planning request measurements](performance-planning-request-20261017.json)
+
+### Reuse startup history encoding on the first task (2026-10-17)
+
+Startup recovery already durably saved all history through `ConversationStore.save`,
+but that path bypassed the immutable history encoding cache. The first queued
+task checkpoint therefore encoded the same history again. Direct saves now
+capture the same detached Map snapshot and use the same durable encoding path
+as worker saves. The caller's storage revision still matches its direct save;
+subsequent worker writes generate fresh revisions. Atomic replacement, fsync,
+draft revision checks, cache publication after successful writes and nested
+content invalidation remain intact.
+
+The first full task after installing this change succeeded in **43.222 s**.
+Compared with the prior first-after-install sample (43.951 s), first write time
+fell from **997 ms to 361 ms**, and summed flush waits from **1208 ms to 513 ms**.
+Time outside outer completion and the inner runner fell from **4423 ms to
+3856 ms**. Visual HTTP time increased from 23.429 s to 23.844 s; a single pair
+cannot establish stable overall improvement. The timer starts with the task,
+not app initialization: this does not measure launch-to-task-completion latency.
+The existing startup durable write is retained and now populates the cache;
+there is no separate prewarm write or deferred persistence barrier.
+
+Tests cover startup revision agreement, detached nested values/nulls, subsequent
+worker mutation, draft restoration and the existing cache/failure semantics.
+Kotlin tests, debug APK build, local quick checks and real OPPO full-task visual
+verification passed. The phone has the updated APK; no other-device or GitHub CI
+claim is made. [First-task measurements](performance-startup-cache-20261017.json)

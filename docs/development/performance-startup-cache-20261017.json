@@ -1,0 +1,103 @@
+{
+  "conditions": "First full task after APK installation; real same-model vision, full-size JPEG; startup initialization before task timer is not measured",
+  "limitations": [
+    "One sequential sample per implementation; not a stable full-task speedup claim.",
+    "Initialization still durably saves recovered history; its cache now serves the first task."
+  ],
+  "rows": [
+    {
+      "id": "native-full-capture-pacing-2-20261017",
+      "wallMs": 43951,
+      "outerMs": 6074,
+      "runnerMs": 33454,
+      "outsideMs": 4423,
+      "visualHttpMs": 23428.514053,
+      "persistence": {
+        "snapshot": [
+          185,
+          219,
+          116,
+          198,
+          106,
+          132,
+          143,
+          113
+        ],
+        "write": [
+          997,
+          198,
+          343,
+          193,
+          225,
+          129,
+          107
+        ],
+        "flush": [
+          921,
+          0,
+          125,
+          160,
+          1,
+          1
+        ]
+      },
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "“显示与亮度”页面可见；“自动调节”开关已开启。"
+      }
+    },
+    {
+      "id": "native-full-startup-cache-1-20261017",
+      "wallMs": 43222,
+      "outerMs": 5679,
+      "runnerMs": 33687,
+      "outsideMs": 3856,
+      "visualHttpMs": 23844.110771999996,
+      "persistence": {
+        "snapshot": [
+          186,
+          218,
+          143,
+          161,
+          195,
+          165,
+          117,
+          107
+        ],
+        "write": [
+          361,
+          245,
+          271,
+          170,
+          221,
+          127,
+          118
+        ],
+        "flush": [
+          329,
+          3,
+          72,
+          108,
+          1,
+          0
+        ]
+      },
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "“显示与亮度”页面可见；“自动调节”已开启。"
+      }
+    }
+  ]
+}

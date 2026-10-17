@@ -1,7 +1,6 @@
 package lifeos.md.tapilot.conversation
 
 import lifeos.md.tapilot.AppText.text as appText
-import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -16,7 +15,7 @@ class ConversationWriter(
     @Volatile private var failure: Throwable? = null
 
     fun save(value: JSONObject) {
-        val snapshot = timed("snapshot") { snapshotObject(value) }
+        val snapshot = timed("snapshot") { ConversationSnapshot.capture(value) }
         enqueue { timed("write") { store.saveSnapshot(snapshot) } }
     }
     fun saveDraft(text: String) = enqueue { store.saveDraft(text) }
@@ -38,11 +37,4 @@ class ConversationWriter(
     }
     override fun close() { worker.shutdown() }
 
-    private fun snapshotObject(value: JSONObject): Map<String, Any?> = value.keys().asSequence().associateWith { snapshot(value.get(it)) }
-    private fun snapshot(value: Any?): Any? = when (value) {
-        is JSONObject -> snapshotObject(value)
-        is JSONArray -> (0 until value.length()).map { snapshot(value.get(it)) }
-        JSONObject.NULL -> null
-        else -> value
-    }
 }
