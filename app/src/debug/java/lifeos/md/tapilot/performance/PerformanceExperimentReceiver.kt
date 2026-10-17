@@ -10,7 +10,7 @@ import org.json.JSONObject
 class PerformanceExperimentReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val fixture = intent.getStringExtra("fixture") ?: "read-auto-brightness"
-        if (fixture !in listOf("read-auto-brightness", "read-android-version")) {
+        if (fixture !in listOf("read-auto-brightness", "read-android-version", "calculate-expression", "read-world-clock", "locate-calendar-date")) {
             setResult(1, "Unsupported benchmark fixture", null)
             return
         }
@@ -51,7 +51,7 @@ class PerformanceExperimentReceiver : BroadcastReceiver() {
             // cannot disable automatic reply playback. Mute this run without
             // changing the user's preference; their next normal send unmutes it.
             runtime.stopAudio()
-            // Fixed read-only scenario, no arbitrary commands or gesture injection.
+            // Fixed scenarios only; no arbitrary commands or gesture injection.
             runtime.coordinator.command(JSONObject().put("action", "new"))
             if (controlled) {
                 val source = context.assets.open("performance/$fixture.json").bufferedReader().use { it.readText() }

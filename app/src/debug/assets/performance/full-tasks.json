@@ -1,4 +1,7 @@
 {
   "read-auto-brightness": "Open Settings, open Display and brightness, and read the current auto-brightness switch state. Do not change any setting. No voice.",
-  "read-android-version": "Open Settings, open About device, and read the Android version. Do not confuse Android version with ColorOS version or build number. Do not change any setting. No voice."
+  "read-android-version": "Open Settings, open About device, and read the Android version. Do not confuse Android version with ColorOS version or build number. Do not change any setting. No voice.",
+  "calculate-expression": "Open Calculator and calculate (128 + 256) × 3 ÷ 4. Read the final displayed result. Use the calculator UI for the calculation; do not answer from mental arithmetic. No voice.",
+  "read-world-clock": "Open Clock, open World clock, and read the currently visible city names and their displayed times. Do not add or remove cities or change alarms. No voice.",
+  "locate-calendar-date": "Open Calendar, navigate to November 15, 2026, and read the selected date and its weekday from the calendar UI. Do not create, edit, or delete events. No voice."
 }

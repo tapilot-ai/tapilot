@@ -13,7 +13,7 @@ import { verifyRuntime, sourceFingerprint } from './runtime-integrity.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const fixtureName = process.env.TAPILOT_BENCH_FIXTURE ?? 'read-auto-brightness';
-if (!['read-auto-brightness', 'read-android-version'].includes(fixtureName)) throw Error('Unsupported full-task fixture');
+if (!['read-auto-brightness', 'read-android-version', 'calculate-expression', 'read-world-clock', 'locate-calendar-date'].includes(fixtureName)) throw Error('Unsupported full-task fixture');
 const source = JSON.parse(await readFile(join(root, 'app/src/debug/assets/performance/full-tasks.json'), 'utf8'))[fixtureName];
 if (process.version !== 'v24.18.0') throw Error('Use Node 24.18.0 to match the phone');
 if (!process.env.TAPILOT_BENCH_AUTH_DIR || !process.env.TAPILOT_BENCH_ACCOUNT) throw Error('Explicit matched benchmark auth required');
