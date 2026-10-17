@@ -877,3 +877,59 @@ barriers and non-disruptive diagnostics. Kotlin tests, debug build and local
 quick checks passed. The direct-snapshot experiment is not the persistence
 implementation: worker snapshots remain immutable Maps for content-based cache
 keys, while task context uses direct JSON copies.
+
+### Identical request isolation and phone AI route (2026-10-17)
+
+`scripts/benchmark-model-path.mjs SERIAL SAVED_REPORT` replays one saved JPEG
+and one read-only question as byte-identical Responses bodies on desktop Node
+and the APK's embedded Node, under the actual app UID. Both use Node 24.18.0,
+`gpt-6-luna`, the same bearer credential, and 2346 input tokens. Credentials
+travel only through worker stdin, never command arguments or saved artifacts.
+Each cohort alternates desktop/phone order for four samples per host. Receipts
+exclude ADB delivery from request timing; bounded timeouts retain failures and
+never retry requests automatically. Set `TAPILOT_BENCH_AUTH_DIR` and
+`TAPILOT_BENCH_ACCOUNT` to the isolated benchmark login before running.
+
+| Fixed visual request | Desktop median | Phone median | Observed edge suffix, desktop / phone |
+| --- | ---: | ---: | --- |
+| Original phone AI route | 3.333 s | 8.183 s | SIN / SJC |
+| Phone AI selector: Singapore 1 | 3.475 s | 3.517 s | SIN / SIN |
+| Same route, confirmatory cohort | 3.353 s | 3.493 s | SIN / SIN |
+
+Only the phone's Clash AI selector changed, from Proxy (Fremont 2) to
+Singapore 1. The general Proxy selector and desktop configuration were left
+unchanged. The faster AI route remains selected on this test phone. This is a
+device configuration change, not a hard-coded route in the product. Request
+SHA-256, image SHA-256, cache usage, output lengths and raw timings are retained
+in the linked measurements. Phone fixed-request median decreased about 57%;
+this small sequential comparison supports a request-path contribution, but does
+not distinguish all provider/cache effects or establish a 57% full-task gain.
+
+Full-task validation then used the same Tapilot agent on desktop and phone:
+same account, actual model, task text, empty conversation, 2872-token outer
+input, OPPO initial Settings page, full-size JPEG quality 90 and independent
+visual verification. Desktop uses the original desktop network, not a slower
+shared proxy. These are same-agent measurements, not Codex UI response times.
+
+| Alternating pair | Standalone phone | Desktop same agent |
+| --- | ---: | ---: |
+| 1 | 46.462 s | 34.254 s |
+| 2 | 38.532 s | 32.526 s |
+| 3 | 38.790 s | 39.181 s |
+| Median | **38.790 s** | **34.254 s** |
+
+All six full tasks succeeded with four visual model calls and final screenshot
+verification. The slow first phone run remains included: outer completion took
+9.392 s, including an approximately 3.6 s pre-request gap whose cause is not yet
+proven. Phone median is **13.2% slower** than desktop. Against the earlier
+55.119 s phone baseline this is 29.6% lower, but that historical comparison is
+not a concurrent controlled experiment. The original 50% full-task target is
+still unmet. Fixed request parity does not establish full-task parity.
+
+Remaining work must separate model wait from runner startup, screenshot
+settling/capture and native task bookkeeping. Do not reduce verification or
+attribute every remaining second to network latency. Local quick checks,
+script syntax checks and real paired-device task validation passed; this does
+not claim GitHub CI or other-device validation.
+
+[Raw controlled measurements and boundaries](performance-network-20261017.json)
