@@ -56,13 +56,16 @@ Object.assign(env, {
   MIDSCENE_CHATGPT_ACCOUNT_ID: 'desktop-authorized', MIDSCENE_ANDROID_ASSISTANT_LANGUAGE: 'zh',
   TAPILOT_SCREENSHOT_SHRINK_FACTOR: '1',
 });
+const preload = process.env.TAPILOT_BENCH_SAVE_MODEL_REQUESTS === '1'
+  ? ['--import', join(root, 'scripts/lib/capture-model-request.mjs')] : [];
+if (preload.length) env.TAPILOT_BENCH_MODEL_REQUEST_DIR = join(out, 'model-requests');
 let started;
 try {
   await connection.open();
   // Caller resets Settings and visually checks its root before this invocation.
   // Connection setup is reported separately from execution; no reset in the timer.
   started = performance.now();
-  child = spawn(process.execPath, [join(bundle, 'runner.mjs'), 'test', '--project-root', out,
+  child = spawn(process.execPath, [...preload, join(bundle, 'runner.mjs'), 'test', '--project-root', out,
     '--result-dir', join(out, 'results'), '--config', join(bundle, 'android.config.mjs'),
     '--project', 'android-accessibility'], { cwd: bundle, env, stdio: ['pipe', 'pipe', 'ignore'] });
   const exit = new Promise((resolve, reject) => { child.once('error', reject); child.once('exit', code => resolve(code)); });

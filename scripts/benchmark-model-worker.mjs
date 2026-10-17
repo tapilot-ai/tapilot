@@ -2,19 +2,21 @@
 import { createInterface } from 'node:readline';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
-const { observeModelNetwork } = await import(pathToFileURL(process.argv[2]));
+const { observeModelNetwork, siwcFetch } = await import(pathToFileURL(process.argv[2]));
 let network = [];
 const stop = observeModelNetwork(value => network.push(value));
 console.log(JSON.stringify({ ready: true, node: process.version }));
 try {
   for await (const line of createInterface({ input: process.stdin })) {
-    const { id, token, body } = JSON.parse(line);
+    const { id, token, body, transport = 'direct' } = JSON.parse(line);
     console.log(JSON.stringify({ received: id }));
     network = [];
     const started = performance.now();
     const measurement = { id, requestSha256: createHash('sha256').update(body).digest('hex'), requestBytes: Buffer.byteLength(body) };
     try {
-      const response = await fetch('https://api.openai.com/v1/responses', {
+      const request = transport === 'siwc-request' ? siwcFetch(fetch, async () => token) : fetch;
+      measurement.transport = transport;
+      const response = await request('https://api.openai.com/v1/responses', {
         method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'text/event-stream' },
         body, signal: AbortSignal.timeout(45000),
       });

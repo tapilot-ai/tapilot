@@ -13,11 +13,20 @@ if (!serial || !report || !process.env.TAPILOT_BENCH_AUTH_DIR || !process.env.TA
 if (process.version !== 'v24.18.0') throw Error('Use Node 24.18.0');
 const auth = new ChatGPTAuth(process.env.TAPILOT_BENCH_AUTH_DIR);
 if ((await auth.status()).account !== process.env.TAPILOT_BENCH_ACCOUNT) throw Error('Account mismatch');
-const html = await readFile(report, 'utf8');
-const image = [...html.matchAll(/<script[^>]*type="midscene-image"[^>]*>([\s\S]*?)<\/script>/g)].at(-1)?.[1].trim();
+const source = await readFile(report, 'utf8');
+let image, body;
+const savedRequest = report.endsWith('.json');
+if (savedRequest) {
+  const parsed = JSON.parse(source);
+  if (parsed.model !== 'gpt-6-luna' || parsed.store !== false || parsed.stream !== true) throw Error('Unsupported saved request');
+  image = source.match(/data:image\/jpeg;base64,[A-Za-z0-9+/=]+/)?.[0];
+  body = source;
+} else {
+  image = [...source.matchAll(/<script[^>]*type="midscene-image"[^>]*>([\s\S]*?)<\/script>/g)].at(-1)?.[1].trim();
+  body = JSON.stringify({ model: 'gpt-6-luna', store: false, stream: true, include: ['reasoning.encrypted_content'],
+    input: [{ role: 'user', content: [{ type: 'input_text', text: 'Read the auto-brightness switch from this screenshot. Reply with its visible label and on/off state. If absent, say unknown. Do not perform any action.' }, { type: 'input_image', image_url: image }] }] });
+}
 if (!image?.startsWith('data:image/jpeg;base64,')) throw Error('JPEG screenshot missing');
-const body = JSON.stringify({ model: 'gpt-6-luna', store: false, stream: true, include: ['reasoning.encrypted_content'],
-  input: [{ role: 'user', content: [{ type: 'input_text', text: 'Read the auto-brightness switch from this screenshot. Reply with its visible label and on/off state. If absent, say unknown. Do not perform any action.' }, { type: 'input_image', image_url: image }] }] });
 const out = join(root, 'artifacts/controlled-execution', `model-path-${new Date().toISOString().replaceAll(':', '-')}`);
 await mkdir(out, { recursive: true });
 const adb = (...args) => execFileSync('adb', ['-s', serial, ...args], { encoding: 'utf8', timeout: 15000 });
@@ -70,11 +79,11 @@ try {
   for (const ready of await Promise.all([desktop.ready, phone.ready])) if (ready.node !== 'v24.18.0') throw Error('Worker runtime mismatch');
   for (const host of ['desktop', 'phone', 'phone', 'desktop', 'desktop', 'phone', 'phone', 'desktop']) {
     const id = `${host}-${measurements.length + 1}`;
-    const result = await ({ desktop, phone }[host]).request({ id, token: await auth.accessToken(), body });
+    const result = await ({ desktop, phone }[host]).request({ id, token: await auth.accessToken(), body, transport: savedRequest ? 'siwc-request' : 'direct' });
     if (result.id !== id || result.receiptMs === undefined) throw Error('Missing or mismatched worker receipt');
     if (result.requestSha256 !== createHash('sha256').update(body).digest('hex')) throw Error('Request byte mismatch');
     measurements.push({ host, ...result });
-    await writeFile(join(out, 'measurement.json'), JSON.stringify({ screenshotSha256: createHash('sha256').update(image).digest('hex'), requestSha256: result.requestSha256,
+    await writeFile(join(out, 'measurement.json'), JSON.stringify({ requestKind: savedRequest ? 'saved-model-request' : 'short-visual-query', screenshotSha256: createHash('sha256').update(image).digest('hex'), requestSha256: result.requestSha256,
       nodeVersion: process.version, desktopEnvironmentProxyEnabled: process.env.NODE_USE_ENV_PROXY === '1', measurements }, null, 2));
     console.log(JSON.stringify({ host, outcome: result.outcome, headersMs: result.headersMs, totalMs: result.totalMs }));
     if (result.outcome !== 'complete') throw Error('Request failed; sample retained, no automatic retry');

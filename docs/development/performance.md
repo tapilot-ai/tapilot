@@ -982,3 +982,35 @@ All samples are retained. The roughly 19% capture reduction compares a first-run
 baseline with a warm run and must not be presented as an overall 19% speedup.
 The two first-run pacing samples separately show lower capture totals than the
 instrumented baseline. More full-task controlled samples are still needed.
+
+### Real planning payload, matched transport (2026-10-17)
+
+The short visual query above has 2346 input tokens; it does not represent the
+full planning prompt. An opt-in benchmark preload now captures actual outgoing
+Responses request bodies, including the SIWC `Request` boundary. It clones the
+request without consuming the original and never saves headers. Bodies remain
+in ignored local artifacts with mode 0600; do not publish these screenshot and
+prompt fixtures. Set `TAPILOT_BENCH_SAVE_MODEL_REQUESTS=1` when running the full
+desktop benchmark, then pass `model-requests/request-1.json` to
+`scripts/benchmark-model-path.mjs` instead of an HTML report.
+
+A real 211296-byte planning request was replayed four times per host in
+alternating order. Both hosts use the actual `siwcFetch` wrapper, identical body
+SHA, bearer credential, Node version, model `gpt-6-luna` and reasoning settings
+(`low`, `current_turn`). All eight responses had **11234 input tokens**. Median
+request time was **5.356 s on the phone** and **5.589 s on desktop**. Both reported
+SIN edges. Output tokens varied (phone 96–105, desktop 106–108); one phone request
+missed the provider prefix cache while the other requests reported 8192 cached
+tokens. No phone actions are executed during replay.
+
+This small cohort does not show a persistent phone request penalty under the
+real planning load; it is not proof of full-task parity. Two desktop full tasks
+also completed in 42.279 s (five HTTP requests, one model retry) and 32.087 s
+(four requests, no retry). The first capture attempt used a string-only hook and
+produced no body fixture; the corrected Request-aware hook produced the fixture
+for the second task. Both full tasks passed independent visual verification.
+Capture-mode task times include local fixture-write overhead and are diagnostic
+samples, not a new speedup cohort. The benchmark boundary test and local quick
+checks passed.
+
+[Matched planning request measurements](performance-planning-request-20261017.json)
