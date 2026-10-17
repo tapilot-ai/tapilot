@@ -107,7 +107,8 @@ try {
       const summary = JSON.parse(stdout.trim().split('\n').at(-1));
       const measurement = JSON.parse(await readFile(join(summary.out, 'measurement.json')));
       if (measurement.status !== 'verified') throw Error('Unverified operation');
-      executions.push({ out: summary.out, measurement });
+      executions.push({ out: summary.out, measurement,
+        finishWhenVerifiedRequested: typeof params.finishWhenVerified === 'boolean' ? params.finishWhenVerified : null });
       return { success: true, result: measurement.queries[0].observation };
     });
     agent.stdin.write(JSON.stringify({ requestId, ok: true, result: value }) + '\n');

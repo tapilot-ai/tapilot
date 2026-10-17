@@ -1375,3 +1375,63 @@ investigation should address the planning-format retry and keep transport calls
 separate from successful report tasks when comparing performance.
 
 [Startup probes, complete-task timings and retry evidence](performance-pi-bundle-20261017.json)
+
+
+### Correct semantic response retries without transport backoff (2026-10-17)
+
+The preceding 44.776 s phone run returned plain prose (`自动调节已开启。`)
+instead of a planning completion marker. Parsing rejected it correctly, but
+then waited 2.013 s before requesting a corrected response. The SDK reused the
+transport retry interval for this semantic correction. The pinned core patch
+now corrects successful HTTP responses immediately; network retry backoff,
+retry bounds, feedback and cancellation remain intact. Both language prompts
+explicitly require the current action protocol's completion marker. Plain prose
+is still rejected; an independent final screenshot query remains required.
+This saves the fixed delay only when malformed output occurs, not two seconds
+on every successful task, and does not remove the corrective model call.
+
+Six focused ESM/CommonJS tests cover the reproduced response, bounded failures,
+cancellation and preserved transport backoff. Runtime bundle validation passed
+74 tests before the two additional transport tests were added; the final six
+focused tests passed separately. APK/Kotlin checks and local quick checks passed.
+The candidate was installed and exercised on OPPO e7ed3f17. Runtime fingerprint:
+`87a158749b1eb9e1891a9bd7dc327e601290e24d7376a27fe622376c179563e3`.
+
+The task remains reading auto-brightness from Settings without changing it.
+Both hosts use the same runtime, gpt-6-luna, account, Node 24.18.0, 988×1972
+screenshots and independent visual verification. Each run starts at the visually
+checked Settings root. Device operations are serialized. Server scheduling,
+cache hits and model output remain uncontrolled; live screenshots are not
+byte-identical. The desktop measurement is the same-agent harness, not Codex UI
+latency. The benchmark now records the model's actual `finishWhenVerified`
+choice so extra summary calls cannot silently skew the comparison.
+
+The update run was 52.045 s including 9.221 s runtime preparation and is retained
+separately from warm samples. All four warm tasks independently confirmed auto-brightness enabled.
+
+| Warm sample | Phone | Desktop same runtime |
+| --- | ---: | ---: |
+| 1 | 36.231 s | 34.348 s |
+| 2 | 38.717 s | 31.956 s |
+| Median (two samples) | 37.474 s | 33.152 s |
+
+Each warm task used one outer model call, four visual HTTP requests and three
+device actions. The desktop explicitly requested `finishWhenVerified=true` in
+both samples. Phone planning logs contain no semantic parsing retries; the
+successful report count agrees with HTTP telemetry. These successful samples
+therefore do not measure the conditional two-second retry saving directly.
+
+The phone median is 13.0% slower than desktop. The difference decomposes into
+2.624 s additional visual HTTP time, 1.653 s additional work outside the outer
+model and inner runner, 0.112 s additional outer model time, and 0.066 s less
+inner non-HTTP time. Those phase totals are additive; startup and capture are
+nested and must not be added again. HTTP time includes network and server work,
+so this does not establish a pure network or inference bottleneck.
+
+Against the original 55.119 s brightness median this is a 32.0% reduction,
+not the requested 50%; the 27.560 s target remains unmet. Two samples per host
+are insufficient to claim stable parity or broad task equivalence. Next work
+should separately profile the remaining phone lifecycle/persistence overhead
+and repeat identical-request route tests while preserving live-task results.
+
+[Complete task timings and semantic retry evidence](performance-semantic-retry-20261017.json)

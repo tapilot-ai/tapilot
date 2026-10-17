@@ -1,0 +1,335 @@
+{
+  "originalFailure": {
+    "id": "native-full-pi-bundle-warm-2-20261017",
+    "content": "自动调节已开启。",
+    "reason": "Missing action, completion or error marker",
+    "parseErrorToNextRequestMs": 2013
+  },
+  "rows": [
+    {
+      "id": "native-full-semantic-update-20261017",
+      "task": {
+        "phase": "task.wall",
+        "taskId": "42048696-8054-4192-8e8c-0ca873bc3993",
+        "status": "succeeded",
+        "createdAt": 1792211673966,
+        "completedAt": 1792211726011,
+        "durationMs": 52045
+      },
+      "sourceFingerprint": "87a158749b1eb9e1891a9bd7dc327e601290e24d7376a27fe622376c179563e3",
+      "prepareMs": 9221,
+      "startupMs": 245,
+      "outerCalls": 1,
+      "outerMs": 9030,
+      "runnerMs": 30329,
+      "httpMs": 20263.963325,
+      "innerNonHttpMs": 10065.036675,
+      "outsideMs": 12686,
+      "httpRequests": 4,
+      "planningParseRetries": 0,
+      "actions": 3,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "“显示与亮度”页面可见。“自动调节”开关为开启状态。"
+      },
+      "http": [
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:35:05.414Z",
+          "phase": "midscene.model.http",
+          "request": 1,
+          "headersMs": 3683.6260920000004,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 30394,
+          "firstBodyMs": 3690.861613,
+          "totalMs": 7030.923018,
+          "outcome": "complete"
+        },
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:35:13.440Z",
+          "phase": "midscene.model.http",
+          "request": 2,
+          "headersMs": 2143.5984370000006,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 28406,
+          "firstBodyMs": 2149.0464580000007,
+          "totalMs": 4535.755728000002,
+          "outcome": "complete"
+        },
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:35:19.127Z",
+          "phase": "midscene.model.http",
+          "request": 3,
+          "headersMs": 2041.0813009999983,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 16170,
+          "firstBodyMs": 2045.993696999998,
+          "totalMs": 3575.9128629999977,
+          "outcome": "complete"
+        },
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:35:24.979Z",
+          "phase": "midscene.model.http",
+          "request": 4,
+          "headersMs": 2533.0653630000015,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 31657,
+          "firstBodyMs": 2644.8752590000004,
+          "totalMs": 5121.3717160000015,
+          "outcome": "complete"
+        }
+      ]
+    },
+    {
+      "id": "native-full-semantic-warm-1-20261017",
+      "task": {
+        "phase": "task.wall",
+        "taskId": "3efc723a-c4bf-40e5-9569-db3001d67caf",
+        "status": "succeeded",
+        "createdAt": 1792211761503,
+        "completedAt": 1792211797734,
+        "durationMs": 36231
+      },
+      "sourceFingerprint": "87a158749b1eb9e1891a9bd7dc327e601290e24d7376a27fe622376c179563e3",
+      "prepareMs": 9,
+      "startupMs": 218,
+      "outerCalls": 1,
+      "outerMs": 4718,
+      "runnerMs": 29093,
+      "httpMs": 19439.497441,
+      "innerNonHttpMs": 9653.502559,
+      "outsideMs": 2420,
+      "httpRequests": 4,
+      "planningParseRetries": 0,
+      "actions": 3,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "页面标题为“显示与亮度”。“自动调节”开关为开启状态。"
+      },
+      "http": [
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:36:17.708Z",
+          "phase": "midscene.model.http",
+          "request": 1,
+          "headersMs": 3242.8317689999994,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 34447,
+          "firstBodyMs": 3250.733905,
+          "totalMs": 6250.720935,
+          "outcome": "complete"
+        },
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:36:26.000Z",
+          "phase": "midscene.model.http",
+          "request": 2,
+          "headersMs": 2203.3026549999995,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 28351,
+          "firstBodyMs": 2207.7805719999997,
+          "totalMs": 4985.837915,
+          "outcome": "complete"
+        },
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:36:31.749Z",
+          "phase": "midscene.model.http",
+          "request": 3,
+          "headersMs": 2436.8305199999995,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 15998,
+          "firstBodyMs": 2443.2164059999996,
+          "totalMs": 3769.528176,
+          "outcome": "complete"
+        },
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:36:36.865Z",
+          "phase": "midscene.model.http",
+          "request": 4,
+          "headersMs": 2389.231717999999,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 27874,
+          "firstBodyMs": 2392.6815099999985,
+          "totalMs": 4433.4104149999985,
+          "outcome": "complete"
+        }
+      ]
+    },
+    {
+      "id": "native-full-semantic-warm-2-20261017",
+      "task": {
+        "phase": "task.wall",
+        "taskId": "2727a563-8e3a-42a0-a82d-ff3540c55a6e",
+        "status": "succeeded",
+        "createdAt": 1792212004328,
+        "completedAt": 1792212043045,
+        "durationMs": 38717
+      },
+      "sourceFingerprint": "87a158749b1eb9e1891a9bd7dc327e601290e24d7376a27fe622376c179563e3",
+      "prepareMs": 10,
+      "startupMs": 226,
+      "outerCalls": 1,
+      "outerMs": 6075,
+      "runnerMs": 30382,
+      "httpMs": 20792.207959999996,
+      "innerNonHttpMs": 9589.792040000004,
+      "outsideMs": 2260,
+      "httpRequests": 4,
+      "planningParseRetries": 0,
+      "actions": 3,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "当前页面标题为“显示与亮度”。“自动调节”开关为开启状态。"
+      },
+      "http": [
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:40:21.703Z",
+          "phase": "midscene.model.http",
+          "request": 1,
+          "headersMs": 3427.2570819999996,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 30882,
+          "firstBodyMs": 3679.565572,
+          "totalMs": 6215.938070999999,
+          "outcome": "complete"
+        },
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:40:30.274Z",
+          "phase": "midscene.model.http",
+          "request": 2,
+          "headersMs": 2764.8820300000007,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 28380,
+          "firstBodyMs": 2769.785207000001,
+          "totalMs": 5472.742028999999,
+          "outcome": "complete"
+        },
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:40:36.144Z",
+          "phase": "midscene.model.http",
+          "request": 3,
+          "headersMs": 2528.1978640000016,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 13535,
+          "firstBodyMs": 2533.594739,
+          "totalMs": 3820.8592690000005,
+          "outcome": "complete"
+        },
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:40:42.102Z",
+          "phase": "midscene.model.http",
+          "request": 4,
+          "headersMs": 2935.258227999999,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 29780,
+          "firstBodyMs": 2940.9849990000002,
+          "totalMs": 5282.668590999998,
+          "outcome": "complete"
+        }
+      ]
+    }
+  ],
+  "desktop": [
+    {
+      "id": "full-desktop-2026-10-17T04-37-07.214Z",
+      "status": "verified",
+      "sourceFingerprint": "87a158749b1eb9e1891a9bd7dc327e601290e24d7376a27fe622376c179563e3",
+      "wallMs": 34347.626542,
+      "outerCalls": 1,
+      "outerMs": 5681.6900829999995,
+      "runnerMs": 27968,
+      "httpMs": 17911.884041999998,
+      "innerNonHttpMs": 10056.115958000002,
+      "outsideMs": 697.9364589999968,
+      "httpRequests": 4,
+      "finishWhenVerifiedRequested": true,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "“显示与亮度”页面中，“自动调节”标签及其开关清晰可见；开关已开启。"
+      }
+    },
+    {
+      "id": "full-desktop-2026-10-17T04-40-59.425Z",
+      "status": "verified",
+      "sourceFingerprint": "87a158749b1eb9e1891a9bd7dc327e601290e24d7376a27fe622376c179563e3",
+      "wallMs": 31956.234958,
+      "outerCalls": 1,
+      "outerMs": 4888.345792,
+      "runnerMs": 26391,
+      "httpMs": 17072.751624000004,
+      "innerNonHttpMs": 9318.248375999996,
+      "outsideMs": 676.8891660000008,
+      "httpRequests": 4,
+      "finishWhenVerifiedRequested": true,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "显示设置页面标题为“显示与亮度”。亮度区域中可见“自动调节”标签，右侧开关为蓝色、滑块在右侧，表示已开启。"
+      }
+    }
+  ],
+  "controls": {
+    "task": "read-auto-brightness",
+    "device": "e7ed3f17",
+    "model": "gpt-6-luna",
+    "sameAccount": true,
+    "node": "24.18.0",
+    "screenshot": [
+      988,
+      1972
+    ],
+    "sameRuntime": true,
+    "independentFinalVisualQuery": true,
+    "boundary": "Desktop same-agent harness, not Codex UI; model/cache/network remain variable; Settings root visually reset before each run."
+  }
+}
