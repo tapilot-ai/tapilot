@@ -8,7 +8,7 @@ import {
   mergeAndroidAssistantAIActContext,
 } from './assistant-context.mjs';
 import { withAndroidAiActDefaults } from './execution-policy.mjs';
-import { withSettledScreenshots } from './settled-capture.mjs';
+import { withSettledScreenshots, nativeFingerprint } from './settled-capture.mjs';
 import { StdioNativeBridge } from './stdio-native-bridge.mjs';
 import { siwcFetch, measuredFetch, observeModelNetwork } from './siwc-fetch.mjs';
 
@@ -55,7 +55,9 @@ const setup = defineProjectSetup({
       bridge.close();
       throw new Error('请先在系统设置中开启 Tapilot 辅助功能');
     }
-    const device = new AndroidAccessibilityDevice(withSettledScreenshots(bridge, { record: timing => {
+    const device = new AndroidAccessibilityDevice(withSettledScreenshots(bridge, {
+      ...(capabilities.captureFingerprint === 'rgb-luma-64x96-v1' ? { fingerprint: nativeFingerprint } : {}),
+      record: timing => {
       process.stdout.write(`MIDSCENE_EVENT ${JSON.stringify({ type: 'capture.settled', timestamp: new Date().toISOString(), ...timing })}\n`);
     } }), capabilities);
     const agents = new Map();

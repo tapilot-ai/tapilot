@@ -53,6 +53,7 @@ class MidsceneAccessibilityService : AccessibilityService() {
     private var lastTapAtMillis = 0L
 
     fun capabilityDetails(): org.json.JSONObject = org.json.JSONObject()
+        .put("captureFingerprint", FrameFingerprint.ALGORITHM)
         .put("systemActions", org.json.JSONArray(extendedActions.availableSystemActions()))
         .put("apps", extendedActions.apps())
 
@@ -206,6 +207,7 @@ class MidsceneAccessibilityService : AccessibilityService() {
                 rotation = getSystemService(DisplayManager::class.java).getDisplay(Display.DEFAULT_DISPLAY)?.rotation ?: 0,
                 screenWidth = metrics.widthPixels, screenHeight = metrics.heightPixels,
                 imageWidth = bitmap.width, imageHeight = bitmap.height,
+                fingerprint = if (recordFrame && !metadataOnly) FrameFingerprint.capture(bitmap) else null,
             ).also { if (recordFrame) latestCapture = it }
         } finally { bitmap.recycle() }
     }
@@ -978,6 +980,7 @@ class MidsceneAccessibilityService : AccessibilityService() {
         val screenHeight: Int,
         val imageWidth: Int,
         val imageHeight: Int,
+        val fingerprint: String? = null,
     )
 
     class SessionCancelledException : IllegalStateException("Task session was cancelled")

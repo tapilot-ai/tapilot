@@ -3,7 +3,7 @@
 // Auth preflight happens before acquiring the phone. Never replay failed actions.
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
-import { readFile, mkdir, writeFile, copyFile } from 'node:fs/promises';
+import { readFile, mkdir, writeFile, copyFile, appendFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { homedir } from 'node:os';
 import { createHash } from 'node:crypto';
@@ -67,6 +67,7 @@ try {
     const event = JSON.parse(line.slice('MIDSCENE_EVENT '.length));
     if (event.type !== 'rpc.request') {
       events.push(event);
+      await appendFile(join(out, 'events.jsonl'), JSON.stringify(event) + '\n');
       if (event.type === 'test.completed') completed = event;
       continue;
     }
@@ -97,8 +98,10 @@ try {
   const queries = result.projects.flatMap(p => p.cases ?? []).flatMap(c => c.run?.steps ?? [])
     .filter(s => s.node === 'aiQuery').map(s => s.output?.data);
   if (queries.length !== 1 || queries[0]?.success !== true || !queries[0]?.observation) throw Error('Independent screenshot verification did not pass');
-  const evidence = controlledEvidence(await readFile(completed.reportPath, 'utf8'));
-  await writeFile(join(out, 'measurement.json'), JSON.stringify({ fixtureSha256, captureFormat, sourceFingerprint: sourceFingerprint(root), executionWallMs, queries, evidence,
+  const report = await readFile(completed.reportPath, 'utf8');
+  const evidence = controlledEvidence(report);
+  await writeFile(join(out, 'report.html'), report);
+  await writeFile(join(out, 'measurement.json'), JSON.stringify({ fixtureSha256, captureFormat, sourceFingerprint: sourceFingerprint(root), executionWallMs, runnerDurationMs: result.durationMs, environmentProxyEnabled: process.env.NODE_USE_ENV_PROXY === '1', queries, evidence,
     status: 'verified', nodeVersion: process.version, events }, null, 2));
   console.log(JSON.stringify({ out, executionWallMs, status: 'verified' }));
 } catch (error) {

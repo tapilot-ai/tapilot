@@ -25,7 +25,13 @@ class AndroidDeviceService(context: Context) : DeviceService {
                     metadataOnly = command.metadataOnly, recordFrame = !command.preview, jpeg = command.jpeg, hideOverlays = !command.preview) { result ->
                     complete(result.map { frame ->
                         if (command.preview) JSONObject().put("dataUrl", frame.dataUrl).put("capturedAt", frame.capturedAt)
-                        else JSONObject().put("dataUrl", frame.dataUrl).put("geometry", frame.geometry())
+                        else JSONObject().put("dataUrl", frame.dataUrl).put("geometry", frame.geometry()).also { payload ->
+                            frame.fingerprint?.let { data ->
+                                payload.put("fingerprint", JSONObject()
+                                    .put("algorithm", lifeos.md.tapilot.accessibility.FrameFingerprint.ALGORITHM)
+                                    .put("frameId", frame.frameId).put("data", data))
+                            }
+                        }
                     })
                 }
                 is DeviceCommand.Execute -> {

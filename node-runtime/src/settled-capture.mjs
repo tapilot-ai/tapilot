@@ -1,5 +1,17 @@
 import sharp from 'sharp';
 
+// Negotiated once per agent. Do not mix native and Sharp fingerprints mid-run:
+// their resampling/luma algorithms differ and could turn an old page into a change.
+export function nativeFingerprint(frame) {
+  const hint = frame.fingerprint;
+  if (hint?.algorithm !== 'rgb-luma-64x96-v1' || !frame.geometry?.frameId ||
+      hint.frameId !== frame.geometry.frameId || typeof hint.data !== 'string' ||
+      !/^[A-Za-z0-9+/]{8192}$/.test(hint.data)) {
+    throw new Error('Missing or invalid native frame fingerprint');
+  }
+  return Buffer.from(hint.data, 'base64');
+}
+
 async function pixels(frame) {
   return sharp(Buffer.from(frame.dataUrl.split(',').at(-1), 'base64'))
     .resize(64, 96, { fit: 'fill' }).greyscale().raw().toBuffer();

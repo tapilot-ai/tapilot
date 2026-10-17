@@ -1,0 +1,115 @@
+{
+  "task": "read-auto-brightness",
+  "fixtureSha256": "728d1efbbbedbe74944152cc3c3696a14a43e2664a0e95642123386c74c82aef",
+  "sourceFingerprint": "786514902ed37becca2d8958a66fd72215f9abf89bdf12855805f3823e120443",
+  "accountMatched": true,
+  "nodeVersion": "24.18.0",
+  "model": "gpt-6-luna",
+  "image": {
+    "width": 988,
+    "height": 1972,
+    "format": "jpeg",
+    "quality": 90,
+    "shrinkFactor": 1
+  },
+  "samples": [
+    {
+      "id": "2026-10-17T01-20-54.975Z",
+      "host": "desktop",
+      "route": "original",
+      "wallMs": 30594,
+      "runnerMs": 30476,
+      "httpMs": 19795,
+      "modelCalls": 4,
+      "retries": 0,
+      "success": true
+    },
+    {
+      "id": "2026-10-17T01-23-28.542Z",
+      "host": "desktop",
+      "route": "phone-proxy",
+      "wallMs": 51360,
+      "runnerMs": 51244,
+      "httpMs": 40659,
+      "modelCalls": 4,
+      "retries": 0,
+      "success": true
+    },
+    {
+      "id": "2026-10-17T01-26-19.274Z",
+      "host": "desktop",
+      "route": "phone-proxy",
+      "wallMs": 46854,
+      "runnerMs": 46741,
+      "httpMs": 36616,
+      "modelCalls": 4,
+      "retries": 0,
+      "success": true
+    },
+    {
+      "id": "2026-10-17T01-28-32.585Z",
+      "host": "desktop",
+      "route": "phone-proxy",
+      "wallMs": 34854,
+      "runnerMs": 34730,
+      "httpMs": 24321,
+      "modelCalls": 4,
+      "retries": 0,
+      "success": true
+    },
+    {
+      "id": "native-fingerprint-warmup-20261017",
+      "host": "phone",
+      "route": "phone-vpn",
+      "warmup": true,
+      "wallMs": 76983,
+      "runnerMs": 60863,
+      "httpMs": 45085,
+      "modelCalls": 5,
+      "retries": 0,
+      "success": true
+    },
+    {
+      "id": "native-fingerprint-1-20261017",
+      "host": "phone",
+      "route": "phone-vpn",
+      "warmup": false,
+      "wallMs": 68445,
+      "runnerMs": 65594,
+      "httpMs": 53647,
+      "modelCalls": 4,
+      "retries": 0,
+      "success": true
+    },
+    {
+      "id": "native-fingerprint-2-20261017",
+      "host": "phone",
+      "route": "phone-vpn",
+      "warmup": false,
+      "wallMs": 50705,
+      "runnerMs": 48401,
+      "httpMs": 36782,
+      "modelCalls": 4,
+      "retries": 0,
+      "success": true
+    },
+    {
+      "id": "native-fingerprint-3-20261017",
+      "host": "phone",
+      "route": "phone-vpn",
+      "warmup": false,
+      "wallMs": 40450,
+      "runnerMs": 38582,
+      "httpMs": 26062,
+      "modelCalls": 5,
+      "retries": 0,
+      "success": true
+    }
+  ],
+  "limitations": [
+    "Execution fixture excludes outer conversation planning on both hosts.",
+    "HTTP timing includes provider processing and network; it is not pure network RTT.",
+    "Phone proxy diagnostic does not establish standalone performance on the original desktop route.",
+    "No before/after native-fingerprint task speedup is established by this dataset."
+  ]
+}

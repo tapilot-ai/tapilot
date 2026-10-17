@@ -618,3 +618,66 @@ still measured desktop medians of 9.53 ms full JPEG encoding / 31.18 ms stabilit
 fingerprint, versus Android 476.97 / 215.76 ms. Sharp is 0.35.5 and libvips 8.18.7
 on both. These are processing-only measurements; hardware/OS and native versus
 WASM backend remain the variables, and the ratios are not task speedup ratios.
+
+### 2026-10-17: matching-account execution and native fingerprints
+
+Matching-account desktop authorization is now verified in an isolated credential
+store; the ordinary plugin account is unchanged. Both hosts run the fixed
+read-auto-brightness fixture, Node 24.18.0, the same bundle, gpt-6-luna,
+988×1972 JPEG quality 90, shrink factor 1, and an independent final visual query.
+This isolates the execution stage; it does not measure a full Codex conversation
+against the phone's outer conversation planner.
+
+The OPPO VPN advertised both WIFI and VPN transports. Selecting the first WIFI
+network incorrectly bound wireless control to the VPN interface. Selection now
+requires a non-VPN Wi-Fi network. Real-device verification showed the listener
+move to the physical Wi-Fi address and pinned/authenticated desktop tasks succeed.
+
+Stability checking now negotiates `rgb-luma-64x96-v1` fingerprints computed from
+the captured Android bitmap. This avoids repeatedly decoding full images through
+WASM only to compare tiny grayscale thumbnails. Full screenshots still go to the
+model and reports. Fingerprints are tied to frame IDs; stale/malformed hints fail
+rather than mixing native and Sharp algorithms. Older servers retain the Sharp
+path. Delayed navigation, unchanged screens, press feedback and invalid hints
+are covered by tests. JPEG model capture remains an explicit experiment, not the
+production default.
+
+For network attribution, desktop repetitions additionally used the phone's HTTP
+proxy through a temporary localhost ADB port forward and Node's
+`NODE_USE_ENV_PROXY=1`. Only model traffic uses that proxy; phone control still
+uses pinned TLS over Wi-Fi. This diagnostic shares the proxy route but cannot
+hold provider queueing/cache state constant. It is not a standalone-phone solution
+or an excuse to redefine the fast desktop baseline. A desktop run on its original
+route succeeded in 30.594 s (inner 30.476 s; HTTP 19.795 s; four model calls).
+
+All three alternating retained samples passed independent screenshot verification;
+actual returned models matched and there were zero model retries. Do not filter
+out the slow sample or the phone's extra planning call in repetition 3.
+
+| Host / repetition | Task wall (s) | Inner runner (s) | Model HTTP (s) | Model calls |
+| --- | ---: | ---: | ---: | ---: |
+| Desktop, phone proxy 1 | 51.360 | 51.244 | 40.659 | 4 |
+| Phone 1 | 68.445 | 65.594 | 53.647 | 4 |
+| Desktop, phone proxy 2 | 46.854 | 46.741 | 36.616 | 4 |
+| Phone 2 | 50.705 | 48.401 | 36.782 | 4 |
+| Desktop, phone proxy 3 | 34.854 | 34.730 | 24.321 | 4 |
+| Phone 3 | 40.450 | 38.582 | 26.062 | 5 |
+
+Median task walls are **50.705 s phone / 46.854 s desktop (+8.2%)**;
+matching inner-runner boundaries are **48.401 / 46.741 s (+3.6%)**.
+The first phone run after installing the new bundle is excluded as warmup:
+76.983 s wall / 60.863 s inner, five calls, 45.085 s HTTP. It is retained in the
+[data file](performance-controlled-20261017.json), together with every sample.
+
+In repetition 2, HTTP totals differ by only 0.166 s; inner non-HTTP residuals are
+11.619 s phone / 10.125 s desktop. Across samples, HTTP dominates variability.
+HTTP includes model processing, queueing and network transport: these measurements
+cannot assign all of it to Wi-Fi, VPN or inference. The original-route desktop
+sample and repeated phone-proxy samples differ in time and provider cache state,
+so the route experiment is suggestive, not a precise causal speedup estimate.
+
+The shared-route execution stage is now close on this fixture. This does **not**
+prove a 50% full standalone-task improvement, improvement over the previous APK,
+or parity with the fastest original-route desktop sample. Additional tasks,
+full-conversation timing and isolating model-service wait remain outstanding.
+The temporary proxy forward was removed after testing.

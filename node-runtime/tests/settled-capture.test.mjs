@@ -1,20 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { withSettledScreenshots } from './settled-capture.mjs';
+import { withSettledScreenshots, nativeFingerprint } from './settled-capture.mjs';
 
-function fixture(frameAt) {
+function fixture(frameAt, native = false) {
   let clock = 0, actions = 0, captures = 0, fail = false;
   const records = [], points = [];
   const bridge = { getCapabilities() {}, getSize() {}, cancelSession() {}, completeSession() {},
     async capture() {
       if (fail) throw new Error('capture cancelled');
       clock += 200; captures++;
-      return { dataUrl: 'fixture', geometry: { frameId: String(captures) }, value: frameAt(clock, actions) };
+      const value = frameAt(clock, actions);
+      return { dataUrl: 'fixture', geometry: { frameId: String(captures) }, value,
+        ...(native ? { fingerprint: { algorithm: 'rgb-luma-64x96-v1', frameId: String(captures), data: Buffer.alloc(6144, value).toString('base64') } } : {}) };
     },
     async execute(a, id) { actions++; points.push({ a, id }); },
   };
   const observer = withSettledScreenshots(bridge, { now: () => clock, sleep: async ms => { clock += ms; },
-    fingerprint: async frame => Buffer.alloc(64 * 96, frame.value), record: x => records.push(x) });
+    fingerprint: native ? nativeFingerprint : async frame => Buffer.alloc(64 * 96, frame.value), record: x => records.push(x) });
   return { observer, records, points, fail: () => { fail = true; }, count: () => ({ actions, captures, clock }) };
 }
 
@@ -54,4 +56,27 @@ test('temporary press feedback returning to the old page cannot settle before de
   const result = await f.observer.capture();
   assert.equal(result.value, 200); assert.ok(f.records[0].durationMs >= 1100);
   assert.equal(f.count().actions, 1);
+});
+
+for (const [name, frameAt, state, minimum] of [
+  ['delayed navigation', (time, actions) => actions && time >= 1100 ? 200 : 0, 'stable', 1100],
+  ['unchanged page', () => 0, 'unchanged', 1500],
+  ['press feedback before delayed navigation', (time, actions) => !actions ? 0 : time < 600 ? 100 : time < 1100 ? 0 : 200, 'stable', 1100],
+]) test(`native fingerprints preserve ${name} without decoding full images`, async () => {
+  const f = fixture(frameAt, true);
+  const before = await f.observer.capture();
+  await f.observer.execute({ type: 'tap' }, before.geometry.frameId);
+  const result = await f.observer.capture();
+  assert.equal(f.records[0].state, state);
+  assert.ok(f.records[0].durationMs >= minimum);
+  assert.equal(result.geometry.frameId, String(f.count().captures));
+  assert.equal(f.count().actions, 1);
+});
+
+test('native fingerprint cannot silently substitute stale or malformed evidence', () => {
+  const frame = { geometry: { frameId: 'new' }, fingerprint: { algorithm: 'rgb-luma-64x96-v1', frameId: 'new', data: Buffer.alloc(6144, 42).toString('base64') } };
+  assert.equal(nativeFingerprint(frame).length, 6144);
+  for (const hint of [undefined, {...frame.fingerprint,frameId:'old'}, {...frame.fingerprint,algorithm:'unknown'}, {...frame.fingerprint,data:'!'.repeat(8192)}, {...frame.fingerprint,data:'AAAA'}]) {
+    assert.throws(() => nativeFingerprint({...frame,fingerprint:hint}), /invalid native/);
+  }
 });

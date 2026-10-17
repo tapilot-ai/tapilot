@@ -24,6 +24,8 @@ export interface FrameGeometry {
 export interface CaptureResult {
   dataUrl: string;
   geometry: FrameGeometry;
+  /** Optional same-frame hint for visual settling, not task verification. */
+  fingerprint?: { algorithm: string; frameId: string; data: string };
 }
 
 export type NativeAction =
