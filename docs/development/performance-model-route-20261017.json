@@ -1,0 +1,1227 @@
+{
+  "controls": {
+    "model": "gpt-6-luna",
+    "node": "24.18.0",
+    "request": "identical saved planning body, screenshot and bearer credential per cohort; no device actions",
+    "samplesPerHostPerCohort": 4,
+    "order": "desktop, phone, phone, desktop, desktop, phone, phone, desktop",
+    "limitations": [
+      "Sequential small cohorts; cache hits and generated tokens differ.",
+      "Response headers wait includes network and service time; cannot isolate inference or queueing.",
+      "Explicit localhost proxy is diagnostic only, not a product change.",
+      "Phone AI selector restored to Singapore 1; temporary ADB forward removed."
+    ]
+  },
+  "cohorts": [
+    {
+      "id": "model-path-2026-10-17T04-08-56.456Z",
+      "route": "Singapore 1; desktop original route; phone VPN",
+      "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+      "screenshotSha256": "7691378abcc662ebaf6b468194a53bb9386bc55382abb0a39eee5359482faa55",
+      "medians": {
+        "desktop": {
+          "totalMs": 5137.046500000002,
+          "headersMs": 2267.1086040000027
+        },
+        "phone": {
+          "totalMs": 6418.470518499999,
+          "headersMs": 3690.5332535000016
+        }
+      },
+      "measurements": [
+        {
+          "host": "desktop",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 2740.711417,
+          "firstBodyMs": 2740.945542,
+          "totalMs": 5252.370584,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 95,
+            "cachedTokens": 8192,
+            "reasoningTokens": 11
+          },
+          "network": [
+            {
+              "request": 1,
+              "bodySentMs": 363.20075,
+              "headersMs": 2716.212833,
+              "status": 200,
+              "totalMs": 5228.5244999999995,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "phone",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 4118.52354,
+          "firstBodyMs": 4125.843957000001,
+          "totalMs": 6865.441404000001,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 108,
+            "cachedTokens": 0,
+            "reasoningTokens": 22
+          },
+          "network": [
+            {
+              "request": 1,
+              "bodySentMs": 924.9111460000004,
+              "headersMs": 3956.214999,
+              "status": 200,
+              "totalMs": 6712.100727000001,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "phone",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 3666.257342000001,
+          "firstBodyMs": 3668.619477,
+          "totalMs": 6435.532914000001,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 106,
+            "cachedTokens": 8192,
+            "reasoningTokens": 22
+          },
+          "network": [
+            {
+              "request": 2,
+              "bodySentMs": 4.361405999999988,
+              "headersMs": 3641.8779670000004,
+              "status": 200,
+              "totalMs": 6415.523121999999,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "desktop",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 2038.723249999999,
+          "firstBodyMs": 2038.8629159999982,
+          "totalMs": 4707.498333,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 108,
+            "cachedTokens": 10624,
+            "reasoningTokens": 24
+          },
+          "network": [
+            {
+              "request": 2,
+              "bodySentMs": 318.9170000000013,
+              "headersMs": 2035.888665999999,
+              "status": 200,
+              "totalMs": 4704.9205,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "desktop",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 1992.169667000002,
+          "firstBodyMs": 1992.332875,
+          "totalMs": 6172.182958000001,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 101,
+            "cachedTokens": 8192,
+            "reasoningTokens": 17
+          },
+          "network": [
+            {
+              "request": 3,
+              "bodySentMs": 1.763833999997587,
+              "headersMs": 1989.9985839999972,
+              "status": 200,
+              "totalMs": 6170.13825,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "phone",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 3714.8091650000024,
+          "firstBodyMs": 3716.543852999999,
+          "totalMs": 6401.408122999997,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 95,
+            "cachedTokens": 10624,
+            "reasoningTokens": 12
+          },
+          "network": [
+            {
+              "request": 3,
+              "bodySentMs": 1343.512967999999,
+              "headersMs": 3691.0027069999996,
+              "status": 200,
+              "totalMs": 6379.713227,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "phone",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 2396.6571870000043,
+          "firstBodyMs": 2399.0131240000046,
+          "totalMs": 4934.933904000005,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 105,
+            "cachedTokens": 8192,
+            "reasoningTokens": 20
+          },
+          "network": [
+            {
+              "request": 4,
+              "bodySentMs": 5.038855000006151,
+              "headersMs": 2370.9935930000065,
+              "status": 200,
+              "totalMs": 4911.3597380000065,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "desktop",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 2495.4939580000064,
+          "firstBodyMs": 2495.5957909999997,
+          "totalMs": 5021.722416000004,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 105,
+            "cachedTokens": 8192,
+            "reasoningTokens": 0
+          },
+          "network": [
+            {
+              "request": 4,
+              "bodySentMs": 540.8193750000064,
+              "headersMs": 2491.4326660000006,
+              "status": 200,
+              "totalMs": 5017.719041000004,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        }
+      ]
+    },
+    {
+      "id": "model-path-2026-10-17T04-10-36.926Z",
+      "route": "Singapore 2; desktop original route; phone VPN",
+      "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+      "screenshotSha256": "7691378abcc662ebaf6b468194a53bb9386bc55382abb0a39eee5359482faa55",
+      "medians": {
+        "desktop": {
+          "totalMs": 4980.193416499998,
+          "headersMs": 2301.5740625000017
+        },
+        "phone": {
+          "totalMs": 6561.702653000002,
+          "headersMs": 2884.6001290000004
+        }
+      },
+      "measurements": [
+        {
+          "host": "desktop",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 2881.520833,
+          "firstBodyMs": 2881.8036660000002,
+          "totalMs": 6699.824791,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 108,
+            "cachedTokens": 8192,
+            "reasoningTokens": 19
+          },
+          "network": [
+            {
+              "request": 1,
+              "bodySentMs": 419.593875,
+              "headersMs": 2857.464375,
+              "status": 200,
+              "totalMs": 6675.915291,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "phone",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 3731.9858319999994,
+          "firstBodyMs": 3733.7316650000002,
+          "totalMs": 6554.902601000001,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 99,
+            "cachedTokens": 8192,
+            "reasoningTokens": 14
+          },
+          "network": [
+            {
+              "request": 1,
+              "bodySentMs": 561.3766150000001,
+              "headersMs": 3571.588957000001,
+              "status": 200,
+              "totalMs": 6391.814842000001,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "phone",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 3049.8261969999985,
+          "firstBodyMs": 3051.1136450000013,
+          "totalMs": 5794.295675000001,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 104,
+            "cachedTokens": 8192,
+            "reasoningTokens": 20
+          },
+          "network": [
+            {
+              "request": 2,
+              "bodySentMs": 4.604322999999567,
+              "headersMs": 3031.6910929999976,
+              "status": 200,
+              "totalMs": 5777.482393999999,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "desktop",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 2368.281791999998,
+          "firstBodyMs": 2368.467999999997,
+          "totalMs": 4895.447874999998,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 105,
+            "cachedTokens": 8192,
+            "reasoningTokens": 20
+          },
+          "network": [
+            {
+              "request": 2,
+              "bodySentMs": 409.66154200000165,
+              "headersMs": 2363.337374999999,
+              "status": 200,
+              "totalMs": 4890.875625000001,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "desktop",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 1816.0443339999983,
+          "firstBodyMs": 1816.211625,
+          "totalMs": 4442.529584,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 97,
+            "cachedTokens": 10624,
+            "reasoningTokens": 13
+          },
+          "network": [
+            {
+              "request": 3,
+              "bodySentMs": 1.1343750000014552,
+              "headersMs": 1811.7296669999996,
+              "status": 200,
+              "totalMs": 4438.330000000002,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "phone",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 2719.3740610000023,
+          "firstBodyMs": 2721.088332000003,
+          "totalMs": 6568.502705000003,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 98,
+            "cachedTokens": 10624,
+            "reasoningTokens": 13
+          },
+          "network": [
+            {
+              "request": 3,
+              "bodySentMs": 722.8870830000014,
+              "headersMs": 2702.128541000002,
+              "status": 200,
+              "totalMs": 6552.444267999999,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "phone",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 2345.5318740000002,
+          "firstBodyMs": 2349.265467999998,
+          "totalMs": 6958.09057,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 202,
+            "cachedTokens": 8192,
+            "reasoningTokens": 34
+          },
+          "network": [
+            {
+              "request": 4,
+              "bodySentMs": 6.032760000001872,
+              "headersMs": 2319.9803639999955,
+              "status": 200,
+              "totalMs": 6934.579319999997,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "desktop",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 2234.8663330000054,
+          "firstBodyMs": 2234.933042000004,
+          "totalMs": 5064.938957999999,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 110,
+            "cachedTokens": 10624,
+            "reasoningTokens": 25
+          },
+          "network": [
+            {
+              "request": 4,
+              "bodySentMs": 291.89370800000324,
+              "headersMs": 2232.350916000003,
+              "status": 200,
+              "totalMs": 5062.424208000004,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        }
+      ]
+    },
+    {
+      "id": "model-path-2026-10-17T04-11-35.706Z",
+      "route": "Singapore 1; desktop forwarded through phone HTTP proxy; phone VPN",
+      "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+      "screenshotSha256": "7691378abcc662ebaf6b468194a53bb9386bc55382abb0a39eee5359482faa55",
+      "medians": {
+        "desktop": {
+          "totalMs": 5520.344125000001,
+          "headersMs": 2807.175250000002
+        },
+        "phone": {
+          "totalMs": 5862.507498000001,
+          "headersMs": 3003.463045999999
+        }
+      },
+      "measurements": [
+        {
+          "host": "desktop",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 5697.44375,
+          "firstBodyMs": 5697.968334,
+          "totalMs": 7982.4545,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 103,
+            "cachedTokens": 10624,
+            "reasoningTokens": 18
+          },
+          "network": [
+            {
+              "request": 1,
+              "bodySentMs": 800.627542,
+              "headersMs": 5680.375042,
+              "status": 200,
+              "totalMs": 7965.538374999999,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "phone",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 3317.177238,
+          "firstBodyMs": 3320.314581999999,
+          "totalMs": 6620.228643,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 116,
+            "cachedTokens": 8192,
+            "reasoningTokens": 26
+          },
+          "network": [
+            {
+              "request": 1,
+              "bodySentMs": 629.127031,
+              "headersMs": 3183.8287490000002,
+              "status": 200,
+              "totalMs": 6481.742342,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "phone",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 2250.592187,
+          "firstBodyMs": 2252.795103999999,
+          "totalMs": 4768.280363,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 104,
+            "cachedTokens": 8192,
+            "reasoningTokens": 19
+          },
+          "network": [
+            {
+              "request": 2,
+              "bodySentMs": 6.806719000000157,
+              "headersMs": 2235.8610930000013,
+              "status": 200,
+              "totalMs": 4756.808436000001,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "desktop",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 2470.889542000001,
+          "firstBodyMs": 2471.0359580000004,
+          "totalMs": 5743.770042,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 97,
+            "cachedTokens": 8192,
+            "reasoningTokens": 13
+          },
+          "network": [
+            {
+              "request": 3,
+              "bodySentMs": 462.10695900000064,
+              "headersMs": 2464.698875000002,
+              "status": 200,
+              "totalMs": 5737.765084000002,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "desktop",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 2250.6216249999998,
+          "firstBodyMs": 2250.809957999998,
+          "totalMs": 4989.626292000001,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 103,
+            "cachedTokens": 8192,
+            "reasoningTokens": 18
+          },
+          "network": [
+            {
+              "request": 5,
+              "bodySentMs": 1.139541000000463,
+              "headersMs": 2246.659875000001,
+              "status": 200,
+              "totalMs": 4985.8400409999995,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "phone",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 3071.239217999999,
+          "firstBodyMs": 3072.7194780000027,
+          "totalMs": 5812.843070999999,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 104,
+            "cachedTokens": 8192,
+            "reasoningTokens": 18
+          },
+          "network": [
+            {
+              "request": 3,
+              "bodySentMs": 571.3236980000001,
+              "headersMs": 3042.6655720000017,
+              "status": 200,
+              "totalMs": 5785.025258000005,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "phone",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 2935.686873999999,
+          "firstBodyMs": 2937.223801,
+          "totalMs": 5912.171925000002,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 104,
+            "cachedTokens": 10624,
+            "reasoningTokens": 14
+          },
+          "network": [
+            {
+              "request": 4,
+              "bodySentMs": 9.987396000004082,
+              "headersMs": 2908.600415000001,
+              "status": 200,
+              "totalMs": 5886.274840999999,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "desktop",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 3143.4609580000033,
+          "firstBodyMs": 3143.6515409999993,
+          "totalMs": 5296.918208000003,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 97,
+            "cachedTokens": 10624,
+            "reasoningTokens": 12
+          },
+          "network": [
+            {
+              "request": 6,
+              "bodySentMs": 507.54587500000343,
+              "headersMs": 3139.7065409999996,
+              "status": 200,
+              "totalMs": 5293.469625000005,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        }
+      ]
+    },
+    {
+      "id": "model-path-2026-10-17T04-12-31.212Z",
+      "route": "Singapore 1; desktop original route; phone explicit localhost HTTP proxy",
+      "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+      "screenshotSha256": "7691378abcc662ebaf6b468194a53bb9386bc55382abb0a39eee5359482faa55",
+      "medians": {
+        "desktop": {
+          "totalMs": 5453.070417000001,
+          "headersMs": 2849.069479500001
+        },
+        "phone": {
+          "totalMs": 5475.445805500003,
+          "headersMs": 3083.264400000003
+        }
+      },
+      "measurements": [
+        {
+          "host": "desktop",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 2731.399,
+          "firstBodyMs": 2732.18075,
+          "totalMs": 5316.0980420000005,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 100,
+            "cachedTokens": 8192,
+            "reasoningTokens": 15
+          },
+          "network": [
+            {
+              "request": 1,
+              "bodySentMs": 329.120875,
+              "headersMs": 2707.002042,
+              "status": 200,
+              "totalMs": 5292.197292,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "phone",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 3212.6903630000006,
+          "firstBodyMs": 3217.1237489999994,
+          "totalMs": 5548.193904000001,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 94,
+            "cachedTokens": 8192,
+            "reasoningTokens": 10
+          },
+          "network": [
+            {
+              "request": 1,
+              "bodySentMs": 579.1780209999997,
+              "headersMs": 3144.887447,
+              "status": 200,
+              "totalMs": 5483.5706230000005,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "phone",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 2528.365052000001,
+          "firstBodyMs": 2530.856302,
+          "totalMs": 5235.945103000002,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 104,
+            "cachedTokens": 10624,
+            "reasoningTokens": 20
+          },
+          "network": [
+            {
+              "request": 3,
+              "bodySentMs": 6.864478999999847,
+              "headersMs": 2513.553801,
+              "status": 200,
+              "totalMs": 5224.436820000001,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "desktop",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 3117.0659589999996,
+          "firstBodyMs": 3117.2504169999993,
+          "totalMs": 5741.335834000001,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 98,
+            "cachedTokens": 10624,
+            "reasoningTokens": 13
+          },
+          "network": [
+            {
+              "request": 2,
+              "bodySentMs": 357.13687500000015,
+              "headersMs": 3111.680916000001,
+              "status": 200,
+              "totalMs": 5736.280665999999,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "desktop",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 2966.7399590000023,
+          "firstBodyMs": 2966.8104590000003,
+          "totalMs": 5590.042792,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 96,
+            "cachedTokens": 8192,
+            "reasoningTokens": 12
+          },
+          "network": [
+            {
+              "request": 3,
+              "bodySentMs": 1.2072909999988042,
+              "headersMs": 2963.969165999999,
+              "status": 200,
+              "totalMs": 5587.198332999997,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "phone",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 3510.029999000002,
+          "firstBodyMs": 3511.2361450000026,
+          "totalMs": 6791.476247999999,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 116,
+            "cachedTokens": 10624,
+            "reasoningTokens": 16
+          },
+          "network": [
+            {
+              "request": 4,
+              "bodySentMs": 1363.0873429999992,
+              "headersMs": 3477.031457000001,
+              "status": 200,
+              "totalMs": 6760.893538999997,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "phone",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 2953.838437000006,
+          "firstBodyMs": 2955.5776560000013,
+          "totalMs": 5402.697707000007,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 83,
+            "cachedTokens": 10624,
+            "reasoningTokens": 0
+          },
+          "network": [
+            {
+              "request": 6,
+              "bodySentMs": 5.733282000001054,
+              "headersMs": 2924.400364000001,
+              "status": 200,
+              "totalMs": 5375.823332,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "desktop",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 2356.3252920000014,
+          "firstBodyMs": 2356.5256670000017,
+          "totalMs": 5090.387209,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 106,
+            "cachedTokens": 10624,
+            "reasoningTokens": 17
+          },
+          "network": [
+            {
+              "request": 4,
+              "bodySentMs": 315.724000000002,
+              "headersMs": 2352.3078749999986,
+              "status": 200,
+              "totalMs": 5086.572333000004,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        }
+      ]
+    },
+    {
+      "id": "model-path-2026-10-17T04-13-28.259Z",
+      "route": "Singapore 1; explicit phone proxy confirmation",
+      "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+      "screenshotSha256": "7691378abcc662ebaf6b468194a53bb9386bc55382abb0a39eee5359482faa55",
+      "medians": {
+        "desktop": {
+          "totalMs": 4995.159853999997,
+          "headersMs": 2404.980395999997
+        },
+        "phone": {
+          "totalMs": 5717.607185499999,
+          "headersMs": 2873.925623500001
+        }
+      },
+      "measurements": [
+        {
+          "host": "desktop",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 2314.59,
+          "firstBodyMs": 2315.145,
+          "totalMs": 5018.55625,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 106,
+            "cachedTokens": 10624,
+            "reasoningTokens": 16
+          },
+          "network": [
+            {
+              "request": 1,
+              "bodySentMs": 345.704625,
+              "headersMs": 2287.244041,
+              "status": 200,
+              "totalMs": 4992.190708,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "phone",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 3420.75677,
+          "firstBodyMs": 3426.459633999999,
+          "totalMs": 5745.655154,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 103,
+            "cachedTokens": 8192,
+            "reasoningTokens": 18
+          },
+          "network": [
+            {
+              "request": 1,
+              "bodySentMs": 558.7553640000006,
+              "headersMs": 3361.0101029999996,
+              "status": 200,
+              "totalMs": 5691.538331000001,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "phone",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 2618.965833,
+          "firstBodyMs": 2621.113437,
+          "totalMs": 5689.559216999998,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 96,
+            "cachedTokens": 10624,
+            "reasoningTokens": 11
+          },
+          "network": [
+            {
+              "request": 3,
+              "bodySentMs": 5.867813000000751,
+              "headersMs": 2598.932082000001,
+              "status": 200,
+              "totalMs": 5673.268644000002,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "desktop",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 3488.9237920000014,
+          "firstBodyMs": 3489.142416999999,
+          "totalMs": 6756.676500000001,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 107,
+            "cachedTokens": 10624,
+            "reasoningTokens": 0
+          },
+          "network": [
+            {
+              "request": 2,
+              "bodySentMs": 321.54358299999876,
+              "headersMs": 3483.810666000001,
+              "status": 200,
+              "totalMs": 6751.945457999998,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "desktop",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 2197.746541999997,
+          "firstBodyMs": 2197.9148749999986,
+          "totalMs": 4802.344416999997,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 104,
+            "cachedTokens": 10624,
+            "reasoningTokens": 20
+          },
+          "network": [
+            {
+              "request": 3,
+              "bodySentMs": 0.9500000000007276,
+              "headersMs": 2193.8884160000016,
+              "status": 200,
+              "totalMs": 4798.564583000003,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "phone",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 3125.484582000001,
+          "firstBodyMs": 3126.461926,
+          "totalMs": 5401.270987,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 100,
+            "cachedTokens": 10624,
+            "reasoningTokens": 16
+          },
+          "network": [
+            {
+              "request": 4,
+              "bodySentMs": 664.6181240000005,
+              "headersMs": 3093.690415000001,
+              "status": 200,
+              "totalMs": 5370.162862000001,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "phone",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 2622.3666650000014,
+          "firstBodyMs": 2624.2779149999988,
+          "totalMs": 5852.085101999997,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 116,
+            "cachedTokens": 10624,
+            "reasoningTokens": 32
+          },
+          "network": [
+            {
+              "request": 6,
+              "bodySentMs": 5.792813000000024,
+              "headersMs": 2596.2676040000006,
+              "status": 200,
+              "totalMs": 5828.492185999996,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        },
+        {
+          "host": "desktop",
+          "outcome": "complete",
+          "status": 200,
+          "headersMs": 2495.3707919999943,
+          "firstBodyMs": 2495.669124999993,
+          "totalMs": 4971.763457999994,
+          "requestBytes": 211296,
+          "requestSha256": "464e03cd4de2b6ab646ba2b0ed62b4256c2470d9bb0c79342878682e491a770d",
+          "model": "gpt-6-luna",
+          "usage": {
+            "inputTokens": 11234,
+            "outputTokens": 101,
+            "cachedTokens": 10624,
+            "reasoningTokens": 16
+          },
+          "network": [
+            {
+              "request": 4,
+              "bodySentMs": 418.1078340000022,
+              "headersMs": 2491.074250000005,
+              "status": 200,
+              "totalMs": 4968.112625000002,
+              "outcome": "complete"
+            }
+          ],
+          "edge": "SIN"
+        }
+      ]
+    }
+  ]
+}

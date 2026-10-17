@@ -9,6 +9,11 @@ import { createHash } from 'node:crypto';
 import { ChatGPTAuth } from '../plugins/android-use/server/midscene/chatgpt-auth.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const [serial, report] = process.argv.slice(2);
+// Explicit diagnostic only: compare Android VPN/TUN routing with its local HTTP proxy.
+// Never accept a remote proxy or credentials in a command-line environment value.
+const phoneProxy = process.env.TAPILOT_BENCH_PHONE_PROXY;
+if (phoneProxy && !/^http:\/\/127\.0\.0\.1:([1-9]\d{0,4})$/.test(phoneProxy)) throw Error('Phone proxy must be localhost HTTP');
+if (phoneProxy && Number(new URL(phoneProxy).port) > 65535) throw Error('Invalid phone proxy port');
 if (!serial || !report || !process.env.TAPILOT_BENCH_AUTH_DIR || !process.env.TAPILOT_BENCH_ACCOUNT) throw Error('Specify serial, saved report, benchmark auth/account');
 if (process.version !== 'v24.18.0') throw Error('Use Node 24.18.0');
 const auth = new ChatGPTAuth(process.env.TAPILOT_BENCH_AUTH_DIR);
@@ -73,10 +78,14 @@ const measurements = [];
 try {
   desktop = worker(process.execPath, [join(root, 'scripts/benchmark-model-worker.mjs'), join(root, 'node-runtime/src/siwc-fetch.mjs')]);
   const quote = value => "'" + value.replaceAll("'", "'\\''") + "'";
-  const command = `LD_LIBRARY_PATH=${quote(library)} exec ${quote(join(library, 'libnodebin.so'))} ${quote(remoteScript)} ${quote('/data/user/0/lifeos.md.tapilot/files/node-runtime/siwc-fetch.mjs')}`;
+  const proxyEnvironment = phoneProxy ? `NODE_USE_ENV_PROXY=1 HTTPS_PROXY=${quote(phoneProxy)} HTTP_PROXY=${quote(phoneProxy)} ` : '';
+  const command = `${proxyEnvironment}LD_LIBRARY_PATH=${quote(library)} exec ${quote(join(library, 'libnodebin.so'))} ${quote(remoteScript)} ${quote('/data/user/0/lifeos.md.tapilot/files/node-runtime/siwc-fetch.mjs')}`;
   phone = worker('adb', ['-s', serial, 'shell', '-T', `run-as lifeos.md.tapilot sh -c ${quote(command)}`]);
   watchdog = setTimeout(() => { desktop.child.kill(); phone.child.kill(); }, 240000);
-  for (const ready of await Promise.all([desktop.ready, phone.ready])) if (ready.node !== 'v24.18.0') throw Error('Worker runtime mismatch');
+  const readiness = await Promise.all([desktop.ready, phone.ready]);
+  for (const ready of readiness) if (ready.node !== 'v24.18.0') throw Error('Worker runtime mismatch');
+  if (readiness[0].environmentProxyEnabled !== (process.env.NODE_USE_ENV_PROXY === '1') ||
+      readiness[1].environmentProxyEnabled !== Boolean(phoneProxy)) throw Error('Worker proxy configuration mismatch');
   for (const host of ['desktop', 'phone', 'phone', 'desktop', 'desktop', 'phone', 'phone', 'desktop']) {
     const id = `${host}-${measurements.length + 1}`;
     const result = await ({ desktop, phone }[host]).request({ id, token: await auth.accessToken(), body, transport: savedRequest ? 'siwc-request' : 'direct' });
@@ -84,7 +93,7 @@ try {
     if (result.requestSha256 !== createHash('sha256').update(body).digest('hex')) throw Error('Request byte mismatch');
     measurements.push({ host, ...result });
     await writeFile(join(out, 'measurement.json'), JSON.stringify({ requestKind: savedRequest ? 'saved-model-request' : 'short-visual-query', screenshotSha256: createHash('sha256').update(image).digest('hex'), requestSha256: result.requestSha256,
-      nodeVersion: process.version, desktopEnvironmentProxyEnabled: process.env.NODE_USE_ENV_PROXY === '1', measurements }, null, 2));
+      nodeVersion: process.version, desktopEnvironmentProxyEnabled: process.env.NODE_USE_ENV_PROXY === '1', phoneLocalProxyEnabled: Boolean(phoneProxy), measurements }, null, 2));
     console.log(JSON.stringify({ host, outcome: result.outcome, headersMs: result.headersMs, totalMs: result.totalMs }));
     if (result.outcome !== 'complete') throw Error('Request failed; sample retained, no automatic retry');
   }

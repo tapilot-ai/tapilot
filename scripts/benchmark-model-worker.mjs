@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 const { observeModelNetwork, siwcFetch } = await import(pathToFileURL(process.argv[2]));
 let network = [];
 const stop = observeModelNetwork(value => network.push(value));
-console.log(JSON.stringify({ ready: true, node: process.version }));
+console.log(JSON.stringify({ ready: true, node: process.version, environmentProxyEnabled: process.env.NODE_USE_ENV_PROXY === '1' }));
 try {
   for await (const line of createInterface({ input: process.stdin })) {
     const { id, token, body, transport = 'direct' } = JSON.parse(line);

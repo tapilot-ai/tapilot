@@ -1282,3 +1282,46 @@ Kotlin unit tests, debug APK build, benchmark codec preparation and local quick
 checks passed. Real acceptance covers this OPPO only; no GitHub CI claim.
 
 [Snapshot measurements and per-request HTTP evidence](performance-snapshot-sharing-20261017.json)
+
+### Repeat identical-request routing isolation (2026-10-17)
+
+Replayed the same saved 211,296-byte planning request (11,234 input tokens)
+using Node 24.18.0 and the same bearer credential on both hosts. Each cohort
+alternates desktop/phone/phone/desktop twice, four samples per host. These are
+read-only model requests, not full tasks or benchmark navigation. Request and
+screenshot hashes match across all five cohorts; all 40 requests completed with
+the requested/returned gpt-6-luna model. Cache hits and generated tokens still
+vary and are retained in the evidence.
+
+| Routing condition | Desktop median | Phone median |
+| --- | ---: | ---: |
+| Original desktop route / phone VPN, Singapore 1 | 5.137 s | 6.418 s |
+| Original desktop route / phone VPN, Singapore 2 | 4.980 s | 6.562 s |
+| Desktop through phone HTTP proxy / phone VPN, Singapore 1 | 5.520 s | 5.863 s |
+| Original desktop route / phone explicit local HTTP proxy, Singapore 1 | 5.453 s | 5.475 s |
+| Explicit phone proxy, confirmation | 4.995 s | 5.718 s |
+
+The first cohort's headers arrived at 2.267 s desktop versus 3.691 s phone.
+Phone requests with an already-used connection sent their bodies in about
+4–5 ms, while still waiting seconds for response headers. Likewise, the last
+full-task phone sample sent requests 2–4 in 2.7–4.2 ms. Increasing keepalive
+cannot remove that wait. Headers wait includes transit, provider queueing and
+processing; the data does not separate these components, and no provider
+processing duration was supplied.
+
+Singapore 2 did not improve whole-request latency and the AI selector was
+restored to Singapore 1, visually confirmed. Routing the desktop through the
+phone proxy narrowed the request gap to 6.2%, but also slowed the desktop; this
+is attribution evidence, not a phone acceleration. Explicit phone HTTP proxy
+looked close in its first cohort but left 14.5% in confirmation, so there is no
+basis to ship a hard-coded proxy or claim stable parity. The temporary localhost
+ADB forward was removed. No production transport setting changed.
+
+The replay harness now supports an explicit localhost-only HTTP proxy for the
+phone worker via `TAPILOT_BENCH_PHONE_PROXY`, and checks that each worker received
+the requested proxy mode. Credentials remain on stdin. This permits further
+controlled route experiments without changing the installed app or requiring
+phone model traffic to pass through a computer. This diagnostic option is not
+an end-user proxy setting.
+
+[Per-request timings, usage/cache counts and payload hashes](performance-model-route-20261017.json)
