@@ -1435,3 +1435,47 @@ should separately profile the remaining phone lifecycle/persistence overhead
 and repeat identical-request route tests while preserving live-task results.
 
 [Complete task timings and semantic retry evidence](performance-semantic-retry-20261017.json)
+
+
+### Preserve history cache identity across task insertion (2026-10-17)
+
+Ordinary map keys recursively hashed immutable history records on every encoding
+cache lookup. Identity keys avoid that work, but require snapshot reuse across
+startup and list reordering. The first candidate exposed both requirements:
+without startup handoff, initial writes took 1,065/658 ms; after adding handoff,
+prepending a task still shifted every record and caused 774/640 ms writes.
+Those intermediate samples are preserved, not presented as production baselines.
+
+The final change uses identity keys, seeds the writer from the last successfully
+persisted immutable snapshot, and aligns moved object records by unique string
+ID before recursively checking all fields. Duplicate IDs fall back to positional
+comparison. Changed nested content still creates a new snapshot. Atomic writes,
+fsync, cancellation barriers and history retention are unchanged. Tests cover
+startup reuse, insertion/reordering, nested mutations, duplicate IDs and cache
+lookups that neither hash nor re-encode unchanged records. Kotlin unit tests,
+APK build and local quick checks passed; the final APK is installed on OPPO.
+
+The first task after the final APK restart succeeded in 39.659 s. Its second
+write was 22 ms and six flush calls totaled 2 ms. First-after-restart results
+are kept separate from warm tasks. The same Node runtime fingerprint, model,
+account, task and visual verification remain in use. This Kotlin-only change
+does not change the runtime bundle fingerprint.
+
+The final warm task took **45.905 s**, with three actions, four visual requests,
+zero parsing retries and successful independent verification. Its write timings
+were 28/23/22/24/24/25/61/24 ms and six flush calls totaled **3 ms**. The preceding
+production warm sample had 350 ms across seven observed writes and 127 ms of
+flush waiting; the new sample has 231 ms across eight writes. These are local
+stage observations, not a controlled whole-task gain. Snapshot work was 418 ms
+versus 429 ms, and work outside the outer model/inner runner was 2.601 s versus
+2.260 s, so the remaining lifecycle difference is not resolved.
+
+Visual HTTP time increased to **27.454 s** (previous production warm samples:
+19.439/20.792 s); outer model time was 5.722 s and inner non-HTTP time 10.128 s.
+The complete task therefore got slower despite reduced persistence waiting.
+Do not exclude this sample, claim overall speedup from the cache change, or use
+intermediate regressions as the production baseline. The recovered intermediate
+warm run used the same task ID after its observer expired; no action was replayed.
+Stable desktop parity and the original 50% full-task goal remain unproven.
+
+[All intermediate and final device samples](performance-history-cache-20261017.json)

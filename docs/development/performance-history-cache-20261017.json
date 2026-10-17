@@ -1,0 +1,601 @@
+{
+  "rows": [
+    {
+      "id": "native-full-identity-aligned-first-20261017",
+      "task": {
+        "phase": "task.wall",
+        "taskId": "fccaeaaf-db96-4106-828a-c6bf62676782",
+        "status": "succeeded",
+        "createdAt": 1792212549638,
+        "completedAt": 1792212589297,
+        "durationMs": 39659
+      },
+      "sourceFingerprint": "87a158749b1eb9e1891a9bd7dc327e601290e24d7376a27fe622376c179563e3",
+      "prepareMs": 11,
+      "startupMs": 218,
+      "outerCalls": 1,
+      "outerMs": 5695,
+      "runnerMs": 31041,
+      "httpMs": 21086.607440000003,
+      "innerNonHttpMs": 9954.392559999997,
+      "outsideMs": 2923,
+      "httpRequests": 4,
+      "planningParseRetries": 0,
+      "persistence": {
+        "snapshot": [
+          165,
+          132,
+          135,
+          115,
+          124,
+          88,
+          84,
+          54
+        ],
+        "write": [
+          40,
+          22,
+          25,
+          29,
+          27,
+          28,
+          54,
+          30
+        ],
+        "flush": [
+          1,
+          0,
+          0,
+          1,
+          0,
+          0
+        ]
+      },
+      "actions": 3,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "页面标题：显示与亮度。自动调节：开启。"
+      },
+      "http": [
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:49:27.651Z",
+          "phase": "midscene.model.http",
+          "request": 1,
+          "headersMs": 3313.4933320000005,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 30394,
+          "firstBodyMs": 3562.132134,
+          "totalMs": 6450.671612,
+          "outcome": "complete"
+        },
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:49:36.334Z",
+          "phase": "midscene.model.http",
+          "request": 2,
+          "headersMs": 2914.6209879999988,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 28510,
+          "firstBodyMs": 2915.6665089999988,
+          "totalMs": 5554.130258000001,
+          "outcome": "complete"
+        },
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:49:42.885Z",
+          "phase": "midscene.model.http",
+          "request": 3,
+          "headersMs": 3079.6739049999996,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 13807,
+          "firstBodyMs": 3082.789529999998,
+          "totalMs": 4395.667550999999,
+          "outcome": "complete"
+        },
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:49:48.262Z",
+          "phase": "midscene.model.http",
+          "request": 4,
+          "headersMs": 2484.6320830000004,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 27046,
+          "firstBodyMs": 2489.6368220000004,
+          "totalMs": 4686.138019000002,
+          "outcome": "complete"
+        }
+      ]
+    },
+    {
+      "id": "native-full-identity-aligned-warm-1-20261017",
+      "task": {
+        "phase": "task.wall",
+        "taskId": "d1098455-6271-4c8e-93ef-f4e3ae5dd1b3",
+        "status": "succeeded",
+        "createdAt": 1792212608790,
+        "completedAt": 1792212654695,
+        "durationMs": 45905
+      },
+      "sourceFingerprint": "87a158749b1eb9e1891a9bd7dc327e601290e24d7376a27fe622376c179563e3",
+      "prepareMs": 13,
+      "startupMs": 238,
+      "outerCalls": 1,
+      "outerMs": 5722,
+      "runnerMs": 37582,
+      "httpMs": 27453.586865000005,
+      "innerNonHttpMs": 10128.413134999995,
+      "outsideMs": 2601,
+      "httpRequests": 4,
+      "planningParseRetries": 0,
+      "persistence": {
+        "snapshot": [
+          70,
+          52,
+          76,
+          34,
+          75,
+          41,
+          41,
+          29
+        ],
+        "write": [
+          28,
+          23,
+          22,
+          24,
+          24,
+          25,
+          61,
+          24
+        ],
+        "flush": [
+          0,
+          1,
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "actions": 3,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "“显示与亮度”页面可见，自动亮度控制的标签为“自动调节”，开关当前为开启。"
+      },
+      "http": [
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:50:27.434Z",
+          "phase": "midscene.model.http",
+          "request": 1,
+          "headersMs": 4491.155363000001,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 30374,
+          "firstBodyMs": 4499.265571999999,
+          "totalMs": 7536.974529,
+          "outcome": "complete"
+        },
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:50:41.558Z",
+          "phase": "midscene.model.http",
+          "request": 2,
+          "headersMs": 7606.498695,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 24578,
+          "firstBodyMs": 7794.420257,
+          "totalMs": 10658.987912000002,
+          "outcome": "complete"
+        },
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:50:47.913Z",
+          "phase": "midscene.model.http",
+          "request": 3,
+          "headersMs": 2942.8939570000002,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 14837,
+          "firstBodyMs": 2947.987186000002,
+          "totalMs": 4272.822967,
+          "outcome": "complete"
+        },
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:50:53.644Z",
+          "phase": "midscene.model.http",
+          "request": 4,
+          "headersMs": 2583.1979680000004,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 31408,
+          "firstBodyMs": 2586.461510000001,
+          "totalMs": 4984.801457000001,
+          "outcome": "complete"
+        }
+      ]
+    },
+    {
+      "id": "native-full-identity-first-20261017",
+      "task": {
+        "phase": "task.wall",
+        "taskId": "a9f2064e-f0f9-4e21-938e-e1e63f730d31",
+        "status": "succeeded",
+        "createdAt": 1792212263099,
+        "completedAt": 1792212303972,
+        "durationMs": 40873
+      },
+      "sourceFingerprint": "87a158749b1eb9e1891a9bd7dc327e601290e24d7376a27fe622376c179563e3",
+      "prepareMs": 5,
+      "startupMs": 222,
+      "outerCalls": 1,
+      "outerMs": 6044,
+      "runnerMs": 30542,
+      "httpMs": 20616.166400000002,
+      "innerNonHttpMs": 9925.833599999998,
+      "outsideMs": 4287,
+      "httpRequests": 4,
+      "planningParseRetries": 0,
+      "persistence": {
+        "snapshot": [
+          194,
+          413,
+          183,
+          112,
+          108,
+          75,
+          101,
+          74
+        ],
+        "write": [
+          1065,
+          658,
+          24,
+          22,
+          23,
+          23,
+          74,
+          24
+        ],
+        "flush": [
+          1263,
+          0,
+          1,
+          0,
+          0,
+          0
+        ]
+      },
+      "actions": 3,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "页面标题为“显示与亮度”。亮度区域显示“自动调节”，开关为开启状态。"
+      },
+      "http": [
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:44:41.942Z",
+          "phase": "midscene.model.http",
+          "request": 1,
+          "headersMs": 3118.5131229999997,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 30722,
+          "firstBodyMs": 3124.1452069999996,
+          "totalMs": 5548.845154000001,
+          "outcome": "complete"
+        },
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:44:50.833Z",
+          "phase": "midscene.model.http",
+          "request": 2,
+          "headersMs": 3180.5049470000013,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 25120,
+          "firstBodyMs": 3185.4488010000005,
+          "totalMs": 5714.309217,
+          "outcome": "complete"
+        },
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:44:56.957Z",
+          "phase": "midscene.model.http",
+          "request": 3,
+          "headersMs": 2875.212499000001,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 15183,
+          "firstBodyMs": 2881.13177,
+          "totalMs": 4066.541301000001,
+          "outcome": "complete"
+        },
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:45:02.936Z",
+          "phase": "midscene.model.http",
+          "request": 4,
+          "headersMs": 2825.6532810000026,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 31159,
+          "firstBodyMs": 2829.363489000003,
+          "totalMs": 5286.470728,
+          "outcome": "complete"
+        }
+      ]
+    },
+    {
+      "id": "native-full-identity-seeded-1-20261017",
+      "task": {
+        "phase": "task.wall",
+        "taskId": "0101c941-621f-4e07-b813-d6a18aedde4a",
+        "status": "succeeded",
+        "createdAt": 1792212366434,
+        "completedAt": 1792212403659,
+        "durationMs": 37225
+      },
+      "sourceFingerprint": "87a158749b1eb9e1891a9bd7dc327e601290e24d7376a27fe622376c179563e3",
+      "prepareMs": 8,
+      "startupMs": 243,
+      "outerCalls": 1,
+      "outerMs": 5360,
+      "runnerMs": 28072,
+      "httpMs": 18585.327282999995,
+      "innerNonHttpMs": 9486.672717000005,
+      "outsideMs": 3793,
+      "httpRequests": 4,
+      "planningParseRetries": 0,
+      "persistence": {
+        "snapshot": [
+          182,
+          254,
+          181,
+          100,
+          121,
+          109,
+          84,
+          64
+        ],
+        "write": [
+          46,
+          774,
+          25,
+          25,
+          27,
+          24,
+          53,
+          24
+        ],
+        "flush": [
+          754,
+          3,
+          1,
+          0,
+          0,
+          0
+        ]
+      },
+      "actions": 3,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "“显示与亮度”页面可见。“自动调节”开关已开启。屏幕亮度滑块可见，但未显示数值。定时切换和护眼模式均显示“已关闭”。"
+      },
+      "http": [
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:46:24.655Z",
+          "phase": "midscene.model.http",
+          "request": 1,
+          "headersMs": 3566.39177,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 30722,
+          "firstBodyMs": 3572.2085930000003,
+          "totalMs": 6322.042237,
+          "outcome": "complete"
+        },
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:46:31.491Z",
+          "phase": "midscene.model.http",
+          "request": 2,
+          "headersMs": 1904.490103,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 24569,
+          "firstBodyMs": 1908.507708000001,
+          "totalMs": 3836.028070999999,
+          "outcome": "complete"
+        },
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:46:37.521Z",
+          "phase": "midscene.model.http",
+          "request": 3,
+          "headersMs": 2544.234164999998,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 15455,
+          "firstBodyMs": 2549.4062489999997,
+          "totalMs": 3943.6387479999976,
+          "outcome": "complete"
+        },
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:46:42.675Z",
+          "phase": "midscene.model.http",
+          "request": 4,
+          "headersMs": 1810.8633850000006,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 36090,
+          "firstBodyMs": 1813.7463009999992,
+          "totalMs": 4483.618226999999,
+          "outcome": "complete"
+        }
+      ]
+    },
+    {
+      "id": "native-full-identity-seeded-warm-1-20261017",
+      "task": {
+        "phase": "task.wall",
+        "taskId": "e52708e0-ca2f-424a-90ec-141ff4d8fddc",
+        "status": "succeeded",
+        "createdAt": 1792212421642,
+        "completedAt": 1792212460305,
+        "durationMs": 38663
+      },
+      "sourceFingerprint": "87a158749b1eb9e1891a9bd7dc327e601290e24d7376a27fe622376c179563e3",
+      "prepareMs": 6,
+      "startupMs": 224,
+      "outerCalls": 1,
+      "outerMs": 5606,
+      "runnerMs": 29974,
+      "httpMs": 20337.236398999994,
+      "innerNonHttpMs": 9636.763601000006,
+      "outsideMs": 3083,
+      "httpRequests": 4,
+      "planningParseRetries": 0,
+      "persistence": {
+        "snapshot": [
+          94,
+          117,
+          85,
+          50,
+          67,
+          44,
+          46,
+          35
+        ],
+        "write": [
+          22,
+          640,
+          26,
+          25,
+          25,
+          23,
+          58,
+          21
+        ],
+        "flush": [
+          625,
+          2,
+          0,
+          0,
+          2,
+          0
+        ]
+      },
+      "actions": 3,
+      "evidence": {
+        "model": "gpt-6-luna",
+        "modelCalls": 4,
+        "retries": 0,
+        "screenshot": {
+          "width": 988,
+          "height": 1972
+        },
+        "observation": "当前为“显示与亮度”页面；“自动调节”开关清晰可见，状态为开启。"
+      },
+      "http": [
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:47:19.949Z",
+          "phase": "midscene.model.http",
+          "request": 1,
+          "headersMs": 4607.75677,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 31130,
+          "firstBodyMs": 4617.494113000001,
+          "totalMs": 6756.751507999999,
+          "outcome": "complete"
+        },
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:47:27.919Z",
+          "phase": "midscene.model.http",
+          "request": 2,
+          "headersMs": 2411.1501559999997,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 26959,
+          "firstBodyMs": 2417.518592999999,
+          "totalMs": 4860.587133999998,
+          "outcome": "complete"
+        },
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:47:33.759Z",
+          "phase": "midscene.model.http",
+          "request": 3,
+          "headersMs": 2843.617654999998,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 17384,
+          "firstBodyMs": 2851.5928109999986,
+          "totalMs": 3865.299060999998,
+          "outcome": "complete"
+        },
+        {
+          "type": "model.timing",
+          "timestamp": "2026-10-17T04:47:39.345Z",
+          "phase": "midscene.model.http",
+          "request": 4,
+          "headersMs": 2259.5555719999975,
+          "status": 200,
+          "edge": "SIN",
+          "responseBytes": 34695,
+          "firstBodyMs": 2263.9940099999985,
+          "totalMs": 4854.598695999997,
+          "outcome": "complete"
+        }
+      ]
+    }
+  ],
+  "candidates": {
+    "native-full-identity-first-20261017": "Identity cache only; superseded, startup/prepend misses",
+    "native-full-identity-seeded-1-20261017": "Startup seed only; superseded, prepend misses",
+    "native-full-identity-seeded-warm-1-20261017": "Startup seed only; observer recovered same task",
+    "native-full-identity-aligned-first-20261017": "Final implementation, first after app restart",
+    "native-full-identity-aligned-warm-1-20261017": "Final implementation, warm"
+  },
+  "limitations": [
+    "Same model/account/runtime/task as preceding benchmark; network and model scheduling remain variable.",
+    "Kotlin-only changes do not change Node source fingerprint.",
+    "No new desktop measurement in this cohort; no stable parity or overall speedup claim."
+  ]
+}
