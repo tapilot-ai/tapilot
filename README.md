@@ -138,6 +138,8 @@ dependency audits. Device-backed E2E is separate; 19 authored cases do not imply
 19 verified passes. See the [E2E guide and evidence](tests/midscene/README.md),
 [architecture](docs/architecture/README.md) and [development guide](docs/development/README.md).
 
+Current evidence and outstanding release gates: [validation index](docs/development/validation-current.zh.md). Historical device runs do not establish a pass for the latest source.
+
 ## Limits and data
 
 - A model can misread a screen, infer an unobserved fact or give an incorrect

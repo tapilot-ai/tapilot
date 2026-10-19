@@ -1,12 +1,12 @@
+import { applyModelEnvironment } from '../model-environment.ts';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { config as loadEnv } from 'dotenv';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const configured = loadEnv({ path: process.env.TAPILOT_E2E_ENV_FILE || `${root}/.env` });
-// A selected local model config must not silently use another shell's model/token.
-for (const [key, value] of Object.entries(configured.parsed || {})) {
-  if (/^MIDSCENE_(?:PLANNING_|INSIGHT_)?MODEL_/.test(key) && value.trim()) process.env[key] = value;
-}
+// An explicit missing file must not fall back to another account/provider.
+if (process.env.TAPILOT_E2E_ENV_FILE && configured.error) throw configured.error;
+applyModelEnvironment(configured.parsed);
 const args = process.argv.slice(2);
 const profile = ['--live', '--resilience', '--auth-fixture'].includes(args[0]) ? args.shift() : '';
 const live = !!profile;

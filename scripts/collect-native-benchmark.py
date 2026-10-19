@@ -14,7 +14,7 @@ def main():
     parser.add_argument('label')
     parser.add_argument('--serial', required=True)
     parser.add_argument('--mode', choices=['full', 'execution'], default='full')
-    parser.add_argument('--fixture', choices=['read-auto-brightness', 'read-android-version', 'calculate-expression', 'read-world-clock', 'locate-calendar-date', 'accept-cross-app', 'accept-calendar-next-year', 'accept-clock-tabs', 'accept-clarification'], default='read-auto-brightness')
+    parser.add_argument('--fixture', choices=['read-auto-brightness', 'read-android-version', 'calculate-expression', 'read-world-clock', 'locate-calendar-date', 'accept-cross-app', 'accept-calendar-next-year', 'accept-clock-tabs', 'accept-clarification', 'accept-general-answer', 'accept-settings-search'], default='read-auto-brightness')
     parser.add_argument('--runtime-preload', choices=['on', 'off', 'reset'], default='reset')
     args = parser.parse_args()
     if pathlib.Path(args.label).name != args.label or args.label in ('.', '..'):

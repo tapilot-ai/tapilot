@@ -12,7 +12,9 @@ maintainer action; these commands do not make a repository or artifact public.
    A local build does not establish an independent Linux CI pass.
 3. Review the generated [third-party evidence](third-party-licenses.md), including
    missing license texts and LGPL/native source obligations. Do not publish a
-   bundled APK until this review is complete.
+   bundled APK until this review is complete. Run `pnpm check:distribution` to list
+   open items. Non-local Beta and Release APK verification enforces the review
+   against the inventories embedded in that APK, even when signing passes.
 4. Verify the candidate APK on an explicitly selected unlocked arm64 phone.
    Check fresh installation, ordinary task execution, Stop then a fresh task,
    explicit recovery after interruption, and upgrade from the previous installed

@@ -21,7 +21,7 @@ the computer-side Android Use plugin. Normal wireless use does not require ADB.
 services, Node stdio RPC and wireless sessions all delegate to it. It owns access
 checks and frame validation; the wireless session additionally enforces device
 unlocking, action restrictions and connection lifetime. Transport code must not
-add a second gesture or screenshot implementation.
+add a second gesture or screenshot implementation. `TextInputController` owns focused text editing and input-connection/clipboard fallbacks; it borrows managed gestures from the service.
 
 `AppServices` wires device, report, speech and runtime operations. Native UI code
 uses `ServiceGateway`; `NativeJavascriptBridge` is only a legacy WebView adapter.

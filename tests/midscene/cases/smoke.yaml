@@ -22,11 +22,25 @@ cases:
           in the voice conversation and playback section. Turn it off if it is on.
           Verify the switch is off. Do not play a sample, start a voice conversation,
           edit any credential, or change the selected provider.
+      - aiAssert: >-
+          The switch labeled "自动朗读助手回答" / "Read assistant answers aloud" is visible and off.
       - aiAct: >-
-          Return to chat, reopen settings, find the same automatic-read switch and
-          verify that it remains off after navigation. Turn it on, return to chat, reopen
-          settings and verify it remains on. Leave automatic reply speech on, matching the
-          user preference; do not play a sample or start microphone capture.
+          Return to chat, reopen settings and navigate to the same "自动朗读助手回答" /
+          "Read assistant answers aloud" switch. Stop as soon as this control is visible.
+          Do not change it, and do not inspect other voice switches.
+      - aiAssert: >-
+          The switch labeled "自动朗读助手回答" / "Read assistant answers aloud" is visible and off.
+      - aiAct: >-
+          Turn on only the visible "自动朗读助手回答" / "Read assistant answers aloud"
+          switch. Stop immediately after this change. Do not play a sample or start microphone capture.
+      - aiAssert: >-
+          The switch labeled "自动朗读助手回答" / "Read assistant answers aloud" is visible and on.
+      - aiAct: >-
+          Return to chat, reopen settings and navigate to the same "自动朗读助手回答" /
+          "Read assistant answers aloud" switch. Stop as soon as this control is visible.
+          Do not change any switch or inspect other voice controls.
+      - aiAssert: >-
+          The switch labeled "自动朗读助手回答" / "Read assistant answers aloud" is visible and on.
 
   - name: UI-03 Settings and device-control guidance
     tags: [smoke, settings, permissions]

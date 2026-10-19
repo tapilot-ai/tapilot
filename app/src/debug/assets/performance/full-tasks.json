@@ -7,5 +7,7 @@
   "accept-cross-app": "Read the visible city names and times in World clock, then open Calendar and select December 6, 2026 and read its weekday. Reply with both results. Do not modify cities, alarms or events. No voice.",
   "accept-calendar-next-year": "Open Calendar and select January 13, 2027. Read the selected date and weekday. Do not create, edit or delete events. No voice.",
   "accept-clock-tabs": "Open Clock, read the visible alarm times and enabled states without toggling them, then read the visible World clock city names and times. Reply with both sets of readings. Do not modify alarms or cities. No voice.",
-  "accept-clarification": "Open the app I meant. I have not told you which app. Ask me which app before operating the phone. No voice."
+  "accept-clarification": "Open the app I meant. I have not told you which app. Ask me which app before operating the phone. No voice.",
+  "accept-general-answer": "Explain in one short sentence what a screenshot is. This is a general knowledge question; do not inspect or operate the phone. No voice.",
+  "accept-settings-search": "Open Settings, use its search input to search for Bluetooth, and read the visible search results. Do not change any setting. No voice."
 }

@@ -33,8 +33,8 @@ has an isolated production dependency lockfile. The standalone Midscene E2E pack
 | `pnpm test:e2e` / `pnpm test:e2e:live` | Run visual smoke / explicitly opted-in native task E2E; see [E2E guide](tests/midscene/README.md) |
 | `pnpm check:plugin` | Plugin UI freshness and all plugin tests, no Android SDK needed |
 | `pnpm build:legacy` / `pnpm dev:legacy` | Optional legacy Web UI only |
-| `pnpm build:beta:distribution` | Maintainer Beta build, enforcing the existing installed Beta certificate |
-| `pnpm build:release` | Production build requiring explicit signing credentials |
+| `pnpm build:beta:distribution` | Maintainer Beta build, enforcing the existing certificate and binary redistribution review |
+| `pnpm build:release` | Production build requiring explicit signing credentials and completed binary redistribution review |
 
 Local builds never bypass runtime integrity checks. Their APK is at
 `app/build/outputs/apk/beta/app-beta.apk`. A local signing certificate cannot

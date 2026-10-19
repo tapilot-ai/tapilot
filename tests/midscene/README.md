@@ -238,3 +238,5 @@ separate operations; an empty reading cannot fall back to action summaries or lo
 Regression tests cover ColorOS/Android confusion and missing observations. The
 original OPPO was disconnected during this follow-up, so LONG-02 remains awaiting
 real-device revalidation; these changes do not turn its previous failure into a pass.
+
+2026-10-19 candidate verification and the current evidence boundary are recorded in [release validation](../../docs/development/release-validation-20261019.zh.md). A selected model env file is now a complete model profile: undeclared protocol, planning/insight credentials and extra-body settings from other profiles are cleared. An explicitly missing file fails instead of falling back to another account.

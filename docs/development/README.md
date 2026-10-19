@@ -67,3 +67,5 @@ checksum verification. If an archive disappears again, verify new pins and
 Android ABI behavior, or use an approved snapshot mirror through `TERMUX_POOL`
 that serves the same pinned bytes. Do not treat an old local cache as clean-build
 proof. A long-lived binary mirror also requires redistribution review.
+
+The native downloader also accepts `TERMUX_CACHE` for an isolated cache. The SQLite pin is now 3.54.1 (official Termux index SHA-256), replacing the removed 3.54.0 archive; ELF library names change together. Current release evidence is indexed in [validation-current.zh.md](validation-current.zh.md).

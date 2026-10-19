@@ -1,0 +1,256 @@
+{
+  "date": "2026-10-19",
+  "device": "OPPO PEUM00 / Android 14",
+  "candidateApkSha256": "6137faea793cea60b1620536cef609d82e3e2acd0583a67abd0ca5280eabdc75",
+  "runtimeSourceFingerprint": "10f3fd942cb542b3985254cf0a4d919d7f06bbd679c80763f566e4675e439035",
+  "model": "gpt-6-luna",
+  "node": "24.18.0",
+  "screenshot": {
+    "width": 988,
+    "height": 1972,
+    "format": "jpeg",
+    "quality": 90
+  },
+  "rows": [
+    {
+      "id": "release-clarification-20261019",
+      "host": "phone",
+      "fixture": "accept-clarification",
+      "status": "waiting_user",
+      "wallMs": 19138,
+      "phoneOperations": 0,
+      "outerCalls": 1,
+      "outerMs": 6524,
+      "visionCalls": 0,
+      "visionMs": 0,
+      "sourceFingerprint": "10f3fd942cb542b3985254cf0a4d919d7f06bbd679c80763f566e4675e439035",
+      "manualReview": "passed",
+      "reports": [],
+      "usedTools": [
+        "finish_task"
+      ]
+    },
+    {
+      "id": "release-general-answer-20261019",
+      "host": "phone",
+      "fixture": "accept-general-answer",
+      "status": "succeeded",
+      "wallMs": 4372,
+      "phoneOperations": 0,
+      "outerCalls": 1,
+      "outerMs": 3581,
+      "visionCalls": 0,
+      "visionMs": 0,
+      "sourceFingerprint": "10f3fd942cb542b3985254cf0a4d919d7f06bbd679c80763f566e4675e439035",
+      "manualReview": "passed",
+      "reports": [],
+      "usedTools": [
+        "answer_question"
+      ]
+    },
+    {
+      "id": "release-settings-search-20261019",
+      "host": "phone",
+      "fixture": "accept-settings-search",
+      "status": "succeeded",
+      "wallMs": 48616,
+      "phoneOperations": 1,
+      "outerCalls": 1,
+      "outerMs": 4882,
+      "visionCalls": 5,
+      "visionMs": 34966.18941399999,
+      "sourceFingerprint": "10f3fd942cb542b3985254cf0a4d919d7f06bbd679c80763f566e4675e439035",
+      "manualReview": "passed",
+      "reports": [
+        {
+          "sha256": "fc484bf043dc8993d585da97cd580556257b120eb8f4620efaac6b3933fc1a46",
+          "verified": true
+        }
+      ],
+      "usedTools": [
+        "operate_phone"
+      ]
+    },
+    {
+      "id": "release-clock-phone-20261019",
+      "host": "phone",
+      "fixture": "read-world-clock",
+      "status": "succeeded",
+      "wallMs": 43690,
+      "phoneOperations": 1,
+      "outerCalls": 1,
+      "outerMs": 6481,
+      "visionCalls": 4,
+      "visionMs": 28507.456499,
+      "sourceFingerprint": "10f3fd942cb542b3985254cf0a4d919d7f06bbd679c80763f566e4675e439035",
+      "manualReview": "passed",
+      "reports": [
+        {
+          "sha256": "e02fee5f9f7fb3aee8081699e2397534bb34ee6a6016d3b6275b8e520baf0ae2",
+          "verified": true
+        }
+      ],
+      "usedTools": [
+        "operate_phone"
+      ]
+    },
+    {
+      "id": "release-calendar-phone-20261019",
+      "host": "phone",
+      "fixture": "locate-calendar-date",
+      "status": "succeeded",
+      "wallMs": 56936,
+      "phoneOperations": 1,
+      "outerCalls": 1,
+      "outerMs": 6179,
+      "visionCalls": 5,
+      "visionMs": 39975.238421999995,
+      "sourceFingerprint": "10f3fd942cb542b3985254cf0a4d919d7f06bbd679c80763f566e4675e439035",
+      "manualReview": "passed",
+      "reports": [
+        {
+          "sha256": "7e53b615630de3ff0f1ea00f26ce2f339c0f7e34e59d6df5edb34672aedb4dcb",
+          "verified": true
+        }
+      ],
+      "usedTools": [
+        "operate_phone"
+      ]
+    },
+    {
+      "id": "full-desktop-2026-10-19T09-32-28.872Z",
+      "host": "desktop",
+      "fixture": "read-world-clock",
+      "status": "verified",
+      "wallMs": 40646.547416,
+      "sourceFingerprint": "10f3fd942cb542b3985254cf0a4d919d7f06bbd679c80763f566e4675e439035",
+      "outerCalls": 1,
+      "outerMs": 5613.441333,
+      "visionCalls": 4,
+      "reports": [
+        {
+          "sha256": "5b237520aabb7b0e4242b872a5eda9cb60bbe0aab82c6ffba743de9be94156b0",
+          "verified": true
+        }
+      ],
+      "boundary": "Desktop same-agent full conversation; includes catalog, Kotlin IPC, Pi startup, inner harness auth/connection/startup; excludes preflight and JVM warmup. Not Codex UI timing.",
+      "manualReview": "passed"
+    },
+    {
+      "id": "full-desktop-2026-10-19T09-35-18.708Z",
+      "host": "desktop",
+      "fixture": "locate-calendar-date",
+      "status": "verified",
+      "wallMs": 49272.153584,
+      "sourceFingerprint": "10f3fd942cb542b3985254cf0a4d919d7f06bbd679c80763f566e4675e439035",
+      "outerCalls": 1,
+      "outerMs": 4935.111458,
+      "visionCalls": 5,
+      "reports": [
+        {
+          "sha256": "42f951b85ba4dd5ceb8b5b3b122f810c10cfa39e53cd587c7239b03f18e39861",
+          "verified": true
+        }
+      ],
+      "boundary": "Desktop same-agent full conversation; includes catalog, Kotlin IPC, Pi startup, inner harness auth/connection/startup; excludes preflight and JVM warmup. Not Codex UI timing.",
+      "manualReview": "passed"
+    }
+  ],
+  "limits": [
+    "Focused acceptance, not the full 19-case suite",
+    "One sample per host/task; no statistical speed or reliability claim",
+    "Different live screen values and provider routing/cache remain uncontrolled",
+    "Phone clock sample overlapped one short native SQLite health command",
+    "Desktop same-agent harness, not Codex UI timing",
+    "Raw reports and credentials remain local and ignored"
+  ],
+  "distribution": {
+    "binaryPublicationReady": false,
+    "materialsVerified": 129,
+    "blockers": [
+      {
+        "kind": "npm",
+        "id": "%40aws-sdk%2Fcredential-provider-http@3.972.75",
+        "reason": "Unresolved upstream notice/source review"
+      },
+      {
+        "kind": "npm",
+        "id": "%40aws-sdk%2Fcredential-provider-login@3.972.80",
+        "reason": "Unresolved upstream notice/source review"
+      },
+      {
+        "kind": "npm",
+        "id": "%40aws-sdk%2Fnested-clients@3.997.47",
+        "reason": "Unresolved upstream notice/source review"
+      },
+      {
+        "kind": "npm",
+        "id": "%40img%2Fsharp-wasm32@0.35.5",
+        "reason": "Unresolved upstream notice/source review"
+      },
+      {
+        "kind": "npm",
+        "id": "proxy-agent-negotiate@1.1.0",
+        "reason": "Unresolved upstream notice/source review"
+      },
+      {
+        "kind": "npm",
+        "id": "secure-compare@3.0.1",
+        "reason": "Unresolved upstream notice/source review"
+      },
+      {
+        "kind": "npm",
+        "id": "union@0.5.0",
+        "reason": "Unresolved upstream notice/source review"
+      },
+      {
+        "kind": "native",
+        "id": "libc++_30_aarch64.deb",
+        "reason": "Unresolved upstream notice/source review"
+      },
+      {
+        "kind": "native",
+        "id": "libsqlite_3.54.1_aarch64.deb",
+        "reason": "Unresolved upstream notice/source review"
+      },
+      {
+        "kind": "native",
+        "id": "openssl_1%3A3.6.5_aarch64.deb",
+        "reason": "Unresolved upstream notice/source review"
+      },
+      {
+        "kind": "source-materials",
+        "reason": "Corresponding source and rebuild/replacement review is incomplete; see third-party/README.md"
+      }
+    ]
+  },
+  "observerRuns": [
+    {
+      "runId": "20261019173618-bd8e5b76",
+      "passed": 0,
+      "failed": 3,
+      "notRun": 0,
+      "reason": "Selected Seed profile inherited incompatible Responses protocol; no model-driven UI actions executed"
+    },
+    {
+      "runId": "20261019173824-ebf79d67",
+      "passed": 1,
+      "failed": 1,
+      "notRun": 1,
+      "reason": "Observer over-verification in UI-02; interrupted observer after it sought an unrequested additional switch; no native task replay"
+    },
+    {
+      "runId": "20261019174819-42f8e700",
+      "passed": 3,
+      "failed": 0,
+      "notRun": 0,
+      "summarySha256": "24dbc29cf07a9c500213f7e04f3075a0f7fd76a2060b02b18e5961bab23ad88c",
+      "caseMs": {
+        "UI-01": 76331,
+        "UI-02": 278465,
+        "UI-03": 198140
+      },
+      "independentVoiceAssertions": 4
+    }
+  ]
+}

@@ -22,10 +22,13 @@ for (const name of ['cases', 'fixtures'].flatMap(folder => readdirSync(`${direct
     assert.deepEqual(test.steps[0], { 'app.open': {} }, `${id}: begin with isolated observer setup`);
     for (const step of test.steps.slice(1)) {
       assert.equal(Object.keys(step).length, 1, `${id}: exactly one node per step`);
-      if ('aiAct' in step) assert.ok(typeof step.aiAct === 'string' && step.aiAct.trim(), `${id}: nonempty intent required`);
+      if ('aiAct' in step || 'aiAssert' in step) {
+        const prompt = step.aiAct ?? step.aiAssert;
+        assert.ok(typeof prompt === 'string' && prompt.trim(), `${id}: nonempty visual prompt required`);
+      }
       else {
         const node = Object.keys(step)[0];
-        assert.ok(/^(fault\.|fixture\.|wireless\.|task\.)/.test(node), `${id}: UI work must use aiAct`);
+        assert.ok(/^(fault\.|fixture\.|wireless\.|task\.)/.test(node), `${id}: UI work must use aiAct or independent aiAssert`);
         assert.deepEqual(step[node], {}, `${id}: fixtures have no hidden UI instructions`);
         if (node === 'fixture.requireRejectedAuth') assert.ok(test.tags.includes('auth-fixture'), `${id}: rejected credentials require the isolated auth profile`);
         if (node.startsWith('fault.') || node.startsWith('wireless.')) assert.ok(test.tags.includes('resilience'), `${id}: fault/control fixtures need resilience tag`);

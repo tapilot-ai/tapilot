@@ -122,6 +122,8 @@ Tapilot 日常自动化不需要 ADB。
 详见 [E2E 指南与验证记录](tests/midscene/README.md)、[架构说明](docs/architecture/README.md)
 和 [开发指南](docs/development/README.md)。
 
+当前有效证据与发布门禁见[验收入口](docs/development/validation-current.zh.md)。历史真机结果不代表最新源码已通过验收。
+
 ## 能力边界与数据
 
 - 模型可能误读画面、推断未看到的信息，或错误地报告任务完成。目前设备信息的证据核对

@@ -59,3 +59,7 @@ The Android index also needs review where upstream archives omit license files.
 Source publication of this repository and publishing its bundled binary APK are
 separate release decisions. Do not describe an APK as redistribution-ready solely
 because the repository's own LICENSE now says MIT.
+
+Run `pnpm check:distribution` after building the candidate to generate a machine-readable list of unresolved binary-publication blockers. Missing inventories and unresolved review flags fail closed. This is separate from `pnpm check`, which verifies a development build.
+
+`verify-apk.mjs` enforces this review on non-local Beta and Release verification, using the inventories embedded in the actual APK. `--local-check` is restricted to Beta development checks; it does not grant binary publication approval.

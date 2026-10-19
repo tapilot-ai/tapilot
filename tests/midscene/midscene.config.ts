@@ -1,3 +1,4 @@
+import { applyModelEnvironment } from './model-environment.js';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { config as loadEnv } from 'dotenv';
@@ -9,10 +10,9 @@ import { DeviceFixtures } from './device-fixtures.js';
 import { displayOptions } from './display-options.js';
 
 const configured = loadEnv({ path: process.env.TAPILOT_E2E_ENV_FILE || fileURLToPath(new URL('.env', import.meta.url)) });
-// A selected local model config must not silently use another shell's model/token.
-for (const [key, value] of Object.entries(configured.parsed || {})) {
-  if (/^MIDSCENE_(?:PLANNING_|INSIGHT_)?MODEL_/.test(key) && value.trim()) process.env[key] = value;
-}
+// An explicit missing file must not fall back to another account/provider.
+if (process.env.TAPILOT_E2E_ENV_FILE && configured.error) throw configured.error;
+applyModelEnvironment(configured.parsed);
 const tags = (value = '') => value.split(',').map(tag => tag.trim()).filter(Boolean);
 const packageName = process.env.TAPILOT_E2E_PACKAGE || 'lifeos.md.tapilot';
 if (!/^lifeos\.md\.tapilot(?:\.[a-z][a-z0-9]*)?$/.test(packageName)) throw new Error('Invalid Tapilot test package');
@@ -61,7 +61,7 @@ const appOpen = defineNode({
     await context.device.connect();
     await context.device.launch(packageName);
     context.agent = new AndroidAgent(context.device, {
-      aiContexts: { aiAct: `You test Tapilot on Android. Its exact installed package is ${packageName}. The phone app owns task execution. For native tasks, device control means the AccessibilityService connection: the main chat shows 设备控制未连接 only when it is unavailable. Wireless control is a separate optional Wi-Fi service; its 未开启 status does not mean accessibility is unavailable. Never require wireless control for a local task. If a prerequisite is unavailable, fail BEFORE submitting any task; after submission observe the accepted task to terminal state and do not revisit settings to check readiness. Never perform its requested Calculator, Settings or browser task yourself. Observe and verify actual visible results. Do not interact with private notifications, authentication, payments or message sending. If an unexpected installer or system permission dialog interrupts the case, stop and report the interruption; never approve, dismiss or navigate through it.` },
+      aiContexts: { aiAct: `You test Tapilot on Android. Its exact installed package is ${packageName}. The phone app owns task execution. For native tasks, device control means the AccessibilityService connection: the main chat shows 设备控制未连接 only when it is unavailable. Wireless control is a separate optional Wi-Fi service; its 未开启 status does not mean accessibility is unavailable. Never require wireless control for a local task. If a prerequisite is unavailable, fail BEFORE submitting any task; after submission observe the accepted task to terminal state and do not revisit settings to check readiness. Never perform its requested Calculator, Settings or browser task yourself. Observe and verify actual visible results. Execute only the current step. Do not anticipate later steps or invent extra controls, labels or outcomes. Once every explicit requirement of the current step is met, finish immediately; a separate assertion checks the outcome. Do not interact with private notifications, authentication, payments or message sending. If an unexpected installer or system permission dialog interrupts the case, stop and report the interruption; never approve, dismiss or navigate through it.` },
       replanningCycleLimit: 80,
     });
   },
