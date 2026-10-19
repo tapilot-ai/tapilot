@@ -174,8 +174,8 @@ class NativeConversationCoordinator(
                 "stop" -> stop()
                 "settings" -> if (!running) { settingsOpen = true; settings.clearStatus() }
                 "advanced" -> if (!running && data.optBoolean("advanced")) advancedOpen = true
-                "new" -> if (!running) { data.put("active", "chat-${UUID.randomUUID()}"); preview = null; save() }
-                "select" -> if (!running && history().any { conversation(it) == value.optString("id") }) { data.put("active", value.getString("id")); preview = null; save() }
+                "new" -> if (!running) { panelResumeId = null; data.put("active", "chat-${UUID.randomUUID()}"); preview = null; save() }
+                "select" -> if (!running && history().any { conversation(it) == value.optString("id") }) { panelResumeId = null; data.put("active", value.getString("id")); preview = null; save() }
                 "attachment" -> pendingAttachment = value.getJSONObject("attachment")
                 "removeAttachment" -> pendingAttachment = null
                 "closePreview" -> preview = null

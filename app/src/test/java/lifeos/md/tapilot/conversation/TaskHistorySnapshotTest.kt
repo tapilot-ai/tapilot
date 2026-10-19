@@ -34,6 +34,17 @@ class TaskHistorySnapshotTest {
         assertEquals("pending", snapshot.pendingInputs.getJSONObject(0).getString("text"))
     }
 
+    @Test fun stalePanelResumeCannotBringAnOldGoalIntoANewConversation() {
+        val old = entry("old-task", "old-chat", 1).put("phase", "paused").put("goal", "old goal")
+        val amendment = entry("amendment", "old-chat", 2).put("kind", "instruction").put("taskId", "old-task")
+        for ((retry, resume) in listOf(null to "old-task", "old-task" to null)) {
+            val snapshot = TaskHistorySnapshot.capture(listOf(old, amendment), "new-chat", "a new goal", "task", retry, resume)
+            assertNull(snapshot.retry)
+            assertTrue(snapshot.prior.isEmpty())
+            assertEquals(0, snapshot.pendingInputs.length())
+        }
+    }
+
     @Test fun continueRetainsPreviousTaskAndLegacyConversationIdentity() {
         val previous = JSONObject().put("id", "legacy").put("source", "read screen").put("createdAt", 1).put("phase", "paused")
         val snapshot = TaskHistorySnapshot.capture(listOf(previous), "legacy", "continue", "task", null, "legacy")

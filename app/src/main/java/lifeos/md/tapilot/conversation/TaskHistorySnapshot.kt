@@ -9,7 +9,7 @@ internal data class TaskHistorySnapshot(val retry: JSONObject?, val prior: List<
         fun capture(history: List<JSONObject>, conversationId: String, text: String, kind: String,
                     retryOf: String?, continueOf: String?): TaskHistorySnapshot {
             fun conversation(entry: JSONObject) = entry.optString("conversationId", entry.optString("id"))
-            val selected = history.find { it.optString("id") == (continueOf ?: retryOf) }
+            val selected = history.find { conversation(it) == conversationId && it.optString("id") == (continueOf ?: retryOf) }
                 ?: if (kind == "task") TaskLifecycle.continuation(history.filter { conversation(it) == conversationId }, text) else null
             val retry = selected?.let(::jsonSnapshot)
             val prior = history.filter { conversation(it) == conversationId &&
