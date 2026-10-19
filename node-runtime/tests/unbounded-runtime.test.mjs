@@ -23,5 +23,6 @@ test('zero disables step deadlines while explicit positive deadlines still fail 
       const result = await runTestProject({ cwd: project, projectRoot: project, resultDir: join(project, 'results') });
       assert.equal(result.exitCode, timeout === 0 ? 0 : 1);
     }
-  } finally { await rm(root, { recursive: true, force: true }); }
+  } finally { // Timed-out nodes may still flush their report after the runner returns.
+    await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); }
 });

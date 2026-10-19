@@ -77,24 +77,22 @@ class NativeConversationAgentTest {
         assertTrue(prompt.contains("recover as needed"))
         assertTrue(prompt.contains("Perform the explicitly requested interactions in this run"))
         assertTrue(prompt.contains(JSONObject.quote(instruction)))
-        assertTrue(steps.getJSONObject(2).has("aiQuery"))
+        assertTrue(steps.getJSONObject(2).has("verifyPhone"))
         val observe = JSONObject(NativeConversationAgent.verifiedTask(instruction, "56 is visible", "observe", "com.example/.Calculator"))
             .getJSONArray("cases").getJSONObject(0).getJSONArray("steps")
         assertEquals(2, observe.length())
-        assertTrue(observe.getJSONObject(1).has("aiQuery"))
+        assertTrue(observe.getJSONObject(1).has("verifyPhone"))
     }
 
     @Test fun generatedTaskKeepsUntrustedTextAsData() {
         val source = NativeConversationAgent.verifiedTask("点击\n\"删除\"", "显示：确认")
         val steps = JSONObject(source).getJSONArray("cases").getJSONObject(0).getJSONArray("steps")
-        assertEquals("点击\n\"删除\"", steps.getJSONObject(0).getJSONObject("aiAct").getString("prompt"))
+        val action = steps.getJSONObject(0).getJSONObject("aiAct").getString("prompt")
+        assertTrue(action.contains(JSONObject.quote("点击\n\"删除\"")))
+        assertTrue(action.contains(JSONObject.quote("显示：确认")))
         assertEquals(2, steps.length())
-        val query = steps.getJSONObject(1).getJSONObject("aiQuery").getJSONObject("prompt")
-        assertTrue(query.getString("success").contains(JSONObject.quote("显示：确认")))
-        val observation = query.getString("observation")
-        assertTrue(observation.contains("current screenshot"))
-        assertTrue(observation.contains("unknown"))
-        assertFalse(observation.contains(JSONObject.quote("点击\n\"删除\"")))
-        assertFalse(observation.contains("显示：确认"))
+        val query = steps.getJSONObject(1).getJSONObject("verifyPhone")
+        assertEquals("点击\n\"删除\"", query.getString("instruction"))
+        assertEquals("显示：确认", query.getString("condition"))
     }
 }

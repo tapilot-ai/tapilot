@@ -1,0 +1,994 @@
+{
+  "date": "2026-10-18",
+  "status": "superseded-after-28-trials",
+  "plannedSamples": 40,
+  "apkSha256": "0e99976b37461d63a05a2b82d2548764e7bb624db59758cd18647de6a07993ba",
+  "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+  "overall": {
+    "total": 28,
+    "passed": 26
+  },
+  "summary": {
+    "read-world-clock": {
+      "total": 14,
+      "passed": 14,
+      "rate": 1.0,
+      "medianSuccessfulWallMs": 28614.0
+    },
+    "locate-calendar-date": {
+      "total": 14,
+      "passed": 12,
+      "rate": 0.8571428571428571,
+      "medianSuccessfulWallMs": 42092.0
+    }
+  },
+  "samples": [
+    {
+      "label": "success-v3-20261018-01-clock",
+      "fixture": "read-world-clock",
+      "taskId": "15abc588-1452-4621-8bac-c38178ec5f40",
+      "status": "succeeded",
+      "wallMs": 39579,
+      "outerCalls": 1,
+      "outerMs": 4927,
+      "visionCalls": 3,
+      "visionMs": 15250.069078,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "“时钟”页面中可见城市及时间：伦敦 04:58，纽约 11:58。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-01-clock/report-0.html",
+          "sha256": "a0372fcb9491b6c7fbbfb8b011a55108d5c02e6a1da6c7160cea95325964f041",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 3,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "“时钟”页面中可见城市及时间：伦敦 04:58，纽约 11:58。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-02-calendar",
+      "fixture": "locate-calendar-date",
+      "taskId": "0aa25225-185a-422a-ba2e-6f601c0e809f",
+      "status": "succeeded",
+      "wallMs": 38459,
+      "outerCalls": 1,
+      "outerMs": 4916,
+      "visionCalls": 4,
+      "visionMs": 21059.08577,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "日历标题为“2026年11月”；灰色圆形选中日期“15”，该日期对齐在星期标题“日”下方，显示为2026年11月15日（星期日）。可见完整的11月日历网格及星期标题。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-02-calendar/report-0.html",
+          "sha256": "d88901f552c7343af04281d432ecf996ded022515f5971aba64c9aad2855002c",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 4,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "日历标题为“2026年11月”；灰色圆形选中日期“15”，该日期对齐在星期标题“日”下方，显示为2026年11月15日（星期日）。可见完整的11月日历网格及星期标题。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-03-clock",
+      "fixture": "read-world-clock",
+      "taskId": "748b3c51-0c2f-470f-999a-89d0598508aa",
+      "status": "succeeded",
+      "wallMs": 29180,
+      "outerCalls": 1,
+      "outerMs": 4316,
+      "visionCalls": 3,
+      "visionMs": 15371.957309000003,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "“时钟”页面中，伦敦显示 05:01；纽约显示 12:01。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-03-clock/report-0.html",
+          "sha256": "7684c2e5393d27ce32800752095010cd4c87f3c79d4d97fab2aa12125309bc0e",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 3,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "“时钟”页面中，伦敦显示 05:01；纽约显示 12:01。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-04-calendar",
+      "fixture": "locate-calendar-date",
+      "taskId": "ce75d105-a6c8-4d08-a839-b9258774934c",
+      "status": "succeeded",
+      "wallMs": 43315,
+      "outerCalls": 1,
+      "outerMs": 4570,
+      "visionCalls": 5,
+      "visionMs": 26221.989386,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "日历月视图标题为“2026年11月”。数字“15”被灰色圆形高亮选中，位于星期列标题“日”下方。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-04-calendar/report-0.html",
+          "sha256": "d6be68d7fe7e0848a26012cb89cfd4cc8c6e7d486080072556096b01b4c886f0",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 5,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "日历月视图标题为“2026年11月”。数字“15”被灰色圆形高亮选中，位于星期列标题“日”下方。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-05-clock",
+      "fixture": "read-world-clock",
+      "taskId": "15411072-4b60-461f-a0e9-17f0bdeef205",
+      "status": "succeeded",
+      "wallMs": 26709,
+      "outerCalls": 1,
+      "outerMs": 3929,
+      "visionCalls": 3,
+      "visionMs": 13536.759694000002,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "“时钟”页面显示两个城市条目：伦敦 05:04，纽约 12:04。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-05-clock/report-0.html",
+          "sha256": "29b6ea06a06f072fa583700c3d967316f66f372e265e4992b32807ecb383f14d",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 3,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "“时钟”页面显示两个城市条目：伦敦 05:04，纽约 12:04。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-06-calendar",
+      "fixture": "locate-calendar-date",
+      "taskId": "91035246-7f70-436c-895e-83fa63363829",
+      "status": "succeeded",
+      "wallMs": 44089,
+      "outerCalls": 1,
+      "outerMs": 4631,
+      "visionCalls": 5,
+      "visionMs": 25981.487770000003,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "月视图显示“2026年11月”，日期15被选中；它位于星期列标题“日”下方，可见该日期为星期日。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-06-calendar/report-0.html",
+          "sha256": "5636ef3bc1a9cf7dc19bdd2adacacfc3add5e259730aa0ec5b5f7e85f25a1ee5",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 5,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "月视图显示“2026年11月”，日期15被选中；它位于星期列标题“日”下方，可见该日期为星期日。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-07-clock",
+      "fixture": "read-world-clock",
+      "taskId": "b68965a7-fca7-4eef-b6ec-4b232ec87948",
+      "status": "succeeded",
+      "wallMs": 93922,
+      "outerCalls": 3,
+      "outerMs": 12382,
+      "visionCalls": 10,
+      "visionMs": 56252.87084899999,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "页面标题为“时钟”。城市列表中，“伦敦”对应 05:07，“纽约”对应 12:07。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-07-clock/report-1.html",
+          "sha256": "dada00fb53b619096c5f5eb6aefc4774b6818aabfd8939f5ec4dcc64d55dc4f3",
+          "checks": {
+            "error": "Independent final query failed or missing"
+          }
+        },
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-07-clock/report-0.html",
+          "sha256": "b65e6d5f9c6c30925e898f50b34f21e4124236ad627ae675a7ca587e04c7a4e1",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 7,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "页面标题为“时钟”。城市列表中，“伦敦”对应 05:07，“纽约”对应 12:07。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-08-calendar",
+      "fixture": "locate-calendar-date",
+      "taskId": "0301f340-eb7f-40b0-ac70-23cb00256650",
+      "status": "succeeded",
+      "wallMs": 40117,
+      "outerCalls": 1,
+      "outerMs": 4649,
+      "visionCalls": 5,
+      "visionMs": 23604.309001999998,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "日历标题为“2026年11月”；灰色圆形标记选中15日，位于星期标题“日”列，即星期日。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-08-calendar/report-0.html",
+          "sha256": "41f283b59eff2e52547fd4fcd91580d32a1729888d2b60c1a04190ed0b69e0a8",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 5,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "日历标题为“2026年11月”；灰色圆形标记选中15日，位于星期标题“日”列，即星期日。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-09-clock",
+      "fixture": "read-world-clock",
+      "taskId": "95a1b27a-2764-416d-a987-116dddec5358",
+      "status": "succeeded",
+      "wallMs": 26822,
+      "outerCalls": 1,
+      "outerMs": 3915,
+      "visionCalls": 3,
+      "visionMs": 14094.162155999999,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "“时钟”页面显示伦敦 05:10、纽约 12:10；每座城市名称与对应时间位于同一行。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-09-clock/report-0.html",
+          "sha256": "deb5480e7cdcc1bc9f9be3795f13752b0d1550bb5ca9dadc83002fed8d467744",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 3,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "“时钟”页面显示伦敦 05:10、纽约 12:10；每座城市名称与对应时间位于同一行。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-10-calendar",
+      "fixture": "locate-calendar-date",
+      "taskId": "62e04eab-9f69-4ec3-9ea7-33c5133655c8",
+      "status": "succeeded",
+      "wallMs": 36435,
+      "outerCalls": 1,
+      "outerMs": 4632,
+      "visionCalls": 4,
+      "visionMs": 20681.033693999998,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "日历标题为“2026年11月”；日期15在灰色圆形中显示为选中状态，位于星期标题“日”下方，对应星期日。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-10-calendar/report-0.html",
+          "sha256": "4eeea1403d3d693ac4f19c5ba1b0341948b30738b9b268758938e61e38bfe2e1",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 4,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "日历标题为“2026年11月”；日期15在灰色圆形中显示为选中状态，位于星期标题“日”下方，对应星期日。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-11-clock",
+      "fixture": "read-world-clock",
+      "taskId": "86b0ff9d-3aee-472e-b91e-7236680dcf1e",
+      "status": "succeeded",
+      "wallMs": 27144,
+      "outerCalls": 1,
+      "outerMs": 4211,
+      "visionCalls": 3,
+      "visionMs": 14478.467771,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "“时钟”页面中显示伦敦 05:12、纽约 12:12。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-11-clock/report-0.html",
+          "sha256": "7bb814a75de1223390e0caea87e356be80531622197c9acec93d5c879dac211e",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 3,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "“时钟”页面中显示伦敦 05:12、纽约 12:12。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-12-calendar",
+      "fixture": "locate-calendar-date",
+      "taskId": "cfa28045-3864-4f91-bb4b-fbc1b185b973",
+      "status": "succeeded",
+      "wallMs": 38219,
+      "outerCalls": 1,
+      "outerMs": 5003,
+      "visionCalls": 4,
+      "visionMs": 22759.336924000003,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "日历标题为“2026年11月”；日期15带灰色圆形选中背景，位于列标题“日”下方，因此选中日期为2026年11月15日，星期日。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-12-calendar/report-0.html",
+          "sha256": "5bd4fc4265088c862109ec95511fb811b46a8e9f3206c8042e4c6dd2f827c8b4",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 4,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "日历标题为“2026年11月”；日期15带灰色圆形选中背景，位于列标题“日”下方，因此选中日期为2026年11月15日，星期日。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-13-clock",
+      "fixture": "read-world-clock",
+      "taskId": "d48a27aa-e8c8-42e8-8390-3b2132331093",
+      "status": "succeeded",
+      "wallMs": 28048,
+      "outerCalls": 1,
+      "outerMs": 4789,
+      "visionCalls": 3,
+      "visionMs": 14373.982154000001,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "“时钟”页面显示伦敦 05:14 和纽约 12:14；两张城市卡片均标注 10月18日 上午，分别显示慢7小时和慢12小时。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-13-clock/report-0.html",
+          "sha256": "1e6b9292d8857f571afa4ab2d761b75dc2932dc017caee3860cb694ad80787ee",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 3,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "“时钟”页面显示伦敦 05:14 和纽约 12:14；两张城市卡片均标注 10月18日 上午，分别显示慢7小时和慢12小时。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-14-calendar",
+      "fixture": "locate-calendar-date",
+      "taskId": "d207b4ba-a272-4842-a3df-defed29ce08d",
+      "status": "succeeded",
+      "wallMs": 43707,
+      "outerCalls": 1,
+      "outerMs": 5271,
+      "visionCalls": 5,
+      "visionMs": 23546.897079000002,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "日历部分标题为“2026年11月”。日期15被灰色圆形背景突出显示，位于星期列“日”下方；星期标题行可见。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-14-calendar/report-0.html",
+          "sha256": "106db538749268ae3a3c31b317ca695e64fc49d77c7fc5700ed8840a52d2e709",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 5,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "日历部分标题为“2026年11月”。日期15被灰色圆形背景突出显示，位于星期列“日”下方；星期标题行可见。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-15-clock",
+      "fixture": "read-world-clock",
+      "taskId": "76248080-c0a3-4883-ab54-860152d9719d",
+      "status": "succeeded",
+      "wallMs": 29370,
+      "outerCalls": 1,
+      "outerMs": 4054,
+      "visionCalls": 3,
+      "visionMs": 15903.437156000004,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "“时钟”页面显示两个城市及其时间：伦敦05:20、纽约12:20；两者下方均显示“10月18日上午”。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-15-clock/report-0.html",
+          "sha256": "edba137d968d9db722f3d467416aa4972d0d9f185cb09e644eedb0e0990812da",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 3,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "“时钟”页面显示两个城市及其时间：伦敦05:20、纽约12:20；两者下方均显示“10月18日上午”。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-16-calendar",
+      "fixture": "locate-calendar-date",
+      "taskId": "4351100d-1d16-4b12-a116-a3546fffcc9c",
+      "status": "succeeded",
+      "wallMs": 44238,
+      "outerCalls": 1,
+      "outerMs": 7203,
+      "visionCalls": 5,
+      "visionMs": 24529.955464000006,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "日历月视图标题为“2026年11月”。日期“15”位于星期日列（列标题“日”），并以灰色圆形背景突出显示。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-16-calendar/report-0.html",
+          "sha256": "0f7eb4381b234c9530d6eaae3f033261dccf39118223ed80821cc7b85315479e",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 5,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "日历月视图标题为“2026年11月”。日期“15”位于星期日列（列标题“日”），并以灰色圆形背景突出显示。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-17-clock",
+      "fixture": "read-world-clock",
+      "taskId": "3a5b4f0d-d127-4d9b-8041-5727640123e4",
+      "status": "succeeded",
+      "wallMs": 26335,
+      "outerCalls": 1,
+      "outerMs": 4216,
+      "visionCalls": 3,
+      "visionMs": 13236.328693,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "“时钟”页面显示伦敦 05:22、纽约 12:22。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-17-clock/report-0.html",
+          "sha256": "278f87924bdfc9d7a31b1267084c9d9e99850266581b82c12d681168eb1ecd05",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 3,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "“时钟”页面显示伦敦 05:22、纽约 12:22。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-18-calendar",
+      "fixture": "locate-calendar-date",
+      "taskId": "0f106818-379e-4610-83b8-4554ef5996c1",
+      "status": "succeeded",
+      "wallMs": 42894,
+      "outerCalls": 1,
+      "outerMs": 4754,
+      "visionCalls": 5,
+      "visionMs": 24926.378770999996,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "日历界面显示“2026年11月”。日期“15”被灰色圆形高亮，位于星期日（“日”）列；因此可见选中日期为2026年11月15日，星期日。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-18-calendar/report-0.html",
+          "sha256": "758440203506d2ec5b0a82016c785c9524c041c0ddcde39d303fefa6e5e4da5b",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 5,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "日历界面显示“2026年11月”。日期“15”被灰色圆形高亮，位于星期日（“日”）列；因此可见选中日期为2026年11月15日，星期日。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-19-clock",
+      "fixture": "read-world-clock",
+      "taskId": "0f920e3b-ec40-4854-ac45-111c3a11faf8",
+      "status": "succeeded",
+      "wallMs": 29920,
+      "outerCalls": 1,
+      "outerMs": 5704,
+      "visionCalls": 3,
+      "visionMs": 14716.880616999997,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "“时钟”页面中，伦敦显示05:24，纽约显示12:24。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-19-clock/report-0.html",
+          "sha256": "da1c1aa562405b0b9b44f8eec13f6712e13b9f45d455d79123a3283a80b42591",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 3,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "“时钟”页面中，伦敦显示05:24，纽约显示12:24。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-20-calendar",
+      "fixture": "locate-calendar-date",
+      "taskId": "1030d3c6-c947-4985-b449-5c047fb50b82",
+      "status": "succeeded",
+      "wallMs": 41290,
+      "outerCalls": 1,
+      "outerMs": 4524,
+      "visionCalls": 5,
+      "visionMs": 23706.433771000004,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "日历月视图标题为“2026年11月”。日期“15”被选中，位于星期日（“日”）列。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-20-calendar/report-0.html",
+          "sha256": "34283a7a52f6ede02df1de28063ccbe57616d96309dc3c3b887b1f9b31dfea0f",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 5,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "日历月视图标题为“2026年11月”。日期“15”被选中，位于星期日（“日”）列。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-21-clock",
+      "fixture": "read-world-clock",
+      "taskId": "52e6584f-527e-47a5-9b50-1eedf9bcd785",
+      "status": "succeeded",
+      "wallMs": 26600,
+      "outerCalls": 1,
+      "outerMs": 4267,
+      "visionCalls": 3,
+      "visionMs": 13417.004079,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "“时钟”页面显示伦敦 05:27、纽约 12:27。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-21-clock/report-0.html",
+          "sha256": "fe4ab513db65590981fa74a741fbc9214a6f60f1e4029046892db0e77241f873",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 3,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "“时钟”页面显示伦敦 05:27、纽约 12:27。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-22-calendar",
+      "fixture": "locate-calendar-date",
+      "taskId": "20d716e4-9362-47cf-ae6f-d88ccceac9ed",
+      "status": "succeeded",
+      "wallMs": 35273,
+      "outerCalls": 1,
+      "outerMs": 4839,
+      "visionCalls": 4,
+      "visionMs": 19531.493232000004,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "日历页面标题为“2026年11月”。日期网格中，15日被灰色圆形背景标记为选中，位于星期日（“日”）列。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-22-calendar/report-0.html",
+          "sha256": "af58739b471f482d90b481c7430f8a10b20aa8e82db1d8f90c489413ee1a09bf",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 4,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "日历页面标题为“2026年11月”。日期网格中，15日被灰色圆形背景标记为选中，位于星期日（“日”）列。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-23-clock",
+      "fixture": "read-world-clock",
+      "taskId": "0d666065-6b92-4eb4-bc01-26bb1a97cb50",
+      "status": "succeeded",
+      "wallMs": 63515,
+      "outerCalls": 3,
+      "outerMs": 15613,
+      "visionCalls": 6,
+      "visionMs": 31063.914925999994,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "“时钟”页面的世界时钟列表可见：伦敦显示 05:29，纽约显示 12:29。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-23-clock/report-0.html",
+          "sha256": "5fb98d9dd079b34b8110d09164af6ffac50680c974a685f312233b9f6572c0dc",
+          "checks": {
+            "error": "Independent final query failed or missing"
+          }
+        },
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-23-clock/report-1.html",
+          "sha256": "33fda80f4907ec320cb46fafbee4350d94d737adcfb6af9f3c0925fd43c31ede",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 3,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "“时钟”页面的世界时钟列表可见：伦敦显示 05:29，纽约显示 12:29。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-24-calendar",
+      "fixture": "locate-calendar-date",
+      "taskId": "066a2a48-8f91-4c63-b1c7-e9df5847f683",
+      "status": "succeeded",
+      "wallMs": 50340,
+      "outerCalls": 1,
+      "outerMs": 4473,
+      "visionCalls": 6,
+      "visionMs": 30490.553849000004,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "日历界面显示“2026年11月”，日期15有灰色圆形选中标记；它对齐在星期标题“日”列，对应星期日。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-24-calendar/report-0.html",
+          "sha256": "5174b861dddd79e9e01b2b52301bb209139d6e0c82bd867af85c344358a41640",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 6,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "日历界面显示“2026年11月”，日期15有灰色圆形选中标记；它对齐在星期标题“日”列，对应星期日。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-25-clock",
+      "fixture": "read-world-clock",
+      "taskId": "9a851b14-9494-4660-a943-567d52218468",
+      "status": "succeeded",
+      "wallMs": 31089,
+      "outerCalls": 1,
+      "outerMs": 5369,
+      "visionCalls": 3,
+      "visionMs": 17354.596309,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "“时钟”页面中，伦敦显示时间为 05:32；纽约显示时间为 12:32。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-25-clock/report-0.html",
+          "sha256": "3175e7c61fd02c5ffa89c9bf13a296af5b7e302270e3c0c206e23512737fefa9",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 3,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "“时钟”页面中，伦敦显示时间为 05:32；纽约显示时间为 12:32。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-26-calendar",
+      "fixture": "locate-calendar-date",
+      "taskId": "0e876f13-627f-48c5-a9e6-60d80a86384e",
+      "status": "failed",
+      "wallMs": 116806,
+      "outerCalls": 3,
+      "outerMs": 20844,
+      "visionCalls": 12,
+      "visionMs": 62493.868235999995,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "failed-task",
+      "verified": false,
+      "observation": "日历界面标题为“2026年11月”；日期15以灰色圆形背景选中，位于星期标题“日”所在列。未见明确标注该选中日期星期名称的文字。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-26-calendar/report-1.html",
+          "sha256": "18f601dd2537f1c1bb60d7610eb68f99504fa59eba84321d163eb94cd0f720fa",
+          "checks": {
+            "error": "Independent final query failed or missing"
+          }
+        },
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-26-calendar/report-0.html",
+          "sha256": "ac5cab03dc6c550e7cabedc476e74f96aa860c70bc7808a40213fe8b7da2509b",
+          "checks": {
+            "error": "Independent final query failed or missing"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-27-clock",
+      "fixture": "read-world-clock",
+      "taskId": "d1154226-f318-43e8-bce0-041bf52b0e72",
+      "status": "succeeded",
+      "wallMs": 27331,
+      "outerCalls": 1,
+      "outerMs": 4692,
+      "visionCalls": 3,
+      "visionMs": 14112.985616000002,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "“时钟”页面中，伦敦显示 05:36，纽约显示 12:36。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-27-clock/report-0.html",
+          "sha256": "3271fd600ea69057bae07288c832fddf2dff3ad24128cdb1e4cde7e1e749cc87",
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 3,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "“时钟”页面中，伦敦显示 05:36，纽约显示 12:36。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v3-20261018-28-calendar",
+      "fixture": "locate-calendar-date",
+      "taskId": "f36d629e-2461-428f-a10b-5801c974311a",
+      "status": "failed",
+      "wallMs": 102517,
+      "outerCalls": 3,
+      "outerMs": 19998,
+      "visionCalls": 9,
+      "visionMs": 58538.552467,
+      "runtimeSourceFingerprint": "be063c1ed508566c7a09fdfa31717777a70c1bcb70faa1cce377e35fad00d4ec",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "failed-task",
+      "verified": false,
+      "observation": "顶部日历标题为“2026年11月”。日期栏中数字“15”处于选中状态，位于星期标题“日”下方；截图未显示星期名称文字（如“星期日”），因此无法确认页面以名称显示所选日期的星期。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-28-calendar/report-0.html",
+          "sha256": "a9f1e62e4b3f4244d2ce3e7398be1f990264531535ff93168bbbf38d7b07fd5e",
+          "checks": {
+            "error": "Independent final query failed or missing"
+          }
+        },
+        {
+          "file": "artifacts/controlled-execution/success-v3-20261018-28-calendar/report-1.html",
+          "sha256": "2166526422afb9769ba436d9802f7f15cb6fc0c747fe64d6c4a8d5769c917677",
+          "checks": {
+            "error": "Independent final query failed or missing"
+          }
+        }
+      ]
+    }
+  ],
+  "stopReason": "Two failures make the predeclared 39/40 threshold unreachable. All started trials retained."
+}

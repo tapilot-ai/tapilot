@@ -25,6 +25,7 @@ const runtimeFiles = [
   'pi-conversation.mjs',
   'pi-context.mjs',
   'run-result.mjs',
+  'phone-verification.mjs',
   'stdio-native-bridge.mjs',
   'siwc-fetch.mjs',
   'settled-capture.mjs',

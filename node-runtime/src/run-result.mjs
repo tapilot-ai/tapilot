@@ -11,11 +11,11 @@ export function collectFinalAiResponse(runResult) {
         for (const step of attempt.steps ?? []) {
           const value = step?.node === 'aiAct'
             ? step?.output?.summary ?? step?.output?.data?.value
-            : step?.node === 'aiQuery'
+            : ['aiQuery', 'verifyPhone'].includes(step?.node)
               ? step?.output?.data
               : step?.output?.data?.value;
           // Assertions/waits establish success; their booleans are not observed facts.
-          if (!['aiAct', 'aiAsk', 'aiQuery', 'aiString', 'aiNumber', 'aiBoolean'].includes(step?.node)) continue;
+          if (!['aiAct', 'aiAsk', 'aiQuery', 'verifyPhone', 'aiString', 'aiNumber', 'aiBoolean'].includes(step?.node)) continue;
           // An empty explicit observation must not resurrect an earlier action summary.
           if (value === undefined || value === null) { finalResponse = undefined; continue; }
           const text =

@@ -10,7 +10,7 @@ import org.json.JSONObject
 class PerformanceExperimentReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val fixture = intent.getStringExtra("fixture") ?: "read-auto-brightness"
-        if (fixture !in listOf("read-auto-brightness", "read-android-version", "calculate-expression", "read-world-clock", "locate-calendar-date")) {
+        if (fixture !in listOf("read-auto-brightness", "read-android-version", "calculate-expression", "read-world-clock", "locate-calendar-date", "accept-cross-app", "accept-calendar-next-year", "accept-clock-tabs", "accept-clarification")) {
             setResult(1, "Unsupported benchmark fixture", null)
             return
         }
@@ -46,6 +46,10 @@ class PerformanceExperimentReceiver : BroadcastReceiver() {
         if (preload == "reset") editor.remove("runtime-preload")
         else editor.putBoolean("runtime-preload", preload == "on")
         val saved = editor.commit()
+        if (controlled && fixture.startsWith("accept-")) {
+            setResult(1, "Acceptance scenarios require the full conversation agent", null)
+            return
+        }
         if (saved && runBenchmark) {
             // Benchmarks bypass AssistantRuntime.command, so textual "No voice"
             // cannot disable automatic reply playback. Mute this run without

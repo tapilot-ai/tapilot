@@ -3,6 +3,9 @@ package lifeos.md.tapilot.bridge
 import lifeos.md.tapilot.AppText.text as appText
 import org.json.JSONObject
 import java.io.EOFException
+import java.io.InterruptedIOException
+import java.net.SocketTimeoutException
+import okhttp3.ConnectionPool
 import java.net.ProtocolException
 import java.net.SocketException
 import java.io.IOException
@@ -61,7 +64,14 @@ class ModelTransport(
                 var result: JSONObject? = null
                 for (attempt in 0..1) {
                     if (isCancelled(requestId, sessionId)) throw RequestCancelledException()
-                    val call = client.newCall(request)
+                    // Reserve time for one reconnect when no response headers arrive.
+                    // Streaming bodies retain the overall deadline and are never replayed on timeout.
+                    val retryPool = if (attempt > 0) ConnectionPool() else null
+                    val attemptClient = client.newBuilder()
+                        .readTimeout(minOf(client.readTimeoutMillis, HEADER_IDLE_TIMEOUT_MS).toLong(), TimeUnit.MILLISECONDS)
+                        .apply { if (retryPool != null) connectionPool(retryPool) }
+                        .build()
+                    val call = attemptClient.newCall(request)
                     call.timeout().deadlineNanoTime(deadline)
                     activeRequests[requestId] = ActiveRequest(sessionId, call)
                     var responseStatus: Int? = null
@@ -95,12 +105,16 @@ class ModelTransport(
                         val disconnected = error is EOFException || error is SocketException ||
                             (error is ProtocolException && error.message?.contains("unexpected end of stream") == true) ||
                             error.cause is EOFException
-                        if (!disconnected || (responseStatus != null && responseStatus !in 200..299)) throw ModelNetworkException(error)
+                        val headerTimeout = responseStatus == null &&
+                            (error is SocketTimeoutException ||
+                                (error is InterruptedIOException && error.message == "timeout"))
+                        if ((!disconnected && !headerTimeout) || (responseStatus != null && responseStatus !in 200..299)) throw ModelNetworkException(error)
                         if (attempt == 1 || System.nanoTime() >= deadline) throw ModelNetworkException(error)
                     } finally {
                         measurement.put("totalMs", elapsed())
                         runCatching { onTiming(measurement) }
                         activeRequests.remove(requestId)
+                        retryPool?.evictAll()
                     }
                 }
                 checkNotNull(result)
@@ -156,5 +170,6 @@ class ModelTransport(
     companion object {
         const val CONNECT_TIMEOUT_MS = 30_000
         const val READ_TIMEOUT_MS = 120_000
+        const val HEADER_IDLE_TIMEOUT_MS = 60_000
     }
 }

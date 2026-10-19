@@ -367,3 +367,77 @@ test('new input arriving after verified result checkpoint is not lost to direct 
   assert.equal(models, 2); assert.equal(result.phase, 'waiting_user');
   assert.equal(result.reply, '请说明新要求');
 });
+
+test('text-only recovery gets protocol guidance and can complete after inspecting evidence', async () => {
+  let models = 0, phones = 0;
+  const conversation = createConversation({ messages: input('读取选中项'), rpc: async (method, params) => {
+    if (method === 'phone.execute') return { success: ++phones > 1, result: phones === 1 ? '表头不可见' : '选中项和表头可见' };
+    models++;
+    if (models === 1) return tool('operate_phone', { instruction: '读取', success_condition: '标签和值可见' });
+    if (models === 2) return answer('还需要核验');
+    if (models === 3) {
+      assert.match(params.messages[0].content, /必须调用工具/);
+      return tool('operate_phone', { instruction: '只恢复表头', success_condition: '标签和值可见' });
+    }
+    return tool('finish_task', { outcome: 'completed', summary: '已读取' });
+  }, emit: () => {} });
+  const result = await conversation.run();
+  assert.equal(result.phase, 'completed'); assert.equal(phones, 2); assert.equal(models, 4);
+});
+
+test('repeated prose after failed verification terminates honestly without replaying effects', async () => {
+  let models = 0, phones = 0;
+  const conversation = createConversation({ messages: input('读取'), rpc: async method => {
+    if (method === 'phone.execute') { phones++; return { success: false, result: '缺少表头' }; }
+    return ++models === 1 ? tool('operate_phone', { instruction: '读取', success_condition: '完整可见' }) : answer('任务完成');
+  }, emit: () => {} });
+  const result = await conversation.run();
+  assert.equal(result.phase, 'failed'); assert.equal(result.lastPhoneResult.success, false);
+  assert.match(result.reply, /缺少表头/); assert.equal(models, 4); assert.equal(phones, 1);
+});
+
+test('prose after a verified intermediate step cannot falsely complete the whole task', async () => {
+  let models = 0;
+  const conversation = createConversation({ messages: input('两步任务'), rpc: async method => {
+    if (method === 'phone.execute') return { success: true, result: '第一步完成' };
+    return ++models === 1 ? tool('operate_phone', { instruction: '第一步', success_condition: '可见' }) : answer('完成');
+  }, emit: () => {} });
+  assert.equal((await conversation.run()).phase, 'failed'); assert.equal(models, 4);
+});
+
+
+test('recovery retains user requirements separately from invented step requirements', async () => {
+  let models = 0; const contracts = [];
+  const conversation = createConversation({ messages: input('Select item A and read its column'), rpc: async (method, args) => {
+    if (method === 'phone.execute') {
+      contracts.push(JSON.parse(args.success_condition));
+      return { success: contracts.length > 1, result: contracts.length > 1 ? 'A, X' : 'Missing full label' };
+    }
+    return [
+      tool('operate_phone', { instruction: 'Select A', success_condition: 'Full label X in detail view', finishWhenVerified: true }),
+      tool('operate_phone', { instruction: 'Read current selection', success_condition: 'A under X', mode: 'observe', finishWhenVerified: true }),
+      tool('finish_task', { outcome: 'completed', summary: 'A, X' }),
+    ][models++];
+  }, emit: () => {} });
+  assert.equal((await conversation.run()).phase, 'completed');
+  assert.deepEqual(contracts.map(c => c.userRequirements), [['Select item A and read its column'], ['Select item A and read its column']]);
+  assert.equal(contracts[0].proposedStepCondition, 'Full label X in detail view');
+  assert.equal(contracts[1].scope, 'entire_user_goal');
+});
+
+test('delivered user amendment changes next verification contract, not an in-flight operation', async () => {
+  let conversation, models = 0; const contracts = [];
+  conversation = createConversation({ messages: input('Read A'), rpc: async (method, args) => {
+    if (method === 'phone.execute') {
+      contracts.push(JSON.parse(args.success_condition));
+      if (contracts.length === 1) conversation.steer({ id: 'new-target', text: 'Instead read B, preserving its exact label' });
+      return { success: true, result: 'Observed' };
+    }
+    return models++ < 2 ? tool('operate_phone', { instruction: 'Read selection', success_condition: 'Selection visible', mode: 'observe' }) :
+      tool('finish_task', { outcome: 'completed', summary: 'B' });
+  }, emit: () => {} });
+  await conversation.run();
+  assert.deepEqual(contracts[0].userRequirements, ['Read A']);
+  assert.deepEqual(contracts[1].userRequirements, ['Read A', 'Instead read B, preserving its exact label']);
+  assert.equal(contracts[1].scope, 'intermediate_step');
+});

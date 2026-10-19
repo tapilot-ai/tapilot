@@ -58,7 +58,12 @@ therefore remain unsupported even when their pixels are visible.
   move between them using Midscene's screenshot-based understanding.
 - **Follow a task across apps.** Keep plans and operation results, add a requirement
   while running, or explicitly stop and retry. Interrupted tasks do not replay
-  automatically after an app restart.
+  automatically after an app restart. If the model repeatedly responds without
+  advancing or ending an active task, Tapilot requests a tool action and stops
+  with a failure after three consecutive non-progress responses.
+- Verification keeps user requirements separate from model-proposed intermediate steps across recovery and user amendments. Proposed navigation, layouts or duplicate labels cannot strengthen the user’s goal. Replies contain requested facts and necessary uncertainty; changing live values are read from the latest screenshot without treating normal time changes as errors.
+- Screenshot verification first extracts visible facts without the success predicate, then checks the requested result against the current screen. Both read-only queries remain in the report; missing evidence stays unknown. Echoed or malformed judgments receive at most one additional read-only check, then fail closed; valid negative judgments are never overridden.
+- A model request that times out before response headers can reconnect once using the same payload and a fresh connection, within the original 120-second deadline. Read inactivity is limited to 60 seconds; cancellation, authentication rejection, and body-read timeouts do not trigger this retry. Phone actions are never replayed by the transport.
 - **Inspect what happened.** Open the Midscene HTML replay with screenshots,
   model plans, actions and errors; export it when needed.
 - **Talk to the phone.** Optional Volcengine / Deepgram transcription and speech

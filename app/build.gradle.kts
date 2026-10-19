@@ -93,6 +93,9 @@ android {
 
     defaultConfig {
         applicationId = "lifeos.md.tapilot"
+        // A test APK has one runner. Select the existing pairing harness explicitly.
+        testInstrumentationRunner = providers.gradleProperty("tapilotTestRunner")
+            .orElse("lifeos.md.tapilot.performance.NativeTaskPerformanceHarness").get()
         if (providers.gradleProperty("speechVerification").isPresent) applicationIdSuffix = ".speechverify"
         else if (providers.gradleProperty("e2eVerification").isPresent) applicationIdSuffix = ".e2everify"
         minSdk = 30

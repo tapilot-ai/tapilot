@@ -1,0 +1,420 @@
+{
+  "date": "2026-10-18",
+  "status": "stopped-after-12-model-timeouts",
+  "plannedSamples": 40,
+  "apkSha256": "4c5e95fedfcbbc461a958f272504717eca23e14661f412273dfd8d7d5b8ac7d4",
+  "runtimeSourceFingerprint": "084031ac0e1cdd7203f6779510e5060b56645cace1185a6b6294a90ad040764e",
+  "overall": {
+    "total": 12,
+    "passed": 10
+  },
+  "summary": {
+    "read-world-clock": {
+      "total": 6,
+      "passed": 5,
+      "rate": 0.8333333333333334,
+      "medianSuccessfulWallMs": 41231
+    },
+    "locate-calendar-date": {
+      "total": 6,
+      "passed": 5,
+      "rate": 0.8333333333333334,
+      "medianSuccessfulWallMs": 65445
+    }
+  },
+  "samples": [
+    {
+      "label": "success-v5-20261018-01-clock",
+      "fixture": "read-world-clock",
+      "taskId": "8275fc8c-ceb2-4ca9-9338-ce941996f58c",
+      "status": "succeeded",
+      "wallMs": 50291,
+      "outerCalls": 1,
+      "outerMs": 5318,
+      "visionCalls": 4,
+      "visionMs": 25499.220541000002,
+      "runtimeSourceFingerprint": "084031ac0e1cdd7203f6779510e5060b56645cace1185a6b6294a90ad040764e",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "截图中“时钟”页显示两张世界时钟城市卡片：伦敦为06:51，纽约为01:51；城市名称和时间在各自卡片中对应清楚。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v5-20261018-01-clock/report-0.html",
+          "sha256": "09dd2e321d7ed99290c084fb680d064a39f88c904feb4ec0d3326806e92b8fa0",
+          "queryCount": 2,
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 4,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "截图中“时钟”页显示两张世界时钟城市卡片：伦敦为06:51，纽约为01:51；城市名称和时间在各自卡片中对应清楚。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v5-20261018-02-calendar",
+      "fixture": "locate-calendar-date",
+      "taskId": "d3a9b682-7516-420d-9060-ff1b3e338083",
+      "status": "succeeded",
+      "wallMs": 57399,
+      "outerCalls": 1,
+      "outerMs": 4759,
+      "visionCalls": 6,
+      "visionMs": 38090.617387000006,
+      "runtimeSourceFingerprint": "084031ac0e1cdd7203f6779510e5060b56645cace1185a6b6294a90ad040764e",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "截图显示日历标题为“2026年11月”，15日以灰色圆形底色选中。该日期位于“日”列下方，星期标题清晰可见，因此选中日期为2026年11月15日，星期日。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v5-20261018-02-calendar/report-0.html",
+          "sha256": "3efbc56c9b7d1bac5924bfa7075a87230995f2f8701011e8f17f7369c6bb53fa",
+          "queryCount": 2,
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 6,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "截图显示日历标题为“2026年11月”，15日以灰色圆形底色选中。该日期位于“日”列下方，星期标题清晰可见，因此选中日期为2026年11月15日，星期日。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v5-20261018-03-clock",
+      "fixture": "read-world-clock",
+      "taskId": "89cafa4e-4bee-44f4-97e7-93e1fe519ff1",
+      "status": "succeeded",
+      "wallMs": 40486,
+      "outerCalls": 1,
+      "outerMs": 4026,
+      "visionCalls": 4,
+      "visionMs": 26212.784309,
+      "runtimeSourceFingerprint": "084031ac0e1cdd7203f6779510e5060b56645cace1185a6b6294a90ad040764e",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "当前截图显示时钟应用的“时钟”标签处于选中状态。两张城市时钟卡片分别显示伦敦06:53和纽约01:53，城市名与时间对应清晰可读。顶部本地时间为01:53:54，先前转录的01:53:43不准确。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v5-20261018-03-clock/report-0.html",
+          "sha256": "6b74a5737694648a0f4895993349eedd09bc97cf7a3ae9ec87833006be7ed75a",
+          "queryCount": 2,
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 4,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "当前截图显示时钟应用的“时钟”标签处于选中状态。两张城市时钟卡片分别显示伦敦06:53和纽约01:53，城市名与时间对应清晰可读。顶部本地时间为01:53:54，先前转录的01:53:43不准确。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v5-20261018-04-calendar",
+      "fixture": "locate-calendar-date",
+      "taskId": "7170b579-c83b-42bf-8c36-b204972c470f",
+      "status": "succeeded",
+      "wallMs": 65445,
+      "outerCalls": 1,
+      "outerMs": 5446,
+      "visionCalls": 6,
+      "visionMs": 47291.729158,
+      "runtimeSourceFingerprint": "084031ac0e1cdd7203f6779510e5060b56645cace1185a6b6294a90ad040764e",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "截图顶部显示“2026年11月”。日历列标题从左到右为“日、一、二、三、四、五、六”；15日位于“日”列，且以灰色圆形底突出显示，因此画面支持选中日期为2026年11月15日、星期日。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v5-20261018-04-calendar/report-0.html",
+          "sha256": "3a604fd60d766be71d8b49b18f1323f21ad7fd6e32e04d8577658d17d459251a",
+          "queryCount": 2,
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 5,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "截图顶部显示“2026年11月”。日历列标题从左到右为“日、一、二、三、四、五、六”；15日位于“日”列，且以灰色圆形底突出显示，因此画面支持选中日期为2026年11月15日、星期日。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v5-20261018-05-clock",
+      "fixture": "read-world-clock",
+      "taskId": "777d60d4-d044-459e-bf19-d74400a9896a",
+      "status": "succeeded",
+      "wallMs": 40887,
+      "outerCalls": 1,
+      "outerMs": 3926,
+      "visionCalls": 4,
+      "visionMs": 26808.177462999993,
+      "runtimeSourceFingerprint": "084031ac0e1cdd7203f6779510e5060b56645cace1185a6b6294a90ad040764e",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "这是时钟应用的“时钟”页面，底部“时钟”选中。页面中两张城市卡片分别显示伦敦 06:56 和纽约 01:56；城市名称与时间的对应关系清楚。中央本地时间显示为 01:56:39。先前转录中的中央时间 01:56:27 与截图不符。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v5-20261018-05-clock/report-0.html",
+          "sha256": "ac4f358f8843c3dee14a6a6f9459171ff577691f0a35af118e84501f2705a4bf",
+          "queryCount": 2,
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 4,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "这是时钟应用的“时钟”页面，底部“时钟”选中。页面中两张城市卡片分别显示伦敦 06:56 和纽约 01:56；城市名称与时间的对应关系清楚。中央本地时间显示为 01:56:39。先前转录中的中央时间 01:56:27 与截图不符。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v5-20261018-06-calendar",
+      "fixture": "locate-calendar-date",
+      "taskId": "7bc4f329-c782-4a88-938c-e8ea8d6a825b",
+      "status": "succeeded",
+      "wallMs": 76170,
+      "outerCalls": 3,
+      "outerMs": 12916,
+      "visionCalls": 6,
+      "visionMs": 45287.81892700001,
+      "runtimeSourceFingerprint": "084031ac0e1cdd7203f6779510e5060b56645cace1185a6b6294a90ad040764e",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "截图显示日历月视图标题为“2026年11月”，15日以灰色圆形背景选中，并位于列标题“日”下方，因此所选日期2026年11月15日对应星期日。此前转录关于纪念日和天气卡片的描述与本次判断无关。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v5-20261018-06-calendar/report-1.html",
+          "sha256": "be50bd7e0f545106f2eff7142f8567bf7931c9a11f99b6ba0ac679ab8d22ebec",
+          "queryCount": 0,
+          "checks": {
+            "error": "Independent final query failed or missing"
+          }
+        },
+        {
+          "file": "artifacts/controlled-execution/success-v5-20261018-06-calendar/report-0.html",
+          "sha256": "af8ea13b50fd0da4530b68edb424789100c18f7cc233ff17c83f058a783918d8",
+          "queryCount": 2,
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 3,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "截图显示日历月视图标题为“2026年11月”，15日以灰色圆形背景选中，并位于列标题“日”下方，因此所选日期2026年11月15日对应星期日。此前转录关于纪念日和天气卡片的描述与本次判断无关。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v5-20261018-07-clock",
+      "fixture": "read-world-clock",
+      "taskId": "c376e5f4-5de7-405e-aa4e-00a44f60be1c",
+      "status": "succeeded",
+      "wallMs": 41356,
+      "outerCalls": 1,
+      "outerMs": 4978,
+      "visionCalls": 4,
+      "visionMs": 25644.112770999993,
+      "runtimeSourceFingerprint": "084031ac0e1cdd7203f6779510e5060b56645cace1185a6b6294a90ad040764e",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "当前截图中，“时钟”底部导航项处于选中状态。页面可见两张城市时间卡片：伦敦显示06:59，纽约显示01:59。卡片内城市名与时间的对应关系清晰可读。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v5-20261018-07-clock/report-0.html",
+          "sha256": "9d9aebd5a0c049e0e60f4ed20405c95bb0635a55e42173c990d2837cd670c19c",
+          "queryCount": 2,
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 4,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "当前截图中，“时钟”底部导航项处于选中状态。页面可见两张城市时间卡片：伦敦显示06:59，纽约显示01:59。卡片内城市名与时间的对应关系清晰可读。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v5-20261018-08-calendar",
+      "fixture": "locate-calendar-date",
+      "taskId": "7ceeef34-3ff9-4f7b-b7e9-19a7b7c81981",
+      "status": "succeeded",
+      "wallMs": 52115,
+      "outerCalls": 1,
+      "outerMs": 4727,
+      "visionCalls": 5,
+      "visionMs": 36287.723233,
+      "runtimeSourceFingerprint": "084031ac0e1cdd7203f6779510e5060b56645cace1185a6b6294a90ad040764e",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "当前截图确认日历显示2026年11月，15日处于选中状态。该日期位于表头“日”（周日）列，故星期为星期日。截图未显示独立的日期详情标签，但日历月份、日期选中状态及列标题足以判断目标日期和星期。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v5-20261018-08-calendar/report-0.html",
+          "sha256": "b92f5c563e35472af29a5afcafcc20843996cecd339f97a41c475ca71e17a9df",
+          "queryCount": 2,
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 5,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "当前截图确认日历显示2026年11月，15日处于选中状态。该日期位于表头“日”（周日）列，故星期为星期日。截图未显示独立的日期详情标签，但日历月份、日期选中状态及列标题足以判断目标日期和星期。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v5-20261018-09-clock",
+      "fixture": "read-world-clock",
+      "taskId": "6d545fd1-ac0b-4c3f-bcd0-e91eba2620e9",
+      "status": "succeeded",
+      "wallMs": 41231,
+      "outerCalls": 1,
+      "outerMs": 4371,
+      "visionCalls": 4,
+      "visionMs": 26854.913847999997,
+      "runtimeSourceFingerprint": "084031ac0e1cdd7203f6779510e5060b56645cace1185a6b6294a90ad040764e",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "截图中世界时钟页面可见两张城市时间卡片：伦敦显示 07:02，纽约显示 02:02；名称和时间均清晰可读并在各自行内对应。页面顶部本地时间显示 02:02:21，并非先前转录中的 02:02:08。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v5-20261018-09-clock/report-0.html",
+          "sha256": "82b5e0e345f3badda4299d1a13a9cae00ba5a4598c1a55f039af943dcc5bf9dc",
+          "queryCount": 2,
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 4,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "截图中世界时钟页面可见两张城市时间卡片：伦敦显示 07:02，纽约显示 02:02；名称和时间均清晰可读并在各自行内对应。页面顶部本地时间显示 02:02:21，并非先前转录中的 02:02:08。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v5-20261018-10-calendar",
+      "fixture": "locate-calendar-date",
+      "taskId": "9df7c075-546e-4aaa-92bd-56f0420d6bde",
+      "status": "succeeded",
+      "wallMs": 68428,
+      "outerCalls": 1,
+      "outerMs": 4558,
+      "visionCalls": 6,
+      "visionMs": 51004.774774000005,
+      "runtimeSourceFingerprint": "084031ac0e1cdd7203f6779510e5060b56645cace1185a6b6294a90ad040764e",
+      "models": [
+        "gpt-6-luna"
+      ],
+      "manualReview": "passed",
+      "verified": true,
+      "observation": "页面为日历界面，顶部显示“2026年11月”。日历列标题从左至右为“日、一、二、三、四、五、六”；15日位于灰色圆形选中背景中，且在“日”列下方，显示为星期日。此前转录中提到的其他日历标注与下方内容不影响本次判断。",
+      "reports": [
+        {
+          "file": "artifacts/controlled-execution/success-v5-20261018-10-calendar/report-0.html",
+          "sha256": "88b19da28b9c0e50ab81058160ab0f469f8293365a94cc2e42fc18d0ec605a7d",
+          "queryCount": 2,
+          "checks": {
+            "model": "gpt-6-luna",
+            "modelCalls": 5,
+            "retries": 0,
+            "screenshot": {
+              "width": 1080,
+              "height": 2400
+            },
+            "observation": "页面为日历界面，顶部显示“2026年11月”。日历列标题从左至右为“日、一、二、三、四、五、六”；15日位于灰色圆形选中背景中，且在“日”列下方，显示为星期日。此前转录中提到的其他日历标注与下方内容不影响本次判断。"
+          }
+        }
+      ]
+    },
+    {
+      "label": "success-v5-20261018-11-clock",
+      "fixture": "read-world-clock",
+      "taskId": "f50337f8-aa5e-43cd-88b9-fe409446af72",
+      "status": "failed",
+      "wallMs": 121020,
+      "outerCalls": 1,
+      "outerMs": 120043,
+      "visionCalls": 0,
+      "visionMs": 0,
+      "runtimeSourceFingerprint": "084031ac0e1cdd7203f6779510e5060b56645cace1185a6b6294a90ad040764e",
+      "models": [],
+      "manualReview": "failed-task",
+      "verified": false,
+      "observation": null,
+      "reports": []
+    },
+    {
+      "label": "success-v5-20261018-12-calendar",
+      "fixture": "locate-calendar-date",
+      "taskId": "0ec45329-29ed-4f3e-9ec6-478caa91ca88",
+      "status": "failed",
+      "wallMs": 121166,
+      "outerCalls": 1,
+      "outerMs": 120042,
+      "visionCalls": 0,
+      "visionMs": 0,
+      "runtimeSourceFingerprint": "084031ac0e1cdd7203f6779510e5060b56645cace1185a6b6294a90ad040764e",
+      "models": [],
+      "manualReview": "failed-task",
+      "verified": false,
+      "observation": null,
+      "reports": []
+    }
+  ],
+  "stopReason": "Trials 11 and 12 failed before phone operations: outer model requests timed out at 120 seconds. 39/40 is no longer possible. All samples retained."
+}

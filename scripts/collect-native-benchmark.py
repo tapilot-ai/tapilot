@@ -6,6 +6,7 @@ import pathlib
 import shlex
 import subprocess
 import threading
+import time
 
 
 def main():
@@ -13,7 +14,7 @@ def main():
     parser.add_argument('label')
     parser.add_argument('--serial', required=True)
     parser.add_argument('--mode', choices=['full', 'execution'], default='full')
-    parser.add_argument('--fixture', choices=['read-auto-brightness', 'read-android-version', 'calculate-expression', 'read-world-clock', 'locate-calendar-date'], default='read-auto-brightness')
+    parser.add_argument('--fixture', choices=['read-auto-brightness', 'read-android-version', 'calculate-expression', 'read-world-clock', 'locate-calendar-date', 'accept-cross-app', 'accept-calendar-next-year', 'accept-clock-tabs', 'accept-clarification'], default='read-auto-brightness')
     parser.add_argument('--runtime-preload', choices=['on', 'off', 'reset'], default='reset')
     args = parser.parse_args()
     if pathlib.Path(args.label).name != args.label or args.label in ('.', '..'):
@@ -68,8 +69,21 @@ def main():
         reason = 'Observer timed out' if observer_expired.is_set() else f'Observer log stream ended (exit {log.returncode})'
         raise RuntimeError(f'{reason}; inspect device task state. Do not replay automatically.')
     print(json.dumps(wall), flush=True)
+    # task.wall is emitted before the asynchronous conversation snapshot flush.
+    # Wait for that same task's terminal snapshot; never start or replay a task.
+    task = None
+    for attempt in range(10):
+        state = json.loads(shell('run-as', 'lifeos.md.tapilot', 'cat', 'files/native-conversation.json'))
+        task = next((item for item in state.get('history', []) if item.get('id') == wall.get('taskId')), None)
+        if task is not None and task.get('status') == wall.get('status'):
+            break
+        time.sleep(0.2)
+    snapshot_settled = task is not None and task.get('status') == wall.get('status')
+    if task is not None:
+        # Private evidence stays under ignored artifacts, never in published summaries.
+        (out / 'task.json').write_text(json.dumps(task, ensure_ascii=False, indent=2))
     manifest = json.loads(shell('run-as', 'lifeos.md.tapilot', 'cat', 'files/node-runtime/manifest.json'))
-    (out / 'sample.json').write_text(json.dumps({'mode': args.mode, 'fixture': args.fixture, 'capture': 'product-default', 'runtimePreload': args.runtime_preload, 'runtimeSourceFingerprint': manifest['sourceFingerprint'], 'task': wall}, indent=2))
+    (out / 'sample.json').write_text(json.dumps({'mode': args.mode, 'fixture': args.fixture, 'capture': 'product-default', 'runtimePreload': args.runtime_preload, 'runtimeSourceFingerprint': manifest['sourceFingerprint'], 'task': wall, 'taskSnapshotSettled': snapshot_settled}, indent=2))
     for index, remote in enumerate(sorted(reports() - before)):
         data = subprocess.check_output(adb + ['exec-out', 'run-as', 'lifeos.md.tapilot', 'cat', remote])
         (out / f'report-{index}.html').write_bytes(data)
@@ -79,7 +93,8 @@ def main():
             (out / f'{index}-{name}').write_bytes(data.stdout)
     shell('screencap', '-p', '/sdcard/profile.png')
     subprocess.run(adb + ['pull', '/sdcard/profile.png', str(out / 'end.png')], check=True, stdout=subprocess.DEVNULL)
-    if wall.get('status') != 'succeeded':
+    expected_status = 'waiting_user' if args.fixture == 'accept-clarification' else 'succeeded'
+    if wall.get('status') != expected_status:
         raise RuntimeError('Task did not succeed; failed sample preserved')
 
 

@@ -1,3 +1,4 @@
+import { verifyPhone } from './phone-verification.mjs';
 import { AndroidAccessibilityDevice } from '@tapilot/android-accessibility';
 import { Agent } from '@midscene/core/agent';
 import { defineNode, z } from '@midscene/test';
@@ -146,6 +147,16 @@ const launchNode = defineNode({
   },
 });
 
+const midsceneNodes = createMidsceneNodes({ agentClass: AndroidAssistantAgent, agentProvider });
+const queryNode = midsceneNodes.find(node => node.name === 'aiQuery');
+const verificationNode = defineNode({
+  name: 'verifyPhone',
+  inputSchema: z.strictObject({ instruction: z.string().min(1), condition: z.string().min(1) }),
+  async execute(context) {
+    return verifyPhone(ctx => queryNode.execute(ctx), context, context.input);
+  },
+});
+
 export default defineTestProject({
   test: { maxConcurrency: 1, testTimeout: 0 },
   projects: [
@@ -156,10 +167,8 @@ export default defineTestProject({
     },
   ],
   nodes: [
-    ...createMidsceneNodes({
-      agentClass: AndroidAssistantAgent,
-      agentProvider,
-    }),
+    ...midsceneNodes,
+    verificationNode,
     launchNode,
     systemNode('back', 'AndroidBackButton', 'Triggered Android back'),
     systemNode('home', 'AndroidHomeButton', 'Triggered Android home'),

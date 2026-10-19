@@ -3,5 +3,9 @@
   "read-android-version": "Open Settings, open About device, and read the Android version. Do not confuse Android version with ColorOS version or build number. Do not change any setting. No voice.",
   "calculate-expression": "Open Calculator and calculate (128 + 256) × 3 ÷ 4. Read the final displayed result. Use the calculator UI for the calculation; do not answer from mental arithmetic. No voice.",
   "read-world-clock": "Open Clock, open World clock, and read the currently visible city names and their displayed times. Do not add or remove cities or change alarms. No voice.",
-  "locate-calendar-date": "Open Calendar, navigate to November 15, 2026, and read the selected date and its weekday from the calendar UI. Do not create, edit, or delete events. No voice."
+  "locate-calendar-date": "Open Calendar, navigate to November 15, 2026, and read the selected date and its weekday from the calendar UI. Do not create, edit, or delete events. No voice.",
+  "accept-cross-app": "Read the visible city names and times in World clock, then open Calendar and select December 6, 2026 and read its weekday. Reply with both results. Do not modify cities, alarms or events. No voice.",
+  "accept-calendar-next-year": "Open Calendar and select January 13, 2027. Read the selected date and weekday. Do not create, edit or delete events. No voice.",
+  "accept-clock-tabs": "Open Clock, read the visible alarm times and enabled states without toggling them, then read the visible World clock city names and times. Reply with both sets of readings. Do not modify alarms or cities. No voice.",
+  "accept-clarification": "Open the app I meant. I have not told you which app. Ask me which app before operating the phone. No voice."
 }

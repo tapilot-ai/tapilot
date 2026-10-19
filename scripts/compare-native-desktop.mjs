@@ -111,7 +111,9 @@ try {
   const queries = result.projects.flatMap(p => p.cases ?? []).flatMap(c => c.run?.steps ?? [])
     .filter(s => s.node === 'aiQuery').map(s => s.output?.data);
   if (queries.length !== 1 || queries[0]?.success !== true || !queries[0]?.observation) throw Error('Independent screenshot verification did not pass');
-  const evidence = controlledEvidence(report);
+  const screenshot = process.env.TAPILOT_BENCH_SCREENSHOT_SIZE
+    ? JSON.parse(process.env.TAPILOT_BENCH_SCREENSHOT_SIZE) : undefined;
+  const evidence = controlledEvidence(report, screenshot);
   if (sourceFingerprint(root) !== runtimeSourceFingerprint) throw Error('Runtime sources changed during the sample');
   const modelHttpRequests = events.filter(e => e.type === 'model.timing').length;
   await writeFile(join(out, 'measurement.json'), JSON.stringify({ fixtureName, fixtureSha256, captureFormat, sourceFingerprint: runtimeSourceFingerprint, modelHttpRequests, executionWallMs, runnerDurationMs: result.durationMs, environmentProxyEnabled: process.env.NODE_USE_ENV_PROXY === '1', queries, evidence,

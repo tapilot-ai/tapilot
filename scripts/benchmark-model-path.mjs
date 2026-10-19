@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // Identical screenshot request on desktop Node and the app's Android Node/UID.
+import { writeFileSync } from 'node:fs';
 import { spawn, execFileSync } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
@@ -76,8 +77,14 @@ function worker(command, args) {
   child.on('exit', () => pending?.reject(Error('Worker exited')));
   child.stdin.on('error', () => pending?.reject(Error('Worker input closed')));
   createInterface({ input: child.stdout }).on('line', line => {
+    // MediaTek app_process writes platform permission diagnostics to stdout.
+    if (!line.trim() || line.startsWith('[com.mediatek.cta.CtaAdapter]')) return;
     try { const value = JSON.parse(line); if (value.received) pending?.receive(value.received); else pending?.resolve(value); }
-    catch { pending?.reject(Error('Invalid worker output')); }
+    catch {
+      // Preserve diagnostic protocol failures locally without emitting model data.
+      writeFileSync(join(out, 'invalid-worker-output.txt'), line);
+      pending?.reject(Error('Invalid worker output; private diagnostic retained'));
+    }
   });
   return { child, ready, request(value) { const result = wait(value.id); child.stdin.write(JSON.stringify(value) + '\n'); return result; } };
 }

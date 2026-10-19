@@ -1,0 +1,113 @@
+{
+  "date": "2026-10-19",
+  "device": "Redmi K30 Ultra / Android 12",
+  "model": "gpt-6-luna",
+  "screenshot": {
+    "width": 1080,
+    "height": 2400,
+    "format": "jpeg",
+    "quality": 90
+  },
+  "apkSha256": "220d502b24fc6833b8775c834c9c1991a32092a4ed4c8c6d78ee47b0929c6e06",
+  "runtimeSourceFingerprint": "0a04448886099150dee456bda294980327052cf72d27a10a20043684bc2b0ddb",
+  "samples": [
+    {
+      "label": "expansion-v2-20261019-01-cross-app",
+      "fixture": "accept-cross-app",
+      "status": "failed",
+      "review": "failed-environment",
+      "durationMs": 12691,
+      "outerMs": 864,
+      "outerCalls": 1,
+      "visionMs": 0,
+      "visionCalls": 0,
+      "phoneOperations": 0,
+      "observerTimedOut": false,
+      "reports": []
+    },
+    {
+      "label": "expansion-v2-20261019-02-cross-app",
+      "fixture": "accept-cross-app",
+      "status": "succeeded",
+      "review": "passed",
+      "durationMs": 120176,
+      "outerMs": 22927,
+      "outerCalls": 5,
+      "visionMs": 70785.961,
+      "visionCalls": 10,
+      "phoneOperations": 2,
+      "observerTimedOut": false,
+      "reports": [
+        {
+          "file": "report-1.html",
+          "sha256": "b84af092ad408cd87b96d5ee5cd3267f3768a9a77393d49d94a84760fd101b81",
+          "verified": true
+        },
+        {
+          "file": "report-0.html",
+          "sha256": "c082313554f30005e82fd5de3e3b852f115fc6f3f5b27bbefe85eedd5a7c7135",
+          "verified": true
+        }
+      ]
+    },
+    {
+      "label": "expansion-v2-20261019-03-next-year",
+      "fixture": "accept-calendar-next-year",
+      "status": "succeeded",
+      "review": "passed-with-recovery",
+      "durationMs": 357891,
+      "outerMs": 13679,
+      "outerCalls": 3,
+      "visionMs": 241109.633,
+      "visionCalls": 36,
+      "phoneOperations": 2,
+      "observerTimedOut": true,
+      "reports": [
+        {
+          "file": "report-0.html",
+          "sha256": "92a12b592e24e8947f8c5151fb2b0c4260a921c47b3ccecce9f36339f976affb",
+          "verified": false
+        },
+        {
+          "file": "report-1.html",
+          "sha256": "4f15fe6a90d9dbc31bb45c647634de3ff7ceb6f2a131f662589d2f2524a5d0f2",
+          "verified": true
+        }
+      ]
+    },
+    {
+      "label": "expansion-v2-20261019-04-clock-tabs",
+      "fixture": "accept-clock-tabs",
+      "status": "stopped",
+      "review": "incomplete-stopped",
+      "durationMs": 296318,
+      "outerMs": 8068,
+      "outerCalls": 1,
+      "visionMs": 191069.169,
+      "visionCalls": 31,
+      "phoneOperations": 1,
+      "observerTimedOut": true,
+      "reports": []
+    },
+    {
+      "label": "expansion-v2-20261019-05-clarification",
+      "fixture": "accept-clarification",
+      "status": "succeeded",
+      "review": "failed-status",
+      "durationMs": 6139,
+      "outerMs": 4839,
+      "outerCalls": 1,
+      "visionMs": 0,
+      "visionCalls": 0,
+      "phoneOperations": 0,
+      "observerTimedOut": false,
+      "reports": []
+    }
+  ],
+  "notes": [
+    "原 v6 39/40 与 10 月 18 日首批结果均不并入本批。",
+    "保留 HTTP 403 失败样本；网络恢复后另编号执行。",
+    "超时只停止采集，不重放原任务。失败核验保留；同一目标后续独立核验成功可计恢复后成功。",
+    "截图、账号、私人日历内容仅留在忽略的 artifacts，不纳入提交。"
+  ]
+}

@@ -22,11 +22,11 @@ class PhoneOperationRouteTest {
         fun steps(mode: String, app: String = "") = JSONObject(NativeConversationAgent.verifiedTask("read", "visible", mode, app))
             .getJSONArray("cases").getJSONObject(0).getJSONArray("steps")
         val read = steps("observe")
-        assertEquals(1, read.length()); assertTrue(read.getJSONObject(0).has("aiQuery"))
+        assertEquals(1, read.length()); assertTrue(read.getJSONObject(0).has("verifyPhone"))
         val launch = steps("observe", "example.doubao/.Main")
         assertEquals(2, launch.length())
         assertEquals("example.doubao/.Main", launch.getJSONObject(0).getJSONObject("launch").getString("uri"))
-        assertTrue(launch.getJSONObject(1).has("aiQuery"))
+        assertTrue(launch.getJSONObject(1).has("verifyPhone"))
         val act = steps("act", "example.doubao/.Main")
         assertEquals(3, act.length()); assertTrue(act.getJSONObject(1).has("aiAct"))
         assertThrows(IllegalArgumentException::class.java) { steps("invalid") }

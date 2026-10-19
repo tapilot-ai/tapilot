@@ -1,0 +1,60 @@
+{
+  "date": "2026-10-19",
+  "device": "Redmi K30 Ultra / Android 12",
+  "model": "gpt-6-luna",
+  "screenshot": {
+    "width": 1080,
+    "height": 2400,
+    "format": "jpeg",
+    "quality": 90
+  },
+  "apkSha256": "bfe640b275d2a5f8d7e60763b9687ceaa6581c80c85f4458ac77d16afe24067c",
+  "runtimeSourceFingerprint": "ef602f53bd3e6d37037d4f43b79c8e1df2723c0585a6c11e9ce42b99ad95f0b9",
+  "samples": [
+    {
+      "label": "expansion-v3-20261019-01-clarification",
+      "fixture": "accept-clarification",
+      "status": "waiting_user",
+      "review": "passed",
+      "durationMs": 14325,
+      "outerMs": 3571,
+      "outerCalls": 1,
+      "visionMs": 0,
+      "visionCalls": 0,
+      "phoneOperations": 0,
+      "observerTimedOut": false,
+      "reports": []
+    },
+    {
+      "label": "expansion-v3-20261019-02-clock-tabs",
+      "fixture": "accept-clock-tabs",
+      "status": "succeeded",
+      "review": "failed-answer",
+      "durationMs": 100347,
+      "outerMs": 30848,
+      "outerCalls": 6,
+      "visionMs": 50789.785,
+      "visionCalls": 8,
+      "phoneOperations": 2,
+      "observerTimedOut": false,
+      "reports": [
+        {
+          "file": "report-0.html",
+          "sha256": "2a0b848cf7ec6deabcb3213adcd3a7a2499c1e4475158b1c4ebafe3e2c926b2d",
+          "verified": true
+        },
+        {
+          "file": "report-1.html",
+          "sha256": "e72d6b95193d08b4886c9f137c9126a8e71ca06ce4002a6d116f8ac53b0b9add",
+          "verified": true
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "原 v6 39/40 与 10 月 18 日首批结果均不并入本批。",
+    "保留 HTTP 403 失败样本；网络恢复后另编号执行。",
+    "超时只停止采集，不重放原任务。失败核验保留；同一目标后续独立核验成功可计恢复后成功。",
+    "截图、账号、私人日历内容仅留在忽略的 artifacts，不纳入提交。"
+  ]
+}

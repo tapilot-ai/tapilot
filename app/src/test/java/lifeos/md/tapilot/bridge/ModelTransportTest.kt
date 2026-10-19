@@ -1,5 +1,6 @@
 package lifeos.md.tapilot.bridge
 
+import okio.buffer
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okhttp3.Response
@@ -142,7 +143,7 @@ class ModelTransportTest {
         }
     }
 
-    @Test fun `timeouts and HTTP authentication errors do not replay requests`() {
+    @Test fun `header timeouts have one retry while HTTP authentication errors do not`() {
         for (timeout in listOf(false, true)) {
             val calls = AtomicInteger()
             val client = OkHttpClient.Builder().addInterceptor { chain ->
@@ -154,9 +155,94 @@ class ModelTransportTest {
                 val result = execute(transport)
                 if (timeout) assertTrue(result.exceptionOrNull() is ModelTransport.ModelNetworkException)
                 else assertEquals(403, result.getOrThrow().getInt("status"))
-                assertEquals(1, calls.get())
+                assertEquals(if (timeout) 2 else 1, calls.get())
             }
         }
+    }
+
+    @Test fun `real silent connection times out and recovers on a new socket`() {
+        ServerSocket(0).use { server ->
+            server.soTimeout = 3000
+            val bodies = mutableListOf<String>()
+            var serverError: Throwable? = null
+            val sockets = mutableListOf<java.net.Socket>()
+            val worker = thread {
+                try {
+                    repeat(2) { attempt ->
+                        val socket = server.accept()
+                        sockets.add(socket)
+                        socket.soTimeout = 3000
+                        val input = socket.getInputStream().bufferedReader()
+                        var length = 0
+                        while (true) {
+                            val line = input.readLine() ?: error("missing headers")
+                            if (line.isEmpty()) break
+                            if (line.startsWith("Content-Length:", true)) length = line.substringAfter(':').trim().toInt()
+                        }
+                        val body = CharArray(length)
+                        var count = 0
+                        while (count < length) count += input.read(body, count, length - count)
+                        bodies.add(String(body))
+                        // Keep the first connection open and silent; the retry must use a new one.
+                        if (attempt == 1) {
+                            socket.getOutputStream().write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}".toByteArray())
+                            socket.getOutputStream().flush()
+                        }
+                    }
+                } catch (error: Throwable) { serverError = error }
+                finally { sockets.forEach { it.close() } }
+            }
+            val client = OkHttpClient.Builder().readTimeout(150, TimeUnit.MILLISECONDS)
+                .retryOnConnectionFailure(false).addInterceptor { chain ->
+                    chain.proceed(chain.request().newBuilder().url("http://127.0.0.1:${server.localPort}/completions").build())
+                }.build()
+            ModelTransport(client).use { transport ->
+                assertEquals(200, execute(transport).getOrThrow().getInt("status"))
+            }
+            worker.join(3500)
+            assertFalse(worker.isAlive)
+            assertNull(serverError)
+            assertEquals(listOf("{}", "{}"), bodies)
+        }
+    }
+
+    @Test fun `header timeout reconnects once with unchanged payload and records both attempts`() {
+        val calls = AtomicInteger()
+        val payloads = mutableListOf<String>()
+        val records = mutableListOf<JSONObject>()
+        val client = OkHttpClient.Builder().addInterceptor { chain ->
+            val buffer = okio.Buffer()
+            chain.request().body!!.writeTo(buffer)
+            payloads.add(buffer.readUtf8())
+            if (calls.incrementAndGet() == 1) throw SocketTimeoutException("read timed out")
+            response(chain.request())
+        }.build()
+        ModelTransport(client, onTiming = { records.add(it) }).use { transport ->
+            assertEquals(200, execute(transport).getOrThrow().getInt("status"))
+        }
+        assertEquals(listOf("{}", "{}"), payloads)
+        assertEquals(listOf(0, 1), records.map { it.getInt("attempt") })
+    }
+
+    @Test fun `body timeout after response headers is not retried`() {
+        val calls = AtomicInteger()
+        val client = OkHttpClient.Builder().addInterceptor { chain ->
+            calls.incrementAndGet()
+            val body = object : okhttp3.ResponseBody() {
+                override fun contentType(): okhttp3.MediaType? = null
+                override fun contentLength() = -1L
+                override fun source(): okio.BufferedSource = object : okio.Source {
+                    override fun read(sink: okio.Buffer, byteCount: Long): Long = throw SocketTimeoutException("body stalled")
+                    override fun timeout() = okio.Timeout.NONE
+                    override fun close() = Unit
+                }.buffer()
+            }
+            response(chain.request()).newBuilder().body(body).build()
+        }.build()
+        ModelTransport(client).use { transport ->
+            assertTrue(execute(transport).exceptionOrNull() is ModelTransport.ModelNetworkException)
+        }
+        assertEquals(1, calls.get())
     }
 
     @Test fun `cancelling during a failed attempt prevents reconnect`() {

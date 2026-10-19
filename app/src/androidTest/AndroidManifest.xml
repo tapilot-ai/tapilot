@@ -1,6 +1,3 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <instrumentation android:name="lifeos.md.tapilot.wireless.WirelessAcceptanceHarness"
-        android:targetPackage="lifeos.md.tapilot" android:functionalTest="true" />
-    <instrumentation android:name="lifeos.md.tapilot.performance.NativeTaskPerformanceHarness"
-        android:targetPackage="lifeos.md.tapilot" android:functionalTest="true" />
+    <!-- The Gradle testInstrumentationRunner selects one harness per test APK. -->
 </manifest>

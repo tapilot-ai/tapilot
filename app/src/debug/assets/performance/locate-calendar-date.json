@@ -5,7 +5,7 @@
       "steps": [
         {
           "launch": {
-            "uri": "com.coloros.calendar"
+            "uri": "com.android.calendar"
           }
         },
         {
