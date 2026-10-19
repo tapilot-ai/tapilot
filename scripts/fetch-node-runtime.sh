@@ -15,7 +15,7 @@ packages=(
   'c/c-ares/c-ares_1.34.8_aarch64.deb 7681fc23e822d7988ba8b2adf3468f93ae68f724dda365cff1385096a9fa87e6'
   'libc/libc++/libc++_30_aarch64.deb 53d0b84a7ba7459024257cb94d5b136fe13ef858567f65a8064b35950799f2ca'
   'libi/libicu/libicu_78.3_aarch64.deb f536403f65a08fe0df6e7304184e902d54def77d5c3bd5edfd9109d57601d276'
-  'libs/libsqlite/libsqlite_3.54.0_aarch64.deb 9adf91e118fcf4d449f0fb9668485d895916c4f76c2407da17ba114406f43a58'
+  'libs/libsqlite/libsqlite_3.54.1_aarch64.deb 0856cac8cc87f6e112f2eef4fcac6ad5cb08209ecb7cc260f997874fc186a3c0'
   'o/openssl/openssl_1%3A3.6.5_aarch64.deb a2fb7856875e63ef6b90442752e05974813372c3ca86d2513a78ea43c67a0f8b'
   'z/zlib/zlib_1.3.2_aarch64.deb 75e7d0af17fcc3b40004309fdc00a1ddb9ae08346dce5e269902c34ac3966ac9'
 )
@@ -36,7 +36,7 @@ if [[ -z "${node_binary}" ]]; then
   exit 1
 fi
 cp "${node_binary}" "${staging}/node"
-for library_name in libz.so.1.3.2 libcares.so libsqlite3.so.3.54.0 \
+for library_name in libz.so.1.3.2 libcares.so libsqlite3.so.3.54.1 \
   libcrypto.so.3 libssl.so.3 libicui18n.so.78.3 libicuuc.so.78.3 \
   libicudata.so.78.3 libc++_shared.so; do
   library="$(find "${unpack_root}" -path "*/${prefix}/lib/${library_name}" -type f -print -quit)"

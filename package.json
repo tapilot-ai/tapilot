@@ -43,6 +43,7 @@
     "check:quick": "node scripts/check.mjs --quick",
     "check:plugin": "npm --prefix plugins/android-use run check",
     "check:security": "pnpm audit && pnpm --dir node-runtime/bundle audit && npm audit --prefix plugins/android-use && npm audit --prefix tests/midscene",
+    "check:distribution": "node scripts/distribution-readiness.mjs",
     "release:materials": "node scripts/prepare-distribution-materials.mjs",
     "check:e2e": "npm --prefix tests/midscene run check",
     "test:e2e": "npm --prefix tests/midscene test",

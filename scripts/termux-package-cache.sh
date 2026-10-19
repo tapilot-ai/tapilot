@@ -2,7 +2,7 @@
 set -euo pipefail
 
 termux_pool="${TERMUX_POOL:-https://packages.termux.dev/apt/termux-main/pool/main}"
-termux_cache="${assistant_root}/.cache/termux"
+termux_cache="${TERMUX_CACHE:-${assistant_root}/.cache/termux}"
 
 verify_sha256() {
   python3 - "$1" "$2" <<'PY'

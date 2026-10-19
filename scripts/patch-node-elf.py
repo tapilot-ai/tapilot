@@ -17,7 +17,7 @@ SONAME_RENAMES = {
 
 FILE_RENAMES = {
     "libz.so.1.3.2": "libz.so",
-    "libsqlite3.so.3.54.0": "libsqlite3.so",
+    "libsqlite3.so.3.54.1": "libsqlite3.so",
     "libicui18n.so.78.3": "libicui18n.so",
     "libicuuc.so.78.3": "libicuuc.so",
     "libicudata.so.78.3": "libicudata.so",

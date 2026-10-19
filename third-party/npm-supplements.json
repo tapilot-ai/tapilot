@@ -54,5 +54,12 @@
     "path": "third-party/notices/npm/data-uri-to-buffer-4.0.1-NOTICE.md",
     "url": "https://raw.githubusercontent.com/TooTallNate/node-data-uri-to-buffer/85cd8c854aefbf1bb636789d80364cfac8ea1583/README.md",
     "sha256": "a7cc4332acfa1f9b6530e01aac77fefe74f2efa32579215fddaa473013f9a25c"
+  },
+  {
+    "name": "union",
+    "version": "0.5.0",
+    "path": "third-party/notices/npm/union-0.5.0-LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/flatiron/union/b69c2c0eb95d48b49e72182e53c1788efa195cc0/LICENSE",
+    "sha256": "ce5a6467d5e685e6c6ce90ea94dd5764ce16aa5b0332803c1f0411e6cc682d36"
   }
 ]
