@@ -369,7 +369,7 @@ class NativeConversationCoordinator(
                                 .getOrElse { JSONObject().put("text", appText("之前的附件已不可用。不能猜测内容，请用户重新提供。", "Previous attachment is unavailable. Do not guess its contents; ask the user to provide it again.")) }
                         }
                     val modelSource = source + saved?.optString("text").orEmpty().takeIf { it.isNotBlank() }?.let { "\n\n文件内容：\n${it.take(30_000)}" }.orEmpty() +
-                        if (saved?.optString("name")?.contains("屏幕") == true) "\n图片是用户先前保存的屏幕快照，不是当前实时画面。" else ""
+                        if (saved?.optString("name")?.contains("屏幕") == true) "\n本条消息附带的图片是发送前保存的屏幕快照，仅作参考。这条说明只适用于该附件，不适用于 operate_phone 随后新采集的手机画面；当前状态须通过工具重新查看。" else ""
                     val messages = NativeConversationAgent.messages(prior, modelSource, AppLanguage.resolved(activity) == "zh", attachments, saved?.optJSONArray("images")?.strings().orEmpty())
                     var preparationRequested = false
                     val reply = pi.run(messages, retry?.takeIf { continueOf != null || it.optString("phase") != "completed" }?.optJSONArray("agentContext"), limits, stopped::get, complete = { chat, tools ->

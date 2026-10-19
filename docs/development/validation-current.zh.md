@@ -12,6 +12,8 @@
 
 运行全量本地门禁：`pnpm check`；依赖审计：`pnpm check:security`。开发构建通过不表示 APK 可公开分发。
 
+补充：[悬浮提示与截图来源回归](overlay-freshness-20261019.zh.md)记录当天后续候选修复、独立指纹与真机结果。
+
 ## 现有真机和性能证据
 
 - [Redmi 两端对比](benchmark-redmi-20261017.zh.md)：旧 runtime 八轮通过 6/8；日历手机两轮失败。它是 same-agent harness 对比，不是 Codex UI 延迟。

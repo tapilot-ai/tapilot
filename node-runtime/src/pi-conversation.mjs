@@ -77,11 +77,12 @@ export function checkpointMessages(messages) {
 export function createConversation({ messages, goal = '', resume = [], pendingInputs = [], installedApps = [], limits = {}, rpc, emit }) {
   const textOf = content => typeof content === 'string' ? content :
     (content ?? []).filter(block => block.type === 'text').map(block => block.text).join('\n');
-  // User-owned requirements survive retries; tool-generated navigation is only a proposal.
+  // The native goal is user-authored; message content also includes attachment text and
+  // provenance notes. Keep that context in the model transcript, not in acceptance criteria.
+  // Steering inputs remain requirements across retries.
   const userRequirements = [...new Set([
     goal || textOf(messages.at(-1)?.content),
     ...resume.filter(m => m.role === 'user' && m.inputId).map(m => textOf(m.content)),
-    textOf(messages.at(-1)?.content),
   ].filter(Boolean))];
   let stalledTurns = 0;
   let invalidFinishes = 0, requirementRevision = 0, verifiedRevision = -1;

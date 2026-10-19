@@ -491,3 +491,30 @@ test('an amendment invalidates old phone evidence before another completed resul
   }, emit: () => {} });
   const r = await c.run(); assert.equal(r.phase, 'waiting_user'); assert.equal(phones, 1);
 });
+
+
+test('attachment provenance stays in model context and cannot invalidate fresh phone evidence', async () => {
+  const goal = 'Read the current system version';
+  const warning = 'Attached image was saved earlier and is not the current live screen.';
+  const document = 'File contents: a historical screenshot with an old version.';
+  let models = 0;
+  const contracts = [];
+  const conversation = createConversation({ goal,
+    messages: input(`${goal}\n${warning}\n${document}`),
+    rpc: async (method, params) => {
+      if (method === 'phone.execute') {
+        contracts.push(JSON.parse(params.success_condition));
+        return { success: true, result: 'System version: 14' };
+      }
+      if (models++ === 0) {
+        assert.ok(JSON.stringify(params.messages).includes(warning));
+        return tool('operate_phone', {instruction:'Read the current system version', success_condition:'Version and label visible'});
+      }
+      return tool('finish_task', {outcome:'completed', summary:'System version: 14'});
+    }, emit: () => {},
+  });
+  assert.equal((await conversation.run()).phase, 'completed');
+  assert.deepEqual(contracts[0].userRequirements, [goal]);
+  assert.ok(!JSON.stringify(contracts[0]).includes(warning));
+  assert.ok(!JSON.stringify(contracts[0]).includes(document));
+});
