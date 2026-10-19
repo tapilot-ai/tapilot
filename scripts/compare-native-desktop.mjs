@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { ChatGPTAuth } from '../plugins/android-use/server/midscene/chatgpt-auth.mjs';
 import { PhoneConnection } from '../plugins/android-use/server/transport.mjs';
 import { controlledEvidence } from './lib/controlled-evidence.mjs';
+import { collectPhoneVerifications } from '../node-runtime/src/run-result.mjs';
 import { verifyRuntime, sourceFingerprint } from './runtime-integrity.mjs';
 import { loadConfig, validateConfig } from '../plugins/android-use/server/config.mjs';
 
@@ -108,8 +109,7 @@ try {
   // its temporary agent report, while the sample directory remains available.
   const report = await readFile(completed.reportPath, 'utf8');
   await writeFile(join(out, 'report.html'), report);
-  const queries = result.projects.flatMap(p => p.cases ?? []).flatMap(c => c.run?.steps ?? [])
-    .filter(s => s.node === 'aiQuery').map(s => s.output?.data);
+  const queries = collectPhoneVerifications(result);
   if (queries.length !== 1 || queries[0]?.success !== true || !queries[0]?.observation) throw Error('Independent screenshot verification did not pass');
   const screenshot = process.env.TAPILOT_BENCH_SCREENSHOT_SIZE
     ? JSON.parse(process.env.TAPILOT_BENCH_SCREENSHOT_SIZE) : undefined;

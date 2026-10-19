@@ -140,3 +140,19 @@ test('preserves real SDK aiAct summary when the following assertion has no insig
     { node: 'aiAssert', output: { summary: 'Assertion passed', data: { pass: true } } },
   ] } }] }] }), '自动调节已开启');
 });
+
+import { collectPhoneVerifications } from './run-result.mjs';
+test('desktop and production accept current verifyPhone and legacy aiQuery final-attempt evidence', () => {
+  for (const node of ['verifyPhone', 'aiQuery']) {
+    const data = { success: true, observation: 'Actual visible value' };
+    const r = { projects: [{ cases: [{ attempts: [
+      { steps: [{ node, output: { data: { success: false, observation: 'Old failure' } } }] },
+      { steps: [{ node, output: { data } }] },
+    ] }] }] };
+    assert.deepEqual(collectPhoneVerifications(r), [data]);
+    assert.deepEqual(JSON.parse(collectFinalAiResponse(r)), data);
+  }
+  assert.deepEqual(collectPhoneVerifications({ projects: [{ cases: [{ run: { steps: [
+    { node: 'aiAct', output: { data: { success: true, observation: 'Only action summary' } } },
+  ] } }] }] }), []);
+});

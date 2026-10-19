@@ -423,6 +423,12 @@ class NativeConversationCoordinator(
                     } }, resumeInputs = taskHistory.pendingInputs, goal = entry.getString("goal"))
                     finalPhase = reply.getString("phase")
                     check(finalPhase != "failed") { reply.getString("reply") }
+                    if (finalPhase == "completed") {
+                        val generalAnswer = reply.optString("completionKind") == "answer" && reply.optInt("operations") == 0
+                        check(generalAnswer || reply.optJSONObject("lastPhoneResult")?.optBoolean("success") == true) {
+                            appText("手机任务缺少成功的画面核验", "Phone task has no successful screen verification")
+                        }
+                    }
                     check(reply.optJSONObject("lastPhoneResult")?.optBoolean("success") != false || finalPhase == "waiting_user") { appText("手机操作未通过最终画面验证", "Phone operation did not pass final screen verification") }
                     reply.getString("reply")
                 }

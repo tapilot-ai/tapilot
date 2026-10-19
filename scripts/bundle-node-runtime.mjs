@@ -23,6 +23,7 @@ const runtimeFiles = [
   'prepared-runtime.mjs',
   'pi-runner.mjs',
   'pi-conversation.mjs',
+  'conversation-policy.mjs',
   'pi-context.mjs',
   'run-result.mjs',
   'phone-verification.mjs',

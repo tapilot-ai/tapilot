@@ -11,7 +11,7 @@ test('Pi pushes a planned phone task to verified completion through native RPC',
   const conversation = createConversation({ messages: input('打开计算器'), rpc: async (method, params) => {
     methods.push(method);
     if (method === 'phone.execute') return { success: true, result: '计算器已显示' };
-    assert.deepEqual(params.tools.map(t => t.function.name), ['operate_phone', 'find_apps', 'set_plan', 'finish_task']);
+    assert.deepEqual(params.tools.map(t => t.function.name), ['operate_phone', 'find_apps', 'set_plan', 'finish_task', 'answer_question']);
     assert.deepEqual(params.tools[0].function.parameters.required, ['instruction', 'success_condition', 'mode', 'finishWhenVerified', 'app']);
     if (count === 2) {
       const verified = JSON.parse(params.messages.at(-1).content).result;
@@ -34,11 +34,12 @@ test('steering amends an active task after its phone operation', async () => {
   let conversation, seen = false, models = 0;
   conversation = createConversation({ messages: input('打开计算器'), rpc: async (method, params) => {
     if (method === 'phone.execute') {
-      conversation.steer({ id: 'amend-1', text: '改为只回复 PINE94' });
+      if (models === 1) conversation.steer({ id: 'amend-1', text: '改为只回复 PINE94' });
       return { success: true, result: '已打开' };
     }
     if (models++ === 0) return tool('operate_phone', { instruction: '打开计算器', success_condition: '计算器显示' });
     seen = params.messages.some(m => JSON.stringify(m.content).includes('PINE94'));
+    if (models === 2) return tool('operate_phone', { instruction: '读取当前计算器', success_condition: '计算器显示', mode: 'observe' });
     return tool('finish_task', { outcome: 'completed', summary: 'PINE94' });
   }, emit: () => {} });
   assert.equal((await conversation.run()).reply, 'PINE94'); assert.ok(seen);
@@ -56,7 +57,7 @@ test('failed phone verification cannot finish successfully; adjusted retry can',
       tool('finish_task', { outcome: 'completed', summary: '重试完成' })][models++];
   }, emit: () => {} });
   assert.equal((await conversation.run()).reply, '重试完成'); assert.equal(phones, 2);
-  assert.ok(JSON.stringify(results).includes('不能标记任务完成'));
+  assert.ok(JSON.stringify(results).includes('不能标记手机任务完成'));
 });
 
 test('waiting for clarification returns a durable waiting phase', async () => {
@@ -126,7 +127,7 @@ test('abort after model response prevents any queued phone operation', async () 
 
 test('a completed task blocks later operations in the same model batch', async () => {
   let operations = 0;
-  const first = tool('finish_task', { outcome: 'completed', summary: '完成' });
+  const first = tool('finish_task', { outcome: 'waiting_user', summary: '完成' });
   first.choices[0].message.tool_calls.push(tool('operate_phone', { instruction: '不应执行', success_condition: '成功' }).choices[0].message.tool_calls[0]);
   const conversation = createConversation({ messages: input('任务'), rpc: async method => {
     if (method === 'phone.execute') operations++;
@@ -141,7 +142,7 @@ test('checkpoint stores consumed steering identities for crash recovery', async 
     if (!params.messages.some(m => JSON.stringify(m.content).includes('NEW_INPUT'))) {
       conversation.steer({ id: 'durable-input', text: 'NEW_INPUT' }); return answer('旧回复');
     }
-    return answer('新回复');
+    return tool('answer_question', { answer: '新回复' });
   }, emit: event => { if (event.type === 'checkpoint') checkpoints.push(event.messages); } });
   assert.equal((await conversation.run()).reply, '新回复');
   assert.ok(checkpoints.at(-1).some(m => m.inputId === 'durable-input'));
@@ -152,7 +153,7 @@ test('resume retains an amendment accepted before an interrupted operation finis
   const conversation = createConversation({ messages: input('继续'),
     resume: [{ role: 'user', content: '打开计算器', timestamp: 1 }], pendingInputs: [{ id: 'old-input', text: '改成返回桌面' }],
     rpc: async (_method, params) => {
-      seen = JSON.stringify(params.messages).includes('改成返回桌面'); return answer('已收到补充');
+      seen = JSON.stringify(params.messages).includes('改成返回桌面'); return tool('finish_task', { outcome: 'waiting_user', summary: '已收到补充' });
     }, emit: () => {} });
   await conversation.run(); assert.ok(seen);
 });
@@ -181,7 +182,7 @@ test('restored task goal is explicit in the model context and truncated calls ne
         const response = tool('operate_phone', { instruction: '截断的操作', success_condition: '成功' });
         response.choices[0].finish_reason = 'length'; return response;
       }
-      return answer('参数被截断，请重试');
+      return tool('finish_task', { outcome: 'failed', summary: '参数被截断，请重试' });
     }, emit: () => {} });
   const result = await conversation.run(); assert.ok(seen); assert.equal(phones, 0); assert.equal(result.lastPhoneResult.success, false);
 });
@@ -212,7 +213,7 @@ test('Responses replay state survives tool round trips and checkpoints', async (
   const conversation = createConversation({ messages: input('检查任务'), limits: { modelTurns: 3 }, rpc: async (_method, params) => {
     if (turns++ === 0) return { ...tool('set_plan', { steps: ['检查'], currentStep: 0 }), tapilotResponsesOutput: replay };
     assert.deepEqual(params.messages.find(m => m.role === 'assistant').tapilotResponsesOutput, replay);
-    return tool('finish_task', { outcome: 'completed', summary: '已检查' });
+    return tool('finish_task', { outcome: 'waiting_user', summary: '需要检查手机' });
   }, emit: event => { if (event.type === 'checkpoint') checkpoints.push(event.messages); } });
   await conversation.run();
   assert.ok(checkpoints.some(messages => messages.some(m => m.tapilotResponsesOutput?.[0].encrypted_content === 'opaque-test-state')));
@@ -440,4 +441,53 @@ test('delivered user amendment changes next verification contract, not an in-fli
   assert.deepEqual(contracts[0].userRequirements, ['Read A']);
   assert.deepEqual(contracts[1].userRequirements, ['Read A', 'Instead read B, preserving its exact label']);
   assert.equal(contracts[1].scope, 'intermediate_step');
+});
+
+test('zero-operation completion is rejected and can recover to clarification', async () => {
+  let models = 0;
+  const c = createConversation({ messages: input('打开那个应用'), rpc: async method => {
+    assert.equal(method, 'model.complete');
+    return ++models === 1
+      ? tool('finish_task', { outcome: 'completed', summary: '已打开' })
+      : tool('finish_task', { outcome: 'waiting_user', summary: '哪个应用？' });
+  }, emit: () => {} });
+  const r = await c.run();
+  assert.equal(r.phase, 'waiting_user'); assert.equal(r.operations, 0); assert.equal(models, 2);
+});
+
+test('plain clarification cannot default to completed, while knowledge has an explicit answer exit', async () => {
+  const c = createConversation({ messages: input('打开那个应用'), rpc: async () => answer('哪个应用？'), emit: () => {} });
+  const r = await c.run(); assert.equal(r.phase, 'failed'); assert.equal(r.operations, 0); assert.equal(r.turns, 3);
+  const knowledge = createConversation({ messages: input('What is a screenshot?'), rpc: async () =>
+    tool('answer_question', { answer: 'An image of a display.' }), emit: () => {} });
+  assert.equal((await knowledge.run()).reply, 'An image of a display.');
+});
+
+test('knowledge exit cannot bypass a failed phone operation', async () => {
+  let models = 0;
+  const c = createConversation({ messages: input('Read screen'), rpc: async method => {
+    if (method === 'phone.execute') return { success: false, result: 'Unknown' };
+    return [tool('operate_phone', { instruction: 'Read', success_condition: 'Visible' }),
+      tool('answer_question', { answer: 'Everything succeeded' }),
+      tool('finish_task', { outcome: 'failed', summary: 'Unknown' })][models++];
+  }, emit: () => {} });
+  assert.equal((await c.run()).phase, 'failed'); assert.equal(models, 3);
+});
+
+test('repeated unsupported completion is bounded without phone actions', async () => {
+  const c = createConversation({ messages: input('Read the phone'), rpc: async () =>
+    tool('finish_task', { outcome: 'completed', summary: 'Invented result' }), emit: () => {} });
+  const r = await c.run(); assert.equal(r.phase, 'failed'); assert.equal(r.operations, 0); assert.equal(r.turns, 3);
+});
+
+test('an amendment invalidates old phone evidence before another completed result', async () => {
+  let c, models = 0, phones = 0;
+  c = createConversation({ messages: input('Read first page'), rpc: async method => {
+    if (method === 'phone.execute') { phones++; return { success: true, result: 'First page' }; }
+    if (models++ === 0) return tool('operate_phone', { instruction: 'Read first', success_condition: 'Visible' });
+    if (models === 2) c.steer({ id: 'new-goal', text: 'Also read second page' });
+    if (models === 3) return tool('finish_task', { outcome: 'waiting_user', summary: 'Need second-page evidence' });
+    return tool('finish_task', { outcome: 'completed', summary: 'Both pages' });
+  }, emit: () => {} });
+  const r = await c.run(); assert.equal(r.phase, 'waiting_user'); assert.equal(phones, 1);
 });

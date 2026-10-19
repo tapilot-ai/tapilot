@@ -33,7 +33,7 @@ for (const file of readdirSync(dir).filter(name => /^report-\d+\.html$/.test(nam
     writeFileSync(join(dir, file.replace('.html', '-query.jpg')), Buffer.from(data.split(',')[1], 'base64'));
   }
   let checks;
-  try { checks = controlledEvidence(html, { width: 1080, height: 2400 }); }
+  try { checks = controlledEvidence(html, process.env.TAPILOT_BENCH_SCREENSHOT_SIZE ? JSON.parse(process.env.TAPILOT_BENCH_SCREENSHOT_SIZE) : undefined); }
   catch (error) { checks = { error: error.message }; }
   reports.push({ file, sha256: createHash('sha256').update(html).digest('hex'),
     startedAt: Math.min(...all.map(task => task.timing?.start).filter(Number.isFinite)),

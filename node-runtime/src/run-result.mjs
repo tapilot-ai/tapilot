@@ -1,3 +1,14 @@
+/** Final-attempt verification nodes, shared by production and benchmark consumers.
+ * Failed attempts are history, never evidence for a subsequent attempt.
+ */
+export function collectPhoneVerifications(runResult) {
+  return (runResult.projects ?? []).flatMap(project => project.cases ?? []).flatMap(testCase => {
+    const attempt = testCase.attempts?.length ? testCase.attempts.at(-1) : testCase.run;
+    return (attempt?.steps ?? [])
+      .filter(step => ['aiQuery', 'verifyPhone'].includes(step.node))
+      .map(step => step.output?.data);
+  });
+}
 export function collectFinalAiResponse(runResult) {
   let finalResponse;
   for (const project of runResult.projects ?? []) {
