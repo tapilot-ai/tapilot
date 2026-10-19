@@ -51,7 +51,7 @@ internal class FloatingVoiceOverlay(private val context: Context, private val wi
         }
         if (processing && !expandedProcessing) {
             hidePanel()
-            processingIndicator.show(false, 0)
+            processingIndicator.show(false)
             return
         }
         processingIndicator.hide()
@@ -135,7 +135,7 @@ internal class FloatingVoiceOverlay(private val context: Context, private val wi
         }
         controls.addView(button(local("收起", "Collapse")) {
             expandedProcessing = false
-            if (wasProcessing) { hidePanel(); processingIndicator.show(false, 0) }
+            if (wasProcessing) { hidePanel(); processingIndicator.show(false) }
         }.apply { visibility = if (wasProcessing) View.VISIBLE else View.GONE })
         controls.addView(action)
         controls.addView(button(local("结束", "End")) { runtime.endVoice(); hide() })
@@ -154,7 +154,7 @@ internal class FloatingVoiceOverlay(private val context: Context, private val wi
         hidePanel()
     }
 
-    /** Screenshot suppression must preserve the user's expansion state and animation. */
+    /** Screenshot suppression must preserve the user's expansion state. */
     fun setHidden(hidden: Boolean) {
         panel?.visibility = if (hidden) View.INVISIBLE else View.VISIBLE
         processingIndicator.setHidden(hidden)
