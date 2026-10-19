@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { verifyRuntime, sourceFingerprint } from './runtime-integrity.mjs';
+import { distributionBlockers } from './distribution-readiness.mjs';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const variant=process.argv[2];
 if(!['beta','release'].includes(variant)) throw new Error('Expected beta or release');
@@ -35,4 +36,13 @@ const expected=variant==='beta' ? '698ed83c55d3874e1b9fd5e6fc3d622ad3a5c01cdc0f5
 const localCheck=variant==='beta' && process.argv.includes('--local-check');
 if(!digest || (!localCheck && (!expected || digest!==expected))) throw new Error('Signing certificate mismatch; do not distribute or replace the installed app');
 if(localCheck && digest!==expected) console.log('Local verification certificate only; this APK is not approved for distribution.');
+if (!localCheck) {
+  // Review the inventories actually inside this APK, not a stale build directory.
+  const inventories = Object.fromEntries(['npm','native','android'].map(kind => [kind,
+    JSON.parse(execFileSync('unzip',['-p',apk,`assets/third-party/${kind}/index.json`],{encoding:'utf8'}))]));
+  const materialsPath = path.join(root,'build/distribution-materials/status.json');
+  const materials = fs.existsSync(materialsPath) ? JSON.parse(fs.readFileSync(materialsPath,'utf8')) : undefined;
+  const blockers = distributionBlockers(inventories, materials);
+  if (blockers.length) throw new Error(`Binary redistribution is blocked by ${blockers.length} unresolved reviews. Run pnpm check:distribution and see third-party/README.md; signing alone is not approval.`);
+}
 console.log(`Verified ${variant} ${version}: correct package, non-debuggable, runtime current, certificate ${digest}`);
