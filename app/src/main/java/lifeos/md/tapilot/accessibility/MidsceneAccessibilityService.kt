@@ -345,7 +345,18 @@ class MidsceneAccessibilityService : AccessibilityService() {
             is NativeAction.EditText -> callback(runCatching { extendedActions.edit(action) })
             is NativeAction.MultiGesture -> {
                 val (scaleX, scaleY) = gestureCoordinateScale()
-                extendedActions.gesture(action, scaleX, scaleY, { sessionId in cancelledSessions }, callback)
+                // A continued stroke must retain the same input window state from
+                // pointer-down through pointer-up, including between dispatches.
+                val lease = runCatching { gestureInput.acquire() }.getOrElse { callback(Result.failure(it)); return }
+                runCatching {
+                    extendedActions.gesture(action, scaleX, scaleY, { sessionId in cancelledSessions }) { result ->
+                        runCatching { lease.close() }
+                        callback(result)
+                    }
+                }.onFailure {
+                    runCatching { lease.close() }
+                    callback(Result.failure(it))
+                }
             }
             is NativeAction.Tap -> gesture(
                 action.x,

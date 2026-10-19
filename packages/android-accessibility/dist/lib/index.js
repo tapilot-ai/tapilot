@@ -335,6 +335,7 @@ var __webpack_exports__ = {};
                 ...extendedActions((action)=>this.execute(action), this.capabilities)
             ].map((action)=>({
                     ...action,
+                    description: 'DragAndDrop' === action.name ? `${action.description} Android keeps contact down through a long press and movement; use this for dragging icons into folders and reordering.` : 'LongPress' === action.name ? `${action.description} Releases contact afterwards. To move an element while holding it, use DragAndDrop instead of a separate LongPress and Swipe.` : action.description,
                     delayBeforeRunner: action.delayBeforeRunner ?? 0
                 }));
         }
@@ -428,11 +429,14 @@ var __webpack_exports__ = {};
                             duration: options?.duration
                         }),
                     dragAndDrop: (from, to)=>this.execute({
-                            type: 'swipe',
-                            startX: from.x,
-                            startY: from.y,
-                            endX: to.x,
-                            endY: to.y,
+                            type: 'gesture',
+                            fingers: [
+                                [
+                                    from,
+                                    to
+                                ]
+                            ],
+                            holdMs: 800,
                             duration: 800
                         })
                 },
@@ -502,7 +506,7 @@ var __webpack_exports__ = {};
         }
     }
     function isRepeatableGesture(action) {
-        return 'tap' === action.type || 'doubleTap' === action.type || 'longPress' === action.type || 'swipe' === action.type || 'pinch' === action.type;
+        return 'tap' === action.type || 'doubleTap' === action.type || 'longPress' === action.type || 'swipe' === action.type || 'pinch' === action.type || 'gesture' === action.type;
     }
     function pointsAreNear(leftX, leftY, rightX, rightY, tolerance) {
         return Math.hypot(leftX - rightX, leftY - rightY) <= tolerance;
@@ -514,6 +518,10 @@ var __webpack_exports__ = {};
         if ('longPress' === action.type && 'longPress' === previous.type) return pointsAreNear(action.x, action.y, previous.x, previous.y, 64);
         if ('swipe' === action.type && 'swipe' === previous.type) return pointsAreNear(action.startX, action.startY, previous.startX, previous.startY, 40) && pointsAreNear(action.endX, action.endY, previous.endX, previous.endY, 40);
         if ('pinch' === action.type && 'pinch' === previous.type) return pointsAreNear(action.centerX, action.centerY, previous.centerX, previous.centerY, 40) && Math.abs(action.startDistance - previous.startDistance) <= 40 && Math.abs(action.endDistance - previous.endDistance) <= 40;
+        if ('gesture' === action.type && 'gesture' === previous.type) return action.holdMs === previous.holdMs && action.duration === previous.duration && action.fingers.length === previous.fingers.length && action.fingers.every((points, finger)=>points.length === previous.fingers[finger].length && points.every((point, index)=>{
+                const old = previous.fingers[finger][index];
+                return pointsAreNear(point.x, point.y, old.x, old.y, 40);
+            }));
         return false;
     }
     function sleep(durationMs) {

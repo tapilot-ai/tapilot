@@ -38,6 +38,21 @@ function createBridge(): {
 }
 
 describe('AndroidAccessibilityDevice', () => {
+  it('keeps a long press and drag in one continuous native gesture', async () => {
+    const { bridge, actions } = createBridge();
+    const device = new AndroidAccessibilityDevice(bridge);
+    await device.screenshotBase64();
+    const drag = device.actionSpace().find(action => action.name === 'DragAndDrop');
+    expect(drag).toBeDefined();
+    await drag!.call({
+      from: { center: [100, 200] },
+      to: { center: [300, 400] },
+    });
+    expect(actions).toEqual([{
+      action: { type: 'gesture', fingers: [[{ x: 100, y: 200 }, { x: 300, y: 400 }]], holdMs: 800, duration: 800 },
+      frameId: 'frame-1',
+    }]);
+  });
   it('maps Pinch out and in to simultaneous-finger native parameters', async () => {
     const { bridge, actions } = createBridge();
     const device = new AndroidAccessibilityDevice(bridge);
@@ -49,6 +64,16 @@ describe('AndroidAccessibilityDevice', () => {
       { type: 'pinch', centerX: 200, centerY: 400, startDistance: 100, endDistance: 180, duration: 600 },
       { type: 'pinch', centerX: 200, centerY: 400, startDistance: 100, endDistance: 20, duration: 600 },
     ]);
+  });
+  it('still stops repeated drag loops after switching drags to continuous gestures', async () => {
+    const { bridge, actions } = createBridge();
+    const device = new AndroidAccessibilityDevice(bridge);
+    const drag = () => device.inputPrimitives.pointer.dragAndDrop!(
+      { x: 100, y: 200 }, { x: 300, y: 400 },
+    );
+    for (let attempt = 0; attempt < 3; attempt += 1) await drag();
+    expect(() => drag()).toThrow('repeated Android gesture loop');
+    expect(actions).toHaveLength(3);
   });
   it('opens recent apps through a system action rather than a swipe', async () => {
     const { bridge, actions } = createBridge();

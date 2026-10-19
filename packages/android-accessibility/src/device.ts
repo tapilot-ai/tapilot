@@ -93,11 +93,11 @@ export class AndroidAccessibilityDevice implements AbstractInterface {
           }),
         dragAndDrop: (from, to) =>
           this.execute({
-            type: 'swipe',
-            startX: from.x,
-            startY: from.y,
-            endX: to.x,
-            endY: to.y,
+            // Keep contact down while transitioning from long press to movement.
+            // A standalone longPress releases the pointer before the next action.
+            type: 'gesture',
+            fingers: [[from, to]],
+            holdMs: 800,
             duration: 800,
           }),
       },
@@ -230,6 +230,11 @@ export class AndroidAccessibilityDevice implements AbstractInterface {
     return [...defaultActions, pullGesture, launch, searchApps, ...extendedActions(action => this.execute(action), this.capabilities)]
       .map(action => ({
         ...action,
+        description: action.name === 'DragAndDrop'
+          ? `${action.description} Android keeps contact down through a long press and movement; use this for dragging icons into folders and reordering.`
+          : action.name === 'LongPress'
+            ? `${action.description} Releases contact afterwards. To move an element while holding it, use DragAndDrop instead of a separate LongPress and Swipe.`
+            : action.description,
         // Planning has already observed the screen. The SDK's generic 200 ms
         // pre-action sleep only ages those coordinates; it checks no readiness.
         // Keep explicit action delays and all post-action stabilization intact.
@@ -322,7 +327,7 @@ export class AndroidAccessibilityDevice implements AbstractInterface {
 
 type RepeatableGesture = Extract<
   NativeAction,
-  { type: 'tap' | 'doubleTap' | 'longPress' | 'swipe' | 'pinch' }
+  { type: 'tap' | 'doubleTap' | 'longPress' | 'swipe' | 'pinch' | 'gesture' }
 >;
 
 function isRepeatableGesture(action: NativeAction): action is RepeatableGesture {
@@ -331,7 +336,8 @@ function isRepeatableGesture(action: NativeAction): action is RepeatableGesture 
     action.type === 'doubleTap' ||
     action.type === 'longPress' ||
     action.type === 'swipe' ||
-    action.type === 'pinch'
+    action.type === 'pinch' ||
+    action.type === 'gesture'
   );
 }
 
@@ -391,6 +397,15 @@ function isSameGestureTarget(
       Math.abs(action.startDistance - previous.startDistance) <= 40 &&
       Math.abs(action.endDistance - previous.endDistance) <= 40
     );
+  }
+  if (action.type === 'gesture' && previous.type === 'gesture') {
+    return action.holdMs === previous.holdMs && action.duration === previous.duration &&
+      action.fingers.length === previous.fingers.length &&
+      action.fingers.every((points, finger) => points.length === previous.fingers[finger].length &&
+        points.every((point, index) => {
+          const old = previous.fingers[finger][index];
+          return pointsAreNear(point.x, point.y, old.x, old.y, 40);
+        }));
   }
   return false;
 }

@@ -5,6 +5,9 @@ import android.accessibilityservice.GestureDescription
 import android.content.Intent
 import android.graphics.Path
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.view.accessibility.AccessibilityNodeInfo
 import org.json.JSONArray
 import org.json.JSONObject
@@ -66,19 +69,24 @@ internal class ExtendedDeviceActions(
             dispatch(action.fingers.map { GestureDescription.StrokeDescription(path(it), 0, action.duration) }, callback)
         } else {
             val held = action.fingers.map { GestureDescription.StrokeDescription(path(listOf(it.first())), 0, action.holdMs, true) }
+            val hold = GestureHold(action.holdMs, SystemClock::uptimeMillis) { delay, next ->
+                Handler(Looper.getMainLooper()).postDelayed(next, delay)
+            }
             dispatch(held) { result ->
                 if (result.isFailure) callback(result)
-                else if (cancelled()) {
-                    // Release held pointers without dragging or introducing a new tap.
-                    dispatch(held.mapIndexed { index, stroke ->
-                        stroke.continueStroke(path(listOf(action.fingers[index].first())), 0, 1, false)
-                    }) { callback(Result.failure(MidsceneAccessibilityService.SessionCancelledException())) }
+                else hold.continueWhenReady {
+                    if (cancelled()) {
+                        // Release held pointers without dragging or introducing a new tap.
+                        dispatch(held.mapIndexed { index, stroke ->
+                            stroke.continueStroke(path(listOf(action.fingers[index].first())), 0, 1, false)
+                        }) { callback(Result.failure(MidsceneAccessibilityService.SessionCancelledException())) }
+                    }
+                    else runCatching {
+                        dispatch(held.mapIndexed { index, stroke ->
+                            stroke.continueStroke(path(action.fingers[index]), 0, action.duration, false)
+                        }, callback)
+                    }.onFailure { callback(Result.failure(it)) }
                 }
-                else runCatching {
-                    dispatch(held.mapIndexed { index, stroke ->
-                        stroke.continueStroke(path(action.fingers[index]), 0, action.duration, false)
-                    }, callback)
-                }.onFailure { callback(Result.failure(it)) }
             }
         }
     }
