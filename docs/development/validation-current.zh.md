@@ -14,6 +14,8 @@
 
 补充：[悬浮提示与截图来源回归](overlay-freshness-20261019.zh.md)记录当天后续候选修复、独立指纹与真机结果。
 
+补充：[桌面拖拽分组回归](drag-grouping-20261019.zh.md)记录连续按住时序、跨会话恢复修复及两机实际分组证据；完整多页整理仍有模型策略限制。
+
 ## 现有真机和性能证据
 
 - [Redmi 两端对比](benchmark-redmi-20261017.zh.md)：旧 runtime 八轮通过 6/8；日历手机两轮失败。它是 same-agent harness 对比，不是 Codex UI 延迟。

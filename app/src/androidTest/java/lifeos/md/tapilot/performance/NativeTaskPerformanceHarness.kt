@@ -51,6 +51,11 @@ class NativeTaskPerformanceHarness : Instrumentation() {
         val previousFactor = experiment.getString("screenshot-shrink-factor", null)
         val runtime = (targetContext.applicationContext as TapilotApplication).assistant
         val coordinator = runtime.coordinator
+        var previousPreset = "doubao"
+        var previousChatGpt = false
+        var previousCustom: JSONObject? = null
+        val credentials = lifeos.md.tapilot.bridge.ModelCredentialStore(targetContext)
+        val previousCustomKey = if (fixture.isFile) credentials.get("custom") else null
         var stage = "startup"
         try {
             check(Build.SUPPORTED_ABIS.contains("arm64-v8a")) { "arm64-v8a device required" }
@@ -108,6 +113,9 @@ class NativeTaskPerformanceHarness : Instrumentation() {
                 output.listFiles()?.forEach { it.delete() }
                 voice.autoRead = false
                 if (fixture.isFile) {
+                    previousPreset = coordinator.data.optString("preset", "doubao")
+                    previousChatGpt = coordinator.data.optBoolean("chatgptConversation")
+                    previousCustom = coordinator.profile("custom")
                     val config = JSONObject(fixture.readText())
                     fixture.delete()
                     coordinator.preference("chatgptConversation", false)
@@ -188,7 +196,25 @@ class NativeTaskPerformanceHarness : Instrumentation() {
             }
             if (!restored) { result.put("status", "failed").put("failureStage", "screenshot-settings-cleanup"); code = 1 }
             fixture.delete()
-            if (provisioned) lifeos.md.tapilot.bridge.ModelCredentialStore(targetContext).delete("custom")
+            if (provisioned) runCatching {
+                await(30_000) { !runtime.state.running }
+                runOnMainSync {
+                    coordinator.selectPreset("custom")
+                    coordinator.saveModel(checkNotNull(previousCustom), previousCustomKey.orEmpty())
+                    if (previousCustomKey.isNullOrBlank()) credentials.delete("custom")
+                    coordinator.selectPreset(previousPreset)
+                    coordinator.preference("chatgptConversation", previousChatGpt)
+                }
+                // Conversation writes are asynchronous; finish() must not kill the
+                // process before the original configuration reaches disk.
+                await(10_000) {
+                    runCatching {
+                        val saved = JSONObject(File(targetContext.filesDir, "native-conversation.json").readText())
+                        saved.optString("preset") == previousPreset && saved.optBoolean("chatgptConversation") == previousChatGpt &&
+                            saved.getJSONObject("profiles").getJSONObject("custom").toString() == previousCustom.toString()
+                    }.getOrDefault(false)
+                }
+            }.onFailure { result.put("status", "failed").put("failureStage", "model-settings-cleanup"); code = 1 }
             // finish() terminates the target process; flush restoration before it.
             if (!targetContext.getSharedPreferences("tapilot-voice-output", 0).edit()
                     .putBoolean("auto-read", previousAutoRead).commit()) {
