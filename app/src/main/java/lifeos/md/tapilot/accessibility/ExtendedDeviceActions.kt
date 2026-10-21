@@ -54,7 +54,8 @@ internal class ExtendedDeviceActions(
 
     fun gesture(action: NativeAction.MultiGesture, scaleX: Float, scaleY: Float,
                 cancelled: () -> Boolean, callback: (Result<Unit>) -> Unit) {
-        val metrics = service.resources.displayMetrics
+        // Screenshots and gesture scaling include system bars, unlike app resources.
+        val metrics = service.deviceDisplayMetrics()
         validateMultiGesture(action, metrics.widthPixels, metrics.heightPixels)
         fun path(points: List<NativeAction.Point>) = Path().apply {
             moveTo(points.first().x * scaleX, points.first().y * scaleY)
@@ -65,30 +66,42 @@ internal class ExtendedDeviceActions(
             strokes.forEach { builder.addStroke(it) }
             dispatchGesture(builder.build(), done)
         }
-        if (action.holdMs == 0L) {
-            dispatch(action.fingers.map { GestureDescription.StrokeDescription(path(it), 0, action.duration) }, callback)
-        } else {
-            val held = action.fingers.map { GestureDescription.StrokeDescription(path(listOf(it.first())), 0, action.holdMs, true) }
-            val hold = GestureHold(action.holdMs, SystemClock::uptimeMillis) { delay, next ->
+        // Each phase continues the same pointers. A stationary stroke can be
+        // acknowledged early, so wait for its wall-clock duration before continuing.
+        val phases = buildList {
+            if (action.holdMs > 0) add(action.fingers.map { listOf(it.first()) } to action.holdMs)
+            add(action.fingers to action.duration)
+            if (action.endHoldMs > 0) add(action.fingers.map { listOf(it.last()) } to action.endHoldMs)
+        }
+        fun runPhase(index: Int, previous: List<GestureDescription.StrokeDescription>?) {
+            val (points, duration) = phases[index]
+            // The final stationary phase must include UP. A stationary continued
+            // stroke with neither DOWN nor UP can produce no MotionEvents and
+            // Android cancels it instead of waiting.
+            val continued = index < phases.lastIndex
+            val strokes = points.mapIndexed { finger, positions ->
+                previous?.get(finger)?.continueStroke(path(positions), 0, duration, continued)
+                    ?: GestureDescription.StrokeDescription(path(positions), 0, duration, continued)
+            }
+            val wait = GestureHold(duration, SystemClock::uptimeMillis) { delay, next ->
                 Handler(Looper.getMainLooper()).postDelayed(next, delay)
             }
-            dispatch(held) { result ->
-                if (result.isFailure) callback(result)
-                else hold.continueWhenReady {
+            dispatch(strokes) { result ->
+                if (result.isFailure) callback(Result.failure(IllegalStateException("Gesture phase ${index + 1}/${phases.size} failed: ${result.exceptionOrNull()?.message}", result.exceptionOrNull())))
+                else if (!continued) callback(result)
+                else wait.continueWhenReady {
                     if (cancelled()) {
-                        // Release held pointers without dragging or introducing a new tap.
-                        dispatch(held.mapIndexed { index, stroke ->
-                            stroke.continueStroke(path(listOf(action.fingers[index].first())), 0, 1, false)
-                        }) { callback(Result.failure(MidsceneAccessibilityService.SessionCancelledException())) }
-                    }
-                    else runCatching {
-                        dispatch(held.mapIndexed { index, stroke ->
-                            stroke.continueStroke(path(action.fingers[index]), 0, action.duration, false)
-                        }, callback)
-                    }.onFailure { callback(Result.failure(it)) }
+                        dispatch(strokes.mapIndexed { finger, stroke ->
+                            stroke.continueStroke(path(listOf(points[finger].last())), 0, 1, false)
+                        }) {
+                            callback(Result.failure(MidsceneAccessibilityService.SessionCancelledException()))
+                        }
+                    } else runCatching { runPhase(index + 1, strokes) }
+                        .onFailure { callback(Result.failure(it)) }
                 }
             }
         }
+        runPhase(0, null)
     }
 
     @Suppress("DEPRECATION")
@@ -136,7 +149,7 @@ internal class ExtendedDeviceActions(
 
 internal fun validateMultiGesture(action: NativeAction.MultiGesture, width: Int, height: Int) {
     require(action.fingers.size in 1..10) { "Gesture requires 1 to 10 fingers" }
-    require(action.duration in 1..10000 && action.holdMs in 0..5000) { "Invalid gesture timing" }
+    require(action.duration in 1..10000 && action.holdMs in 0..5000 && action.endHoldMs in 0..3000) { "Invalid gesture timing" }
     action.fingers.forEach { points ->
         require(points.size in 2..128) { "Each finger requires 2 to 128 path points" }
         points.forEach {

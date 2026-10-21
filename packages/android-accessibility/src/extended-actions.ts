@@ -8,6 +8,7 @@ const gesture = z.object({
   fingers: z.array(z.array(point).min(2).max(128)).min(1).max(10),
   duration,
   holdMs: z.number().int().min(0).max(5000).default(0),
+  endHoldMs: z.number().int().min(0).max(3000).optional(),
 });
 const rotate = z.object({ center: point, radius: z.number().positive(), degrees: z.number().min(-360).max(360), duration });
 const pan = z.object({ start: point, end: point, separation: z.number().positive().default(80), duration });
@@ -47,7 +48,7 @@ export function extendedActions(execute: (action: NativeAction) => Promise<void>
     }),
     defineAction({
       name: 'MultiTouchGesture',
-      description: 'Continuous screen-coordinate paths, one path per finger, all simultaneous. For long-press then drag (icons/reordering), use one finger and holdMs=800; contact stays down between hold and movement. For curved/multi-segment drags add intermediate points. Coordinates must stay on screen. Inspect result afterwards.',
+      description: 'Continuous screen-coordinate paths, one path per finger, all simultaneous. holdMs keeps contact at the start before movement; duration controls movement time; endHoldMs keeps contact at the endpoint before release. Contact stays down through all three phases. Separate actions release contact between calls. Do not simulate a pause with repeated path points; they have no timing. For curved/multi-segment drags add intermediate points. Coordinates must stay on screen. Inspect result afterwards.',
       paramSchema: gesture,
       call: async (param) => execute({ type: 'gesture', ...gesture.parse(param) }),
     }),

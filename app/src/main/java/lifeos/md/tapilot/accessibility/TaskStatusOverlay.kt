@@ -18,49 +18,71 @@ internal class TaskStatusOverlay(
     private val interrupt: () -> Unit,
 ) {
     private var view: Indicator? = null
+    private var inputView: View? = null
     private var gesturePassThrough = false
 
-    fun show(hidden: Boolean) {
-        view?.let { it.visibility = if (hidden) View.INVISIBLE else View.VISIBLE; return }
-        val indicator = Indicator()
+    private fun params(touchable: Boolean): WindowManager.LayoutParams {
         val bounds = windows.currentWindowMetrics.bounds
-        val size = dp(48) // Keep a usable touch target around the 14dp visual dot.
-        val params = WindowManager.LayoutParams(size, size,
+        val size = dp(48)
+        return WindowManager.LayoutParams(size, size,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                (if (gesturePassThrough) WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE else 0), PixelFormat.TRANSLUCENT).apply {
+                (if (touchable) 0 else WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE),
+            PixelFormat.TRANSLUCENT).apply {
             gravity = Gravity.TOP or Gravity.LEFT
             x = (bounds.width() - size - dp(8)).coerceAtLeast(0)
             y = dp(8)
         }
-        indicator.visibility = if (hidden) View.INVISIBLE else View.VISIBLE
-        runCatching { windows.addView(indicator, params) }.onSuccess {
-            view = indicator
+    }
+
+    fun show(hidden: Boolean) {
+        if (view == null) {
+            val indicator = Indicator()
+            indicator.visibility = if (hidden) View.INVISIBLE else View.VISIBLE
+            runCatching { windows.addView(indicator, params(false)) }.onSuccess { view = indicator }
         }
+        setHidden(hidden)
+        if (!gesturePassThrough) runCatching { showInput() }
+    }
+
+    private fun showInput() {
+        val indicator = view ?: return
+        if (inputView != null) return
+        val target = View(service)
+        target.visibility = indicator.visibility
+        target.contentDescription = indicator.contentDescription
+        target.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        target.setOnClickListener {
+            // Ignore any queued event from an input window removed for injection.
+            if (!gesturePassThrough && inputView === target) interrupt()
+        }
+        windows.addView(target, params(true))
+        inputView = target
+    }
+
+    private fun removeInput() {
+        val target = inputView ?: return
+        inputView = null
+        windows.removeViewImmediate(target)
     }
 
     fun hide() {
-        view?.let { runCatching { windows.removeView(it) } }
+        runCatching { removeInput() }
+        view?.let { runCatching { windows.removeViewImmediate(it) } }
         view = null
     }
 
     fun setGesturePassThrough(enabled: Boolean) {
         gesturePassThrough = enabled
-        val indicator = view ?: return
-        val params = indicator.layoutParams as WindowManager.LayoutParams
-        params.flags = if (enabled) params.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-            else params.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
-        try {
-            windows.updateViewLayout(indicator, params)
-        } catch (error: Exception) {
-            gesturePassThrough = false
-            hide() // Never leave an inert input window if its flags cannot be restored.
-            throw error
-        }
+        // Updating flags in place can race input routing on vendor launchers.
+        // Remove the input window synchronously; the visual dot stays attached.
+        if (enabled) removeInput() else showInput()
     }
 
     fun setHidden(hidden: Boolean) {
-        view?.visibility = if (hidden) View.INVISIBLE else View.VISIBLE
+        val visibility = if (hidden) View.INVISIBLE else View.VISIBLE
+        view?.visibility = visibility
+        inputView?.visibility = visibility
     }
 
     private inner class Indicator : View(service) {
@@ -68,8 +90,7 @@ internal class TaskStatusOverlay(
         private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = AppTheme.colors(service).primary }
         init {
             contentDescription = text
-            setOnClickListener { interrupt() }
-            importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
+            importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
         }
         override fun onDraw(canvas: Canvas) {
             canvas.drawCircle(width / 2f, height / 2f, dp(7).toFloat(), fill)

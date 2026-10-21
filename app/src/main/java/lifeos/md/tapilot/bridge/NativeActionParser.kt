@@ -20,7 +20,7 @@ object NativeActionParser {
                     val point = points.getJSONObject(j)
                     NativeAction.Point(point.getDouble("x").toFloat(), point.getDouble("y").toFloat())
                 }
-            }, value.getLong("duration"), value.optLong("holdMs", 0))
+            }, value.getLong("duration"), value.optLong("holdMs", 0), value.optLong("endHoldMs", 0))
         }
         "tap" -> NativeAction.Tap(
             value.getDouble("x").toFloat(),

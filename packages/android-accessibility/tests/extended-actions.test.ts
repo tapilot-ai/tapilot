@@ -32,6 +32,22 @@ describe('extended device actions', () => {
     await action('MultiTouchGesture').call({ fingers, holdMs: 800, duration: 900 });
     expect(calls).toEqual([{ type: 'gesture', fingers, holdMs: 800, duration: 900 }]);
   });
+  it('uses screen width for paging without converting it into a short center swipe', async () => {
+    const calls: NativeAction[] = [];
+    const device = new AndroidAccessibilityDevice({ getSize: async () => ({ width: 1000, height: 2000 }), execute: async action => { calls.push(action); } } as NativeBridge, capabilities);
+    const action = device.actionSpace().find(a => a.name === 'SwipeAcrossScreen')!;
+    await action.call({ direction: 'right', y: 1200 });
+    expect(calls).toEqual([{ type: 'swipe', startX: 100, endX: 900, startY: 1200, endY: 1200, duration: 350 }]);
+    await expect(action.call({ direction: 'left', y: 2000 })).rejects.toThrow('outside screen');
+  });
+  it('preserves endpoint dwell for page turns and rejects an unbounded hold', async () => {
+    const { calls, action } = fixture();
+    const fingers = [[{ x: 100, y: 200 }, { x: 390, y: 200 }]];
+    await action('MultiTouchGesture').call({ fingers, holdMs: 800, duration: 600, endHoldMs: 1000 });
+    expect(calls[0]).toEqual({ type: 'gesture', fingers, holdMs: 800, duration: 600, endHoldMs: 1000 });
+    await expect(action('MultiTouchGesture').call({ fingers, endHoldMs: 3001 })).rejects.toThrow();
+    expect(calls).toHaveLength(1);
+  });
   it('opens app details through a dedicated visible-settings action', async () => {
     const { calls, action } = fixture();
     await action('AndroidOpenAppDetails').call({ packageOrName: 'Calendar' });

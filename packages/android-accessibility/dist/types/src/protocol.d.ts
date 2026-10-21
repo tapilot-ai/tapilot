@@ -31,6 +31,7 @@ export type NativeAction = {
     }>>;
     duration: number;
     holdMs: number;
+    endHoldMs?: number;
 } | {
     type: 'editText';
     operation: string;

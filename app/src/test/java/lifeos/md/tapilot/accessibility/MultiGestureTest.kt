@@ -8,6 +8,20 @@ class MultiGestureTest {
         validateMultiGesture(NativeAction.MultiGesture(listOf(points), 600, 800), 400, 800)
         validateMultiGesture(NativeAction.MultiGesture(listOf(points, points), 600, 0), 400, 800)
     }
+    @Test fun `accepts bounded endpoint hold`() {
+        validateMultiGesture(NativeAction.MultiGesture(listOf(points), 600, 800, 1000), 400, 800)
+    }
+    @Test fun `accepts screenshot coordinates near the full display bottom`() {
+        val path = listOf(NativeAction.Point(493.5f, 546.5f), NativeAction.Point(494f, 1868.5f))
+        validateMultiGesture(NativeAction.MultiGesture(listOf(path), 800, 800), 988, 1972)
+    }
+    @Test(expected = IllegalArgumentException::class) fun `rejects endpoint at the exclusive display boundary`() {
+        val path = listOf(NativeAction.Point(493.5f, 546.5f), NativeAction.Point(494f, 1972f))
+        validateMultiGesture(NativeAction.MultiGesture(listOf(path), 800, 800), 988, 1972)
+    }
+    @Test(expected = IllegalArgumentException::class) fun `rejects unbounded endpoint hold`() {
+        validateMultiGesture(NativeAction.MultiGesture(listOf(points), 600, 800, 3001), 400, 800)
+    }
     @Test(expected = IllegalArgumentException::class) fun `rejects points outside display`() {
         validateMultiGesture(NativeAction.MultiGesture(listOf(points), 600, 0), 50, 800)
     }

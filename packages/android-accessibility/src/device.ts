@@ -17,6 +17,7 @@ import {
 } from '@midscene/core';
 import type { CaptureResult, NativeAction, NativeBridge, NativeCapabilities } from './protocol';
 import { extendedActions } from './extended-actions';
+import { frameFingerprint, sameScreen } from './screen-progress';
 
 const systemActions = {
   backButton: {
@@ -78,6 +79,9 @@ export class AndroidAccessibilityDevice implements AbstractInterface {
   private latestFrame?: CaptureResult['geometry'];
   private repeatedGesture?: NativeAction;
   private repeatedGestureCount = 0;
+  private latestPixels?: Uint8Array;
+  private gesturePixels?: Uint8Array;
+  private recentSwipes: Array<{ action: Extract<NativeAction, { type: 'swipe' }>; pixels?: Uint8Array }> = [];
 
   constructor(private readonly bridge: NativeBridge, private readonly capabilities?: NativeCapabilities) {
     this.inputPrimitives = {
@@ -158,6 +162,7 @@ export class AndroidAccessibilityDevice implements AbstractInterface {
       throw new Error('Native capture returned an invalid image data URL');
     }
     this.latestFrame = capture.geometry;
+    this.latestPixels = frameFingerprint(capture);
     return capture.dataUrl;
   }
 
@@ -227,11 +232,22 @@ export class AndroidAccessibilityDevice implements AbstractInterface {
         [app.label, app.packageName, app.component].some(value => value.toLowerCase().includes(query.trim().toLowerCase())),
       ).map(app => ({ label: app.label, component: app.component })),
     });
-    return [...defaultActions, pullGesture, launch, searchApps, ...extendedActions(action => this.execute(action), this.capabilities)]
+    const pageSwipe = defineAction({
+      name: 'SwipeAcrossScreen',
+      description: 'Swipe horizontally across 80% of the screen width. direction is FINGER movement. Choose y from the current screenshot so the path stays within the intended interactive surface. Inspect the result afterwards. Not for dragging items or scrolling within a small element.',
+      paramSchema: z.object({ direction: z.enum(['left', 'right']), y: z.number().finite().nonnegative() }),
+      call: async ({ direction, y }) => {
+        const { width, height } = await this.size();
+        if (y >= height) throw new Error('Swipe height outside screen bounds');
+        await this.execute({ type: 'swipe', startX: Math.round(width * (direction === 'left' ? 0.9 : 0.1)),
+          endX: Math.round(width * (direction === 'left' ? 0.1 : 0.9)), startY: y, endY: y, duration: 350 });
+      },
+    });
+    return [...defaultActions, pullGesture, launch, searchApps, pageSwipe, ...extendedActions(action => this.execute(action), this.capabilities)]
       .map(action => ({
         ...action,
         description: action.name === 'DragAndDrop'
-          ? `${action.description} Android keeps contact down through a long press and movement; use this for dragging icons into folders and reordering.`
+          ? `${action.description} Android keeps contact down through a long press and movement, then releases at the destination.`
           : action.name === 'LongPress'
             ? `${action.description} Releases contact afterwards. To move an element while holding it, use DragAndDrop instead of a separate LongPress and Swipe.`
             : action.description,
@@ -258,6 +274,16 @@ export class AndroidAccessibilityDevice implements AbstractInterface {
   }
 
   private guardRepeatedGesture(action: NativeAction): void {
+    if (action.type !== 'swipe') this.recentSwipes = [];
+    else {
+      const sequence = [...this.recentSwipes, { action, pixels: this.latestPixels }];
+      if (sequence.length === 7 && sequence.slice(2).every((item, index) =>
+        isSameGestureTarget(item.action, sequence[index].action) &&
+        sameScreen(item.pixels, sequence[index].pixels))) {
+        throw new Error('Stopped an alternating Android swipe loop. Repeated back-and-forth navigation is not progress; inspect the current page and choose a different route.');
+      }
+      this.recentSwipes = sequence.slice(-6);
+    }
     if (!isRepeatableGesture(action)) {
       this.repeatedGesture = undefined;
       this.repeatedGestureCount = 0;
@@ -265,13 +291,15 @@ export class AndroidAccessibilityDevice implements AbstractInterface {
     }
     if (
       this.repeatedGesture &&
-      isSameGestureTarget(action, this.repeatedGesture)
+      isSameGestureTarget(action, this.repeatedGesture) &&
+      sameScreen(this.latestPixels, this.gesturePixels)
     ) {
       this.repeatedGestureCount += 1;
     } else {
       this.repeatedGesture = action;
       this.repeatedGestureCount = 1;
     }
+    this.gesturePixels = this.latestPixels;
     if (this.repeatedGestureCount > MAX_IDENTICAL_GESTURE_ATTEMPTS) {
       throw new Error(
         `Stopped a repeated Android gesture loop after ${MAX_IDENTICAL_GESTURE_ATTEMPTS} identical attempts. ` +
@@ -400,6 +428,7 @@ function isSameGestureTarget(
   }
   if (action.type === 'gesture' && previous.type === 'gesture') {
     return action.holdMs === previous.holdMs && action.duration === previous.duration &&
+      (action.endHoldMs ?? 0) === (previous.endHoldMs ?? 0) &&
       action.fingers.length === previous.fingers.length &&
       action.fingers.every((points, finger) => points.length === previous.fingers[finger].length &&
         points.every((point, index) => {

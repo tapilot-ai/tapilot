@@ -479,8 +479,7 @@ class MidsceneAccessibilityService : AccessibilityService() {
             }
             callback(result)
         }
-        // WindowManager input flags must traverse before injection. A queued main
-        // message follows the view traversal barrier without a timing-based sleep.
+        // Apply overlay input changes before injecting on the next main-loop turn.
         handler.post {
             runCatching {
                 val accepted = dispatchGesture(description, object : GestureResultCallback() {

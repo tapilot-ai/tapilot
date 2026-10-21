@@ -6,6 +6,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class NativeActionParserTest {
+    @Test fun `parses endpoint hold`() {
+        val parsed = NativeActionParser.parse(JSONObject("""{"type":"gesture","fingers":[[{"x":10,"y":20},{"x":30,"y":40}]],"duration":600,"holdMs":800,"endHoldMs":1000}""")) as NativeAction.MultiGesture
+        assertEquals(1000L, parsed.endHoldMs)
+    }
     @Test fun `parses extended actions`() {
         assertEquals(NativeAction.System("notifications"), NativeActionParser.parse(JSONObject("""{"type":"system","action":"notifications"}""")))
         assertEquals(NativeAction.EditText("select", 1, 3, null), NativeActionParser.parse(JSONObject("""{"type":"editText","operation":"select","start":1,"end":3}""")))

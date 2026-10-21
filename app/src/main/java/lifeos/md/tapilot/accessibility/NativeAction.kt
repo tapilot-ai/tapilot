@@ -3,7 +3,7 @@ package lifeos.md.tapilot.accessibility
 sealed interface NativeAction {
     data class System(val action: String) : NativeAction
     data class Point(val x: Float, val y: Float)
-    data class MultiGesture(val fingers: List<List<Point>>, val duration: Long, val holdMs: Long) : NativeAction
+    data class MultiGesture(val fingers: List<List<Point>>, val duration: Long, val holdMs: Long, val endHoldMs: Long = 0) : NativeAction
     data class EditText(val operation: String, val start: Int?, val end: Int?, val text: String?) : NativeAction
     data class Tap(val x: Float, val y: Float, val duration: Long?) : NativeAction
     data class DoubleTap(val x: Float, val y: Float) : NativeAction

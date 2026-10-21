@@ -73,7 +73,8 @@ var __webpack_exports__ = {};
     const gesture = core_namespaceObject.z.object({
         fingers: core_namespaceObject.z.array(core_namespaceObject.z.array(extended_actions_point).min(2).max(128)).min(1).max(10),
         duration: extended_actions_duration,
-        holdMs: core_namespaceObject.z.number().int().min(0).max(5000).default(0)
+        holdMs: core_namespaceObject.z.number().int().min(0).max(5000).default(0),
+        endHoldMs: core_namespaceObject.z.number().int().min(0).max(3000).optional()
     });
     const rotate = core_namespaceObject.z.object({
         center: extended_actions_point,
@@ -134,7 +135,7 @@ var __webpack_exports__ = {};
             }),
             (0, device_namespaceObject.defineAction)({
                 name: 'MultiTouchGesture',
-                description: 'Continuous screen-coordinate paths, one path per finger, all simultaneous. For long-press then drag (icons/reordering), use one finger and holdMs=800; contact stays down between hold and movement. For curved/multi-segment drags add intermediate points. Coordinates must stay on screen. Inspect result afterwards.',
+                description: 'Continuous screen-coordinate paths, one path per finger, all simultaneous. holdMs keeps contact at the start before movement; duration controls movement time; endHoldMs keeps contact at the endpoint before release. Contact stays down through all three phases. Separate actions release contact between calls. Do not simulate a pause with repeated path points; they have no timing. For curved/multi-segment drags add intermediate points. Coordinates must stay on screen. Inspect result afterwards.',
                 paramSchema: gesture,
                 call: async (param)=>execute({
                         type: 'gesture',
@@ -201,6 +202,17 @@ var __webpack_exports__ = {};
             })
         ];
     }
+    function frameFingerprint(frame) {
+        const hint = frame.fingerprint;
+        if (hint?.algorithm !== 'rgb-luma-64x96-v1' || !frame.geometry?.frameId || hint.frameId !== frame.geometry.frameId || !/^[A-Za-z0-9+/]{8192}$/.test(hint.data)) return;
+        return Uint8Array.from(Buffer.from(hint.data, 'base64'));
+    }
+    function sameScreen(a, b) {
+        if (!a || !b) return true;
+        let changed = 0;
+        for(let i = 384; i < 5824; i++)if (Math.abs(a[i] - b[i]) > 12 && ++changed >= 48) return false;
+        return true;
+    }
     function _define_property(obj, key, value) {
         if (key in obj) Object.defineProperty(obj, key, {
             value: value,
@@ -257,6 +269,7 @@ var __webpack_exports__ = {};
             const capture = await this.bridge.capture();
             if (!capture.dataUrl.startsWith('data:image/')) throw new Error('Native capture returned an invalid image data URL');
             this.latestFrame = capture.geometry;
+            this.latestPixels = frameFingerprint(capture);
             return capture.dataUrl;
         }
         async size() {
@@ -327,15 +340,39 @@ var __webpack_exports__ = {};
                             component: app.component
                         }))
             });
+            const pageSwipe = (0, device_namespaceObject.defineAction)({
+                name: 'SwipeAcrossScreen',
+                description: 'Swipe horizontally across 80% of the screen width. direction is FINGER movement. Choose y from the current screenshot so the path stays within the intended interactive surface. Inspect the result afterwards. Not for dragging items or scrolling within a small element.',
+                paramSchema: core_namespaceObject.z.object({
+                    direction: core_namespaceObject.z["enum"]([
+                        'left',
+                        'right'
+                    ]),
+                    y: core_namespaceObject.z.number().finite().nonnegative()
+                }),
+                call: async ({ direction, y })=>{
+                    const { width, height } = await this.size();
+                    if (y >= height) throw new Error('Swipe height outside screen bounds');
+                    await this.execute({
+                        type: 'swipe',
+                        startX: Math.round(width * ('left' === direction ? 0.9 : 0.1)),
+                        endX: Math.round(width * ('left' === direction ? 0.1 : 0.9)),
+                        startY: y,
+                        endY: y,
+                        duration: 350
+                    });
+                }
+            });
             return [
                 ...defaultActions,
                 pullGesture,
                 launch,
                 searchApps,
+                pageSwipe,
                 ...extendedActions((action)=>this.execute(action), this.capabilities)
             ].map((action)=>({
                     ...action,
-                    description: 'DragAndDrop' === action.name ? `${action.description} Android keeps contact down through a long press and movement; use this for dragging icons into folders and reordering.` : 'LongPress' === action.name ? `${action.description} Releases contact afterwards. To move an element while holding it, use DragAndDrop instead of a separate LongPress and Swipe.` : action.description,
+                    description: 'DragAndDrop' === action.name ? `${action.description} Android keeps contact down through a long press and movement, then releases at the destination.` : 'LongPress' === action.name ? `${action.description} Releases contact afterwards. To move an element while holding it, use DragAndDrop instead of a separate LongPress and Swipe.` : action.description,
                     delayBeforeRunner: action.delayBeforeRunner ?? 0
                 }));
         }
@@ -350,16 +387,29 @@ var __webpack_exports__ = {};
             return this.latestFrame ? this.bridge.execute(action, this.latestFrame.frameId) : this.bridge.execute(action);
         }
         guardRepeatedGesture(action) {
+            if ('swipe' !== action.type) this.recentSwipes = [];
+            else {
+                const sequence = [
+                    ...this.recentSwipes,
+                    {
+                        action,
+                        pixels: this.latestPixels
+                    }
+                ];
+                if (7 === sequence.length && sequence.slice(2).every((item, index)=>isSameGestureTarget(item.action, sequence[index].action) && sameScreen(item.pixels, sequence[index].pixels))) throw new Error('Stopped an alternating Android swipe loop. Repeated back-and-forth navigation is not progress; inspect the current page and choose a different route.');
+                this.recentSwipes = sequence.slice(-6);
+            }
             if (!isRepeatableGesture(action)) {
                 this.repeatedGesture = void 0;
                 this.repeatedGestureCount = 0;
                 return;
             }
-            if (this.repeatedGesture && isSameGestureTarget(action, this.repeatedGesture)) this.repeatedGestureCount += 1;
+            if (this.repeatedGesture && isSameGestureTarget(action, this.repeatedGesture) && sameScreen(this.latestPixels, this.gesturePixels)) this.repeatedGestureCount += 1;
             else {
                 this.repeatedGesture = action;
                 this.repeatedGestureCount = 1;
             }
+            this.gesturePixels = this.latestPixels;
             if (this.repeatedGestureCount > MAX_IDENTICAL_GESTURE_ATTEMPTS) throw new Error(`Stopped a repeated Android gesture loop after ${MAX_IDENTICAL_GESTURE_ATTEMPTS} identical attempts. The screen did not yield a new strategy; inspect the current UI or report instead of repeating the same gesture.`);
         }
         async scroll(param) {
@@ -408,10 +458,14 @@ var __webpack_exports__ = {};
             _define_property(this, "latestFrame", void 0);
             _define_property(this, "repeatedGesture", void 0);
             _define_property(this, "repeatedGestureCount", void 0);
+            _define_property(this, "latestPixels", void 0);
+            _define_property(this, "gesturePixels", void 0);
+            _define_property(this, "recentSwipes", void 0);
             this.bridge = bridge;
             this.capabilities = capabilities;
             this.interfaceType = 'android-accessibility';
             this.repeatedGestureCount = 0;
+            this.recentSwipes = [];
             this.inputPrimitives = {
                 pointer: {
                     tap: (point, options)=>this.execute({
@@ -518,7 +572,7 @@ var __webpack_exports__ = {};
         if ('longPress' === action.type && 'longPress' === previous.type) return pointsAreNear(action.x, action.y, previous.x, previous.y, 64);
         if ('swipe' === action.type && 'swipe' === previous.type) return pointsAreNear(action.startX, action.startY, previous.startX, previous.startY, 40) && pointsAreNear(action.endX, action.endY, previous.endX, previous.endY, 40);
         if ('pinch' === action.type && 'pinch' === previous.type) return pointsAreNear(action.centerX, action.centerY, previous.centerX, previous.centerY, 40) && Math.abs(action.startDistance - previous.startDistance) <= 40 && Math.abs(action.endDistance - previous.endDistance) <= 40;
-        if ('gesture' === action.type && 'gesture' === previous.type) return action.holdMs === previous.holdMs && action.duration === previous.duration && action.fingers.length === previous.fingers.length && action.fingers.every((points, finger)=>points.length === previous.fingers[finger].length && points.every((point, index)=>{
+        if ('gesture' === action.type && 'gesture' === previous.type) return action.holdMs === previous.holdMs && action.duration === previous.duration && (action.endHoldMs ?? 0) === (previous.endHoldMs ?? 0) && action.fingers.length === previous.fingers.length && action.fingers.every((points, finger)=>points.length === previous.fingers[finger].length && points.every((point, index)=>{
                 const old = previous.fingers[finger][index];
                 return pointsAreNear(point.x, point.y, old.x, old.y, 40);
             }));

@@ -30,7 +30,7 @@ export interface CaptureResult {
 
 export type NativeAction =
   | { type: 'system'; action: string }
-  | { type: 'gesture'; fingers: Array<Array<{ x: number; y: number }>>; duration: number; holdMs: number }
+  | { type: 'gesture'; fingers: Array<Array<{ x: number; y: number }>>; duration: number; holdMs: number; endHoldMs?: number }
   | { type: 'editText'; operation: string; start?: number; end?: number; text?: string }
   | { type: 'tap'; x: number; y: number; duration?: number }
   | { type: 'doubleTap'; x: number; y: number }
