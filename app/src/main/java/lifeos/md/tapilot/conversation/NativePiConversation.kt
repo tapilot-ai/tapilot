@@ -30,7 +30,7 @@ class NativePiConversation(context: Context) : AutoCloseable {
     }
     fun run(messages: JSONArray, resume: JSONArray?, limits: AgentLimits, stopped: () -> Boolean,
             complete: (JSONArray, JSONArray) -> JSONObject,
-            phone: (String, String, String, String) -> PhoneResult, findApps: (String) -> JSONArray, event: (JSONObject) -> Unit, resumeInputs: JSONArray = JSONArray(), goal: String = ""): JSONObject {
+            phone: (String, String, String, String) -> PhoneResult, findApps: (String) -> JSONArray, event: (JSONObject) -> Unit, resumeInputs: JSONArray = JSONArray(), goal: String = "", userInput: String = ""): JSONObject {
         check(!stopped()) { appText("任务已停止", "Task stopped") }
         val timings = JSONObject()
         val traceId = java.util.UUID.randomUUID().toString()
@@ -71,7 +71,7 @@ class NativePiConversation(context: Context) : AutoCloseable {
                 }.start().also {
                     process = it; writer = it.outputStream.bufferedWriter()
                     write(JSONObject().put("type", "init").put("messages", messages)
-                        .put("installedApps", catalog.getOrDefault(JSONArray())).put("goal", goal).put("resume", resume ?: JSONArray()).put("pendingInputs", resumeInputs).put("limits", limits.json()))
+                        .put("installedApps", catalog.getOrDefault(JSONArray())).put("goal", goal).put("userInput", userInput).put("resume", resume ?: JSONArray()).put("pendingInputs", resumeInputs).put("limits", limits.json()))
                     while (deferred.isNotEmpty()) write(deferred.removeFirst())
                     accepting = true
                 }

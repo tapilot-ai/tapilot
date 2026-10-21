@@ -518,3 +518,100 @@ test('attachment provenance stays in model context and cannot invalidate fresh p
   assert.ok(!JSON.stringify(contracts[0]).includes(warning));
   assert.ok(!JSON.stringify(contracts[0]).includes(document));
 });
+
+
+test('clarification answer resumes the saved task and reaches phone execution with amended requirements', async () => {
+  const original = 'Open the application I choose';
+  const checkpoints = [];
+  const first = createConversation({ messages: input(original), goal: original,
+    rpc: async () => tool('finish_task', { outcome: 'waiting_user', summary: 'Which application?' }),
+    emit: event => { if (event.type === 'checkpoint') checkpoints.push(event.messages); } });
+  assert.equal((await first.run()).phase, 'waiting_user');
+  let models = 0, phones = 0;
+  const answer = 'Camera. Do not take a photo.';
+  const next = createConversation({ messages: input(answer), goal: original, userInput: answer,
+    resume: checkpoints.at(-1), emit: () => {}, rpc: async (method, params) => {
+      if (method === 'phone.execute') {
+        phones++;
+        const contract = JSON.parse(params.success_condition);
+        assert.deepEqual(contract.userRequirements, [original, answer]);
+        assert.equal(contract.scope, 'intermediate_step');
+        assert.equal(contract.proposedStepCondition, 'Camera preview visible');
+        return { success: true, result: 'Camera preview is visible' };
+      }
+      if (models++ === 0) {
+        assert.ok(JSON.stringify(params.messages).includes('Which application?'));
+        assert.ok(JSON.stringify(params.messages.at(-1)).includes(answer));
+        return tool('operate_phone', { instruction: 'Open Camera without taking a photo', success_condition: 'Camera preview visible', mode: 'act', finishWhenVerified: true });
+      }
+      return tool('finish_task', { outcome: 'completed', summary: 'Camera is open' });
+    } });
+  const result = await next.run();
+  assert.equal(result.phase, 'completed');
+  assert.equal(phones, 1);
+});
+
+
+test('multiple clarification answers survive checkpoints without promoting attachment notes to requirements', async () => {
+  const goal = 'Open the settings page I choose';
+  const warning = 'Attachment provenance is not a user requirement';
+  let checkpoint = [];
+  for (const answer of ['Only view, never change settings', 'About device']) {
+    const conversation = createConversation({ goal, userInput: answer,
+      messages: input(`${answer}\n${warning}`), resume: checkpoint,
+      emit: event => { if (event.type === 'checkpoint') checkpoint = event.messages; },
+      rpc: async () => tool('finish_task', { outcome: 'waiting_user', summary: 'Anything else?' }) });
+    assert.equal((await conversation.run()).phase, 'waiting_user');
+  }
+  let models = 0;
+  const last = createConversation({ goal, userInput: 'Continue', messages: input('Continue'), resume: checkpoint,
+    emit: () => {}, rpc: async (method, params) => {
+      if (method === 'phone.execute') {
+        const requirements = JSON.parse(params.success_condition).userRequirements;
+        assert.deepEqual(requirements, [goal, 'Only view, never change settings', 'About device', 'Continue']);
+        assert.ok(!JSON.stringify(requirements).includes(warning));
+        return { success: true, result: 'About device is visible' };
+      }
+      return models++ === 0
+        ? tool('operate_phone', { instruction: 'View About device', success_condition: 'About device visible' })
+        : tool('finish_task', { outcome: 'completed', summary: 'About device is open' });
+    } });
+  assert.equal((await last.run()).phase, 'completed');
+});
+
+test('inline plans advance a two-page task in three model calls with prior facts intact', async () => {
+  let models = 0, phones = 0;
+  const events = [], plans = ['Read page A', 'Read page B', 'Combine results'];
+  const conversation = createConversation({ messages: input('Read A and B'), emit: e => events.push(e),
+    rpc: async (method, params) => {
+      if (method === 'phone.execute') {
+        assert.equal(Object.hasOwn(params, 'plan'), false);
+        assert.equal(JSON.parse(params.success_condition).scope, 'intermediate_step');
+        assert.equal(events.filter(e => e.type === 'plan').at(-1).currentStep, phones);
+        return { success: true, result: ++phones === 1 ? 'A: 12' : 'B: 9' };
+      }
+      if (models > 0) assert.match(JSON.stringify(params.messages), /A: 12/);
+      if (models++ < 2) return tool('operate_phone', {
+        instruction: `Read page ${models}`, success_condition: 'Current value visible',
+        plan: { steps: plans, currentStep: models - 1 },
+      });
+      assert.match(JSON.stringify(params.messages), /B: 9/);
+      return tool('finish_task', { outcome: 'completed', summary: 'A: 12, B: 9; difference: 3' });
+    } });
+  const result = await conversation.run();
+  assert.equal(models, 3); assert.equal(phones, 2);
+  assert.equal(result.phase, 'completed');
+  assert.deepEqual(events.filter(e => e.type === 'plan').map(e => e.currentStep), [0, 1]);
+});
+
+test('inline plan with invalid index cannot reach the phone', async () => {
+  let models = 0, phones = 0;
+  const conversation = createConversation({ messages: input('Read A'), emit: () => {},
+    rpc: async method => {
+      if (method === 'phone.execute') { phones++; return { success: true, result: 'A' }; }
+      return models++ === 0 ? tool('operate_phone', { instruction: 'Read A', success_condition: 'A visible',
+        plan: { steps: ['Read A'], currentStep: 2 } }) : tool('finish_task', { outcome: 'failed', summary: 'Invalid plan' });
+    } });
+  assert.equal((await conversation.run()).phase, 'failed');
+  assert.equal(phones, 0);
+});

@@ -36,38 +36,31 @@ test('bundled query and runner preserve positive and negative structured verific
 
 import { verifyPhone, verificationCriteria } from './phone-verification.mjs';
 
-test('verification reads facts before judgment and preserves negative or missing evidence', async () => {
+test('one screenshot judgment preserves both success and negative evidence without retry', async () => {
   for (const success of [true, false]) {
-    const calls = [];
+    let calls = 0;
     const signal = new AbortController().signal;
     const result = await verifyPhone(async ctx => {
       assert.equal(ctx.signal, signal);
-      calls.push(ctx.input.prompt);
-      return { data: calls.length === 1 ? { observation: 'Selected A under visible column X' } : { success, observation: 'Selected A under visible column X' } };
+      calls++;
+      assert.equal(Object.hasOwn(ctx.input.prompt, 'success'), true);
+      assert.equal(ctx.input.prompt.observation.includes('Prior transcription'), false);
+      return { data: { success, observation: 'Selected A under visible column X' } };
     }, { signal }, { instruction: 'Read the selected item and its column', condition: 'Selected A and its column are visible' });
-    assert.equal(calls.length, 2);
-    assert.equal(Object.hasOwn(calls[0], 'success'), false);
-    assert.equal(calls[0].observation.includes('Selected A'), false);
-    assert.equal(calls[1].observation.includes('Selected A under visible column X'), true);
-    assert.equal(result.data.success, success); // Never turn a refusal into success locally.
+    assert.equal(calls, 1);
+    assert.equal(result.data.success, success);
   }
-  let calls = 0;
-  const result = await verifyPhone(async () => { calls++; return { data: { observation: ' ' } }; },
-    { signal: new AbortController().signal }, { instruction: 'Read', condition: 'Visible' });
-  assert.equal(calls, 1);
-  assert.equal(result.data.success, false);
 });
 
-test('cancellation between reading and judgment prevents the second model call', async () => {
-  const controller = new AbortController();
-  let calls = 0;
+test('cancellation discards even a successful screenshot judgment', async () => {
+  const controller = new AbortController(); let calls = 0;
   await assert.rejects(verifyPhone(async () => {
-    calls++; controller.abort(); return { data: { observation: 'Visible' } };
+    calls++; controller.abort(); return { data: { success: true, observation: 'Visible' } };
   }, { signal: controller.signal }, { instruction: 'Read', condition: 'Visible' }), { name: 'AbortError' });
   assert.equal(calls, 1);
 });
 
-test('verifyPhone runner output is the final judgment, never the preliminary read', async () => {
+test('verifyPhone runner preserves the single screenshot judgment', async () => {
   const root = await mkdtemp(join(process.cwd(), 'verification-stages-'));
   try {
     await writeFile(join(root, 'midscene.config.mjs'), `
@@ -94,16 +87,14 @@ test('verifyPhone runner output is the final judgment, never the preliminary rea
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-test('single-field query text is valid observed evidence, not a missing object', async () => {
-  let calls = 0;
-  const result = await verifyPhone(async ctx => {
-    calls++;
-    if (calls === 1) return { data: 'Selected value A, column X' };
-    assert.match(ctx.input.prompt.observation, /Selected value A, column X/);
-    return { data: { success: true, observation: 'A under X' } };
-  }, { signal: new AbortController().signal }, { instruction: 'Read the selected item', condition: 'Item and column visible' });
-  assert.equal(calls, 2);
-  assert.equal(result.data.success, true);
+test('unstructured or empty output cannot establish success', async () => {
+  for (const data of ['Selected A', { observation: ' ' }, { success: 'true', observation: 'A' }]) {
+    let calls = 0;
+    const result = await verifyPhone(async () => { calls++; return { data }; },
+      { signal: new AbortController().signal }, { instruction: 'Read', condition: 'Visible' });
+    assert.equal(calls, 2);
+    assert.equal(result.data.success, false);
+  }
 });
 
 test('prompt echo is repaired by one read-only check; repeated echo cannot become success', async () => {
@@ -111,12 +102,11 @@ test('prompt echo is repaired by one read-only check; repeated echo cannot becom
     let calls = 0;
     const result = await verifyPhone(async ctx => {
       calls++;
-      if (calls === 1) return { data: { observation: 'Visible item A' } };
-      if (calls === 2 || repeats) return { data: { success: true, observation: ctx.input.prompt.observation } };
+      if (calls === 1 || repeats) return { data: { success: true, observation: ctx.input.prompt.observation } };
       assert.equal(ctx.input.prompt.observation.includes('Prior transcription'), false);
       return { data: { success: true, observation: 'A selected under column X' } };
     }, { signal: new AbortController().signal }, { instruction: 'Read selected item', condition: 'Item and column visible' });
-    assert.equal(calls, 3);
+    assert.equal(calls, 2);
     assert.equal(result.data.success, !repeats);
     assert.equal(result.data.observation.includes('Re-read'), false);
   }
@@ -126,10 +116,9 @@ test('cancellation after malformed judgment prevents the format-repair query', a
   const controller = new AbortController(); let calls = 0;
   await assert.rejects(verifyPhone(async () => {
     calls++;
-    if (calls === 1) return { data: 'Visible item A' };
     controller.abort(); return { data: { success: 'true', observation: 'A' } };
   }, { signal: controller.signal }, { instruction: 'Read', condition: 'Visible' }), { name: 'AbortError' });
-  assert.equal(calls, 2);
+  assert.equal(calls, 1);
 });
 
 

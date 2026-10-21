@@ -420,7 +420,7 @@ class NativeConversationCoordinator(
                             title = local("正在推进任务", "Working on task"), detail = event.getJSONArray("steps").strings().joinToString(" · "))
                         if (event.optString("type") == "accepted") find(event.optString("id"))?.put("status", "running")
                         save(); publish()
-                    } }, resumeInputs = taskHistory.pendingInputs, goal = entry.getString("goal"))
+                    } }, resumeInputs = taskHistory.pendingInputs, goal = entry.getString("goal"), userInput = text.trim())
                     finalPhase = reply.getString("phase")
                     check(finalPhase != "failed") { reply.getString("reply") }
                     if (finalPhase == "completed") {
