@@ -87,6 +87,10 @@ class ModelTransport(
                             responseStatus = response.code
                             measurement.put("headersMs", elapsed()).put("status", response.code)
                             val source = response.body?.source()
+                            // The shorter idle limit applies only while waiting for headers.
+                            // Restore the configured body timeout; the call-wide deadline
+                            // still bounds the entire request, including reconnection.
+                            source?.timeout()?.timeout(client.readTimeoutMillis.toLong(), TimeUnit.MILLISECONDS)
                             if (source?.request(1) == true) measurement.put("firstBodyMs", elapsed())
                             val bytes = response.body?.bytes() ?: byteArrayOf()
                             measurement.put("responseBytes", bytes.size).put("bodyComplete", true)

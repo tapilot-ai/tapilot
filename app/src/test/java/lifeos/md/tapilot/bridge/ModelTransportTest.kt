@@ -224,6 +224,35 @@ class ModelTransportTest {
         assertEquals(listOf(0, 1), records.map { it.getInt("attempt") })
     }
 
+    @Test fun `body reads restore configured idle timeout without removing overall deadline`() {
+        val bodyTimeout = okio.Timeout().timeout(60, TimeUnit.SECONDS)
+        val calls = AtomicInteger()
+        val client = OkHttpClient.Builder().readTimeout(120, TimeUnit.SECONDS).addInterceptor { chain ->
+            calls.incrementAndGet()
+            val source = object : okio.Source {
+                var sent = false
+                override fun read(sink: okio.Buffer, byteCount: Long): Long {
+                    assertEquals(TimeUnit.SECONDS.toNanos(120), bodyTimeout.timeoutNanos())
+                    assertTrue(chain.call().timeout().hasDeadline())
+                    if (sent) return -1
+                    sent = true
+                    sink.writeUtf8("{}")
+                    return 2
+                }
+                override fun timeout() = bodyTimeout
+                override fun close() = Unit
+            }.buffer()
+            val body = object : okhttp3.ResponseBody() {
+                override fun contentType(): okhttp3.MediaType? = null
+                override fun contentLength() = -1L
+                override fun source() = source
+            }
+            response(chain.request()).newBuilder().body(body).build()
+        }.build()
+        ModelTransport(client).use { assertEquals(200, execute(it).getOrThrow().getInt("status")) }
+        assertEquals(1, calls.get())
+    }
+
     @Test fun `body timeout after response headers is not retried`() {
         val calls = AtomicInteger()
         val client = OkHttpClient.Builder().addInterceptor { chain ->
