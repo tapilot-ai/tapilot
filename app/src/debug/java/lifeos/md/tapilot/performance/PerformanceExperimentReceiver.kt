@@ -10,7 +10,32 @@ import org.json.JSONObject
 class PerformanceExperimentReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val fixture = intent.getStringExtra("fixture") ?: "read-auto-brightness"
-        if (fixture !in listOf("read-auto-brightness", "read-android-version", "calculate-expression", "read-world-clock", "locate-calendar-date", "accept-cross-app", "accept-calendar-next-year", "accept-clock-tabs", "accept-clarification", "accept-general-answer", "accept-settings-search")) {
+        if (fixture !in listOf(
+                "read-auto-brightness",
+                "read-android-version",
+                "calculate-expression",
+                "read-world-clock",
+                "locate-calendar-date",
+                "accept-cross-app",
+                "accept-calendar-next-year",
+                "accept-clock-tabs",
+                "accept-clarification",
+                "accept-general-answer",
+                "accept-settings-search",
+                "accept-desktop-cross-page",
+                "accept-desktop-organize",
+                "accept-desktop-group-check",
+                "accept-desktop-cross-page-media",
+                "accept-desktop-cross-page-productivity",
+                "accept-desktop-cross-page-utilities",
+                "accept-desktop-cross-page-photos",
+                "accept-desktop-cross-page-work",
+                "accept-desktop-cross-page-stores",
+                "accept-desktop-cross-page-assistants",
+                "accept-desktop-existing-folder",
+                "accept-desktop-cross-page-device-tools",
+                "accept-desktop-existing-folder-wallet",
+            )) {
             setResult(1, "Unsupported benchmark fixture", null)
             return
         }

@@ -9,5 +9,18 @@
   "accept-clock-tabs": "Open Clock, read the visible alarm times and enabled states without toggling them, then read the visible World clock city names and times. Reply with both sets of readings. Do not modify alarms or cities. No voice.",
   "accept-clarification": "Open the app I meant. I have not told you which app. Ask me which app before operating the phone. No voice.",
   "accept-general-answer": "Explain in one short sentence what a screenshot is. This is a general knowledge question; do not inspect or operate the phone. No voice.",
-  "accept-settings-search": "Open Settings, use its search input to search for Bluetooth, and read the visible search results. Do not change any setting. No voice."
+  "accept-settings-search": "Open Settings, use its search input to search for Bluetooth, and read the visible search results. Do not change any setting. No voice.",
+  "accept-desktop-cross-page": "把系统桌面不同页面上的“文档”和“文件管理”归入同一个名为“文档工具”的文件夹。只整理这两个图标，保留其他应用、底栏和小组件，不卸载、不删除，不使用语音。",
+  "accept-desktop-organize": "整理系统桌面所有页面上的应用图标，按实际用途分类到文件夹，复用已有合适分组。保留底栏、小组件和原有文件夹内部应用，不卸载、不删除、不清除数据、不改布局设置。用途不明的应用保留原位并报告；应用抽屉不属于整理范围。报告实际完成的分类和未完成项，不使用语音。",
+  "accept-desktop-group-check": "只读检查系统桌面名为“文档工具”的文件夹。打开它并读取其中实际可见的应用名称；如果已经打开就直接读取。不要移动、重命名、删除或卸载任何内容，不使用语音。报告文件夹名称和包含的应用，不能只凭任务文字猜测结果。",
+  "accept-desktop-cross-page-media": "把系统桌面不同页面上的“音乐”和“OPPO 视频”归入同一个名为“影音”的文件夹。只整理这两个图标，保留其他应用、底栏和小组件，不卸载、不删除，不使用语音。",
+  "accept-desktop-cross-page-productivity": "把系统桌面上的“便签”和“飞书”归入同一个名为“效率”的文件夹，只整理这两个图标，保留其他应用、底栏和小组件，不卸载、不删除，不使用语音。",
+  "accept-desktop-cross-page-utilities": "把系统桌面不同页面上的“天气”和“Chrome”归入同一个名为“出行查询”的文件夹。只整理这两个图标，不移动其他应用，不卸载或删除，不改底栏和小组件。使用实际可用的桌面功能，完成后打开文件夹核对名称与两个应用，然后结束任务。不要语音。",
+  "accept-desktop-cross-page-photos": "把系统桌面不同页面上的“相册”和“抖音”归入同一个名为“影像”的文件夹。只整理这两个图标，不卸载或删除，不改底栏和小组件。完成后核对文件夹名称与两个应用。若已在同一文件夹则不要重复搬运。不要语音。",
+  "accept-desktop-cross-page-work": "把系统桌面不同页面上的“日历”和“飞连”归入同一个名为“工作工具”的文件夹。只整理这两个图标，不卸载或删除，不改底栏和小组件。完成后核对文件夹名称与两个应用。若已在同一文件夹则不要重复搬运。不要语音。",
+  "accept-desktop-cross-page-stores": "把桌面上的“软件商店”和“APKPure”归入一个名为“应用商店”的文件夹。只处理这两个图标，若已经归组则只核对；保留其他应用、底栏、小组件，不卸载删除，不使用语音。",
+  "accept-desktop-cross-page-assistants": "把桌面不同页面上的“小布助手”和“豆包”归入一个名为“AI助手”的文件夹。只处理这两个图标，若已经归组则只核对；保留其他应用、底栏、小组件，不卸载删除，不使用语音。",
+  "accept-desktop-existing-folder": "把桌面独立的“设置”和“时钟”放入已有的“工具”文件夹，不要新建文件夹。保留工具文件夹原有应用及其他桌面内容、底栏、小组件，不卸载删除。若目标已在里面则只核对，不重复搬运。完成后打开工具核对两个目标。不要语音。",
+  "accept-desktop-cross-page-device-tools": "把桌面上的“我的 OPPO”和“Clash Meta”归入一个名为“设备工具”的文件夹。只处理这两个图标，保留其他应用、底栏、小组件，不卸载删除，不使用语音。",
+  "accept-desktop-existing-folder-wallet": "把桌面上的“钱包”放入已有的“工具”文件夹，不新建文件夹，保留其中原有应用。只处理钱包图标，保留其他应用、底栏、小组件，不卸载删除，不使用语音。"
 }
