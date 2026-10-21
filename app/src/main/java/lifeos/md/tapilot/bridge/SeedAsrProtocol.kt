@@ -9,7 +9,7 @@ import org.json.JSONObject
 
 /** Seed ASR 2.0 binary framing, matching the official Volcengine WebSocket API. */
 internal object SeedAsrProtocol {
-    data class Response(val code: Int, val text: String, val last: Boolean)
+    data class Response(val code: Int, val text: String, val last: Boolean, val speechEnded: Boolean = false)
 
     fun fullRequest(): ByteArray {
         val body = JSONObject()
@@ -19,8 +19,9 @@ internal object SeedAsrProtocol {
                 .put("rate", 16000).put("bits", 16).put("channel", 1))
             .put("request", JSONObject()
                 .put("model_name", "bigmodel")
+                .put("enable_nonstream", true)
                 .put("enable_itn", true).put("enable_punc", true)
-                .put("enable_ddc", false).put("show_utterances", false))
+                .put("enable_ddc", false).put("show_utterances", true).put("end_window_size", 1500))
         return frame(0x11, 1, gzip(body.toString().toByteArray(Charsets.UTF_8)))
     }
 
@@ -71,7 +72,15 @@ internal object SeedAsrProtocol {
             }.orEmpty()
             else -> ""
         }
-        return Response(code, text.trim(), flags and 2 != 0)
+        val latestResult = when (result) {
+            is JSONObject -> result
+            is org.json.JSONArray -> result.optJSONObject(result.length() - 1)
+            else -> null
+        }
+        val utterances = latestResult?.optJSONArray("utterances")
+        val lastUtterance = utterances?.optJSONObject(utterances.length() - 1)
+        val speechEnded = text.isNotBlank() && lastUtterance?.optBoolean("definite") == true
+        return Response(code, text.trim(), flags and 2 != 0, speechEnded)
     }
 
     private fun frame(typeAndFlags: Int, sequence: Int, payload: ByteArray, serializerAndCompression: Int = 0x11): ByteArray {

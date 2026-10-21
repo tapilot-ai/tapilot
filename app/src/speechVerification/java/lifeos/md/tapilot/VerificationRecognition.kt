@@ -21,7 +21,7 @@ class VerificationRecognition(private val startDelay: Long = 0, private val fail
     override fun cancelPreparation() { if (prepared) discards++; prepared = false }
     override val canRetry = false
     override fun start(provider: String, apiKey: String, language: String, onLevel: (Float) -> Unit,
-        onError: (Throwable) -> Unit, onTranscript: (String) -> Unit, callback: (Result<Unit>) -> Unit) {
+        onError: (Throwable) -> Unit, onTranscript: (String) -> Unit, onSpeechBoundary: (Boolean) -> Unit, callback: (Result<Unit>) -> Unit) {
         starts++
         opening = if (checkPreparation && prepared) "开头两个字，" else ""
         prepared = false

@@ -12,7 +12,7 @@ class SpeechPreparationTest {
             override fun prepare() { prepared = true }
             override fun cancelPreparation() { prepared = false }
             override fun start(provider: String, apiKey: String, language: String, onLevel: (Float) -> Unit,
-                onError: (Throwable) -> Unit, onTranscript: (String) -> Unit, callback: (Result<Unit>) -> Unit) { starts++; callback(Result.success(Unit)) }
+                onError: (Throwable) -> Unit, onTranscript: (String) -> Unit, onSpeechBoundary: (Boolean) -> Unit, callback: (Result<Unit>) -> Unit) { starts++; callback(Result.success(Unit)) }
             override fun finish(callback: (Result<String>) -> Unit) { callback(Result.success("开头")) }
             override fun retry(apiKey: String, callback: (Result<String>) -> Unit) = finish(callback)
             override fun cancel() { prepared = false }

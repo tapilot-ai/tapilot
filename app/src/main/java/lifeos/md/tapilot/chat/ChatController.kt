@@ -53,6 +53,9 @@ class ChatController(
         private set
     private val handler = Handler(Looper.getMainLooper())
     private val runtime get() = (activity.application as lifeos.md.tapilot.TapilotApplication).assistant
+    val floatingHold get() = runtime.floatingHold
+    val speechMuted get() = runtime.speechMuted
+    fun toggleSpeechPlayback() = runtime.toggleSpeechPlayback()
     val voiceState get() = runtime.voiceState
     val speakingId get() = runtime.speakingId
     val playbackError get() = runtime.outputError
@@ -78,6 +81,7 @@ class ChatController(
     fun interruptVoice() = runtime.interruptVoice()
     fun pauseVoice() = runtime.pauseVoice()
     fun resumeVoice() = runtime.resumeVoice()
+    fun voicePrimaryAction() = runtime.voicePrimaryAction()
     fun finishVoiceUtterance() = runtime.finishUtterance()
     private var closed = false
     private var speechGeneration = 0

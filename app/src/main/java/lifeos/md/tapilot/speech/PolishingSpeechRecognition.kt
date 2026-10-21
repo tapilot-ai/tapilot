@@ -32,12 +32,12 @@ internal class PolishingSpeechRecognition(
     override fun cancelPreparation() = recognition.cancelPreparation()
     override val canRetry get() = recognition.canRetry
     override fun start(provider: String, apiKey: String, language: String, onLevel: (Float) -> Unit,
-        onError: (Throwable) -> Unit, onTranscript: (String) -> Unit, callback: (Result<Unit>) -> Unit) {
+        onError: (Throwable) -> Unit, onTranscript: (String) -> Unit, onSpeechBoundary: (Boolean) -> Unit, callback: (Result<Unit>) -> Unit) {
         session?.cancel()
         val current = sessionFactory(onTranscript)
         session = current
         try { recognition.start(provider, apiKey, language, onLevel, { error -> current.cancel(); onError(error) },
-            current::update) { result -> if (result.isFailure) current.cancel(); callback(result) }
+            current::update, onSpeechBoundary) { result -> if (result.isFailure) current.cancel(); callback(result) }
         } catch (error: Throwable) { current.cancel(); throw error }
     }
     override fun finish(callback: (Result<String>) -> Unit) {

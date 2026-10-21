@@ -15,15 +15,18 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.painterResource
+import lifeos.md.tapilot.R
 import lifeos.md.tapilot.voice.VoicePhase
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun VoiceConversationPanel(controller: ChatController, connecting: Boolean = false) {
     val voice = if (connecting && !controller.voiceState.active) lifeos.md.tapilot.voice.VoiceState(active = true, phase = VoicePhase.Preparing) else controller.voiceState
     val colors = MaterialTheme.colorScheme
     val zh = controller.state.chinese
     fun label(a: String, b: String) = if (zh) a else b
-    val title = when (voice.phase) {
+    val title = if (voice.previewingTranscript) label("即将发送", "Sending shortly") else when (voice.phase) {
         VoicePhase.Preparing -> label("正在连接，请稍候", "Connecting, please wait")
         VoicePhase.Listening -> label("可以说话了", "Ready — go ahead")
         VoicePhase.Recognizing -> label("正在转写", "Transcribing")
@@ -62,23 +65,47 @@ internal fun VoiceConversationPanel(controller: ChatController, connecting: Bool
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         }
         val detail = when {
+            voice.previewingTranscript -> voice.transcript
             voice.error.isNotBlank() -> voice.error
-            voice.phase == VoicePhase.Listening -> voice.transcript.ifBlank { label("我在听 · 停顿后自动发送，最长收听 30 秒", "Listening · Pause to send, up to 30 seconds") }
-            voice.phase == VoicePhase.Speaking -> label("点击打断，接着说", "Tap interrupt to speak")
-            voice.phase == VoicePhase.Paused && voice.listeningTimedOut -> label("已达到 30 秒收听上限，麦克风已关闭。点击继续可重新说话", "30-second listening limit reached. Microphone off. Tap Resume to speak again") + voice.transcript.takeIf { it.isNotBlank() }?.let { "\n$it" }.orEmpty()
-            voice.phase == VoicePhase.Paused -> if (controller.state.confirmation != null) label("请先确认手机操作", "Confirm the phone operation first") else label("点击继续，恢复对话", "Tap Resume to continue")
+            voice.noSpeechRecognized -> label("未识别到语音，回答尚未提交。请点击继续收听", "No speech recognized. Your reply was not sent. Tap Resume listening")
+            voice.phase == VoicePhase.Listening -> voice.transcript.ifBlank {
+                if (controller.floatingHold) label("按住说话，松手发送", "Hold to speak, release to send")
+                else label("停顿后自动发送；3 秒无新文字也会发送", "Sends after a pause, or 3 seconds without new text")
+            }
+            voice.phase == VoicePhase.Speaking -> label("点击说话可打断播报", "Tap Speak to interrupt playback")
+            voice.phase == VoicePhase.Paused && voice.listeningTimedOut -> label("已达到 30 秒收听上限，麦克风已关闭。点击继续收听", "30-second listening limit reached. Microphone off. Tap Resume listening") + voice.transcript.takeIf { it.isNotBlank() }?.let { "\n$it" }.orEmpty()
+            voice.phase == VoicePhase.Paused -> if (controller.state.confirmation != null) label("请先确认手机操作", "Confirm the phone operation first") else label("点击继续收听，可以回答追问或提出新任务", "Resume listening to answer or start a new task") + if (voice.transcriptPending) "\n${voice.transcript}" else ""
             voice.phase == VoicePhase.Preparing -> label("麦克风就绪后会提示可以说话", "Wait for the ready prompt before speaking")
             else -> voice.transcript
         }
         if (detail.isNotBlank()) Text(detail, color = if (voice.error.isNotBlank()) colors.error else colors.onSurfaceVariant, fontSize = 13.sp, maxLines = 3)
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            when (voice.phase) {
-                VoicePhase.Listening, VoicePhase.Preparing -> TextButton(onClick = controller::pauseVoice, enabled = !connecting) { Text(label("暂停", "Pause")) }
-                VoicePhase.Error, VoicePhase.Paused -> TextButton(onClick = controller::resumeVoice,
-                    enabled = controller.state.confirmation == null) { Text(label(if (voice.phase == VoicePhase.Error) "重试" else "继续", if (voice.phase == VoicePhase.Error) "Retry" else "Resume")) }
-                else -> TextButton(onClick = controller::interruptVoice, enabled = controller.state.confirmation == null) { Text(label("打断", "Interrupt")) }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton(onClick = controller::voicePrimaryAction,
+                enabled = !connecting && controller.state.confirmation == null) {
+                Text(when (voice.phase) {
+                    VoicePhase.Listening -> if (voice.transcriptPending) label("发送", "Send") else label("暂停", "Pause")
+                    VoicePhase.Preparing -> label("暂停", "Pause")
+                    VoicePhase.Paused -> if (voice.transcriptPending) label("发送", "Send") else label("继续收听", "Resume listening")
+                    VoicePhase.Error -> label("重试", "Retry")
+                    else -> label("说话", "Speak")
+                })
             }
             TextButton(onClick = controller::endVoiceConversation, enabled = !connecting) { Text(label("结束", "End"), color = colors.onSurfaceVariant) }
         }
+    }
+}
+
+/** Shared state remains available from the chat header even outside voice mode. */
+@Composable
+internal fun SpeechPlaybackToggle(controller: ChatController) {
+    val colors = MaterialTheme.colorScheme
+    fun label(chinese: String, english: String) = if (controller.state.chinese) chinese else english
+    IconToggleButton(checked = !controller.speechMuted,
+        onCheckedChange = { controller.toggleSpeechPlayback() },
+        modifier = Modifier.size(48.dp)) {
+        Icon(painterResource(if (controller.speechMuted) R.drawable.ic_speaker_off else R.drawable.ic_speaker_on),
+            contentDescription = if (controller.speechMuted) label("开启播报", "Enable speech") else label("关闭播报", "Mute speech"),
+            tint = if (controller.speechMuted) colors.onSurfaceVariant else colors.primary,
+            modifier = Modifier.size(24.dp))
     }
 }

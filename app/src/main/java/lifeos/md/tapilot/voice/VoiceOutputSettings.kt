@@ -7,6 +7,9 @@ class VoiceOutputSettings(context: Context) {
     var autoRead: Boolean
         get() = preferences.getBoolean("auto-read", true)
         set(value) { preferences.edit().putBoolean("auto-read", value).apply() }
+    var muted: Boolean
+        get() = preferences.getBoolean("muted", false)
+        set(value) { preferences.edit().putBoolean("muted", value).apply() }
     fun speaker(provider: String): String = preferences.getString("speaker-$provider", null).orEmpty().ifBlank {
         if (provider == "deepgram") "aura-2-thalia-en" else "zh_female_vv_uranus_bigtts"
     }

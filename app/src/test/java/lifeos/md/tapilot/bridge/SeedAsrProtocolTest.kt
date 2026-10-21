@@ -25,6 +25,17 @@ class SeedAsrProtocolTest {
             .toString(Charsets.UTF_8))
         assertEquals(16000, request.getJSONObject("audio").getInt("rate"))
         assertEquals("bigmodel", request.getJSONObject("request").getString("model_name"))
+        assertTrue(request.getJSONObject("request").getBoolean("show_utterances"))
+        assertTrue(request.getJSONObject("request").getBoolean("enable_nonstream"))
+        assertEquals(1500, request.getJSONObject("request").getInt("end_window_size"))
+    }
+
+    @Test fun onlyLatestDefiniteUtteranceSignalsPause() {
+        fun ended(utterances: String) = SeedAsrProtocol.parse(serverResponse(0x91, 0,
+            """{"result":{"text":"你好","utterances":$utterances}}""")).speechEnded
+        assertTrue(ended("""[{"definite":true}]"""))
+        assertEquals(false, ended("""[{"definite":true},{"definite":false}]"""))
+        assertEquals(false, ended("[]"))
     }
 
     @Test fun finalAudioPacketUsesNegativeSequence() {

@@ -16,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import org.json.JSONObject
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -31,6 +32,8 @@ internal class SpeechTranscriber(private val activity: Context) : SpeechRecognit
         .readTimeout(0, TimeUnit.MILLISECONDS)
         .pingInterval(20, TimeUnit.SECONDS)
         .build()
+    private val debugAudio = (activity.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+    private fun trace(message: String) { if (debugAudio) android.util.Log.d("TapilotVoice", message) }
     private val timeouts = Executors.newSingleThreadScheduledExecutor()
     private val probes = ConcurrentHashMap.newKeySet<WebSocket>()
     private var active: Session? = null
@@ -48,6 +51,7 @@ internal class SpeechTranscriber(private val activity: Context) : SpeechRecognit
         val onLevel: (Float) -> Unit = {},
         val onError: (Throwable) -> Unit = {},
         val onTranscript: (String) -> Unit = {},
+        val onSpeechBoundary: (Boolean) -> Unit = {},
         var startCallback: ((Result<Unit>) -> Unit)?,
     ) {
         val recording = AtomicBoolean(true)
@@ -71,7 +75,7 @@ internal class SpeechTranscriber(private val activity: Context) : SpeechRecognit
 
     @Synchronized
     override fun start(provider: String, apiKey: String, language: String,
-        onLevel: (Float) -> Unit, onError: (Throwable) -> Unit, onTranscript: (String) -> Unit, callback: (Result<Unit>) -> Unit) {
+        onLevel: (Float) -> Unit, onError: (Throwable) -> Unit, onTranscript: (String) -> Unit, onSpeechBoundary: (Boolean) -> Unit, callback: (Result<Unit>) -> Unit) {
         require(provider == VOLCENGINE || provider == DEEPGRAM) { "Unsupported speech provider" }
         require(language == "zh-CN" || language == "en-US") { "Unsupported speech language" }
         require(apiKey.isNotBlank() && apiKey.length <= 4096 &&
@@ -85,7 +89,7 @@ internal class SpeechTranscriber(private val activity: Context) : SpeechRecognit
         }
         val bufferSize = 3200
         val audio = preparedAudio?.also { preparedAudio = null } ?: createMicrophone()
-        val session = Session(provider, audio, language, onLevel = onLevel, onError = onError, onTranscript = onTranscript, startCallback = callback)
+        val session = Session(provider, audio, language, onLevel = onLevel, onError = onError, onTranscript = onTranscript, onSpeechBoundary = onSpeechBoundary, startCallback = callback)
         try {
             if (audio.recordingState != AudioRecord.RECORDSTATE_RECORDING) audio.startRecording()
             active = session
@@ -220,6 +224,7 @@ internal class SpeechTranscriber(private val activity: Context) : SpeechRecognit
     override fun finish(callback: (Result<String>) -> Unit) {
         val session = active ?: throw (lastFailure ?: IllegalStateException("No recording is in progress"))
         synchronized(session) {
+            trace("Speech finish requested bytes=${session.totalBytes}")
             session.boundary.requestFinish()
             session.finishCallback = callback
         }
@@ -258,6 +263,9 @@ internal class SpeechTranscriber(private val activity: Context) : SpeechRecognit
 
     private fun capture(session: Session, bufferSize: Int) {
         val buffer = ByteArray(bufferSize)
+        var diagnosticBytes = 0
+        var minimumLevel = 1f
+        var maximumLevel = 0f
         try {
             while (session.recording.get() && session.totalBytes < MAX_PCM_BYTES) {
                 val count = session.audio!!.read(buffer, 0, buffer.size)
@@ -268,7 +276,17 @@ internal class SpeechTranscriber(private val activity: Context) : SpeechRecognit
                     if (session.cancelled || !session.boundary.acceptsAudio()) return
                     session.totalBytes += chunk.size
                     session.pcm.append(chunk)
-                    session.onLevel(SpeechAudio.level(chunk))
+                    val level = SpeechAudio.level(chunk)
+                    session.onLevel(level)
+                    if (debugAudio) {
+                        minimumLevel = minOf(minimumLevel, level)
+                        maximumLevel = maxOf(maximumLevel, level)
+                        diagnosticBytes += chunk.size
+                        if (diagnosticBytes >= RATE * 2) {
+                            trace("Audio window min=$minimumLevel max=$maximumLevel bytes=$diagnosticBytes serviceReady=${session.ready}")
+                            diagnosticBytes = 0; minimumLevel = 1f; maximumLevel = 0f
+                        }
+                    }
                     if (session.ready) sendAudio(session, chunk)
                     else {
                         session.pending.addLast(chunk)
@@ -306,6 +324,8 @@ internal class SpeechTranscriber(private val activity: Context) : SpeechRecognit
                 if (!session.ready) ready(session)
                 synchronized(session) { if (response.text.isNotBlank()) session.transcript = response.text }
                 session.onTranscript(session.transcript)
+                session.onSpeechBoundary(response.speechEnded)
+                if (response.speechEnded) trace("Speech endpoint provider=volcengine")
                 if (response.last) complete(session, session.transcript)
             } catch (error: Throwable) { fail(session, error) }
         }
@@ -313,11 +333,14 @@ internal class SpeechTranscriber(private val activity: Context) : SpeechRecognit
         override fun onMessage(webSocket: WebSocket, text: String) {
             if (session.provider != DEEPGRAM) return
             try {
-                val transcript = DeepgramProtocol.finalTranscript(text) ?: return
+                val transcript = DeepgramProtocol.finalTranscript(text)
+                if (JSONObject(text).optString("type") != "Results") return
+                val interim = DeepgramProtocol.interimTranscript(text)
                 synchronized(session) {
                     if (session.cancelled) return
-                    session.finalSegments.add(transcript)
-                    session.onTranscript(session.finalSegments.joinToString(" "))
+                    if (transcript != null) session.finalSegments.add(transcript)
+                    session.onTranscript((session.finalSegments + listOfNotNull(interim)).joinToString(" "))
+                    session.onSpeechBoundary(DeepgramProtocol.speechEnded(text))
                 }
             } catch (error: Throwable) { fail(session, error) }
         }
@@ -348,6 +371,7 @@ internal class SpeechTranscriber(private val activity: Context) : SpeechRecognit
     private fun ready(session: Session) {
         if (session.cancelled || session.ready) return
         session.ready = true
+        trace("Speech service ready provider=${session.provider}")
         try {
             synchronized(session) { flush(session) }
             session.startCallback?.let { callback ->
@@ -383,6 +407,7 @@ internal class SpeechTranscriber(private val activity: Context) : SpeechRecognit
 
     private fun complete(session: Session, text: String) {
         val normalized = text.trim()
+        trace("Speech final hasText=${normalized.isNotEmpty()} bytes=${session.totalBytes}")
         if (normalized.isEmpty()) fail(session, IOException("No speech recognized"))
         else finishSession(session, Result.success(normalized))
     }
@@ -437,7 +462,7 @@ internal class SpeechTranscriber(private val activity: Context) : SpeechRecognit
         const val DEEPGRAM = "deepgram"
         const val RESOURCE_ID = "volc.seedasr.sauc.duration"
         const val VOLCENGINE_URL = "wss://openspeech.bytedance.com/api/v3/sauc/bigmodel"
-        const val DEEPGRAM_URL = "wss://api.deepgram.com/v1/listen?model=nova-3&encoding=linear16&sample_rate=16000&channels=1&interim_results=true&punctuate=true&smart_format=true"
+        const val DEEPGRAM_URL = "wss://api.deepgram.com/v1/listen?model=nova-3&encoding=linear16&sample_rate=16000&channels=1&interim_results=true&punctuate=true&smart_format=true&endpointing=1500"
         private const val RATE = 16000
         private const val MAX_PCM_BYTES = RATE * 2 * 60
         private const val MAX_PENDING_BYTES = 1024 * 1024

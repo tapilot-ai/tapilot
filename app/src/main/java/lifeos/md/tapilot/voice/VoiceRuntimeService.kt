@@ -28,7 +28,7 @@ class VoiceRuntimeService : Service() {
         startForeground(ID, notification(runtime.voiceState), ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK or
             if (microphone) ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE else 0)
         runtime.serviceStarted(this, intent?.action == START_VOICE)
-        when (intent?.action) { PAUSE -> runtime.pauseVoice(); RESUME -> runtime.resumeVoice(); INTERRUPT -> runtime.interruptVoice() }
+        when (intent?.action) { PAUSE -> runtime.pauseVoice(); RESUME -> runtime.voicePrimaryAction(); INTERRUPT -> runtime.interruptVoice() }
         return START_NOT_STICKY
     }
     fun refresh(state: VoiceState, playing: Boolean, waiting: Boolean) {
@@ -54,7 +54,7 @@ class VoiceRuntimeService : Service() {
             .setContentTitle(label("Tapilot 语音", "Tapilot Voice")).setContentText(text).setContentIntent(open)
             .setOngoing(true).setOnlyAlertOnce(true).setVisibility(Notification.VISIBILITY_PRIVATE).apply {
                 if (state.active) {
-                    if (state.phase in listOf(VoicePhase.Paused, VoicePhase.Error)) addAction(action(RESUME, label("继续", "Resume"), 1))
+                    if (state.phase in listOf(VoicePhase.Paused, VoicePhase.Error)) addAction(action(RESUME, label(if (state.phase == VoicePhase.Error) "重试" else if (state.transcriptPending) "发送" else "继续收听", if (state.phase == VoicePhase.Error) "Retry" else if (state.transcriptPending) "Send" else "Resume listening"), 1))
                     else if (state.phase in listOf(VoicePhase.Speaking, VoicePhase.Thinking)) addAction(action(INTERRUPT, label("打断", "Interrupt"), 2))
                     else addAction(action(PAUSE, label("暂停", "Pause"), 3))
                 }

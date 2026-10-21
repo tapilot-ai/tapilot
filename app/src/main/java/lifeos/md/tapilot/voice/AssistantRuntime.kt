@@ -48,6 +48,7 @@ class AssistantRuntime(context: Context) {
     private var openingUtterance: String? = null
     private var mutedUntilNextSend = false
     private val config = VoiceOutputSettings(context)
+    var speechMuted by androidx.compose.runtime.mutableStateOf(config.muted); private set
     val device = lifeos.md.tapilot.device.AndroidDeviceService(context)
     val bridge = lifeos.md.tapilot.services.AppServices(context = context, device = device,
         onProgress = { coordinator.phoneProgress(it) },
@@ -66,7 +67,7 @@ class AssistantRuntime(context: Context) {
             refreshService()
             if (next.phase == VoicePhase.Listening && floatingSession.consumeFinish()) {
                 val token = floatingEntryGeneration
-                handler.post { if (floatingSession.isCurrent(token) && !floatingHold && voiceState.phase == VoicePhase.Listening) voice.finishUtterance() }
+                handler.post { if (floatingSession.isCurrent(token) && !floatingHold && voiceState.phase == VoicePhase.Listening) voice.finishUtterance(previewBeforeSend = true) }
             }
         })
     private val clock = object : Runnable {
@@ -84,7 +85,7 @@ class AssistantRuntime(context: Context) {
         if (state.ready && state.activeConversationId != next.activeConversationId) endVoice()
         state = next
         if (voiceState.active) voice.update(voiceReplies(), next.running, next.confirmation)
-        replies.update(next.activeConversationId, voiceReplies(), config.autoRead && !mutedUntilNextSend && !voiceState.active && !startingVoice && hasOutputKey())
+        replies.update(next.activeConversationId, voiceReplies(), !speechMuted && config.autoRead && !mutedUntilNextSend && !voiceState.active && !startingVoice && hasOutputKey())
         observe?.invoke(next)
         refreshService()
     }
@@ -93,7 +94,7 @@ class AssistantRuntime(context: Context) {
     fun command(value: JSONObject) {
         val action = value.optString("action")
         if (action in listOf("settings", "new", "select")) { endVoice(); replies.stop() }
-        val spoken = action in listOf("send", "retry") && !voiceState.active && config.autoRead && hasOutputKey() && state.ready && state.configured
+        val spoken = action in listOf("send", "retry") && !voiceState.active && !speechMuted && config.autoRead && hasOutputKey() && state.ready && state.configured
         if (action in listOf("send", "retry")) { mutedUntilNextSend = false; coordinator.backgroundReplies = voiceState.active || spoken }
         if (spoken) {
             ContextCompat.startForegroundService(context, Intent(context, VoiceRuntimeService::class.java))
@@ -105,6 +106,7 @@ class AssistantRuntime(context: Context) {
     private fun feedback() {
         if ((context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0)
             android.util.Log.d("TapilotVoice", "Receipt dispatched")
+        if (speechMuted) return
         // Immediate local receipt; API acknowledgement follows without blocking the task.
         runCatching { ToneGenerator(AudioManager.STREAM_MUSIC, 35).also {
             it.startTone(ToneGenerator.TONE_PROP_ACK, 100); handler.postDelayed({ it.release() }, 150)
@@ -137,6 +139,7 @@ class AssistantRuntime(context: Context) {
     fun serviceStarted(value: VoiceRuntimeService, startVoice: Boolean) {
         service = value
         if (startVoice && startingVoice) {
+            voice.setPlaybackEnabled(!speechMuted)
             voice.start(state.speechProvider, voiceKey, if (state.chinese) "zh-CN" else "en-US", voiceReplies())
             startingVoice = false
             voiceKey = ""; handler.removeCallbacks(clock); handler.post(clock)
@@ -149,10 +152,19 @@ class AssistantRuntime(context: Context) {
         // Preserve a completed playback error for the settings / retry UI.
         if (speakingId.isNotBlank()) replies.stop()
     }
-    private fun refreshService() { service?.refresh(voiceState, speakingId.isNotBlank(), state.running && !mutedUntilNextSend && !voiceState.active && config.autoRead && hasOutputKey()) }
+    private fun refreshService() { service?.refresh(voiceState, speakingId.isNotBlank(), state.running && !mutedUntilNextSend && !voiceState.active && !speechMuted && config.autoRead && hasOutputKey()) }
     fun endVoice() { floatingSession.end(); floatingTranscript = ""; voiceEntryPending = false; openingUtterance = null; startingVoice = false; voiceKey = ""; if (voiceState.active) voice.stop(); handler.removeCallbacks(clock) }
     fun pauseVoice() = voice.pause()
     fun resumeVoice() = voice.resume()
+    fun voicePrimaryAction() {
+        when (voiceState.phase) {
+            VoicePhase.Error -> voice.resume()
+            VoicePhase.Paused -> if (voiceState.transcriptPending) voice.continueConversation() else voice.interrupt()
+            VoicePhase.Listening -> if (voiceState.transcriptPending) voice.finishUtterance() else voice.pause()
+            VoicePhase.Preparing -> voice.pause()
+            else -> voice.interrupt()
+        }
+    }
     fun interruptVoice() = voice.interrupt()
     fun finishUtterance() = voice.finishUtterance()
     fun completeFloatingContext(token: Int = floatingEntryGeneration) {
@@ -163,7 +175,14 @@ class AssistantRuntime(context: Context) {
         if (!floatingHold) return
         if (cancel) { endVoice(); return }
         floatingSession.release()
-        if (voiceState.phase == VoicePhase.Listening && floatingSession.consumeFinish()) voice.finishUtterance()
+        if (voiceState.phase == VoicePhase.Listening && floatingSession.consumeFinish()) voice.finishUtterance(previewBeforeSend = true)
+    }
+    fun toggleSpeechPlayback() {
+        speechMuted = !speechMuted
+        config.muted = speechMuted
+        if (speechMuted) replies.stop()
+        voice.setPlaybackEnabled(!speechMuted)
+        refreshService()
     }
     fun stopSpeech() = replies.stop()
     fun read(reply: VoiceReply) {
