@@ -24,6 +24,7 @@ data: {"type":"response.output_item.done","output_index":0,"item":{"type":"reaso
         val messages = JSONArray("""[{"role":"system","content":"plan"},{"role":"user","content":[{"type":"text","text":"look"},{"type":"image_url","image_url":{"url":"data:image/png;base64,test"}}]},{"role":"assistant","tool_calls":[{"id":"call","function":{"name":"operate_phone","arguments":"{}"}}]},{"role":"tool","tool_call_id":"call","content":"done"}]""")
         val tools = JSONArray("""[{"type":"function","function":{"name":"operate_phone","parameters":{"type":"object"}}}]""")
         val body = ChatGptResponses.body("selected", messages, tools)
+        assertFalse(body.getBoolean("parallel_tool_calls"))
         assertFalse(body.getBoolean("store")); assertTrue(body.getBoolean("stream"))
         assertFalse(body.has("max_tokens")); assertFalse(body.has("temperature")); assertFalse(body.has("previous_response_id"))
         val input = body.getJSONArray("input")

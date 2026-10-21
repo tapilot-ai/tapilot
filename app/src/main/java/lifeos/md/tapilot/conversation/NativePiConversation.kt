@@ -30,7 +30,7 @@ class NativePiConversation(context: Context) : AutoCloseable {
     }
     fun run(messages: JSONArray, resume: JSONArray?, limits: AgentLimits, stopped: () -> Boolean,
             complete: (JSONArray, JSONArray) -> JSONObject,
-            phone: (String, String, String, String) -> PhoneResult, findApps: (String) -> JSONArray, event: (JSONObject) -> Unit, resumeInputs: JSONArray = JSONArray(), goal: String = "", userInput: String = ""): JSONObject {
+            phone: (String, String, String, String, String) -> PhoneResult, findApps: (String) -> JSONArray, event: (JSONObject) -> Unit, resumeInputs: JSONArray = JSONArray(), goal: String = "", userInput: String = ""): JSONObject {
         check(!stopped()) { appText("任务已停止", "Task stopped") }
         val timings = JSONObject()
         val traceId = java.util.UUID.randomUUID().toString()
@@ -97,7 +97,7 @@ class NativePiConversation(context: Context) : AutoCloseable {
                                 val args = value.getJSONObject("params")
                                 when (value.getString("method")) {
                                     "model.complete" -> complete(args.getJSONArray("messages"), args.getJSONArray("tools"))
-                                    "phone.execute" -> phone(args.getString("instruction"), args.getString("success_condition"), args.optString("mode", "act"), args.optString("app")).json()
+                                    "phone.execute" -> phone(args.getString("instruction"), args.getString("success_condition"), args.optString("mode", "act"), args.optString("app"), args.optString("effort", "fast")).json()
                                     "phone.findApps" -> JSONObject().put("apps", findApps(args.getString("query")))
                                     else -> error("未知 Agent 请求")
                                 }

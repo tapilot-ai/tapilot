@@ -392,7 +392,7 @@ class NativeConversationCoordinator(
                     }, findApps = { query ->
                         val capabilities = await("device.getCapabilities", sessionId = runSession, stopped = stopped) as JSONObject
                         PhoneOperationRoute.findApps(capabilities.optJSONArray("apps") ?: JSONArray(), query)
-                    }, phone = { instruction, condition, mode, app ->
+                    }, phone = { instruction, condition, mode, app, effort ->
                         updateProgress(local("准备操作手机", "Preparing phone operation"), instruction, increment = true)
                         val revised = confirmOperation(instruction, stopped)
                         check(!stopped.get()) { appText("任务已停止", "Task stopped") }
@@ -406,7 +406,12 @@ class NativeConversationCoordinator(
                         }
                         updateProgress(local("正在操作手机", "Operating phone"), revised)
                         await("task.status", JSONObject().put("status", "running"), runSession, stopped)
-                        val run = await("runtime.runTest", JSONObject().put("source", NativeConversationAgent.verifiedTask(revised, condition, mode, component)).put("kind", "yaml").put("environment", environment()).put("reportTaskStatus", false), runSession, stopped, 0) as JSONObject
+                        // Deep planning can legitimately need longer than the fast-path 45s ceiling.
+                        // Bound each model request; cancellation and action replay rules stay unchanged.
+                        val operationEnvironment = environment().apply {
+                            if (effort == "deepThink") put("MIDSCENE_MODEL_TIMEOUT", "120000")
+                        }
+                        val run = await("runtime.runTest", JSONObject().put("source", NativeConversationAgent.verifiedTask(revised, condition, mode, component, effort)).put("kind", "yaml").put("environment", operationEnvironment).put("reportTaskStatus", false), runSession, stopped, 0) as JSONObject
                         run.optJSONArray("reports")?.objects()?.forEach { reports.put(it) }
                         PhoneResult.fromRun(run).also { result ->
                             completedOperations.put(JSONObject().put("instruction", revised).put("success", result.success).put("result", result.result)

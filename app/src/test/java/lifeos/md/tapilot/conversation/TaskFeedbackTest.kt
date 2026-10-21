@@ -38,4 +38,14 @@ class TaskFeedbackTest {
         task.put("status", "succeeded").put("reply", "完成")
         assertEquals("完成", TaskFeedback.response(task, true))
     }
+    @Test fun replyFailureKeepsVerifiedProgressWithoutClaimingWholeTaskSuccess() {
+        val task = JSONObject().put("status", "failed").put("detail", "Network timeout")
+            .put("completedOperations", JSONArray().put(operation(true, "Folder contains both apps")))
+        val english = TaskFeedback.response(task, false)
+        assertTrue(english.contains("Network timeout"))
+        assertTrue(english.contains("Folder contains both apps"))
+        assertTrue(english.contains("not yet confirmed complete"))
+        assertTrue(TaskFeedback.response(task, true).contains("整个任务尚未确认完成"))
+        assertEquals("failed", task.getString("status"))
+    }
 }

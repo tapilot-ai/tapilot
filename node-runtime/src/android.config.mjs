@@ -1,3 +1,4 @@
+import { failedActionProgress } from './action-progress.mjs';
 import { verifyPhone } from './phone-verification.mjs';
 import { AndroidAccessibilityDevice } from '@tapilot/android-accessibility';
 import { Agent } from '@midscene/core/agent';
@@ -23,16 +24,21 @@ if (![1, 1.5].includes(screenshotShrinkFactor)) {
 }
 
 class AndroidAssistantAgent extends Agent {
-  aiAct(task, options) {
+  async aiAct(task, options) {
     const resolvedOptions = withAndroidAiActDefaults(options);
-    return super.aiAct(task, {
+    const executionStart = this.dump.executions.length;
+    try { return await super.aiAct(task, {
       ...resolvedOptions,
       context: mergeAndroidAssistantAIActContext(
         defaultAIActContext,
         resolvedOptions.context,
         assistantLanguage,
       ),
-    });
+    }); } catch (error) {
+      const progress = failedActionProgress(this.dump, executionStart);
+      if (!progress || error?.name === 'AbortError') throw error;
+      throw new Error(`${error instanceof Error ? error.message : String(error)}\n${progress}`, { cause: error });
+    }
   }
 }
 

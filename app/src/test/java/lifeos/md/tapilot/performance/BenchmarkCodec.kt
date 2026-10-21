@@ -20,7 +20,7 @@ object BenchmarkCodec {
                     "modelDecode" -> ChatGptResponses.decode(p)
                     "findApps" -> PhoneOperationRoute.findApps(p.getJSONArray("apps"), p.getString("query"))
                     "verifiedTask" -> NativeConversationAgent.verifiedTask(p.getString("instruction"), p.getString("success_condition"),
-                        p.getString("mode"), PhoneOperationRoute.resolveApp(p.getJSONArray("apps"), p.getString("app")))
+                        p.getString("mode"), PhoneOperationRoute.resolveApp(p.getJSONArray("apps"), p.getString("app")), p.optString("effort", "fast"))
                     else -> error("Unknown benchmark codec method")
                 }
                 reply.put("ok", true).put("result", result)

@@ -87,6 +87,7 @@ export function createConversation({ messages, goal = '', userInput = '', resume
     userInput,
   ].filter(Boolean))];
   let stalledTurns = 0;
+  let phoneCallsInTurn = 0;
   let invalidFinishes = 0, requirementRevision = 0, verifiedRevision = -1;
   let turns = 0, operations = 0, lastPhoneResult = null, final = null, planned = false, singlePhoneCall = false;
   const checkLimit = (count, limit, title) => { if (limit > 0 && count >= limit)
@@ -106,8 +107,9 @@ export function createConversation({ messages, goal = '', userInput = '', resume
   };
   const tools = [
     { name: 'operate_phone', description: phoneOperationDescription,
-      executionMode: 'sequential', parameters: Type.Object({ instruction: Type.String({ minLength: 1 }), success_condition: Type.String({ minLength: 1, description: 'Requested result observable in the final screenshot. Keep action-history constraints such as "do not change settings" in instruction, not this screenshot predicate. Do not omit requested visible facts.' }), mode: Type.Union([Type.Literal('act'), Type.Literal('observe')], { description: 'Use observe ONLY for the current screen or an app landing screen after launch. Use act for navigation to a subpage, searching, scrolling, clicking or typing, even for read-only goals that forbid changing settings. Do not prepend an observe call when navigation is requested.' }), finishWhenVerified: Type.Boolean({ description: 'True only when this single operation fulfills the ENTIRE current user goal and the final visual observation alone is a sufficient answer. False for intermediate steps, multi-page facts, synthesis or explanations. Success returns the actual observed result, never a predicted summary.' }), app: Type.String({ description: 'Exact installed app label, package or component to launch first; empty string to keep the current app. Reuse find_apps results here.' }), plan: Type.Optional(Type.Object(planSchema.properties, { description: 'For multi-step work, save or update the plan together with this phone operation instead of a separate set_plan call. currentStep is the zero-based step about to execute, not a claim that it has succeeded.' })) }),
+      executionMode: 'sequential', parameters: Type.Object({ effort: Type.Optional(Type.Union([Type.Literal('fast'), Type.Literal('balance'), Type.Literal('deepThink')], { description: 'Use deepThink for multi-page discovery, organizing or editing multiple items, and recovery requiring memory of prior visual states. It enables subgoals and visual memory. Use fast for a short, known route or a single visible control. balance is for moderate navigation. Do not use fast for an entire multi-page organization task.' })), instruction: Type.String({ minLength: 1 }), success_condition: Type.String({ minLength: 1, description: 'Requested result observable in the final screenshot. Keep action-history constraints such as "do not change settings" in instruction, not this screenshot predicate. Do not omit requested visible facts.' }), mode: Type.Union([Type.Literal('act'), Type.Literal('observe')], { description: 'Use observe ONLY for the current screen or an app landing screen after launch. Use act for navigation to a subpage, searching, scrolling, clicking or typing, even for read-only goals that forbid changing settings. Do not prepend an observe call when navigation is requested.' }), finishWhenVerified: Type.Boolean({ description: 'True only when this single operation fulfills the ENTIRE current user goal and the final visual observation alone is a sufficient answer. False for intermediate steps, multi-page facts, synthesis or explanations. Success returns the actual observed result, never a predicted summary.' }), app: Type.String({ description: 'Exact installed app label, package or component to launch first; empty string to keep the current app. Reuse find_apps results here.' }), plan: Type.Optional(Type.Object(planSchema.properties, { description: 'For multi-step work, save or update the plan together with this phone operation instead of a separate set_plan call. currentStep is the zero-based step about to execute, not a claim that it has succeeded.' })) }),
       execute: async (_id, args, signal) => {
+        if (phoneCallsInTurn++ > 0) throw new Error('本轮已执行一条手机操作。后续预先生成的操作未执行；先阅读上一条结果，再按当前用户目标决定下一步，每轮只调用一次 operate_phone。');
         if (args.plan) savePlan(args.plan);
         lastPhoneResult = { success: false, result: '手机操作未完成' };
         checkLimit(operations, limits.phoneOperations, '手机操作'); operations++;
@@ -174,6 +176,7 @@ export function createConversation({ messages, goal = '', userInput = '', resume
           options?.signal?.throwIfAborted();
           checkLimit(turns, limits.modelTurns, '对话轮次'); turns++;
           emit({ type: 'model', turns });
+          phoneCallsInTurn = 0;
           const response = await rpc('model.complete', (() => { const request = toOpenAI(context); request.messages = projectContext(request.messages);
             if (stalledTurns > 0) request.messages[0].content += '\n上一轮只有文字，没有推进或结束任务。现在必须调用工具：证据不足时用 operate_phone 检查或修正当前画面；手机任务已核验时用 finish_task；普通知识问答用 answer_question；无法完成时以 failed 结束，需要用户信息时以 waiting_user 结束。不要重复解释。';
             return request; })(), options?.signal);

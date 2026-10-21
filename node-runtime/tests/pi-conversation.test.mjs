@@ -615,3 +615,39 @@ test('inline plan with invalid index cannot reach the phone', async () => {
   assert.equal((await conversation.run()).phase, 'failed');
   assert.equal(phones, 0);
 });
+
+
+test('forwards complex-operation effort while retaining independent verification', async () => {
+  let models = 0;
+  let received;
+  const conversation = createConversation({ messages: input('organize across pages'), rpc: async (method, args) => {
+    if (method === 'phone.execute') { received = args; return { success: true, result: 'folder verified' }; }
+    return models++ === 0 ? tool('operate_phone', { instruction: 'group icons', success_condition: 'folder visible',
+      mode: 'act', app: '', effort: 'deepThink', finishWhenVerified: true }) :
+      tool('finish_task', { outcome: 'completed', summary: 'folder verified' });
+  }, emit: () => {} });
+  assert.equal((await conversation.run()).phase, 'completed');
+  assert.equal(received.effort, 'deepThink');
+  assert.equal(JSON.parse(received.success_condition).scope, 'entire_user_goal');
+});
+
+test('a second precomputed phone operation waits for a new model decision', async () => {
+  let turns = 0;
+  const performed = [];
+  const conversation = createConversation({ messages: input('整理桌面'), rpc: async (method, args) => {
+    if (method === 'phone.execute') { performed.push(args.instruction); return { success: true, result: '当前页已盘点' }; }
+    if (turns++ === 0) {
+      const batch = tool('operate_phone', { instruction: '盘点', success_condition: '可见图标' });
+      const later = tool('operate_phone', { instruction: '不应预先执行', success_condition: '未知' }).choices[0].message.tool_calls[0];
+      later.id = 'later-phone'; batch.choices[0].message.tool_calls.push(later); return batch;
+    }
+    if (turns === 2) {
+      assert.match(JSON.stringify(args.messages), /后续预先生成的操作未执行/);
+      return tool('operate_phone', { instruction: '根据结果继续', success_condition: '已归组' });
+    }
+    return tool('finish_task', { outcome: 'completed', summary: '完成' });
+  }, emit: () => {} });
+  const result = await conversation.run();
+  assert.deepEqual(performed, ['盘点', '根据结果继续']);
+  assert.equal(result.operations, 2);
+});

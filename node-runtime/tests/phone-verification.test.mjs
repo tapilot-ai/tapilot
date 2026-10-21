@@ -133,3 +133,11 @@ test('intermediate verification separates this page from the full multi-page goa
   assert.deepEqual(whole.requiredVisibleOutcome, original);
   assert.equal(verificationCriteria('Explicit label must equal ABC', 'Read'), 'Explicit label must equal ABC');
 });
+
+// A current screenshot must not be asked to prove a historical page transition.
+test('page-reading criteria preserve visible targets while deferring navigation history', () => {
+  const criteria = verificationCriteria(JSON.stringify({ scope: 'intermediate_step', userRequirements: ['Move icons across pages'], proposedStepCondition: 'Read File Manager on the next page' }), 'Swipe left then read this page');
+  assert.equal(criteria.requiredVisibleOutcome, 'Read File Manager on the next page');
+  assert.match(criteria.rule, /conversation can compare separately recorded pages/);
+  assert.match(criteria.rule, /does NOT prove a requested cross-page move/);
+});

@@ -31,4 +31,15 @@ class PhoneOperationRouteTest {
         assertEquals(3, act.length()); assertTrue(act.getJSONObject(1).has("aiAct"))
         assertThrows(IllegalArgumentException::class.java) { steps("invalid") }
     }
+    @Test fun planningEffortReachesActionsWithoutAddingActionsToObserve() {
+        fun steps(mode: String, effort: String) = JSONObject(NativeConversationAgent.verifiedTask("organize", "visible", mode, "", effort))
+            .getJSONArray("cases").getJSONObject(0).getJSONArray("steps")
+        for (effort in listOf("fast", "balance", "deepThink")) {
+            assertEquals(effort, steps("act", effort).getJSONObject(0).getJSONObject("aiAct").getJSONObject("options").getString("effort"))
+            assertEquals(1, steps("observe", effort).length())
+            assertTrue(steps("observe", effort).getJSONObject(0).has("verifyPhone"))
+        }
+        assertThrows(IllegalArgumentException::class.java) { steps("act", "unknown") }
+    }
+
 }

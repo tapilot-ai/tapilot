@@ -46,6 +46,7 @@ object ChatGptResponses {
         val body = JSONObject().put("model", model).put("input", input).put("store", false).put("stream", true)
             .put("include", JSONArray().put("reasoning.encrypted_content"))
         if (tools.length() > 0) {
+            body.put("parallel_tool_calls", false)
             val functions = JSONArray()
             for (i in 0 until tools.length()) {
                 val tool = tools.getJSONObject(i); require(tool.getString("type") == "function")

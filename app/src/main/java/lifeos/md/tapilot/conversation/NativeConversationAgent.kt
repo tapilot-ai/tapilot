@@ -44,7 +44,8 @@ object NativeConversationAgent {
         }
         return list.put(user(source, images))
     }
-    fun verifiedTask(instruction: String, condition: String, mode: String = "act", component: String = ""): String {
+    fun verifiedTask(instruction: String, condition: String, mode: String = "act", component: String = "", effort: String = "fast"): String {
+        require(effort in setOf("fast", "balance", "deepThink")) { "Unsupported planning effort" }
         require(mode == "act" || mode == "observe") { "Unsupported phone operation mode" }
         val steps = JSONArray()
         if (component.isNotBlank()) steps.put(JSONObject().put("launch", JSONObject().put("uri", component)))
@@ -62,12 +63,13 @@ object NativeConversationAgent {
                 Required final visible result / verification contract: ${JSONObject.quote(condition)}
                 If this is a structured contract, userRequirements are authoritative and later user amendments take precedence. The proposedStepCondition and requested instruction are an execution plan, not permission to add stricter outcome requirements. Preserve user targets and constraints; do not require a particular view, duplicate full-word label or layout unless the user asked for it.
                 For scope=intermediate_step, execute only the current instruction and relevant proposedStepCondition. Other pages and later steps in userRequirements are context for the conversation agent, not work to perform or evidence to expose in this operation.
+                Separate transient workflow states from the requested final outcome. Selection counts, checked items, confirmation dialogs and edit controls are preconditions while acting; successful submission or grouping may consume them. Do not require those intermediate controls to remain visible after the final result exists, unless the user explicitly requested that as the final state. Inspect the resulting artifact and finish any remaining naming or content requirements instead of undoing a successful operation to recreate an intermediate state.
                 Execute the instruction and leave the evidence for this result visible for an independent screenshot check.
                 Read selected values together with their visible labels, row/column headers and section title. Visible alignment is valid evidence; a separate sentence repeating it is unnecessary unless exact text was requested.
                 Once the requested interactions are complete and all required evidence is visible, stop. Do not scroll away or open another view merely to repeat a reading.
                 If evidence is missing, reveal it without repeating completed side effects. Never treat the expected result as observed evidence.
             """.trimIndent()
-            steps.put(JSONObject().put("aiAct", JSONObject().put("prompt", actionInstruction)))
+            steps.put(JSONObject().put("aiAct", JSONObject().put("prompt", actionInstruction).put("options", JSONObject().put("effort", effort))))
         }
         steps.put(JSONObject().put("verifyPhone", JSONObject().put("instruction", instruction).put("condition", condition)))
         val testCase = JSONObject().put("name", "Tapilot verified phone operation").put("steps", steps)

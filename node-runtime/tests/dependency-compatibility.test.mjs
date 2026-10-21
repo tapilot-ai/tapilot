@@ -76,3 +76,12 @@ test('pixel bbox far edges tolerate one-pixel overflow without accepting out-of-
       { left: 0, top: 0, width: 988, height: 1972 });
   }
 });
+
+
+test('Midscene accepts planning effort only through aiAct options', async () => {
+  const { aiActInputSchema } = await import('@midscene/core/agent/test');
+  for (const effort of ['fast', 'balance', 'deepThink']) {
+    assert.equal(aiActInputSchema.parse({ prompt: 'Inspect current screen', options: { effort } }).options.effort, effort);
+  }
+  assert.equal(aiActInputSchema.safeParse({ prompt: 'Inspect current screen', effort: 'deepThink' }).success, false);
+});

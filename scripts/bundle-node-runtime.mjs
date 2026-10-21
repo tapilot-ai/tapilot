@@ -32,6 +32,7 @@ const runtimeFiles = [
   'settled-capture.mjs',
   'android.config.mjs',
   'assistant-context.mjs',
+  'action-progress.mjs',
   'execution-policy.mjs',
 ];
 const sourceManifest = JSON.parse(

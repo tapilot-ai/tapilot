@@ -28,6 +28,10 @@ object TaskFeedback {
         }
         val operations = entry.optJSONArray("completedOperations")?.objects().orEmpty()
         val last = operations.lastOrNull()
+        if (status == "failed" && last?.optBoolean("success") == true && last.optString("result").isNotBlank()) {
+            parts += local("最近一步已通过画面核验：", "The last operation passed screen verification: ") + last.optString("result")
+            parts += local("整个任务尚未确认完成。进度已保存，可继续处理。", "The whole task is not yet confirmed complete. Progress was saved; you can continue.")
+        }
         if (last != null && !last.optBoolean("success")) {
             val result = last.optString("result")
             val reason = result.substringAfter("Reason:", result).trim()
