@@ -88,8 +88,7 @@ class MainActivity : ComponentActivity() {
                 coordinator.settingsOpen -> NativeSettingsScreen(coordinator, this, nativeBridge,
                     onThemeChanged = { applyWindowTheme(rootView); coordinator.publish() }, onLanguageChanged = { recreate() })
                 coordinator.advancedOpen -> NativeAdvancedScreen(coordinator)
-                else -> ChatScreen(chatController, dismissible = globalPanel, voiceConnecting = pendingVoiceLaunch || runtime.startingVoice,
-                    onExpand = { configureGlobalPanel(false) }, onDismiss = { moveTaskToBack(true) })
+                else -> ChatScreen(chatController, voiceConnecting = pendingVoiceLaunch || runtime.startingVoice)
             }
         }
         setContentView(rootView)

@@ -29,7 +29,7 @@ import androidx.compose.ui.semantics.contentDescription
 
 
 @Composable
-fun ChatScreen(controller: ChatController, compact: Boolean = false, dismissible: Boolean = false, voiceConnecting: Boolean = false, onExpand: () -> Unit = {}, onDismiss: () -> Unit = {}) {
+fun ChatScreen(controller: ChatController, compact: Boolean = false, voiceConnecting: Boolean = false) {
     val state = controller.state
     val colors = tapilotColors(state.dark, state.paletteId)
     TapilotTheme(state.dark, state.paletteId) {
@@ -47,26 +47,20 @@ fun ChatScreen(controller: ChatController, compact: Boolean = false, dismissible
             Column(Modifier.fillMaxSize().navigationBarsPadding().imePadding()) {
                 Row(Modifier.fillMaxWidth().background(colors.surfaceContainerLow).then(if (compact) Modifier else Modifier.statusBarsPadding()).height(56.dp).padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
-                        Text(state.conversations.find { it.id == state.activeConversationId }?.title ?: "Tapilot",
-                            fontSize = 17.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        if (state.running) Text(label("正在处理…", "Working…"), color = colors.onSurfaceVariant, fontSize = 12.sp)
-                    }
-                    if (compact) {
-                        TextButton(onClick = onExpand) { Text(label("展开", "Expand")) }
-                        TextButton(onClick = onDismiss) { Text(label("收起", "Dismiss")) }
-                    } else {
                     IconButton(onClick = { controller.command("settings") }, enabled = !busy) {
                         ChatIcon("settings", colors.onSurfaceVariant, label("设置", "Settings"))
                     }
+                    Spacer(Modifier.weight(1f))
+                    if (state.running) Text(label("正在处理…", "Working…"),
+                        color = colors.onSurfaceVariant, fontSize = 12.sp)
                     Box {
                         IconButton(onClick = { sessions = true }, enabled = !busy) {
                             ChatIcon("conversations", colors.onSurfaceVariant, label("会话管理", "Manage conversations"))
                         }
                         ConversationDropdown(controller, sessions, onDismiss = { sessions = false })
                     }
-                    if (dismissible) TextButton(onClick = onDismiss) { Text(label("收起", "Dismiss")) }
-                    }
+                    SpeechPlaybackToggle(controller)
+
                 }
                 if (state.needsAccessibility) {
                     TextButton(onClick = { controller.command("accessibility") }, modifier = Modifier.fillMaxWidth()) {
