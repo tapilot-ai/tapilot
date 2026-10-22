@@ -1,6 +1,6 @@
 package lifeos.md.tapilot.speech
 
-import lifeos.md.tapilot.bridge.SpeechRecognition
+import lifeos.md.tapilot.speech.SpeechRecognition
 import org.junit.Assert.*
 import org.junit.Test
 

@@ -293,6 +293,22 @@ class NativeConversationCoordinator(
     private fun start(text: String, file: JSONObject? = pendingAttachment, retryOf: String? = null, global: Boolean = globalMode,
                       restoreDraft: String? = null, restoreAttachment: JSONObject? = null, kind: String = "task", continueOf: String? = null, handoff: TaskHandoff? = null) {
         if (running || (text.isBlank() && file == null)) return
+        if (execution.stopUnconfirmed) {
+            data.put("draft", text); pendingAttachment = file; draftEpoch++; save()
+            error = local("旧任务尚未确认停止，消息已保留。停止确认后请再次发送。", "The previous task has not confirmed stopping. Your message is saved; send it again after the stop is confirmed.")
+            execution.retryStop()?.let { barrier ->
+                services.call("runtime.stop") { result ->
+                    result.fold(barrier::complete, barrier::completeExceptionally)
+                    handler.post {
+                        if (!closed && !execution.stopUnconfirmed && !running) {
+                            error = local("旧任务已停止，可以发送保留的消息。", "The previous task stopped. You can send your saved message.")
+                            publish()
+                        }
+                    }
+                }
+            }
+            publish(); return
+        }
         runCatching { lifeos.md.tapilot.wireless.DeviceControlLease.checkAccess("local-conversation") }
             .onFailure { fail(it); return }
         val model = profile()
@@ -307,8 +323,14 @@ class NativeConversationCoordinator(
         if (useChatGpt && !chatGpt.ready) {
             fail(IllegalStateException(local("请先登录 ChatGPT 并选择模型", "Sign in to ChatGPT and choose a model first"))); settingsOpen = true; return
         }
+        val environment = runCatching { if (useChatGpt) lifeos.md.tapilot.chatgpt.ChatGptMidscene.environment(chatGptModel, chatGptAccount)
+                else JSONObject().put("MIDSCENE_MODEL_BASE_URL", model.getString("baseUrl"))
+                    .put("MIDSCENE_MODEL_API_KEY", key).put("MIDSCENE_MODEL_NAME", model.getString("modelName"))
+                    .put("MIDSCENE_MODEL_FAMILY", model.getString("modelFamily"))
+        }.getOrElse { fail(it); return }
         val runSession = UUID.randomUUID().toString()
         runCatching {
+            if (kind == "task") pi.prepare()
             stopRegistration = ActiveTaskStopRegistry.register {
                 // Registry callers may be off-thread; conversation state belongs to the main thread.
                 val stopThisTask = { if (running && session == runSession) stop() }
@@ -325,7 +347,6 @@ class NativeConversationCoordinator(
         val before = history()
         val taskHistory = TaskHistorySnapshot.capture(before, cid, text, kind, retryOf, continueOf)
         val retry = taskHistory.retry
-        val prior = taskHistory.prior
         val source = text.trim().ifBlank { local("请查看附件", "Please inspect the attachment") }
         val entry = JSONObject().put("id", id).put("conversationId", cid).put("createdAt", startedAt)
             .put("source", source).put("inputText", text).put("kind", kind).put("modelName", if (useChatGpt) chatGptModel else model.getString("modelName"))
@@ -333,113 +354,61 @@ class NativeConversationCoordinator(
         if (chatGptAccount.isNotBlank()) entry.put("conversationProvider", "chatgpt").put("conversationModel", chatGptModel)
         retry?.let { entry.put("retryOf", it.getString("id")) }
         TaskLifecycle.begin(entry, retry?.takeIf { continueOf != null || it.optString("phase") != "completed" })
-        if (kind == "task") pi.prepare()
         data.put("history", JSONArray(listOf(entry) + before).let { all -> JSONArray(all.objects().take(200)) })
         data.put("draft", ""); pendingAttachment = null; draftEpoch++; save()
         progress = ChatProgress(local("正在理解任务", "Understanding task"), "", "", handoff?.startedAt ?: startedAt, 0)
         publish()
         worker.execute {
-            val reports = JSONArray()
-            val completedOperations = JSONArray()
-            var phoneStarted = handoff?.phoneStarted ?: false
-            var finalPhase = ""
-            val outcome = runCatching {
-                await("task.status", JSONObject().put("status", if (handoff == null) "starting" else "running"), runSession, stopped)
-                val saved = file?.let { if (it.optString("id").isNotBlank()) it else await("app.archiveAttachment", JSONObject().put("attachment", it), runSession, stopped) as JSONObject }
-                if (saved != null) onMain {
-                    val ref = JSONObject().put("id", saved.getString("id")).put("name", saved.optString("name")).put("kind", saved.getString("kind"))
-                    if (saved.has("pageCount")) ref.put("pageCount", saved.getInt("pageCount"))
-                    find(id)?.put("attachment", ref); save(); publish()
-                }
-                fun environment(): JSONObject = if (useChatGpt) lifeos.md.tapilot.chatgpt.ChatGptMidscene.environment(chatGptModel, chatGptAccount)
-                    else JSONObject().put("MIDSCENE_MODEL_BASE_URL", model.getString("baseUrl"))
-                    .put("MIDSCENE_MODEL_API_KEY", key).put("MIDSCENE_MODEL_NAME", model.getString("modelName")).put("MIDSCENE_MODEL_FAMILY", model.getString("modelFamily"))
-                if (kind == "yaml") {
-                    await("app.goHome", sessionId = runSession, stopped = stopped)
-                    await("task.status", JSONObject().put("status", "running"), runSession, stopped)
-                    val run = await("runtime.runTest", JSONObject().put("source", source).put("kind", "yaml").put("environment", environment()).put("reportTaskStatus", false), runSession, stopped, 0) as JSONObject
-                    run.optJSONArray("reports")?.objects()?.forEach { reports.put(it) }
-                    check(run.optInt("exitCode", 1) == 0) { run.optString("failure", appText("执行失败", "Execution failed")) }
-                    run.optString("finalResponse").ifBlank { appText("任务已完成", "Task completed") }
-                } else {
-                    val attachments = prior.filter { it.optString("status") in listOf("succeeded", "waiting_user", "stopped") && it.has("attachment") }
-                        .sortedBy { it.optLong("createdAt") }.takeLast(2).associate { e ->
-                            val ref = e.getJSONObject("attachment")
-                            e.getString("id") to runCatching { await("app.readAttachment", JSONObject().put("id", ref.getString("id")), runSession, stopped) as JSONObject }
-                                .getOrElse { JSONObject().put("text", appText("之前的附件已不可用。不能猜测内容，请用户重新提供。", "Previous attachment is unavailable. Do not guess its contents; ask the user to provide it again.")) }
-                        }
-                    val modelSource = source + saved?.optString("text").orEmpty().takeIf { it.isNotBlank() }?.let { "\n\n文件内容：\n${it.take(30_000)}" }.orEmpty() +
-                        if (saved?.optString("name")?.contains("屏幕") == true) "\n本条消息附带的图片是发送前保存的屏幕快照，仅作参考。这条说明只适用于该附件，不适用于 operate_phone 随后新采集的手机画面；当前状态须通过工具重新查看。" else ""
-                    val messages = NativeConversationAgent.messages(prior, modelSource, AppLanguage.resolved(activity) == "zh", attachments, saved?.optJSONArray("images")?.strings().orEmpty())
-                    var preparationRequested = false
-                    val reply = pi.run(messages, retry?.takeIf { continueOf != null || it.optString("phase") != "completed" }?.optJSONArray("agentContext"), limits, stopped::get, complete = { chat, tools ->
-                        if (!preparationRequested) {
-                            preparationRequested = true
-                            // Only enqueue module loading; never delay the model on preload completion.
-                            onMain {
-                                val debuggable = activity.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0
-                                val enabled = !debuggable || activity.getSharedPreferences(
-                                    "tapilot-performance", android.content.Context.MODE_PRIVATE,
-                                ).getBoolean("runtime-preload", true)
-                                if (enabled && !stopped.get() && !closed) {
-                                    services.call("runtime.prepareTest", JSONObject().put("environment", environment()), runSession) {}
-                                }
+            val taskServices = GatewayTaskServices(
+                call = { method, params, seconds -> await(method, params, runSession, stopped, seconds) },
+                dispatch = { method, params ->
+                    if (method == "runtime.prepareTest") onMain {
+                        val debuggable = activity.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0
+                        val enabled = !debuggable || activity.getSharedPreferences("tapilot-performance", Context.MODE_PRIVATE)
+                            .getBoolean("runtime-preload", true)
+                        if (enabled && !stopped.get() && !closed) services.call(method, params, runSession) {}
+                    } else services.call(method, params, runSession) {}
+                },
+            )
+            val runner = ConversationTaskRunner(pi, taskServices,
+                complete = { chat, tools ->
+                    if (chatGptAccount.isNotBlank()) requestChatGpt(chatGptAccount, chatGptModel, chat, tools, runSession, stopped)
+                    else requestCompletion(model, key, chat, runSession, stopped, tools)
+                },
+                confirm = { confirmOperation(it, stopped) },
+                emit = { event -> onMain {
+                    if (stopped.get() || !execution.owns(runSession)) return@onMain
+                    when (event) {
+                        is TaskRunEvent.Progress -> {
+                            val title = when (event.stage) {
+                                TaskStage.UNDERSTANDING -> local("正在理解任务", "Understanding task")
+                                TaskStage.PREPARING_PHONE -> local("准备操作手机", "Preparing phone operation")
+                                TaskStage.OPERATING_PHONE -> local("正在操作手机", "Operating phone")
+                                TaskStage.PREPARING_REPLY -> local("正在整理结果", "Preparing reply")
                             }
+                            progress = progress?.let { it.copy(title = title, detail = event.detail, operation = "",
+                                step = it.step + if (event.increment) 1 else 0) }
                         }
-                        updateProgress(if (phoneStarted) local("正在整理结果", "Preparing reply") else local("正在理解任务", "Understanding task"))
-                        if (chatGptAccount.isNotBlank()) requestChatGpt(chatGptAccount, chatGptModel, chat, tools, runSession, stopped)
-                        else requestCompletion(model, key, chat, runSession, stopped, tools)
-                    }, findApps = { query ->
-                        val capabilities = await("device.getCapabilities", sessionId = runSession, stopped = stopped) as JSONObject
-                        PhoneOperationRoute.findApps(capabilities.optJSONArray("apps") ?: JSONArray(), query)
-                    }, phone = { instruction, condition, mode, app, effort ->
-                        updateProgress(local("准备操作手机", "Preparing phone operation"), instruction, increment = true)
-                        val revised = confirmOperation(instruction, stopped)
-                        check(!stopped.get()) { appText("任务已停止", "Task stopped") }
-                        val capabilities = await("device.getCapabilities", sessionId = runSession, stopped = stopped) as JSONObject
-                        check(capabilities.optBoolean("canCapture") && capabilities.optBoolean("canPerformGestures")) { appText("请在无障碍设置中开启设备控制", "Enable device control in Accessibility settings") }
-                        val component = PhoneOperationRoute.resolveApp(capabilities.optJSONArray("apps") ?: JSONArray(), app)
-                        if (!phoneStarted) {
-                            // Observation must see the user's previous app, not a Home screen we just opened.
-                            if (component.isBlank()) await(if (global || mode == "observe") "app.returnToPreviousApp" else "app.goHome", sessionId = runSession, stopped = stopped)
-                            phoneStarted = true
+                        is TaskRunEvent.Attachment -> { find(id)?.put("attachment", event.reference); save() }
+                        is TaskRunEvent.Operation -> {
+                            find(id)?.put("completedOperations", event.operations)?.put("reports", event.reports); save()
                         }
-                        updateProgress(local("正在操作手机", "Operating phone"), revised)
-                        await("task.status", JSONObject().put("status", "running"), runSession, stopped)
-                        // Deep planning can legitimately need longer than the fast-path 45s ceiling.
-                        // Bound each model request; cancellation and action replay rules stay unchanged.
-                        val operationEnvironment = environment().apply {
-                            if (effort == "deepThink") put("MIDSCENE_MODEL_TIMEOUT", "120000")
-                        }
-                        val run = await("runtime.runTest", JSONObject().put("source", NativeConversationAgent.verifiedTask(revised, condition, mode, component, effort)).put("kind", "yaml").put("environment", operationEnvironment).put("reportTaskStatus", false), runSession, stopped, 0) as JSONObject
-                        run.optJSONArray("reports")?.objects()?.forEach { reports.put(it) }
-                        PhoneResult.fromRun(run).also { result ->
-                            completedOperations.put(JSONObject().put("instruction", revised).put("success", result.success).put("result", result.result)
-                                .put("nativeRpcTimings", run.optJSONObject("nativeRpcTimings") ?: JSONObject()))
-                            onMain { find(id)?.put("completedOperations", JSONArray(completedOperations.toString()))?.put("reports", JSONArray(reports.toString())); save(); publish() }
-                        }
-                    }, event = { event -> onMain {
-                        if (stopped.get()) return@onMain
-                        find(id)?.let { TaskLifecycle.event(it, event) }
-                        if (event.optString("type") == "plan") progress = progress?.copy(
-                            title = local("正在推进任务", "Working on task"), detail = event.getJSONArray("steps").strings().joinToString(" · "))
-                        if (event.optString("type") == "accepted") find(event.optString("id"))?.put("status", "running")
-                        save(); publish()
-                    } }, resumeInputs = taskHistory.pendingInputs, goal = entry.getString("goal"), userInput = text.trim())
-                    finalPhase = reply.getString("phase")
-                    check(finalPhase != "failed") { reply.getString("reply") }
-                    if (finalPhase == "completed") {
-                        val generalAnswer = reply.optString("completionKind") == "answer" && reply.optInt("operations") == 0
-                        check(generalAnswer || reply.optJSONObject("lastPhoneResult")?.optBoolean("success") == true) {
-                            appText("手机任务缺少成功的画面核验", "Phone task has no successful screen verification")
+                        is TaskRunEvent.Agent -> {
+                            val value = event.value
+                            find(id)?.let { TaskLifecycle.event(it, value) }
+                            if (value.optString("type") == "plan") progress = progress?.copy(
+                                title = local("正在推进任务", "Working on task"), detail = value.getJSONArray("steps").strings().joinToString(" · "))
+                            if (value.optString("type") == "accepted") find(value.optString("id"))?.put("status", "running")
+                            save()
                         }
                     }
-                    check(reply.optJSONObject("lastPhoneResult")?.optBoolean("success") != false || finalPhase == "waiting_user") { appText("手机操作未通过最终画面验证", "Phone operation did not pass final screen verification") }
-                    reply.getString("reply")
-                }
-            }
-            // Owner matching makes late cleanup harmless to a subsequent conversation.
-            services.call("runtime.discardPrepared", sessionId = runSession) {}
+                    publish()
+                } },
+            )
+            val result = runner.run(ConversationTaskInput(source, text.trim(), kind, taskHistory, continueOf != null,
+                entry.getString("goal"), limits, AppLanguage.resolved(activity), file, global, handoff != null,
+                handoff?.phoneStarted ?: false, environment)) { stopped.get() || closed }
+            val (outcome, finalPhase, phoneStarted, reports, completedOperations) = result
             // A stop can arrive while completion is waiting for the main thread. If it
             // does, wait for that cancellation barrier before publishing the final state.
             var settled = false
@@ -449,14 +418,16 @@ class NativeConversationCoordinator(
                     checkNotNull(barrier).get(10, TimeUnit.SECONDS)
                 }.isSuccess
                 onMain {
+                    if (!execution.owns(runSession)) { settled = true; return@onMain }
                     if (stopBarrier !== barrier) return@onMain
                     val executionStatus = TaskLifecycle.executionStatus(stopped.get(), stopAcknowledged, outcome.isSuccess, finalPhase)
                     val status = executionStatus.name.lowercase()
                     val message = when {
                         !stopAcknowledged -> local("无法确认任务已停止，请检查手机当前状态后重试。", "Could not confirm the task stopped. Check the phone before retrying.")
                         stopped.get() -> local("任务已停止", "Task stopped")
-                        else -> outcome.getOrElse { it.cause?.message ?: it.message ?: "任务失败" }
+                        else -> outcome.getOrElse { TaskFailure.find(it)?.message ?: it.cause?.message ?: it.message ?: appText("任务失败", "Task failed") }
                     }
+                    if (!stopped.get()) TaskFailure.find(outcome.exceptionOrNull())?.let { find(id)?.put("errorCode", it.code) }
                     find(id)?.put("status", status)?.put("reports", reports)?.put("completedOperations", completedOperations)
                         ?.put(if (status in listOf("succeeded", "waiting_user")) "reply" else "detail", message)
                     find(id)?.let {
@@ -511,10 +482,6 @@ class NativeConversationCoordinator(
         }
     }
     private fun find(id: String) = history().find { it.optString("id") == id }
-    private fun updateProgress(title: String, detail: String = "", increment: Boolean = false) = onMain {
-        if (cancellation.get()) return@onMain
-        progress = progress?.copy(title = title, detail = detail, operation = "", step = progress!!.step + if (increment) 1 else 0); publish()
-    }
     fun phoneProgress(method: String) {
         if (!running || cancellation.get()) return
         val current = progress ?: return

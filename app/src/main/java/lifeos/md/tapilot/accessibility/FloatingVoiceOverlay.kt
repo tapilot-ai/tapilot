@@ -76,7 +76,7 @@ internal class FloatingVoiceOverlay(private val context: Context, private val wi
             }
         }
         transcriptArea?.visibility = if (runtime.floatingTranscript.isBlank()) View.GONE else View.VISIBLE
-        transcript?.text = local("你：", "You: ") + runtime.floatingTranscript
+        transcript?.text = local("你：%s", "You: %s").format(runtime.floatingTranscript)
         detail?.text = when {
             voice.previewingTranscript -> local("1 秒后自动发送", "Sends automatically in 1 second")
             error.isNotBlank() -> error

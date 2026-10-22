@@ -22,10 +22,10 @@ internal object ComputerPairing {
         require(data.getInt("version") == 1 && data.getLong("expiresAt") > System.currentTimeMillis()) { appText("配对二维码已过期，请在电脑重新打开配对窗口", "Pairing QR expired. Open a new pairing window on the computer") }
         val uri = URI(data.getString("url"))
         val host = uri.host.orEmpty()
-        require(host.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+")) && InetAddress.getByName(host) is Inet4Address) { "无效的电脑地址" }
-        require(uri.scheme == "https" && uri.port in 1024..65535 && uri.path.matches(Regex("/offer/[A-Za-z0-9_-]{43}")) && uri.userInfo == null && uri.rawQuery == null && uri.fragment == null) { "无效的电脑配对地址" }
+        require(host.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+")) && InetAddress.getByName(host) is Inet4Address) { appText("无效的电脑地址", "Invalid computer address") }
+        require(uri.scheme == "https" && uri.port in 1024..65535 && uri.path.matches(Regex("/offer/[A-Za-z0-9_-]{43}")) && uri.userInfo == null && uri.rawQuery == null && uri.fragment == null) { appText("无效的电脑配对地址", "Invalid computer pairing address") }
         val fingerprint = data.getString("fingerprint")
-        require(fingerprint.matches(Regex("[a-f0-9]{64}"))) { "无效的电脑证书" }
+        require(fingerprint.matches(Regex("[a-f0-9]{64}"))) { appText("无效的电脑证书", "Invalid computer certificate") }
         val trust = object : X509TrustManager {
             override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
             override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) { error("Client certificates are not accepted") }

@@ -1,4 +1,4 @@
-package lifeos.md.tapilot.bridge
+package lifeos.md.tapilot.speech
 
 import org.junit.Assert.*
 import org.junit.Test

@@ -104,7 +104,7 @@ internal fun MessageBubble(message: ChatMessage, zh: Boolean, controller: ChatCo
 
 @Composable
 internal fun TaskProgressView(progress: ChatProgress, controller: ChatController, zh: Boolean) {
-    var seconds by remember(progress.startedAt) { mutableStateOf(0L) }
+    var seconds by remember(progress.startedAt) { mutableLongStateOf(0L) }
     LaunchedEffect(progress.startedAt) {
         while (true) { seconds = ((System.currentTimeMillis() - progress.startedAt) / 1000).coerceAtLeast(0); delay(1000) }
     }

@@ -8,10 +8,11 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.view.inputmethod.InputMethodManager
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import lifeos.md.tapilot.bridge.ModelCredentialStore
-import lifeos.md.tapilot.bridge.SpeechRecognition
+import lifeos.md.tapilot.speech.SpeechRecognition
 import org.json.JSONObject
 import lifeos.md.tapilot.voice.*
 
@@ -39,7 +40,7 @@ class ChatController(
         private set
     var liveTranscript by mutableStateOf("")
         private set
-    var recordingSeconds by mutableStateOf(0)
+    var recordingSeconds by mutableIntStateOf(0)
         private set
     var audioLevels by mutableStateOf(List(24) { 0f })
         private set
@@ -49,7 +50,7 @@ class ChatController(
         private set
     var error by mutableStateOf("")
         private set
-    var focusRequest by mutableStateOf(0)
+    var focusRequest by mutableIntStateOf(0)
         private set
     private val handler = Handler(Looper.getMainLooper())
     private val runtime get() = (activity.application as lifeos.md.tapilot.TapilotApplication).assistant

@@ -1,4 +1,4 @@
-package lifeos.md.tapilot.bridge
+package lifeos.md.tapilot.speech
 
 import lifeos.md.tapilot.AppText.text as appText
 import android.Manifest
@@ -9,6 +9,7 @@ import android.content.pm.ApplicationInfo
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import androidx.annotation.RequiresPermission
 import java.io.IOException
 import java.util.ArrayDeque
 import java.util.UUID
@@ -115,6 +116,7 @@ internal class SpeechTranscriber(private val activity: Context) : SpeechRecognit
         }
     }
 
+    @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     private fun createMicrophone(): AudioRecord {
         val minimum = AudioRecord.getMinBufferSize(RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
         check(minimum > 0) { "Microphone audio format is unavailable" }

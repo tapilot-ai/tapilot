@@ -48,14 +48,14 @@ fun ChatScreen(controller: ChatController, compact: Boolean = false, voiceConnec
                 Row(Modifier.fillMaxWidth().background(colors.surfaceContainerLow).then(if (compact) Modifier else Modifier.statusBarsPadding()).height(56.dp).padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { controller.command("settings") }, enabled = !busy) {
-                        ChatIcon("settings", colors.onSurfaceVariant, label("设置", "Settings"))
+                        ChatIcon("settings", colors.onSurfaceVariant, description = label("设置", "Settings"))
                     }
                     Spacer(Modifier.weight(1f))
                     if (state.running) Text(label("正在处理…", "Working…"),
                         color = colors.onSurfaceVariant, fontSize = 12.sp)
                     Box {
                         IconButton(onClick = { sessions = true }, enabled = !busy) {
-                            ChatIcon("conversations", colors.onSurfaceVariant, label("会话管理", "Manage conversations"))
+                            ChatIcon("conversations", colors.onSurfaceVariant, description = label("会话管理", "Manage conversations"))
                         }
                         ConversationDropdown(controller, sessions, onDismiss = { sessions = false })
                     }
@@ -142,8 +142,8 @@ fun ChatScreen(controller: ChatController, compact: Boolean = false, voiceConnec
 }
 
 @Composable
-internal fun ChatIcon(kind: String, color: Color, description: String? = null, modifier: Modifier = Modifier.size(24.dp)) {
-    Canvas(modifier.then(if (description != null) Modifier.semantics { contentDescription = description } else Modifier)) {
+internal fun ChatIcon(kind: String, color: Color, modifier: Modifier = Modifier, description: String? = null) {
+    Canvas(modifier.size(24.dp).then(if (description != null) Modifier.semantics { contentDescription = description } else Modifier)) {
         val unit = size.width / 24f
         fun point(x: Float, y: Float) = Offset(x * unit, y * unit)
         fun line(x: Float, y: Float, x2: Float, y2: Float) = drawLine(color, point(x, y), point(x2, y2), 2f * unit, StrokeCap.Round)

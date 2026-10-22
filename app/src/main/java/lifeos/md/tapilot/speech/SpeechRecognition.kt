@@ -1,4 +1,4 @@
-package lifeos.md.tapilot.bridge
+package lifeos.md.tapilot.speech
 
 /** Hosts own gesture state; recognition can finish asynchronously after the finger lifts. */
 interface SpeechRecognition : AutoCloseable {

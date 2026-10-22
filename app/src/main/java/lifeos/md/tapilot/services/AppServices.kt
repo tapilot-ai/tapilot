@@ -7,7 +7,6 @@ import lifeos.md.tapilot.device.*
 import android.app.Activity
 import android.content.Context
 import android.app.role.RoleManager
-import android.os.Build
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -115,15 +114,13 @@ class AppServices(
                 }
             }
             "app.getAssistantRole" -> {
-                val manager = if (Build.VERSION.SDK_INT >= 29)
-                    activity.getSystemService(RoleManager::class.java) else null
+                val manager = activity.getSystemService(RoleManager::class.java)
                 respondSuccess(requestId, JSONObject()
                     .put("available", manager?.isRoleAvailable(RoleManager.ROLE_ASSISTANT) == true)
                     .put("held", manager?.isRoleHeld(RoleManager.ROLE_ASSISTANT) == true))
             }
             "app.requestAssistantRole" -> {
-                val manager = if (Build.VERSION.SDK_INT >= 29)
-                    activity.getSystemService(RoleManager::class.java) else null
+                val manager = activity.getSystemService(RoleManager::class.java)
                 check(manager?.isRoleAvailable(RoleManager.ROLE_ASSISTANT) == true) {
                     "Assistant role is unavailable on this device"
                 }

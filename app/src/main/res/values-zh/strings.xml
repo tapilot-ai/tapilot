@@ -16,6 +16,7 @@
     <string name="report_delete_failed">报告删除失败</string>
     <string name="report_load_failed">报告加载失败：%1$s</string>
     <string name="report_load_failed_generic">WebView 无法加载本地报告。</string>
+    <string name="report_unavailable">报告已不可用，请返回对话选择其他报告。</string>
     <string name="report_saved">已保存为 %1$s</string>
     <string name="report_save_failed">报告保存失败</string>
     <string name="cancel">取消</string>

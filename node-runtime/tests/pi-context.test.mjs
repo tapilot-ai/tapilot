@@ -15,11 +15,11 @@ test('long tool output is bounded while instructions and tool pairing survive', 
   assert.equal(JSON.stringify(source), before);
 });
 test('oversized user constraints and tool arguments fail before a model request', () => {
-  assert.throws(()=>projectContext([{role:'user',content:'x'.repeat(50000)}]), /预算/);
-  assert.throws(()=>projectContext([{role:'assistant',tool_calls:[{id:'1',function:{name:'operate_phone',arguments:'x'.repeat(50000)}}]}]), /预算/);
+  assert.throws(()=>projectContext([{role:'user',content:'x'.repeat(50000)}]), /safe budget/);
+  assert.throws(()=>projectContext([{role:'assistant',tool_calls:[{id:'1',function:{name:'operate_phone',arguments:'x'.repeat(50000)}}]}]), /safe budget/);
 });
 test('images have bounded visual cost instead of charging base64 as text', () => {
   const messages=[{role:'user',content:[{type:'image_url',image_url:{url:'data:image/jpeg;base64,'+'a'.repeat(100000)}}]}];
   assert.equal(projectContext(messages),messages);
-  assert.throws(()=>projectContext([{role:'user',content:'x'.repeat(33*1024*1024)}]),/传输上限/);
+  assert.throws(()=>projectContext([{role:'user',content:'x'.repeat(33*1024*1024)}]),/transfer limit/);
 });

@@ -5,16 +5,13 @@ import lifeos.md.tapilot.theme.BrandColors
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
-import android.content.ContentValues
 import android.content.Intent
 import android.content.Context
-import android.content.ClipData
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.provider.MediaStore
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -30,14 +27,10 @@ import android.widget.ProgressBar
 import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
-import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.webkit.WebViewCompat
-import lifeos.md.tapilot.report.VideoExportStore
-import org.json.JSONObject
-import java.util.concurrent.Executors
 import androidx.webkit.WebResourceErrorCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
@@ -45,6 +38,7 @@ import androidx.webkit.WebViewFeature
 import lifeos.md.tapilot.report.ReportAssetRoutes
 import lifeos.md.tapilot.report.DeletedReportStore
 import lifeos.md.tapilot.report.ReportReadinessTracker
+import lifeos.md.tapilot.report.ReportExports
 import lifeos.md.tapilot.report.ReportRepository
 import java.io.ByteArrayInputStream
 import java.io.File
@@ -54,8 +48,7 @@ class ReportActivity : Activity() {
         super.attachBaseContext(AppLanguage.wrap(newBase))
     }
 
-    private val fileWorker = Executors.newSingleThreadExecutor()
-    private lateinit var videoExport: VideoExportStore
+    private lateinit var exports: ReportExports
     private lateinit var webView: WebView
     private lateinit var progressBar: ProgressBar
     private lateinit var errorView: TextView
@@ -77,12 +70,22 @@ class ReportActivity : Activity() {
         window.isStatusBarContrastEnforced = false
         val initialDarkTheme = AppTheme.isDark(this)
         applySystemBarTheme(initialDarkTheme)
-        videoExport = VideoExportStore(applicationContext)
-        reportId = intent.getStringExtra(EXTRA_REPORT_ID)
-            ?: throw IllegalArgumentException("Missing report id")
+        reportId = intent.getStringExtra(EXTRA_REPORT_ID).orEmpty()
         val reportsDirectory = File(filesDir, "reports")
-        report = ReportRepository(reportsDirectory).reportFile(reportId)
-        check(report.isFile) { "Report does not exist: $reportId" }
+        val selected = runCatching { ReportRepository(reportsDirectory).use { it.reportFile(reportId) } }
+            .getOrNull()?.takeIf { it.isFile }
+        if (selected == null) {
+            setContentView(TextView(this).apply {
+                text = getString(R.string.report_unavailable)
+                gravity = Gravity.CENTER
+                setPadding(dp(24), dp(24), dp(24), dp(24))
+                setTextColor(reportPrimaryTextColor(initialDarkTheme))
+                setBackgroundColor(reportBackgroundColor(initialDarkTheme))
+            })
+            return
+        }
+        report = selected
+        exports = ReportExports(this, report)
 
         val assetLoader = WebViewAssetLoader.Builder()
             .setDomain(REPORT_HOST)
@@ -178,7 +181,7 @@ class ReportActivity : Activity() {
                     probeReportReady()
                 }
             }
-            installVideoExport(this)
+            exports.installVideoExport(this, REPORT_HOST)
             installReportThemeBridge(this)
             loadUrl("https://$REPORT_HOST$REPORT_PATH${report.name}")
         }
@@ -278,7 +281,7 @@ class ReportActivity : Activity() {
 
     private fun showReportMenu(anchor: View) {
         PopupMenu(this, anchor).apply {
-            menu.add(R.string.report_share).setOnMenuItemClickListener { shareReport(); true }
+            menu.add(R.string.report_share).setOnMenuItemClickListener { exports.shareReport(); true }
             menu.add(R.string.report_save_as).setOnMenuItemClickListener {
                 startActivityForResult(
                     Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
@@ -291,11 +294,11 @@ class ReportActivity : Activity() {
                 true
             }
             menu.add(R.string.report_save_downloads).setOnMenuItemClickListener {
-                saveToDownloads()
+                exports.saveToDownloads()
                 true
             }
             menu.add(R.string.report_open_external).setOnMenuItemClickListener {
-                openExternally()
+                exports.openExternally()
                 true
             }
             menu.add(R.string.report_delete).setOnMenuItemClickListener {
@@ -328,134 +331,11 @@ class ReportActivity : Activity() {
             .show()
     }
 
-    private fun reportUri() = FileProvider.getUriForFile(this, "$packageName.reports", report)
-
-    private fun shareReport() {
-        val uri = reportUri()
-        val send = Intent(Intent.ACTION_SEND).apply {
-            type = "text/html"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            clipData = ClipData.newUri(contentResolver, report.name, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        startActivity(Intent.createChooser(send, getString(R.string.report_share)))
-    }
-
     @Deprecated("Activity result API retained for this platform Activity")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != SAVE_REPORT_REQUEST || resultCode != RESULT_OK) return
-        val uri = data?.data ?: return
-        fileWorker.execute {
-            val saved = runCatching {
-                contentResolver.openOutputStream(uri, "wt")?.use { output ->
-                    report.inputStream().use { it.copyTo(output) }
-                } ?: error("Unable to open destination")
-            }
-            runOnUiThread {
-                if (!isDestroyed) Toast.makeText(
-                    this,
-                    if (saved.isSuccess) getString(R.string.report_saved, report.name)
-                    else getString(R.string.report_save_failed),
-                    Toast.LENGTH_LONG,
-                ).show()
-            }
-        }
-    }
-
-    private fun installVideoExport(view: WebView) {
-        if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
-            view.setDownloadListener { _, _, _, _, _ ->
-                Toast.makeText(this, getString(R.string.video_save_failed, "Update Android System WebView"), Toast.LENGTH_LONG).show()
-            }
-            return
-        }
-        if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) WebViewCompat.addWebMessageListener(
-            view, "TapilotVideo", setOf("https://$REPORT_HOST"),
-        ) { _, message, _, isMainFrame, reply ->
-            if (!isMainFrame || isDestroyed) return@addWebMessageListener
-            val payload = message.data ?: return@addWebMessageListener
-            if (payload.length > 100_000) return@addWebMessageListener
-            fileWorker.execute {
-                var id = 0
-                var completed = false
-                var failure: String? = null
-                val result = runCatching {
-                    val request = JSONObject(payload)
-                    id = request.getInt("id")
-                    when (request.getString("method")) {
-                        "begin" -> videoExport.begin(request.getLong("size"), request.getString("mime"))
-                        "append" -> videoExport.append(request.getString("data"))
-                        "finish" -> { videoExport.finish(); completed = true }
-                        "abort" -> {
-                            videoExport.close()
-                            failure = request.optString("error", "Video export cancelled")
-                        }
-                        else -> error("Unknown video export operation")
-                    }
-                }
-                if (result.isFailure) {
-                    failure = result.exceptionOrNull()?.message ?: "Video export failed"
-                    runCatching { videoExport.close() }
-                }
-                val response = JSONObject().put("id", id)
-                if (result.isFailure) response.put("error", failure)
-                val notice = failure
-                runOnUiThread {
-                    if (!isDestroyed) {
-                        if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
-                            reply.postMessage(response.toString())
-                        }
-                        if (completed || notice != null) Toast.makeText(
-                            this,
-                            if (completed) getString(R.string.video_saved)
-                            else getString(R.string.video_save_failed, notice),
-                            Toast.LENGTH_LONG,
-                        ).show()
-                    }
-                }
-            }
-        }
-    }
-
-    private fun openExternally() {
-        val view = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(reportUri(), "text/html")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        startActivity(Intent.createChooser(view, getString(R.string.report_open_external)))
-    }
-
-    private fun saveToDownloads() {
-        runCatching {
-            val fileName = "midscene-report-${System.currentTimeMillis()}.html"
-            val values = ContentValues().apply {
-                put(MediaStore.Downloads.DISPLAY_NAME, fileName)
-                put(MediaStore.Downloads.MIME_TYPE, "text/html")
-                put(MediaStore.Downloads.IS_PENDING, 1)
-            }
-            val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                ?: error("Unable to create Downloads report")
-            try {
-                contentResolver.openOutputStream(uri)?.use { output ->
-                    report.inputStream().use { it.copyTo(output) }
-                } ?: error("Unable to open Downloads report")
-                values.clear()
-                values.put(MediaStore.Downloads.IS_PENDING, 0)
-                contentResolver.update(uri, values, null, null)
-            } catch (error: Throwable) {
-                contentResolver.delete(uri, null, null)
-                throw error
-            }
-            fileName
-        }.fold(
-            onSuccess = {
-                Toast.makeText(this, getString(R.string.report_saved, it), Toast.LENGTH_LONG).show()
-            },
-            onFailure = {
-                Toast.makeText(this, it.message ?: getString(R.string.report_save_failed), Toast.LENGTH_LONG).show()
-            },
-        )
+        if (::exports.isInitialized && requestCode == SAVE_REPORT_REQUEST && resultCode == RESULT_OK)
+            data?.data?.let(exports::saveToUri)
     }
 
     private fun probeReportReady() {
@@ -552,9 +432,8 @@ class ReportActivity : Activity() {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
-        fileWorker.execute { runCatching { videoExport.close() } }
-        fileWorker.shutdown()
-        webView.destroy()
+        if (::exports.isInitialized) exports.close()
+        if (::webView.isInitialized) webView.destroy()
         super.onDestroy()
     }
 

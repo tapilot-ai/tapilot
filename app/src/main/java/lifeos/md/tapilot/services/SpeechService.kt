@@ -3,7 +3,7 @@ package lifeos.md.tapilot.services
 import lifeos.md.tapilot.AppText.text as appText
 import android.content.Context
 import lifeos.md.tapilot.bridge.ModelCredentialStore
-import lifeos.md.tapilot.bridge.SpeechTranscriber
+import lifeos.md.tapilot.speech.SpeechTranscriber
 import lifeos.md.tapilot.speech.PolishingSpeechRecognition
 import org.json.JSONObject
 

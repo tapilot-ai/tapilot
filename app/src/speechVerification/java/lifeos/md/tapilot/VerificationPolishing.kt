@@ -1,7 +1,7 @@
 package lifeos.md.tapilot
 
 import android.app.Activity
-import lifeos.md.tapilot.bridge.SpeechRecognition
+import lifeos.md.tapilot.speech.SpeechRecognition
 import lifeos.md.tapilot.speech.*
 import okhttp3.OkHttpClient
 import okhttp3.Protocol

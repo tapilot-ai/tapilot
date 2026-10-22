@@ -1,0 +1,156 @@
+{
+  "valid": [
+    {
+      "input": {
+        "instruction": "Read the screen",
+        "success_condition": "Label visible"
+      },
+      "expected": {
+        "instruction": "Read the screen",
+        "success_condition": "Label visible",
+        "mode": "act",
+        "app": "",
+        "effort": "fast"
+      }
+    },
+    {
+      "input": {
+        "instruction": "Read",
+        "success_condition": "Visible",
+        "mode": "observe",
+        "app": "com.example/.Main",
+        "effort": "deepThink"
+      },
+      "expected": {
+        "instruction": "Read",
+        "success_condition": "Visible",
+        "mode": "observe",
+        "app": "com.example/.Main",
+        "effort": "deepThink"
+      }
+    },
+    {
+      "input": {
+        "instruction": "Navigate",
+        "success_condition": "Result",
+        "effort": "balance"
+      },
+      "expected": {
+        "instruction": "Navigate",
+        "success_condition": "Result",
+        "mode": "act",
+        "app": "",
+        "effort": "balance"
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "instruction": "Read"
+    },
+    {
+      "instruction": " ",
+      "success_condition": "Visible"
+    },
+    {
+      "instruction": "Read",
+      "success_condition": " "
+    },
+    {
+      "instruction": 42,
+      "success_condition": "Visible"
+    },
+    {
+      "instruction": "Read",
+      "success_condition": "Visible",
+      "mode": "unknown"
+    },
+    {
+      "instruction": "Read",
+      "success_condition": "Visible",
+      "mode": null
+    },
+    {
+      "instruction": "Read",
+      "success_condition": "Visible",
+      "effort": "unknown"
+    },
+    {
+      "instruction": "Read",
+      "success_condition": "Visible",
+      "effort": null
+    },
+    {
+      "instruction": "Read",
+      "success_condition": "Visible",
+      "app": false
+    }
+  ],
+  "errors": [
+    {
+      "code": "request_timeout",
+      "en": "Request timed out. Try again later.",
+      "zh": "请求超时，请稍后重试"
+    },
+    {
+      "code": "task_stopped",
+      "en": "Task stopped",
+      "zh": "任务已停止"
+    },
+    {
+      "code": "model_turn_limit",
+      "en": "The task reached its model turn limit. Continue or adjust the limit in settings.",
+      "zh": "本次任务已达到对话轮次上限，可继续或在设置中调整上限。"
+    },
+    {
+      "code": "phone_operation_limit",
+      "en": "The task reached its phone operation limit. Continue or adjust the limit in settings.",
+      "zh": "本次任务已达到手机操作上限，可继续或在设置中调整上限。"
+    },
+    {
+      "code": "model_message_missing",
+      "en": "The model returned no message.",
+      "zh": "模型未返回消息。"
+    },
+    {
+      "code": "model_response_empty",
+      "en": "The model returned an empty response.",
+      "zh": "模型返回了空回复。"
+    },
+    {
+      "code": "task_terminal_missing",
+      "en": "The task has no explicit final state; completion is unknown.",
+      "zh": "任务缺少明确的结束状态，不能推断为完成。"
+    },
+    {
+      "code": "task_result_missing",
+      "en": "The model returned no usable result.",
+      "zh": "模型未返回有效结果。"
+    },
+    {
+      "code": "task_no_progress",
+      "en": "The model repeatedly made no progress. The task stopped before completion was confirmed.",
+      "zh": "模型连续未推进任务，已停止。尚未确认整个任务完成。"
+    },
+    {
+      "code": "task_verification_missing",
+      "en": "The current requirements have no successful screen verification. Task completion is not confirmed.",
+      "zh": "当前要求尚未通过画面核验，不能确认任务完成。"
+    },
+    {
+      "code": "request_failed",
+      "en": "Request failed",
+      "zh": "请求失败"
+    },
+    {
+      "code": "context_payload_limit",
+      "zh": "附件与上下文超过传输上限，请减少附件或开始新对话。",
+      "en": "Attachments and context exceed the transfer limit. Reduce attachments or start a new conversation."
+    },
+    {
+      "code": "context_budget_limit",
+      "zh": "对话上下文超过安全预算。已保留任务记录，请缩短输入、减少附件或开始新对话；未继续操作手机。",
+      "en": "Conversation context exceeds the safe budget. Task records were retained. Shorten your input, reduce attachments or start a new conversation; no further phone action was taken."
+    }
+  ]
+}

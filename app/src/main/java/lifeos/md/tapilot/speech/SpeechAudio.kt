@@ -1,4 +1,4 @@
-package lifeos.md.tapilot.bridge
+package lifeos.md.tapilot.speech
 
 import java.io.ByteArrayOutputStream
 import kotlin.math.sqrt

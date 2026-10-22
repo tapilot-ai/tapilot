@@ -1,8 +1,8 @@
 package lifeos.md.tapilot.speech
 
 import android.content.Context
-import lifeos.md.tapilot.bridge.SpeechRecognition
-import lifeos.md.tapilot.bridge.SpeechTranscriber
+import lifeos.md.tapilot.speech.SpeechRecognition
+import lifeos.md.tapilot.speech.SpeechTranscriber
 import lifeos.md.tapilot.chatgpt.ChatGptAccounts
 import lifeos.md.tapilot.conversation.ConversationStore
 import java.io.File

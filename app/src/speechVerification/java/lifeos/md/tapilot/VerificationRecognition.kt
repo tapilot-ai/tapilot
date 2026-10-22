@@ -2,9 +2,9 @@ package lifeos.md.tapilot
 
 import android.os.Handler
 import android.os.Looper
-import lifeos.md.tapilot.bridge.SpeechRecognition
-import lifeos.md.tapilot.bridge.SpeechAudio
-import lifeos.md.tapilot.bridge.SpeechCaptureBoundary
+import lifeos.md.tapilot.speech.SpeechRecognition
+import lifeos.md.tapilot.speech.SpeechAudio
+import lifeos.md.tapilot.speech.SpeechCaptureBoundary
 
 /** Synthetic transport in the isolated APK; exercises the production audio drain boundary. */
 class VerificationRecognition(private val startDelay: Long = 0, private val failStart: Boolean = false, private val checkPreparation: Boolean = false) : SpeechRecognition {

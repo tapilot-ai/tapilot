@@ -134,11 +134,11 @@ internal class TextInputController(
         inputViaAccessibilityInputConnectionApi33(action, callback)
     }
 
-    @android.annotation.TargetApi(Build.VERSION_CODES.TIRAMISU)
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun hasActiveAccessibilityInputConnection(): Boolean =
         service.inputMethod?.currentInputStarted == true && service.inputMethod?.currentInputConnection != null
 
-    @android.annotation.TargetApi(Build.VERSION_CODES.TIRAMISU)
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun inputViaAccessibilityInputConnectionApi33(
         action: NativeAction.Input,
         callback: (Result<Unit>) -> Unit,
@@ -195,7 +195,7 @@ internal class TextInputController(
     }
 
     private fun findPasteActionNode(): AccessibilityNodeInfo? {
-        val systemPasteLabel = service.resources.getIdentifier("paste", "string", "android")
+        val systemPasteLabel = android.R.string.paste
             .takeIf { it != 0 }
             ?.let(service::getString)
         val labels = listOfNotNull(systemPasteLabel, "粘贴", "Paste")

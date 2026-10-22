@@ -63,7 +63,26 @@ internal class FloatingVoiceHoldOverlay(private val context: Context, private va
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         private val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG)
         private val density = resources.displayMetrics.density
+        private val arc = RectF()
+        private val cancelButton = RectF()
+        private val sendButton = RectF()
+        private val bubble = RectF()
+        private val waveformBar = RectF()
+        private val mediumTypeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+        private var transcriptLayout: StaticLayout? = null
+        private var layoutText = ""
+        private var layoutWidth = 0
         private fun dp(value: Float) = value * density
+
+        private fun layoutTranscript(content: String, width: Int): StaticLayout {
+            if (transcriptLayout == null || layoutText != content || layoutWidth != width) {
+                layoutText = content; layoutWidth = width
+                transcriptLayout = StaticLayout.Builder.obtain(content, 0, content.length, textPaint, width)
+                    .setAlignment(Layout.Alignment.ALIGN_NORMAL).setLineSpacing(dp(4f), 1f)
+                    .setMaxLines(8).setEllipsize(TextUtils.TruncateAt.END).build()
+            }
+            return transcriptLayout!!
+        }
         override fun onDraw(canvas: Canvas) {
             val runtime = runtime ?: return
             val colors = AppTheme.colors(context)
@@ -79,7 +98,7 @@ internal class FloatingVoiceHoldOverlay(private val context: Context, private va
             val actionWidth = width * .49f
             val arcTop = height - minOf(dp(124f), height * .145f)
             paint.color = colors.primary; paint.alpha = 140
-            val arc = RectF(-width * .8f, arcTop, width * 1.8f, arcTop + width * 2.6f)
+            arc.set(-width * .8f, arcTop, width * 1.8f, arcTop + width * 2.6f)
             canvas.drawOval(arc, paint)
             paint.color = colors.contrast; paint.style = Paint.Style.STROKE; paint.strokeWidth = dp(3f)
             canvas.drawOval(arc, paint)
@@ -95,24 +114,24 @@ internal class FloatingVoiceHoldOverlay(private val context: Context, private va
                     canvas.drawRoundRect(box, dp(44f), dp(44f), paint)
                     paint.style = Paint.Style.FILL
                 }
-                paint.typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+                paint.typeface = mediumTypeface
                 text(label, box.centerX(), box.centerY() + dp(6f), 17f, foreground)
                 paint.typeface = android.graphics.Typeface.DEFAULT
                 canvas.restore()
             }
-            actionButton(RectF(-dp(12f), actionTop, actionWidth - dp(12f), actionTop + dp(72f)),
+            cancelButton.set(-dp(12f), actionTop, actionWidth - dp(12f), actionTop + dp(72f))
+            sendButton.set(width - actionWidth + dp(12f), actionTop, width + dp(12f), actionTop + dp(72f))
+            actionButton(cancelButton,
                 -10f, cancel, if (cancel) colors.danger else colors.surface,
                 if (cancel) colors.contrast else colors.text, local("取消", "Cancel"))
-            actionButton(RectF(width - actionWidth + dp(12f), actionTop, width + dp(12f), actionTop + dp(72f)),
+            actionButton(sendButton,
                 10f, !cancel, colors.primary, colors.contrast, local("发送", "Send"))
             val bubbleWidth = width * .84f
             val content = runtime.floatingTranscript
             textPaint.color = colors.contrast; textPaint.textSize = dp(17f)
-            val layout = StaticLayout.Builder.obtain(content, 0, content.length, textPaint, (bubbleWidth - dp(40f)).toInt())
-                .setAlignment(Layout.Alignment.ALIGN_NORMAL).setLineSpacing(dp(4f), 1f)
-                .setMaxLines(8).setEllipsize(TextUtils.TruncateAt.END).build()
+            val layout = layoutTranscript(content, (bubbleWidth - dp(40f)).toInt().coerceAtLeast(1))
             val bubbleHeight = maxOf(dp(100f), layout.height + dp(40f))
-            val bubble = RectF((width - bubbleWidth) / 2, height * .38f, (width + bubbleWidth) / 2, height * .38f + bubbleHeight)
+            bubble.set((width - bubbleWidth) / 2, height * .38f, (width + bubbleWidth) / 2, height * .38f + bubbleHeight)
             paint.color = colors.primary
             canvas.drawRoundRect(bubble, dp(20f), dp(20f), paint)
             if (content.isNotBlank()) {
@@ -122,7 +141,8 @@ internal class FloatingVoiceHoldOverlay(private val context: Context, private va
                 for (i in 0..6) {
                     val barHeight = dp(12f + ((i * 13) % 25) * (.3f + runtime.voiceState.level))
                     val x = bubble.centerX() + dp((i - 3) * 9f)
-                    canvas.drawRoundRect(RectF(x, bubble.centerY() - barHeight / 2, x + dp(4f), bubble.centerY() + barHeight / 2), dp(2f), dp(2f), paint)
+                    waveformBar.set(x, bubble.centerY() - barHeight / 2, x + dp(4f), bubble.centerY() + barHeight / 2)
+                    canvas.drawRoundRect(waveformBar, dp(2f), dp(2f), paint)
                 }
             }
             text(if (runtime.voiceState.phase == VoicePhase.Listening) local("可以直接说话", "Speak now") else local("正在开启录音…", "Starting microphone…"), width / 2f, bubble.top - dp(22f), 16f, colors.contrast)

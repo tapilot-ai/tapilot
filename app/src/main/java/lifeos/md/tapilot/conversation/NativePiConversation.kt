@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.Executors
 
 /** A separate Pi process owns the transcript. It never receives API credentials. */
-class NativePiConversation(context: Context) : AutoCloseable {
+internal class NativePiConversation(context: Context) : ConversationAgent {
     private val provisioner = NodeRuntimeProvisioner(context.applicationContext)
     private val lock = Any()
     private val inputExecutor = Executors.newSingleThreadExecutor()
@@ -21,17 +21,17 @@ class NativePiConversation(context: Context) : AutoCloseable {
     private var accepting = false
     private val deferred = ArrayDeque<JSONObject>()
 
-    fun prepare() = synchronized(lock) { check(process == null); deferred.clear(); accepting = true }
+    override fun prepare() = synchronized(lock) { check(process == null); deferred.clear(); accepting = true }
 
-    fun steer(id: String, text: String, followUp: Boolean = false): Boolean = synchronized(lock) {
+    override fun steer(id: String, text: String, followUp: Boolean): Boolean = synchronized(lock) {
         if (!accepting) return false
         val command = JSONObject().put("type", if (followUp) "followUp" else "steer").put("id", id).put("text", text)
         runCatching { if (process == null) deferred.add(command) else write(command) }.isSuccess
     }
-    fun run(messages: JSONArray, resume: JSONArray?, limits: AgentLimits, stopped: () -> Boolean,
-            complete: (JSONArray, JSONArray) -> JSONObject,
-            phone: (String, String, String, String, String) -> PhoneResult, findApps: (String) -> JSONArray, event: (JSONObject) -> Unit, resumeInputs: JSONArray = JSONArray(), goal: String = "", userInput: String = ""): JSONObject {
-        check(!stopped()) { appText("任务已停止", "Task stopped") }
+    override fun run(input: AgentInput, stopped: () -> Boolean, callbacks: AgentCallbacks): JSONObject {
+        val (messages, resume, limits, resumeInputs, goal, userInput, language) = input
+        val (complete, phone, findApps, event) = callbacks
+        if (stopped()) throw TaskFailure("task_stopped")
         val timings = JSONObject()
         val traceId = java.util.UUID.randomUUID().toString()
         val traceStarted = SystemClock.elapsedRealtime()
@@ -51,17 +51,17 @@ class NativePiConversation(context: Context) : AutoCloseable {
         val prepareStarted = SystemClock.elapsedRealtime()
         val runtime = provisioner.install()
         record("runtime.prepare", prepareStarted)
-        check(!stopped()) { appText("任务已停止", "Task stopped") }
+        if (stopped()) throw TaskFailure("task_stopped")
         // Supply inexpensive device facts before planning rather than spending a
         // model round trip discovering them. A missing service must not block chat.
         val catalogStarted = SystemClock.elapsedRealtime()
         val catalog = runCatching { findApps("") }
         record("phone.appCatalog", catalogStarted, catalog.isSuccess)
-        check(!stopped()) { appText("任务已停止", "Task stopped") }
+        if (stopped()) throw TaskFailure("task_stopped")
         val startupStarted = SystemClock.elapsedRealtime()
         val child = synchronized(lock) {
             check(process == null) { appText("Pi Agent 已在运行", "Pi Agent is already running") }
-            check(!stopped()) { appText("任务已停止", "Task stopped") }
+            if (stopped()) throw TaskFailure("task_stopped")
             ProcessBuilder(runtime.nodeExecutable.absolutePath,
                 java.io.File(runtime.runtimeDirectory, "pi-runner.mjs").absolutePath)
                 .directory(runtime.runtimeDirectory).redirectErrorStream(true).apply {
@@ -71,7 +71,7 @@ class NativePiConversation(context: Context) : AutoCloseable {
                 }.start().also {
                     process = it; writer = it.outputStream.bufferedWriter()
                     write(JSONObject().put("type", "init").put("messages", messages)
-                        .put("installedApps", catalog.getOrDefault(JSONArray())).put("goal", goal).put("userInput", userInput).put("resume", resume ?: JSONArray()).put("pendingInputs", resumeInputs).put("limits", limits.json()))
+                        .put("language", language).put("installedApps", catalog.getOrDefault(JSONArray())).put("goal", goal).put("userInput", userInput).put("resume", resume ?: JSONArray()).put("pendingInputs", resumeInputs).put("limits", limits.json()))
                     while (deferred.isNotEmpty()) write(deferred.removeFirst())
                     accepting = true
                 }
@@ -80,7 +80,7 @@ class NativePiConversation(context: Context) : AutoCloseable {
             var receivedFirstEvent = false
             child.inputStream.bufferedReader().use { reader ->
                 while (true) {
-                    check(!stopped()) { appText("任务已停止", "Task stopped") }
+                    if (stopped()) throw TaskFailure("task_stopped")
                     val line = reader.readLine() ?: error(appText("Pi Agent 意外退出", "Pi Agent exited unexpectedly"))
                     // Library diagnostics are intentionally not copied to app logs or task context.
                     if (!line.startsWith("TAPILOT_AGENT ")) continue
@@ -93,24 +93,28 @@ class NativePiConversation(context: Context) : AutoCloseable {
                         "rpc" -> {
                             val rpcStarted = SystemClock.elapsedRealtime()
                             val result = runCatching {
-                                check(!stopped()) { appText("任务已停止", "Task stopped") }
+                                if (stopped()) throw TaskFailure("task_stopped")
                                 val args = value.getJSONObject("params")
                                 when (value.getString("method")) {
                                     "model.complete" -> complete(args.getJSONArray("messages"), args.getJSONArray("tools"))
-                                    "phone.execute" -> phone(args.getString("instruction"), args.getString("success_condition"), args.optString("mode", "act"), args.optString("app"), args.optString("effort", "fast")).json()
+                                    "phone.execute" -> phone(PhoneOperation.from(args)).json()
                                     "phone.findApps" -> JSONObject().put("apps", findApps(args.getString("query")))
-                                    else -> error("未知 Agent 请求")
+                                    else -> error(appText("未知 Agent 请求", "Unknown agent request"))
                                 }
                             }
                             record(value.getString("method"), rpcStarted,
                                 result.isSuccess && result.getOrNull()?.optBoolean("success", true) != false)
-                            check(!stopped()) { appText("任务已停止", "Task stopped") }
+                            if (stopped()) throw TaskFailure("task_stopped")
                             val response = JSONObject().put("requestId", value.getString("requestId")).put("ok", result.isSuccess)
-                            result.fold({ response.put("result", it) }, { response.put("error", it.cause?.message ?: it.message ?: appText("请求失败", "Request failed")) })
+                            result.fold({ response.put("result", it) }, {
+                                val failure = TaskFailure.find(it)
+                                response.put("error", failure?.message ?: it.cause?.message ?: it.message ?: appText("请求失败", "Request failed"))
+                                failure?.let { coded -> response.put("errorCode", coded.code) }
+                            })
                             synchronized(lock) { if (process === child) write(response) }
                         }
                         "result" -> { synchronized(lock) { accepting = false }; return value.put("performance", timings) }
-                        "failure" -> error(value.optString("error", appText("Pi Agent 执行失败", "Pi Agent execution failed")))
+                        "failure" -> throw TaskFailure.from(value)
                         else -> event(value.put("performance", JSONObject(timings.toString())))
                     }
                 }
@@ -136,7 +140,7 @@ class NativePiConversation(context: Context) : AutoCloseable {
             runCatching { output.write(payload); output.newLine(); output.flush() }.onFailure { child.destroy() }
         }
     }
-    fun stop() {
+    override fun stop() {
         val child = synchronized(lock) {
             accepting = false; deferred.clear()
             runCatching { writer?.let { write(JSONObject().put("type", "abort")) } }

@@ -1,6 +1,6 @@
 package lifeos.md.tapilot
 
-import lifeos.md.tapilot.bridge.SpeechServiceFailure
+import lifeos.md.tapilot.speech.SpeechServiceFailure
 import org.junit.Assert.*
 import org.junit.Test
 

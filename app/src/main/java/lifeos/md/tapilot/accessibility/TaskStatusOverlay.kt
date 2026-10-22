@@ -22,15 +22,14 @@ internal class TaskStatusOverlay(
     private var gesturePassThrough = false
 
     private fun params(touchable: Boolean): WindowManager.LayoutParams {
-        val bounds = windows.currentWindowMetrics.bounds
         val size = dp(48)
         return WindowManager.LayoutParams(size, size,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 (if (touchable) 0 else WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE),
             PixelFormat.TRANSLUCENT).apply {
-            gravity = Gravity.TOP or Gravity.LEFT
-            x = (bounds.width() - size - dp(8)).coerceAtLeast(0)
+            gravity = Gravity.TOP or Gravity.END
+            x = dp(8)
             y = dp(8)
         }
     }

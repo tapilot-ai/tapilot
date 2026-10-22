@@ -13,6 +13,7 @@ import android.os.Looper
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import lifeos.md.tapilot.bridge.*
+import lifeos.md.tapilot.speech.SpeechTranscriber
 import lifeos.md.tapilot.chat.ChatState
 import lifeos.md.tapilot.conversation.*
 import org.json.JSONObject

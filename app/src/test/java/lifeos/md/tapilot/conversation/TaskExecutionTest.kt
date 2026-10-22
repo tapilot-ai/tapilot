@@ -26,6 +26,21 @@ class TaskExecutionTest {
         val task = TaskExecution(); task.begin("first", "s1")
         assertThrows(IllegalStateException::class.java) { task.begin("second", "s2") }
     }
+    @Test fun stopTimeoutOrFailureCannotPermitReplacementUntilAcknowledged() {
+        val task = TaskExecution(); task.begin("first", "s1")
+        val stop = task.requestStop()
+        task.finish("s1")
+        assertTrue(task.stopUnconfirmed)
+        assertThrows(IllegalStateException::class.java) { task.begin("second", "s2") }
+        assertNull(task.retryStop())
+        stop.completeExceptionally(IllegalStateException("Runtime did not stop"))
+        assertThrows(IllegalStateException::class.java) { task.begin("second", "s2") }
+        val retry = task.retryStop()!!
+        assertNull(task.retryStop())
+        retry.complete(true)
+        task.begin("second", "s2")
+        assertTrue(task.owns("s2")); assertFalse(task.owns("s1"))
+    }
     @Test fun queuedInputsRoundTripWithoutSharingMutableAttachments() {
         val input = JSONObject("""{"text":"继续","global":true,"continueOf":"task-1","attachment":{"id":"file-1"}}""")
         val turn = PendingTurn.from(input)

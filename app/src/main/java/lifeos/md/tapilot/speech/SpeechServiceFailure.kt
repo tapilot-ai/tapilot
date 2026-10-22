@@ -1,4 +1,4 @@
-package lifeos.md.tapilot.bridge
+package lifeos.md.tapilot.speech
 
 import lifeos.md.tapilot.AppText.text as appText
 /** Keep service diagnostics actionable without copying response bodies or credentials into UI. */

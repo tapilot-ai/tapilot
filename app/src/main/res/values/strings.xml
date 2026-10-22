@@ -16,6 +16,7 @@
     <string name="report_delete_failed">Could not delete the report</string>
     <string name="report_load_failed">Could not load the report: %1$s</string>
     <string name="report_load_failed_generic">WebView could not load the local report.</string>
+    <string name="report_unavailable">This report is no longer available. Go back to the conversation to choose another report.</string>
     <string name="report_saved">Saved as %1$s</string>
     <string name="report_save_failed">Could not save report</string>
     <string name="cancel">Cancel</string>

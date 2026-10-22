@@ -83,13 +83,20 @@ class HoldToRecordEditor(context: Context) : EditText(context) {
                     parent?.requestDisallowInterceptTouchEvent(false)
                     if (event.actionMasked == MotionEvent.ACTION_UP) onRelease() else onCancel()
                 } else if (tap && event.actionMasked == MotionEvent.ACTION_UP && !voiceMode) {
-                    requestFocus()
-                    context.getSystemService(android.view.inputmethod.InputMethodManager::class.java)
-                        .showSoftInput(this, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
                     performClick()
                 }
                 return true
             }
+        }
+        return true
+    }
+
+    override fun performClick(): Boolean {
+        super.performClick()
+        if (!voiceMode) {
+            requestFocus()
+            context.getSystemService(android.view.inputmethod.InputMethodManager::class.java)
+                .showSoftInput(this, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
         }
         return true
     }

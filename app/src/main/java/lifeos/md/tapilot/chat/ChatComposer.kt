@@ -50,7 +50,7 @@ internal fun ChatComposer(controller: ChatController) {
             Box {
                 IconButton(onClick = { attachments = true }, enabled = enabled && !controller.recording,
                     modifier = Modifier.size(44.dp)) {
-                    ChatIcon("plus", colors.onSurfaceVariant, if (state.chinese) "添加附件" else "Add attachment", Modifier.size(20.dp))
+                    ChatIcon("plus", colors.onSurfaceVariant, Modifier.size(20.dp), if (state.chinese) "添加附件" else "Add attachment")
                 }
                 AttachmentDropdown(controller, attachments, onDismiss = { attachments = false })
             }
@@ -118,14 +118,14 @@ internal fun ChatComposer(controller: ChatController) {
             val canSend = (state.running && !controller.recording && !controller.transcribing) || (enabled && !controller.recording && (controller.draft.isNotBlank() || state.attachment != null))
             if (!canSend && enabled && !controller.recording && controller.draft.isBlank() && state.attachment == null) {
                 IconButton(onClick = { controller.startVoiceConversation() }, modifier = Modifier.size(44.dp), enabled = state.configured) {
-                    ChatIcon("waveform", colors.onSurfaceVariant, if (state.chinese) "语音对话" else "Voice conversation", Modifier.size(22.dp))
+                    ChatIcon("waveform", colors.onSurfaceVariant, Modifier.size(22.dp), if (state.chinese) "语音对话" else "Voice conversation")
                 }
             }
             if (canSend) {
                 IconButton(onClick = { if (interrupt) controller.command("stop") else controller.send() },
                     modifier = Modifier.size(44.dp)) {
                     ChatIcon(if (interrupt) "stop" else "send", colors.onSurface,
-                        if (state.chinese) (if (interrupt) "停止" else "发送") else (if (interrupt) "Stop" else "Send"), Modifier.size(20.dp))
+                        Modifier.size(20.dp), if (state.chinese) (if (interrupt) "停止" else "发送") else (if (interrupt) "Stop" else "Send"))
                 }
             }
         }

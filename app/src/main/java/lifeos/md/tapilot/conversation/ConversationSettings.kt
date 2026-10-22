@@ -65,7 +65,7 @@ internal class ConversationSettings(
         runCatching {
             require(provider in listOf("volcengine", "deepgram"))
             if (key.isNotBlank()) credentials.set("speech-$provider", key.trim())
-            activity.getSharedPreferences("tapilot-speech", 0).edit().putString("provider", provider).commit()
+            activity.getSharedPreferences("tapilot-speech", 0).edit().putString("provider", provider).apply()
             preference("speechProvider", provider); status = local("语音配置已保存", "Speech configuration saved")
         }.onFailure { status = it.message ?: appText("保存失败", "Save failed") }
     }

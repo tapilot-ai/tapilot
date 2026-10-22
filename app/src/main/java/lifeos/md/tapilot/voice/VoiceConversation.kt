@@ -1,6 +1,6 @@
 package lifeos.md.tapilot.voice
 
-import lifeos.md.tapilot.bridge.SpeechRecognition
+import lifeos.md.tapilot.speech.SpeechRecognition
 
 interface SpeechPlayback : AutoCloseable {
     fun speak(text: String, onStarted: () -> Unit, callback: (Result<Unit>) -> Unit)

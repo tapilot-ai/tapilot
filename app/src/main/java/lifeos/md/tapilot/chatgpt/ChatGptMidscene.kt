@@ -9,7 +9,7 @@ object ChatGptMidscene {
         val family = when {
             model.startsWith("gpt-6") -> "gpt-6"
             model.startsWith("gpt-5") -> "gpt-5"
-            else -> error("此模型暂不支持手机视觉操作，请选择 GPT-6 或 GPT-5.4 及以上模型")
+            else -> error(appText("此模型暂不支持手机视觉操作，请选择 GPT-6 或 GPT-5.4 及以上模型", "This model does not support phone visual operations. Choose GPT-6 or GPT-5.4 or later."))
         }
         require(accountId.isNotBlank()) { appText("请先登录 ChatGPT", "Sign in to ChatGPT first") }
         return JSONObject()

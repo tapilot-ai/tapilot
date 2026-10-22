@@ -1,4 +1,4 @@
-package lifeos.md.tapilot.bridge
+package lifeos.md.tapilot.speech
 
 /** Finishing requests a drain; it must not discard a read already in flight. */
 internal class SpeechCaptureBoundary(private var drained: Boolean = false) {

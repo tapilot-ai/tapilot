@@ -3,7 +3,7 @@ package lifeos.md.tapilot
 import android.widget.TextView
 import android.view.Gravity
 import android.widget.FrameLayout
-import lifeos.md.tapilot.bridge.SpeechRecognition
+import lifeos.md.tapilot.speech.SpeechRecognition
 import org.json.JSONObject
 
 class SpeechPanelVerificationActivity : GlobalAssistantPanelActivity() {

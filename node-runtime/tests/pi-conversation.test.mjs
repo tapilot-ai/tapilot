@@ -8,7 +8,7 @@ const tool = (name, args) => ({ choices: [{ message: { tool_calls: [{ id: `call-
 test('Pi pushes a planned phone task to verified completion through native RPC', async () => {
   let count = 0;
   const events = [], methods = [];
-  const conversation = createConversation({ messages: input('打开计算器'), rpc: async (method, params) => {
+  const conversation = createConversation({ language: 'zh', messages: input('打开计算器'), rpc: async (method, params) => {
     methods.push(method);
     if (method === 'phone.execute') return { success: true, result: '计算器已显示' };
     assert.deepEqual(params.tools.map(t => t.function.name), ['operate_phone', 'find_apps', 'set_plan', 'finish_task', 'answer_question']);
@@ -32,7 +32,7 @@ test('Pi pushes a planned phone task to verified completion through native RPC',
 
 test('steering amends an active task after its phone operation', async () => {
   let conversation, seen = false, models = 0;
-  conversation = createConversation({ messages: input('打开计算器'), rpc: async (method, params) => {
+  conversation = createConversation({ language: 'zh', messages: input('打开计算器'), rpc: async (method, params) => {
     if (method === 'phone.execute') {
       if (models === 1) conversation.steer({ id: 'amend-1', text: '改为只回复 PINE94' });
       return { success: true, result: '已打开' };
@@ -48,7 +48,7 @@ test('steering amends an active task after its phone operation', async () => {
 test('failed phone verification cannot finish successfully; adjusted retry can', async () => {
   let models = 0, phones = 0;
   const results = [];
-  const conversation = createConversation({ messages: input('任务'), rpc: async (method, params) => {
+  const conversation = createConversation({ language: 'zh', messages: input('任务'), rpc: async (method, params) => {
     if (method === 'phone.execute') return { success: ++phones > 1, result: phones === 1 ? '未验证成功' : '已验证' };
     results.push(params.messages);
     return [tool('operate_phone', { instruction: '操作', success_condition: '成功' }),
@@ -61,14 +61,14 @@ test('failed phone verification cannot finish successfully; adjusted retry can',
 });
 
 test('waiting for clarification returns a durable waiting phase', async () => {
-  const conversation = createConversation({ messages: input('打开那个应用'), rpc: async () =>
+  const conversation = createConversation({ language: 'zh', messages: input('打开那个应用'), rpc: async () =>
     tool('finish_task', { outcome: 'waiting_user', summary: '要打开哪个应用？' }), emit: () => {} });
   const result = await conversation.run(); assert.equal(result.phase, 'waiting_user'); assert.equal(result.operations, 0);
 });
 
 test('per-attempt model limit stops a runaway agent', async () => {
   let calls = 0;
-  const conversation = createConversation({ messages: input('任务'), limits: { modelTurns: 1 }, rpc: async () => {
+  const conversation = createConversation({ language: 'zh', messages: input('任务'), limits: { modelTurns: 1 }, rpc: async () => {
     calls++; return tool('set_plan', { steps: ['检查'], currentStep: 0 });
   }, emit: () => {} });
   await assert.rejects(conversation.run(), /对话轮次.*上限/); assert.equal(calls, 1);
@@ -77,7 +77,7 @@ test('per-attempt model limit stops a runaway agent', async () => {
 test('abort rejects a blocked model request and stops the task', async () => {
   let ready;
   const started = new Promise(resolve => { ready = resolve; });
-  const conversation = createConversation({ messages: input('任务'), rpc: async (_m, _p, signal) =>
+  const conversation = createConversation({ language: 'zh', messages: input('任务'), rpc: async (_m, _p, signal) =>
     new Promise((_resolve, reject) => { signal.addEventListener('abort', () => reject(new Error('stopped')), { once: true }); ready(); }), emit: () => {} });
   const result = conversation.run(); await started; conversation.abort();
   await assert.rejects(result, /stopped/);
@@ -96,7 +96,7 @@ test('checkpoint excludes archived image payload but preserves steering input id
 test('disabled limits permit more than 100 operations and preserve fresh counters per attempt', async () => {
   for (let attempt = 0; attempt < 2; attempt++) {
     let operations = 0;
-    const conversation = createConversation({ messages: input('长任务'), limits: { modelTurns: 0, phoneOperations: 0 }, rpc: async method => {
+    const conversation = createConversation({ language: 'zh', messages: input('长任务'), limits: { modelTurns: 0, phoneOperations: 0 }, rpc: async method => {
       if (method === 'phone.execute') return { success: true, result: `步骤 ${++operations}` };
       return operations < 120 ? tool('operate_phone', { instruction: '检查屏幕', success_condition: '可见' })
         : tool('finish_task', { outcome: 'completed', summary: '完成' });
@@ -107,7 +107,7 @@ test('disabled limits permit more than 100 operations and preserve fresh counter
 
 test('phone ceiling blocks subsequent side effects and cannot be mistaken for success', async () => {
   let operations = 0, models = 0;
-  const conversation = createConversation({ messages: input('任务'), limits: { phoneOperations: 2, modelTurns: 6 }, rpc: async method => {
+  const conversation = createConversation({ language: 'zh', messages: input('任务'), limits: { phoneOperations: 2, modelTurns: 6 }, rpc: async method => {
     if (method === 'phone.execute') { operations++; return { success: true, result: '成功' }; }
     models++;
     if (models === 4) return tool('finish_task', { outcome: 'completed', summary: '不能完成' });
@@ -118,7 +118,7 @@ test('phone ceiling blocks subsequent side effects and cannot be mistaken for su
 
 test('abort after model response prevents any queued phone operation', async () => {
   let conversation, operations = 0;
-  conversation = createConversation({ messages: input('任务'), rpc: async method => {
+  conversation = createConversation({ language: 'zh', messages: input('任务'), rpc: async method => {
     if (method === 'phone.execute') { operations++; return { success: true, result: '' }; }
     conversation.abort(); return tool('operate_phone', { instruction: '操作', success_condition: '成功' });
   }, emit: () => {} });
@@ -129,7 +129,7 @@ test('a completed task blocks later operations in the same model batch', async (
   let operations = 0;
   const first = tool('finish_task', { outcome: 'waiting_user', summary: '完成' });
   first.choices[0].message.tool_calls.push(tool('operate_phone', { instruction: '不应执行', success_condition: '成功' }).choices[0].message.tool_calls[0]);
-  const conversation = createConversation({ messages: input('任务'), rpc: async method => {
+  const conversation = createConversation({ language: 'zh', messages: input('任务'), rpc: async method => {
     if (method === 'phone.execute') operations++;
     return first;
   }, emit: () => {} });
@@ -138,7 +138,7 @@ test('a completed task blocks later operations in the same model batch', async (
 
 test('checkpoint stores consumed steering identities for crash recovery', async () => {
   const checkpoints = []; let conversation;
-  conversation = createConversation({ messages: input('任务'), rpc: async (_method, params) => {
+  conversation = createConversation({ language: 'zh', messages: input('任务'), rpc: async (_method, params) => {
     if (!params.messages.some(m => JSON.stringify(m.content).includes('NEW_INPUT'))) {
       conversation.steer({ id: 'durable-input', text: 'NEW_INPUT' }); return answer('旧回复');
     }
@@ -150,7 +150,7 @@ test('checkpoint stores consumed steering identities for crash recovery', async 
 
 test('resume retains an amendment accepted before an interrupted operation finished', async () => {
   let seen = false;
-  const conversation = createConversation({ messages: input('继续'),
+  const conversation = createConversation({ language: 'zh', messages: input('继续'),
     resume: [{ role: 'user', content: '打开计算器', timestamp: 1 }], pendingInputs: [{ id: 'old-input', text: '改成返回桌面' }],
     rpc: async (_method, params) => {
       seen = JSON.stringify(params.messages).includes('改成返回桌面'); return tool('finish_task', { outcome: 'waiting_user', summary: '已收到补充' });
@@ -160,7 +160,7 @@ test('resume retains an amendment accepted before an interrupted operation finis
 
 test('steering received during a finish response can still execute the added requirement', async () => {
   let conversation, models = 0, phones = 0;
-  conversation = createConversation({ messages: input('原任务'), rpc: async method => {
+  conversation = createConversation({ language: 'zh', messages: input('原任务'), rpc: async method => {
     if (method === 'phone.execute') { phones++; return { success: true, result: '新增操作成功' }; }
     if (models++ === 0) {
       conversation.steer({ id: 'late-amendment', text: '还需要打开计算器' });
@@ -174,7 +174,7 @@ test('steering received during a finish response can still execute the added req
 
 test('restored task goal is explicit in the model context and truncated calls never operate', async () => {
   let seen = false, phones = 0, turns = 0;
-  const conversation = createConversation({ messages: input('继续'), goal: '打开计算器并计算 3+4', limits: { modelTurns: 2 },
+  const conversation = createConversation({ language: 'zh', messages: input('继续'), goal: '打开计算器并计算 3+4', limits: { modelTurns: 2 },
     rpc: async (method, params) => {
       if (method === 'phone.execute') { phones++; return { success: true, result: '不应发生' }; }
       seen = params.messages[0].content.includes('打开计算器并计算 3+4');
@@ -188,7 +188,7 @@ test('restored task goal is explicit in the model context and truncated calls ne
 });
 
 test('agent can report an unrecoverable failure without claiming completion', async () => {
-  const conversation = createConversation({ messages: input('任务'), rpc: async () =>
+  const conversation = createConversation({ language: 'zh', messages: input('任务'), rpc: async () =>
     tool('finish_task', { outcome: 'failed', summary: '服务不可用，请稍后重试' }), emit: () => {} });
   const result = await conversation.run(); assert.equal(result.phase, 'failed'); assert.match(result.reply, /服务不可用/);
 });
@@ -210,7 +210,7 @@ test('Responses replay state survives tool round trips and checkpoints', async (
     { type: 'function_call', call_id: 'call-1', name: 'set_plan', arguments: '{}' }];
   let turns = 0;
   const checkpoints = [];
-  const conversation = createConversation({ messages: input('检查任务'), limits: { modelTurns: 3 }, rpc: async (_method, params) => {
+  const conversation = createConversation({ language: 'zh', messages: input('检查任务'), limits: { modelTurns: 3 }, rpc: async (_method, params) => {
     if (turns++ === 0) return { ...tool('set_plan', { steps: ['检查'], currentStep: 0 }), tapilotResponsesOutput: replay };
     assert.deepEqual(params.messages.find(m => m.role === 'assistant').tapilotResponsesOutput, replay);
     return tool('finish_task', { outcome: 'waiting_user', summary: '需要检查手机' });
@@ -223,7 +223,7 @@ test('Responses replay state survives tool round trips and checkpoints', async (
 test('lookup then direct-launch observation preserves routing and finishes without a repeat operation', async () => {
   let turns = 0;
   const methods = [];
-  const conversation = createConversation({ messages: input('Read existing weather in Doubao'), rpc: async (method, params) => {
+  const conversation = createConversation({ language: 'zh', messages: input('Read existing weather in Doubao'), rpc: async (method, params) => {
     methods.push(method);
     if (method === 'phone.findApps') return { apps: [{ label: '豆包', component: 'example.doubao/.Main' }] };
     if (method === 'phone.execute') {
@@ -242,7 +242,7 @@ test('lookup then direct-launch observation preserves routing and finishes witho
 
 test('routing fields cannot be omitted silently by the model', async () => {
   let turns = 0, phoneCalls = 0;
-  const conversation = createConversation({ messages: input('Read the current screen'), rpc: async (method) => {
+  const conversation = createConversation({ language: 'zh', messages: input('Read the current screen'), rpc: async (method) => {
     if (method === 'phone.execute') { phoneCalls++; return { success: true, result: 'Visible' }; }
     if (turns++ === 0) return { choices: [{ message: { tool_calls: [{ id: 'missing-route', function: {
       name: 'operate_phone', arguments: JSON.stringify({ instruction: 'Read', success_condition: 'Visible' }),
@@ -258,7 +258,7 @@ test('bounded launcher candidates are available on the first turn without a look
   let calls = 0;
   const installedApps = [{ label: '计算器', component: 'example.calc/.Main' },
     ...Array.from({ length: 100 }, (_, i) => ({ label: `App ${i}`, component: `example.app${i}/.Main` }))];
-  const conversation = createConversation({ messages: input('计算'), installedApps, rpc: async (method, params) => {
+  const conversation = createConversation({ language: 'zh', messages: input('计算'), installedApps, rpc: async (method, params) => {
     if (method === 'phone.execute') { assert.equal(params.app, 'example.calc/.Main'); return { success: true, result: '56' }; }
     assert.equal(method, 'model.complete');
     const system = params.messages[0].content;
@@ -271,7 +271,7 @@ test('bounded launcher candidates are available on the first turn without a look
 
 test('single whole-goal operation finishes with real visual evidence without a summary inference', async () => {
   let models = 0;
-  const conversation = createConversation({ messages: input('计算并读取结果'), emit: () => {}, rpc: async method => {
+  const conversation = createConversation({ language: 'zh', messages: input('计算并读取结果'), emit: () => {}, rpc: async method => {
     if (method === 'phone.execute') return { success: true, result: '屏幕显示 9×6 = 54' };
     models++;
     return tool('operate_phone', { instruction: '实际计算', success_condition: '读取屏幕结果', finishWhenVerified: true });
@@ -283,7 +283,7 @@ test('single whole-goal operation finishes with real visual evidence without a s
 
 test('explicit continuation preserves multi-page facts and a synthesized answer', async () => {
   let models = 0, phones = 0;
-  const conversation = createConversation({ messages: input('读取两个页面并比较'), emit: () => {},
+  const conversation = createConversation({ language: 'zh', messages: input('读取两个页面并比较'), emit: () => {},
     rpc: async (method, params) => {
       if (method === 'phone.execute') return { success: true, result: ++phones === 1 ? '页面甲：12' : '页面乙：9' };
       if (models++ < 2) return tool('operate_phone', { instruction: '读取下一页', success_condition: '数值可见', finishWhenVerified: false });
@@ -301,7 +301,7 @@ test('explicit continuation preserves multi-page facts and a synthesized answer'
 
 test('missing completion choice is rejected before a phone action', async () => {
   let models = 0, phones = 0;
-  const conversation = createConversation({ messages: input('读取页面'), emit: () => {},
+  const conversation = createConversation({ language: 'zh', messages: input('读取页面'), emit: () => {},
     rpc: async method => {
       if (method === 'phone.execute') { phones++; return { success: true, result: '不应执行' }; }
       return models++ === 0
@@ -316,7 +316,7 @@ for (const condition of ['failed', 'steering', 'followUp', 'planned', 'batch', '
   test(`whole-goal completion cannot bypass ${condition}`, async () => {
     let conversation, models = 0, phones = 0;
     const op = () => tool('operate_phone', { instruction: '读取', success_condition: '读取画面', finishWhenVerified: true });
-    conversation = createConversation({ messages: input('任务'),
+    conversation = createConversation({ language: 'zh', messages: input('任务'),
       resume: condition === 'resume' ? [{ role: 'user', content: '此前任务', timestamp: 1 }] : [], emit: () => {},
       rpc: async method => {
         if (method === 'phone.execute') {
@@ -342,7 +342,7 @@ for (const condition of ['failed', 'steering', 'followUp', 'planned', 'batch', '
 
 test('cancellation during verified operation cannot trigger direct completion', async () => {
   let conversation;
-  conversation = createConversation({ messages: input('任务'), emit: () => {}, rpc: async method => {
+  conversation = createConversation({ language: 'zh', messages: input('任务'), emit: () => {}, rpc: async method => {
     if (method === 'phone.execute') {
       conversation.abort();
       return { success: true, result: '晚到的观察' };
@@ -354,7 +354,7 @@ test('cancellation during verified operation cannot trigger direct completion', 
 
 test('new input arriving after verified result checkpoint is not lost to direct completion', async () => {
   let conversation, queued = false, models = 0;
-  conversation = createConversation({ messages: input('任务'), emit: event => {
+  conversation = createConversation({ language: 'zh', messages: input('任务'), emit: event => {
     if (!queued && event.type === 'checkpoint' && event.messages.at(-1)?.toolName === 'operate_phone') {
       queued = true; conversation.steer({ id: 'late', text: '请继续新要求' });
     }
@@ -371,7 +371,7 @@ test('new input arriving after verified result checkpoint is not lost to direct 
 
 test('text-only recovery gets protocol guidance and can complete after inspecting evidence', async () => {
   let models = 0, phones = 0;
-  const conversation = createConversation({ messages: input('读取选中项'), rpc: async (method, params) => {
+  const conversation = createConversation({ language: 'zh', messages: input('读取选中项'), rpc: async (method, params) => {
     if (method === 'phone.execute') return { success: ++phones > 1, result: phones === 1 ? '表头不可见' : '选中项和表头可见' };
     models++;
     if (models === 1) return tool('operate_phone', { instruction: '读取', success_condition: '标签和值可见' });
@@ -388,7 +388,7 @@ test('text-only recovery gets protocol guidance and can complete after inspectin
 
 test('repeated prose after failed verification terminates honestly without replaying effects', async () => {
   let models = 0, phones = 0;
-  const conversation = createConversation({ messages: input('读取'), rpc: async method => {
+  const conversation = createConversation({ language: 'zh', messages: input('读取'), rpc: async method => {
     if (method === 'phone.execute') { phones++; return { success: false, result: '缺少表头' }; }
     return ++models === 1 ? tool('operate_phone', { instruction: '读取', success_condition: '完整可见' }) : answer('任务完成');
   }, emit: () => {} });
@@ -399,7 +399,7 @@ test('repeated prose after failed verification terminates honestly without repla
 
 test('prose after a verified intermediate step cannot falsely complete the whole task', async () => {
   let models = 0;
-  const conversation = createConversation({ messages: input('两步任务'), rpc: async method => {
+  const conversation = createConversation({ language: 'zh', messages: input('两步任务'), rpc: async method => {
     if (method === 'phone.execute') return { success: true, result: '第一步完成' };
     return ++models === 1 ? tool('operate_phone', { instruction: '第一步', success_condition: '可见' }) : answer('完成');
   }, emit: () => {} });
@@ -409,7 +409,7 @@ test('prose after a verified intermediate step cannot falsely complete the whole
 
 test('recovery retains user requirements separately from invented step requirements', async () => {
   let models = 0; const contracts = [];
-  const conversation = createConversation({ messages: input('Select item A and read its column'), rpc: async (method, args) => {
+  const conversation = createConversation({ language: 'zh', messages: input('Select item A and read its column'), rpc: async (method, args) => {
     if (method === 'phone.execute') {
       contracts.push(JSON.parse(args.success_condition));
       return { success: contracts.length > 1, result: contracts.length > 1 ? 'A, X' : 'Missing full label' };
@@ -428,7 +428,7 @@ test('recovery retains user requirements separately from invented step requireme
 
 test('delivered user amendment changes next verification contract, not an in-flight operation', async () => {
   let conversation, models = 0; const contracts = [];
-  conversation = createConversation({ messages: input('Read A'), rpc: async (method, args) => {
+  conversation = createConversation({ language: 'zh', messages: input('Read A'), rpc: async (method, args) => {
     if (method === 'phone.execute') {
       contracts.push(JSON.parse(args.success_condition));
       if (contracts.length === 1) conversation.steer({ id: 'new-target', text: 'Instead read B, preserving its exact label' });
@@ -445,7 +445,7 @@ test('delivered user amendment changes next verification contract, not an in-fli
 
 test('zero-operation completion is rejected and can recover to clarification', async () => {
   let models = 0;
-  const c = createConversation({ messages: input('打开那个应用'), rpc: async method => {
+  const c = createConversation({ language: 'zh', messages: input('打开那个应用'), rpc: async method => {
     assert.equal(method, 'model.complete');
     return ++models === 1
       ? tool('finish_task', { outcome: 'completed', summary: '已打开' })
@@ -456,16 +456,16 @@ test('zero-operation completion is rejected and can recover to clarification', a
 });
 
 test('plain clarification cannot default to completed, while knowledge has an explicit answer exit', async () => {
-  const c = createConversation({ messages: input('打开那个应用'), rpc: async () => answer('哪个应用？'), emit: () => {} });
+  const c = createConversation({ language: 'zh', messages: input('打开那个应用'), rpc: async () => answer('哪个应用？'), emit: () => {} });
   const r = await c.run(); assert.equal(r.phase, 'failed'); assert.equal(r.operations, 0); assert.equal(r.turns, 3);
-  const knowledge = createConversation({ messages: input('What is a screenshot?'), rpc: async () =>
+  const knowledge = createConversation({ language: 'zh', messages: input('What is a screenshot?'), rpc: async () =>
     tool('answer_question', { answer: 'An image of a display.' }), emit: () => {} });
   assert.equal((await knowledge.run()).reply, 'An image of a display.');
 });
 
 test('knowledge exit cannot bypass a failed phone operation', async () => {
   let models = 0;
-  const c = createConversation({ messages: input('Read screen'), rpc: async method => {
+  const c = createConversation({ language: 'zh', messages: input('Read screen'), rpc: async method => {
     if (method === 'phone.execute') return { success: false, result: 'Unknown' };
     return [tool('operate_phone', { instruction: 'Read', success_condition: 'Visible' }),
       tool('answer_question', { answer: 'Everything succeeded' }),
@@ -475,14 +475,14 @@ test('knowledge exit cannot bypass a failed phone operation', async () => {
 });
 
 test('repeated unsupported completion is bounded without phone actions', async () => {
-  const c = createConversation({ messages: input('Read the phone'), rpc: async () =>
+  const c = createConversation({ language: 'zh', messages: input('Read the phone'), rpc: async () =>
     tool('finish_task', { outcome: 'completed', summary: 'Invented result' }), emit: () => {} });
   const r = await c.run(); assert.equal(r.phase, 'failed'); assert.equal(r.operations, 0); assert.equal(r.turns, 3);
 });
 
 test('an amendment invalidates old phone evidence before another completed result', async () => {
   let c, models = 0, phones = 0;
-  c = createConversation({ messages: input('Read first page'), rpc: async method => {
+  c = createConversation({ language: 'zh', messages: input('Read first page'), rpc: async method => {
     if (method === 'phone.execute') { phones++; return { success: true, result: 'First page' }; }
     if (models++ === 0) return tool('operate_phone', { instruction: 'Read first', success_condition: 'Visible' });
     if (models === 2) c.steer({ id: 'new-goal', text: 'Also read second page' });
@@ -499,7 +499,7 @@ test('attachment provenance stays in model context and cannot invalidate fresh p
   const document = 'File contents: a historical screenshot with an old version.';
   let models = 0;
   const contracts = [];
-  const conversation = createConversation({ goal,
+  const conversation = createConversation({ language: 'zh', goal,
     messages: input(`${goal}\n${warning}\n${document}`),
     rpc: async (method, params) => {
       if (method === 'phone.execute') {
@@ -523,13 +523,13 @@ test('attachment provenance stays in model context and cannot invalidate fresh p
 test('clarification answer resumes the saved task and reaches phone execution with amended requirements', async () => {
   const original = 'Open the application I choose';
   const checkpoints = [];
-  const first = createConversation({ messages: input(original), goal: original,
+  const first = createConversation({ language: 'zh', messages: input(original), goal: original,
     rpc: async () => tool('finish_task', { outcome: 'waiting_user', summary: 'Which application?' }),
     emit: event => { if (event.type === 'checkpoint') checkpoints.push(event.messages); } });
   assert.equal((await first.run()).phase, 'waiting_user');
   let models = 0, phones = 0;
   const answer = 'Camera. Do not take a photo.';
-  const next = createConversation({ messages: input(answer), goal: original, userInput: answer,
+  const next = createConversation({ language: 'zh', messages: input(answer), goal: original, userInput: answer,
     resume: checkpoints.at(-1), emit: () => {}, rpc: async (method, params) => {
       if (method === 'phone.execute') {
         phones++;
@@ -557,14 +557,14 @@ test('multiple clarification answers survive checkpoints without promoting attac
   const warning = 'Attachment provenance is not a user requirement';
   let checkpoint = [];
   for (const answer of ['Only view, never change settings', 'About device']) {
-    const conversation = createConversation({ goal, userInput: answer,
+    const conversation = createConversation({ language: 'zh', goal, userInput: answer,
       messages: input(`${answer}\n${warning}`), resume: checkpoint,
       emit: event => { if (event.type === 'checkpoint') checkpoint = event.messages; },
       rpc: async () => tool('finish_task', { outcome: 'waiting_user', summary: 'Anything else?' }) });
     assert.equal((await conversation.run()).phase, 'waiting_user');
   }
   let models = 0;
-  const last = createConversation({ goal, userInput: 'Continue', messages: input('Continue'), resume: checkpoint,
+  const last = createConversation({ language: 'zh', goal, userInput: 'Continue', messages: input('Continue'), resume: checkpoint,
     emit: () => {}, rpc: async (method, params) => {
       if (method === 'phone.execute') {
         const requirements = JSON.parse(params.success_condition).userRequirements;
@@ -582,7 +582,7 @@ test('multiple clarification answers survive checkpoints without promoting attac
 test('inline plans advance a two-page task in three model calls with prior facts intact', async () => {
   let models = 0, phones = 0;
   const events = [], plans = ['Read page A', 'Read page B', 'Combine results'];
-  const conversation = createConversation({ messages: input('Read A and B'), emit: e => events.push(e),
+  const conversation = createConversation({ language: 'zh', messages: input('Read A and B'), emit: e => events.push(e),
     rpc: async (method, params) => {
       if (method === 'phone.execute') {
         assert.equal(Object.hasOwn(params, 'plan'), false);
@@ -606,7 +606,7 @@ test('inline plans advance a two-page task in three model calls with prior facts
 
 test('inline plan with invalid index cannot reach the phone', async () => {
   let models = 0, phones = 0;
-  const conversation = createConversation({ messages: input('Read A'), emit: () => {},
+  const conversation = createConversation({ language: 'zh', messages: input('Read A'), emit: () => {},
     rpc: async method => {
       if (method === 'phone.execute') { phones++; return { success: true, result: 'A' }; }
       return models++ === 0 ? tool('operate_phone', { instruction: 'Read A', success_condition: 'A visible',
@@ -620,7 +620,7 @@ test('inline plan with invalid index cannot reach the phone', async () => {
 test('forwards complex-operation effort while retaining independent verification', async () => {
   let models = 0;
   let received;
-  const conversation = createConversation({ messages: input('organize across pages'), rpc: async (method, args) => {
+  const conversation = createConversation({ language: 'zh', messages: input('organize across pages'), rpc: async (method, args) => {
     if (method === 'phone.execute') { received = args; return { success: true, result: 'folder verified' }; }
     return models++ === 0 ? tool('operate_phone', { instruction: 'group icons', success_condition: 'folder visible',
       mode: 'act', app: '', effort: 'deepThink', finishWhenVerified: true }) :
@@ -634,7 +634,7 @@ test('forwards complex-operation effort while retaining independent verification
 test('a second precomputed phone operation waits for a new model decision', async () => {
   let turns = 0;
   const performed = [];
-  const conversation = createConversation({ messages: input('整理桌面'), rpc: async (method, args) => {
+  const conversation = createConversation({ language: 'zh', messages: input('整理桌面'), rpc: async (method, args) => {
     if (method === 'phone.execute') { performed.push(args.instruction); return { success: true, result: '当前页已盘点' }; }
     if (turns++ === 0) {
       const batch = tool('operate_phone', { instruction: '盘点', success_condition: '可见图标' });

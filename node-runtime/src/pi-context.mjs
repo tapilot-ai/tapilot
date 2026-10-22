@@ -1,3 +1,5 @@
+import { RuntimeFailure } from './runtime-errors.mjs';
+
 /** Conservative request budget. Image bytes have a separate transport cap: base64 length
  * is not a text token estimate. Durable checkpoints are never modified by projection. */
 const maxPayloadBytes = 32 * 1024 * 1024;
@@ -10,10 +12,10 @@ function clip(text, limit) {
   const half = Math.floor(limit / 2);
   return `${text.slice(0, half)}\n[执行日志已截短；缺失结果未知，继续前核验实时画面，不能盲目重复操作]\n${text.slice(-half)}`;
 }
-export function projectContext(messages, budget = 48000) {
+export function projectContext(messages, budget = 48000, language = 'en') {
   if (!Number.isFinite(budget) || budget <= 0) throw new Error('Invalid context budget');
   if (Buffer.byteLength(JSON.stringify(messages)) > maxPayloadBytes)
-    throw new Error('附件与上下文超过传输上限，请减少附件或开始新对话。');
+    throw new RuntimeFailure('context_payload_limit', language);
   if (contextSize(messages) <= budget) return messages;
   // Keep user constraints, system instructions, call arguments and complete tool batches.
   // Only execution output and assistant prose can be shortened automatically.
@@ -38,5 +40,5 @@ export function projectContext(messages, budget = 48000) {
     if (contextSize(projected) <= budget) return projected;
   }
   // Never silently drop a constraint or send a request known to exceed the budget.
-  throw new Error('对话上下文超过安全预算。已保留任务记录，请缩短输入、减少附件或开始新对话；未继续操作手机。');
+  throw new RuntimeFailure('context_budget_limit', language);
 }

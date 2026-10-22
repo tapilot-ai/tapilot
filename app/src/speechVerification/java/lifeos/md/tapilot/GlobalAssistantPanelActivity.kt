@@ -12,7 +12,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import lifeos.md.tapilot.chat.RecordingFeedback
-import lifeos.md.tapilot.bridge.SpeechRecognition
+import lifeos.md.tapilot.speech.SpeechRecognition
 import androidx.core.widget.doAfterTextChanged
 import android.content.Intent
 import android.graphics.Color
