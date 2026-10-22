@@ -41,11 +41,17 @@ export function collectNpmNotices(modules, output) {
       const pkg = JSON.parse(fs.readFileSync(manifest, 'utf8'));
       const id = `${encodeURIComponent(pkg.name)}@${encodeURIComponent(pkg.version)}`;
       if (!packages.some(item => item.id === id)) {
-        const license = typeof pkg.license === 'string' ? pkg.license : pkg.license?.type ?? 'UNKNOWN';
+        let license = typeof pkg.license === 'string' ? pkg.license : pkg.license?.type ?? 'UNKNOWN';
         const files = copyNotices(source, path.join(output, id));
         for (const supplement of supplements.filter(item => item.name === pkg.name && item.version === pkg.version)) {
           const bytes = fs.readFileSync(path.join(repositoryRoot, supplement.path));
           if (sha256(bytes) !== supplement.sha256) throw new Error(`Supplement checksum mismatch: ${supplement.path}`);
+          // A pinned upstream notice can identify omitted package metadata, but cannot
+          // silently replace a package's declared license with different terms.
+          if (supplement.license) {
+            if (license !== 'UNKNOWN' && license !== supplement.license) throw new Error(`Conflicting license supplement: ${pkg.name}`);
+            license = supplement.license;
+          }
           const relative = `upstream-${path.basename(supplement.path)}`;
           fs.mkdirSync(path.join(output, id), { recursive: true });
           fs.writeFileSync(path.join(output, id, relative), bytes);

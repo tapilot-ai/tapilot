@@ -57,7 +57,7 @@ an individual is officially representing the community in public spaces.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the community leaders responsible for enforcement through
-[GitHub Security Advisories](../../security/advisories/new) or by contacting the
+[GitHub Security Advisories](https://github.com/quanru/tapilot/security/advisories/new) or by contacting the
 repository maintainer. All complaints will be reviewed and investigated
 promptly and fairly.
 

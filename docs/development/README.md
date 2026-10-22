@@ -9,6 +9,7 @@ pnpm --filter @tapilot/android-accessibility test run --pool.maxWorkers 2
 pnpm check:plugin
 pnpm runtime:bundle
 ./gradlew :app:testDebugUnitTest --max-workers=2 --no-parallel --no-daemon
+./gradlew :app:lintBeta --max-workers=2 --no-parallel --no-daemon
 ```
 
 `runtime:bundle` builds the adapter, installs the frozen production dependencies,
@@ -24,6 +25,9 @@ For the optional legacy speech verification package, run
 
 ## Dependency changes
 
+See the [compatibility matrix](compatibility.md) for phone/plugin version pins
+and the required upgrade checks.
+
 - Root/adapter: update `pnpm-lock.yaml` with pnpm 12.4.1.
 - Plugin: update `plugins/android-use/package-lock.json` with npm and regenerate
   its UI with `npm --prefix plugins/android-use run build:ui` when needed.
@@ -34,8 +38,16 @@ The adapter uses a real local `file:` dependency. Keep its package metadata and
 exports accurate; the normal build creates `dist` before the deployment install.
 See the [patch record](../../node-runtime/bundle/patches/README.md) before updating Midscene.
 
-Run `pnpm check` before handing off changes. A passing local gate does not prove
+Run `pnpm check` before handing off changes. It includes full Beta Android Lint;
+the release build's fatal-only lint check is not a substitute. A passing local gate does not prove
 that CI or a physical device ran; record those results separately.
+
+The default gate also runs the model-free conversation benchmark: five samples,
+each containing four separate 30-operation tasks (120 operations and 124 model
+turns in total). It checks completion and checkpoint counts while measuring loop
+and serialization overhead. The old single 120-operation transcript exceeded the
+production context budget as tool contracts grew; it is no longer a valid timing
+baseline. The application's budget guard remains unchanged.
 
 Security overrides in both pnpm workspaces and the plugin pin Sharp 0.35.5,
 js-yaml 4.3.2 and UUID 11.1.1 until upstream ranges include the patched releases.
@@ -69,3 +81,10 @@ that serves the same pinned bytes. Do not treat an old local cache as clean-buil
 proof. A long-lived binary mirror also requires redistribution review.
 
 The native downloader also accepts `TERMUX_CACHE` for an isolated cache. The SQLite pin is now 3.54.1 (official Termux index SHA-256), replacing the removed 3.54.0 archive; ELF library names change together. Current release evidence is indexed in [validation-current.zh.md](validation-current.zh.md).
+
+On 2026-10-22 an empty project cache exposed two more removed archives. The
+[official aarch64 index](https://packages.termux.dev/apt/termux-main/dists/stable/main/binary-aarch64/Packages)
+now pins Node's packaging revision `24.18.0-2` and c-ares `1.34.9`. Node's
+JavaScript runtime version remains 24.18.0. Their SHA-256 values are retained in
+`scripts/fetch-node-runtime.sh`; downloads still fail closed on mismatched bytes.
+These repackaged native binaries require device acceptance before release.

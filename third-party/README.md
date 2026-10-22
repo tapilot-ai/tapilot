@@ -14,6 +14,16 @@ retains the upstream README because its full MIT terms are embedded there.
 Standard Webhooks uses `libraries/LICENSE` (MIT); the repository-root Apache
 license does not cover that JavaScript library.
 
+The AWS credential-provider-http 3.972.75, credential-provider-login 3.972.80
+and nested-clients 3.997.47 manifests match upstream revision
+`a960c14e8ce09ab8fd09352e40d75c6b9d52c1ca` (all three live in
+`packages-internal/` at that revision). Their retained root Apache license fills
+the published packages' omitted notice files. Union 0.5.0 retains both LICENSE
+and the README's explicit MIT terms from its published `gitHead`
+`b69c2c0eb95d48b49e72182e53c1788efa195cc0`. The supplemental catalog may identify
+missing license metadata only after its pinned notice hash matches; conflicting
+declared terms fail collection and an unreviewed version does not inherit the entry.
+
 `android-supplements.json` maps the 60 exact Maven coordinates to their retained
 source copyright/license headers and Apache-2.0 declarations (including inherited
 parent declarations for ZXing and Guava). Gradle checks notice hashes and includes

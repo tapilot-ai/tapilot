@@ -11,8 +11,8 @@ staging="${work_directory}/staging"
 trap 'rm -rf "${work_directory}"' EXIT
 
 packages=(
-  'n/nodejs-lts/nodejs-lts_24.18.0-1_aarch64.deb 490f4d08c45b25a7ea7db6ee466ebb3ee61f07083260b85332704ed018f59a87'
-  'c/c-ares/c-ares_1.34.8_aarch64.deb 7681fc23e822d7988ba8b2adf3468f93ae68f724dda365cff1385096a9fa87e6'
+  'n/nodejs-lts/nodejs-lts_24.18.0-2_aarch64.deb c799ca24e353ee6a3dc016577592142da7b8defadc32b225bfc189b00a639076'
+  'c/c-ares/c-ares_1.34.9_aarch64.deb 623d84855e176f3f2a415d24c0e1d2f529356f4b5439bb3313e6d7ff0da4585c'
   'libc/libc++/libc++_30_aarch64.deb 53d0b84a7ba7459024257cb94d5b136fe13ef858567f65a8064b35950799f2ca'
   'libi/libicu/libicu_78.3_aarch64.deb f536403f65a08fe0df6e7304184e902d54def77d5c3bd5edfd9109d57601d276'
   'libs/libsqlite/libsqlite_3.54.1_aarch64.deb 0856cac8cc87f6e112f2eef4fcac6ad5cb08209ecb7cc260f997874fc186a3c0'

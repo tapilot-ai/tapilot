@@ -19,8 +19,9 @@ run('pnpm',['--filter','@tapilot/android-accessibility','test','run','--pool.max
 if (process.argv.includes('--quick')) process.exit(0);
 // Builds the adapter and runs every Node runtime test against the exact bundled sources.
 run('pnpm',['runtime:bundle']);
+run(process.execPath,['scripts/benchmark-conversation.mjs']);
 run(process.execPath,['--test','--test-concurrency=1',...fs.readdirSync(path.join(root,'scripts')).filter(f=>f.endsWith('.test.mjs')).map(f=>`scripts/${f}`)]);
 run('pnpm',['runtime:node']);
-run('./gradlew',[':app:testDebugUnitTest',':app:assembleBeta','--max-workers=2','--no-parallel','--no-daemon']);
+run('./gradlew',[':app:testDebugUnitTest',':app:lintBeta',':app:assembleBeta','--max-workers=2','--no-parallel','--no-daemon']);
 run(process.execPath,['scripts/verify-apk.mjs','beta','--local-check']);
-console.log('\nTapilot checks passed: plugin UI and tests, E2E definitions, types, legacy UI, adapter, Node agent, scripts, Kotlin and non-debuggable beta APK.');
+console.log('\nTapilot checks passed: plugin UI and tests, E2E definitions, types, legacy UI, adapter, Node agent, scripts, Kotlin, Android lint and non-debuggable beta APK.');

@@ -28,7 +28,7 @@ has an isolated production dependency lockfile. The standalone Midscene E2E pack
 | --- | --- |
 | `pnpm build` / `pnpm build:android` / `pnpm dev` | Build a local non-debuggable Beta APK; accept this machine's signing certificate |
 | `pnpm check:quick` | Generated theme, plugin UI freshness and tests, E2E definitions, TypeScript, legacy UI and adapter tests |
-| `pnpm check` / `pnpm test` | Quick checks, Node bundle and smoke tests, script tests, Kotlin tests, Beta build and APK integrity checks |
+| `pnpm check` / `pnpm test` | Quick checks, Node bundle and smoke tests, conversation overhead benchmark, script tests, Kotlin tests, full Android Lint, Beta build and APK integrity checks |
 | `pnpm check:e2e` | Type-check and validate Midscene YAML cases; no device or model needed |
 | `pnpm test:e2e` / `pnpm test:e2e:live` | Run visual smoke / explicitly opted-in native task E2E; see [E2E guide](tests/midscene/README.md) |
 | `pnpm check:plugin` | Plugin UI freshness and all plugin tests, no Android SDK needed |

@@ -61,5 +61,34 @@
     "path": "third-party/notices/npm/union-0.5.0-LICENSE.txt",
     "url": "https://raw.githubusercontent.com/flatiron/union/b69c2c0eb95d48b49e72182e53c1788efa195cc0/LICENSE",
     "sha256": "ce5a6467d5e685e6c6ce90ea94dd5764ce16aa5b0332803c1f0411e6cc682d36"
+  },
+  {
+    "name": "@aws-sdk/credential-provider-http",
+    "version": "3.972.75",
+    "path": "third-party/notices/npm/@aws-sdk_credential-provider-http-3.972.75-LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/aws/aws-sdk-js-v3/a960c14e8ce09ab8fd09352e40d75c6b9d52c1ca/LICENSE",
+    "sha256": "edea91454b811f127fbdea3d86f378f6719bd372ed440abf82b232f6fca06c3d"
+  },
+  {
+    "name": "@aws-sdk/credential-provider-login",
+    "version": "3.972.80",
+    "path": "third-party/notices/npm/@aws-sdk_credential-provider-login-3.972.80-LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/aws/aws-sdk-js-v3/a960c14e8ce09ab8fd09352e40d75c6b9d52c1ca/LICENSE",
+    "sha256": "edea91454b811f127fbdea3d86f378f6719bd372ed440abf82b232f6fca06c3d"
+  },
+  {
+    "name": "@aws-sdk/nested-clients",
+    "version": "3.997.47",
+    "path": "third-party/notices/npm/@aws-sdk_nested-clients-3.997.47-LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/aws/aws-sdk-js-v3/a960c14e8ce09ab8fd09352e40d75c6b9d52c1ca/LICENSE",
+    "sha256": "edea91454b811f127fbdea3d86f378f6719bd372ed440abf82b232f6fca06c3d"
+  },
+  {
+    "name": "union",
+    "version": "0.5.0",
+    "path": "third-party/notices/npm/union-0.5.0-README.md.txt",
+    "url": "https://raw.githubusercontent.com/flatiron/union/b69c2c0eb95d48b49e72182e53c1788efa195cc0/README.md",
+    "sha256": "ea8bfd939b567503ce7a075af880d80b53e5f89657bb694c51ac9d4dc6cb637c",
+    "license": "MIT"
   }
 ]
