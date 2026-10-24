@@ -81,7 +81,7 @@ export class AndroidAccessibilityDevice implements AbstractInterface {
   private repeatedGestureCount = 0;
   private latestPixels?: Uint8Array;
   private gesturePixels?: Uint8Array;
-  private recentSwipes: Array<{ action: Extract<NativeAction, { type: 'swipe' }>; pixels?: Uint8Array }> = [];
+  private recentGestures: Array<{ action: Extract<NativeAction, { type: 'swipe' | 'gesture' }>; pixels?: Uint8Array }> = [];
 
   constructor(private readonly bridge: NativeBridge, private readonly capabilities?: NativeCapabilities) {
     this.inputPrimitives = {
@@ -274,15 +274,18 @@ export class AndroidAccessibilityDevice implements AbstractInterface {
   }
 
   private guardRepeatedGesture(action: NativeAction): void {
-    if (action.type !== 'swipe') this.recentSwipes = [];
+    if (action.type !== 'swipe' && action.type !== 'gesture') this.recentGestures = [];
     else {
-      const sequence = [...this.recentSwipes, { action, pixels: this.latestPixels }];
-      if (sequence.length === 7 && sequence.slice(2).every((item, index) =>
+      if (this.recentGestures.at(-1)?.action.type !== action.type) this.recentGestures = [];
+      const sequence = [...this.recentGestures, { action, pixels: this.latestPixels }];
+      const windowSize = action.type === 'gesture' ? 5 : 7;
+      if (sequence.length === windowSize && sequence.slice(2).every((item, index) =>
         isSameGestureTarget(item.action, sequence[index].action) &&
         sameScreen(item.pixels, sequence[index].pixels))) {
-        throw new Error('Stopped an alternating Android swipe loop. Repeated back-and-forth navigation is not progress; inspect the current page and choose a different route.');
+        const gesture = action.type === 'swipe' ? 'swipe' : 'drag';
+        throw new Error(`Stopped an alternating Android ${gesture} loop. Returning to the same two observed states is not progress; inspect the active view before changing anything else. Use navigation or read-only observation to resolve ambiguity, not another reversed gesture.`);
       }
-      this.recentSwipes = sequence.slice(-6);
+      this.recentGestures = sequence.slice(1 - windowSize);
     }
     if (!isRepeatableGesture(action)) {
       this.repeatedGesture = undefined;

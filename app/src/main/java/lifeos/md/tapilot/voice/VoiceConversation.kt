@@ -9,7 +9,10 @@ interface SpeechPlayback : AutoCloseable {
 
 enum class VoicePhase { Idle, Preparing, Listening, Recognizing, Thinking, Speaking, Paused, Error }
 data class VoiceState(val active: Boolean = false, val phase: VoicePhase = VoicePhase.Idle,
-    val transcript: String = "", val response: String = "", val level: Float = 0f, val error: String = "", val listeningTimedOut: Boolean = false, val transcriptPending: Boolean = false, val noSpeechRecognized: Boolean = false, val previewingTranscript: Boolean = false)
+    val transcript: String = "", val response: String = "", val level: Float = 0f, val error: String = "", val listeningTimedOut: Boolean = false, val transcriptPending: Boolean = false, val noSpeechRecognized: Boolean = false, val previewingTranscript: Boolean = false,
+    val editingTranscript: Boolean = false) {
+    val followUpListeningExpired: Boolean get() = active && phase == VoicePhase.Paused && listeningTimedOut && !transcriptPending && response.isNotBlank()
+}
 data class VoiceReply(val id: String, val text: String, val complete: Boolean)
 
 /** All calls are serialized on the UI thread. Audio/network callbacks enter through dispatch. */
@@ -26,7 +29,8 @@ class VoiceConversation(
     private var key = ""
     private var language = ""
     private var generation = 0
-    private var submitAt: Long? = null
+    private var previewRemaining: Long? = null
+    private var previewTickAt: Long? = null
     private var foreground = true
     private var awaiting = false
     private var busy = false
@@ -48,7 +52,10 @@ class VoiceConversation(
     private var acknowledging = false
     private var manuallyPaused = false
 
-    private fun change(next: VoiceState) { state = if (submitAt == null) next.copy(previewingTranscript = false) else next; onChange(state) }
+    private fun change(next: VoiceState) {
+        state = if (previewRemaining == null) next.copy(previewingTranscript = false) else next
+        onChange(state)
+    }
     fun start(provider: String, key: String, language: String, previous: List<VoiceReply>) {
         stop()
         this.provider = provider; this.key = key; this.language = language
@@ -58,7 +65,7 @@ class VoiceConversation(
         listen()
     }
 
-    private fun cancelAudio() { submitAt = null; reading = false; acknowledging = false; generation++; recognition.cancel(); playback.stop() }
+    private fun cancelAudio() { previewRemaining = null; previewTickAt = null; reading = false; acknowledging = false; generation++; recognition.cancel(); playback.stop() }
     private fun listen() {
         if (!state.active || !foreground) return
         playbackFailed = false
@@ -66,7 +73,7 @@ class VoiceConversation(
         val token = generation
         speechEnded = false; lastTranscriptChange = null
         started = now(); quietSince = null; lastAudio = null; noiseFloor = 1f; peakLevel = 0f; voiceFrames = 0
-        change(state.copy(phase = VoicePhase.Preparing, transcript = "", level = 0f, error = "", listeningTimedOut = false, transcriptPending = false, noSpeechRecognized = false))
+        change(state.copy(phase = VoicePhase.Preparing, transcript = "", level = 0f, error = "", listeningTimedOut = false, transcriptPending = false, noSpeechRecognized = false, editingTranscript = false))
         fun current() = state.active && foreground && generation == token
         runCatching {
             recognition.start(provider, key, language,
@@ -100,13 +107,15 @@ class VoiceConversation(
     }
 
     /** Require observed quiet audio, never infer silence from missing callbacks. */
-    fun tick(autoSend: Boolean = true) {
+    fun tick(autoSend: Boolean = true, previewVisible: Boolean = true) {
         if (!state.active || !foreground) return
-        submitAt?.let { deadline ->
-            if (now() >= deadline) {
-                submitAt = null
-                if (state.phase == VoicePhase.Recognizing && state.transcriptPending && confirmation == null) submitUtterance(state.transcript)
-            }
+        previewRemaining?.let { remaining ->
+            val time = now()
+            val elapsed = if (previewVisible) previewTickAt?.let { (time - it).coerceAtLeast(0) } ?: 0 else 0
+            previewTickAt = if (previewVisible) time else null
+            val next = (remaining - elapsed).coerceAtLeast(0)
+            previewRemaining = next
+            if (previewVisible && next == 0L) sendPendingTranscript()
             return
         }
         if (state.phase !in listOf(VoicePhase.Preparing, VoicePhase.Listening)) return
@@ -146,8 +155,11 @@ class VoiceConversation(
             result.fold({ text ->
                 if (text.isBlank()) { if (continueWhenEmpty) submitUtterance(continueText()) else noSpeech() } else {
                     if (previewBeforeSend) {
-                        submitAt = now() + 1000
-                        change(state.copy(transcript = text.trim(), transcriptPending = true, previewingTranscript = true))
+                        cancelAudio()
+                        previewRemaining = 1_500L
+                        previewTickAt = null
+                        change(state.copy(transcript = text.trim(), transcriptPending = true, previewingTranscript = true,
+                            editingTranscript = false))
                     } else submitUtterance(text)
                 }
             }, { if (it.message == "No speech recognized") { if (continueWhenEmpty) submitUtterance(continueText()) else noSpeech() } else fail(it) })
@@ -159,12 +171,32 @@ class VoiceConversation(
         change(state.copy(noSpeechRecognized = true))
     }
 
+    /** Entering the editor stops both the microphone and the automatic send. */
+    fun beginTranscriptEdit() {
+        if (!state.active || !state.transcriptPending || confirmation != null ||
+            (state.phase != VoicePhase.Paused && !state.previewingTranscript)) return
+        pause()
+        change(state.copy(editingTranscript = true))
+    }
+
+    fun editTranscript(text: String) {
+        if (state.active && state.editingTranscript && state.phase == VoicePhase.Paused)
+            change(state.copy(transcript = text))
+    }
+
+    fun sendPendingTranscript() {
+        if (!state.active || !foreground || !state.transcriptPending || state.transcript.isBlank() || confirmation != null ||
+            (state.phase != VoicePhase.Paused && !state.previewingTranscript)) return
+        submitUtterance(state.transcript)
+    }
+
     private fun submitUtterance(text: String) {
+        previewRemaining = null; previewTickAt = null
         manuallyPaused = false
         seen.addAll(replies.filter { it.complete }.map { it.id })
         awaiting = true
         change(state.copy(phase = VoicePhase.Thinking, transcript = text.trim(), transcriptPending = false, previewingTranscript = false,
-            level = 0f, error = "", listeningTimedOut = false, noSpeechRecognized = false))
+            level = 0f, error = "", listeningTimedOut = false, noSpeechRecognized = false, editingTranscript = false))
         acknowledge()
         onQuestion(text.trim())
     }

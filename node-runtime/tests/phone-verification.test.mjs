@@ -141,3 +141,19 @@ test('page-reading criteria preserve visible targets while deferring navigation 
   assert.match(criteria.rule, /conversation can compare separately recorded pages/);
   assert.match(criteria.rule, /does NOT prove a requested cross-page move/);
 });
+
+// An imperative retry plan can incorrectly describe a completed view as unfinished.
+// Neither that premise nor the agent's proposed result is independent evidence.
+test('verification does not inherit action-plan premises about the current screen', async () => {
+  const instruction = 'The screen is still ungrouped. Move A onto B again until it creates a container.';
+  const condition = JSON.stringify({scope: 'entire_user_goal', userRequirements: ['Group A and B'], proposedStepCondition: 'A new container is open'});
+  let calls = 0;
+  const result = await verifyPhone(async ctx => {
+    calls++;
+    assert.doesNotMatch(JSON.stringify(ctx.input.prompt), /still ungrouped|Move A|currentOperation|new container is open/);
+    assert.match(ctx.input.prompt.success, /Group A and B/);
+    return { data: { success: false, observation: 'Only A is visible; B is absent.' } };
+  }, {signal: new AbortController().signal}, {instruction, condition});
+  assert.equal(calls, 1);
+  assert.equal(result.data.success, false);
+});

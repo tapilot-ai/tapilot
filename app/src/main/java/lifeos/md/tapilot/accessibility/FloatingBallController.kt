@@ -45,15 +45,25 @@ class FloatingBallController(
     private val runtime get() = (service.application as lifeos.md.tapilot.TapilotApplication).assistant
     private val holdOverlay = FloatingVoiceHoldOverlay(service, windowManager)
     private val voiceOverlay = FloatingVoiceOverlay(service, windowManager)
+    private var voiceCaptureGeneration = -1
     private val updateVoice = object : Runnable {
         override fun run() {
             if (!runtime.floatingVoice) { voiceOverlay.hide(); holdOverlay.hide(); updateVisibility(); return }
             hideVoiceHint(); hideStatus(); hideResult()
-            if (runtime.floatingHold) {
+            if (runtime.floatingInputVisible) {
                 voiceOverlay.hide()
                 holdOverlay.refresh(runtime)
+                holdOverlay.setHidden(hiddenForCapture)
             } else {
                 holdOverlay.hide()
+                // Capture only after the input surface has finished. Capturing on release
+                // hides accessibility overlays and makes the transcript disappear/reappear.
+                if (runtime.voiceEntryPending && !runtime.floatingContextReady &&
+                    runtime.voiceState.phase == lifeos.md.tapilot.voice.VoicePhase.Thinking &&
+                    voiceCaptureGeneration != runtime.floatingEntryGeneration) {
+                    voiceCaptureGeneration = runtime.floatingEntryGeneration
+                    captureVoiceContext()
+                }
                 voiceOverlay.refresh(runtime, appForeground || hiddenForCapture)
             }
             mainHandler.postDelayed(this, 150)
@@ -159,6 +169,7 @@ class FloatingBallController(
         resultView?.visibility = View.INVISIBLE
         voiceHint?.visibility = View.INVISIBLE
         voiceOverlay.setHidden(true)
+        holdOverlay.setHidden(true)
         updateVisibility()
         return wasVisible
     }
@@ -168,6 +179,7 @@ class FloatingBallController(
         resultView?.visibility = View.VISIBLE
         voiceHint?.visibility = View.VISIBLE
         voiceOverlay.setHidden(appForeground)
+        holdOverlay.setHidden(false)
         if (wasVisible || taskRunning) updateVisibility()
     }
 
@@ -427,8 +439,7 @@ class FloatingBallController(
                     target.isPressed = false
                     if (longPressed) {
                         runtime.releaseFloatingHold(holdOverlay.isCancelTarget(event.rawX, event.rawY))
-                        holdOverlay.hide()
-                        if (runtime.floatingVoice) captureVoiceContext()
+                        if (!runtime.floatingVoice) holdOverlay.hide()
                         updateVisibility()
                     } else if (dragging) persistPosition(params) else target.performClick()
                     return true

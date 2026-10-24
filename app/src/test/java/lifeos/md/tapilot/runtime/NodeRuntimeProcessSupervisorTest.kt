@@ -163,7 +163,8 @@ class NodeRuntimeProcessSupervisorTest {
             try {
                 supervisor.prepareTest(runtime, request)
                 assertTrue(!supervisor.isRunning())
-                assertEquals("prepare", commands.single()[2])
+                assertEquals(listOf(runtime.nodeExecutable.absolutePath, "--use-bundled-ca", runtime.entrypoint.absolutePath), commands.single().take(3))
+                assertEquals("prepare", commands.single()[3])
                 assertEquals(0, children.single().written.size())
                 if (mode == "expired") children.single().destroy()
                 val adopted = supervisor.runTest(
@@ -180,7 +181,8 @@ class NodeRuntimeProcessSupervisorTest {
                 } else {
                     assertEquals(2, children.size)
                     assertTrue(!children.first().isAlive)
-                    assertEquals("test", commands.last()[2])
+                    assertEquals("--use-bundled-ca", commands.last()[1])
+                    assertEquals("test", commands.last()[3])
                 }
             } finally { supervisor.close(); root.deleteRecursively() }
             assertTrue(children.all { !it.isAlive })

@@ -10,7 +10,9 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 internal fun TaskDetailsView(task: ChatTask, zh: Boolean) {
-    if (task.plan.isEmpty() && task.phoneOperations == 0 && task.phase != "waiting_user") return
+    val duration = task.durationMillis?.let { taskDurationLabel(it, zh) }
+    val hasProgress = task.plan.isNotEmpty() || task.phoneOperations > 0 || task.phase == "waiting_user"
+    if (!hasProgress && duration == null) return
     var expanded by remember { mutableStateOf(false) }
     val colors = MaterialTheme.colorScheme
     val current = task.plan.getOrNull(task.currentStep)
@@ -22,8 +24,8 @@ internal fun TaskDetailsView(task: ChatTask, zh: Boolean) {
         else -> current ?: if (zh) "正在执行任务" else "Working on task"
     }
     Spacer(Modifier.height(6.dp))
-    Text(caption, fontSize = 12.sp, color = colors.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
-    TextButton(onClick = { expanded = !expanded }, contentPadding = PaddingValues(0.dp)) {
+    Text(listOfNotNull(caption, duration).joinToString(" · "), fontSize = 12.sp, color = colors.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    if (hasProgress) TextButton(onClick = { expanded = !expanded }, contentPadding = PaddingValues(0.dp)) {
         Text(if (zh) "${task.phoneOperations} 次操作 · ${if (expanded) "收起进度" else "查看进度"}"
             else "${task.phoneOperations} operations · ${if (expanded) "Hide progress" else "Show progress"}", fontSize = 12.sp)
     }

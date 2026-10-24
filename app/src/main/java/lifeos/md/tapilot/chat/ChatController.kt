@@ -82,7 +82,15 @@ class ChatController(
     fun interruptVoice() = runtime.interruptVoice()
     fun pauseVoice() = runtime.pauseVoice()
     fun resumeVoice() = runtime.resumeVoice()
-    fun voicePrimaryAction() = runtime.voicePrimaryAction()
+    fun voicePrimaryAction() {
+        if (voiceState.transcriptPending && voiceState.transcript.isNotBlank()) activity.currentFocus?.let {
+            activity.getSystemService(InputMethodManager::class.java).hideSoftInputFromWindow(it.windowToken, 0)
+            it.clearFocus()
+        }
+        runtime.voicePrimaryAction()
+    }
+    fun beginVoiceTranscriptEdit() = runtime.beginVoiceTranscriptEdit()
+    fun editVoiceTranscript(text: String) = runtime.editVoiceTranscript(text)
     fun finishVoiceUtterance() = runtime.finishUtterance()
     private var closed = false
     private var speechGeneration = 0

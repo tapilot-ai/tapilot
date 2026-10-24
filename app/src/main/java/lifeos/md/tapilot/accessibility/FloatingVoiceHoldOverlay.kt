@@ -9,6 +9,7 @@ import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
 import android.text.TextUtils
+import android.view.MotionEvent
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
@@ -17,9 +18,11 @@ import lifeos.md.tapilot.AppTheme
 import lifeos.md.tapilot.voice.AssistantRuntime
 import lifeos.md.tapilot.voice.VoicePhase
 
-/** Vibelet's dim backdrop, speech bubble and bottom arc; release sends by default. */
+/** One speech-input surface from press through final transcription and submission. */
 internal class FloatingVoiceHoldOverlay(private val context: Context, private val windows: WindowManager) {
     private var view: HoldView? = null
+    private var params: WindowManager.LayoutParams? = null
+    fun setHidden(hidden: Boolean) { view?.visibility = if (hidden) View.INVISIBLE else View.VISIBLE }
     /** Run entry work only after the initial feedback has had a drawing pass. */
     fun afterDraw(action: () -> Unit) {
         val surface = view ?: return action()
@@ -42,7 +45,15 @@ internal class FloatingVoiceHoldOverlay(private val context: Context, private va
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                 PixelFormat.TRANSLUCENT,
             ).apply { gravity = Gravity.TOP or Gravity.START }
-            if (runCatching { windows.addView(surface, params) }.isSuccess) view = surface
+            if (runCatching { windows.addView(surface, params) }.isSuccess) { view = surface; this.params = params }
+        }
+        params?.let { layout ->
+            val flags = if (runtime.floatingHold) layout.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                else layout.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+            if (flags != layout.flags) {
+                layout.flags = flags
+                view?.let { runCatching { windows.updateViewLayout(it, layout) } }
+            }
         }
         view?.runtime = runtime
         view?.invalidate()
@@ -54,7 +65,7 @@ internal class FloatingVoiceHoldOverlay(private val context: Context, private va
             surface.afterDraw?.let { action -> surface.afterDraw = null; android.os.Handler(android.os.Looper.getMainLooper()).post { action() } }
             runCatching { windows.removeView(surface) }
         }
-        view = null
+        view = null; params = null
     }
 
     private class HoldView(context: Context) : View(context) {
@@ -83,11 +94,27 @@ internal class FloatingVoiceHoldOverlay(private val context: Context, private va
             }
             return transcriptLayout!!
         }
+        override fun onTouchEvent(event: MotionEvent): Boolean {
+            val runtime = runtime ?: return false
+            if (runtime.floatingHold) return false
+            if (event.actionMasked == MotionEvent.ACTION_UP) {
+                when {
+                    VoiceHoldTarget.isCancel(event.x, event.y, width.toFloat(), height.toFloat(), density) -> runtime.endVoice()
+                    VoiceHoldTarget.isCancel(width - event.x, event.y, width.toFloat(), height.toFloat(), density) &&
+                        runtime.voiceState.previewingTranscript -> runtime.voicePrimaryAction()
+                }
+                performClick()
+            }
+            return true
+        }
+        override fun performClick(): Boolean { super.performClick(); return true }
         override fun onDraw(canvas: Canvas) {
             val runtime = runtime ?: return
             val colors = AppTheme.colors(context)
             val zh = AppLanguage.resolved(context) == "zh"
             val cancel = runtime.floatingCancelSelected
+            val held = runtime.floatingHold
+            val preview = runtime.voiceState.previewingTranscript
             fun local(c: String, e: String) = if (zh) c else e
             fun text(value: String, x: Float, y: Float, size: Float, color: Int) {
                 paint.color = color; paint.textSize = dp(size); paint.textAlign = Paint.Align.CENTER
@@ -125,7 +152,7 @@ internal class FloatingVoiceHoldOverlay(private val context: Context, private va
                 -10f, cancel, if (cancel) colors.danger else colors.surface,
                 if (cancel) colors.contrast else colors.text, local("取消", "Cancel"))
             actionButton(sendButton,
-                10f, !cancel, colors.primary, colors.contrast, local("发送", "Send"))
+                10f, !cancel, colors.primary, colors.contrast, if (held) local("松手完成", "Release to finish") else if (preview) local("立即发送", "Send now") else local("正在转写", "Transcribing"))
             val bubbleWidth = width * .84f
             val content = runtime.floatingTranscript
             textPaint.color = colors.contrast; textPaint.textSize = dp(17f)
@@ -145,8 +172,8 @@ internal class FloatingVoiceHoldOverlay(private val context: Context, private va
                     canvas.drawRoundRect(waveformBar, dp(2f), dp(2f), paint)
                 }
             }
-            text(if (runtime.voiceState.phase == VoicePhase.Listening) local("可以直接说话", "Speak now") else local("正在开启录音…", "Starting microphone…"), width / 2f, bubble.top - dp(22f), 16f, colors.contrast)
-            text(if (cancel) local("松手取消", "Release to cancel") else local("松手发送 · 滑到取消区取消", "Release to send · Slide to Cancel"), width / 2f, bubble.bottom + dp(36f), 15f, colors.contrast)
+            text(if (preview) local("即将发送", "Sending shortly") else if (!held) local("正在整理识别文字…", "Finishing transcription…") else if (runtime.voiceState.phase == VoicePhase.Listening) local("可以直接说话", "Speak now") else local("正在开启录音…", "Starting microphone…"), width / 2f, bubble.top - dp(22f), 16f, colors.contrast)
+            text(if (!held) local("请核对上方文字 · 可立即发送或取消", "Check the text above · Send now or cancel") else if (cancel) local("松手取消", "Release to cancel") else local("松手后文字保留 · 滑到取消区取消", "Text stays after release · Slide to cancel"), width / 2f, bubble.bottom + dp(36f), 15f, colors.contrast)
             afterDraw?.let { action -> afterDraw = null; post { action() } }
 
         }

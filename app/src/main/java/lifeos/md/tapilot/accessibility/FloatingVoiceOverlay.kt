@@ -32,6 +32,8 @@ internal class FloatingVoiceOverlay(private val context: Context, private val wi
     private var title: TextView? = null
     private var detail: TextView? = null
     private var action: TextView? = null
+    private var editAction: TextView? = null
+    private var endAction: TextView? = null
     private var playbackToggle: ImageButton? = null
     private var transcript: TextView? = null
     private var transcriptArea: ScrollView? = null
@@ -44,7 +46,9 @@ internal class FloatingVoiceOverlay(private val context: Context, private val wi
         val voice = runtime.voiceState
         val confirmation = runtime.state.confirmation
         val error = runtime.floatingVoiceError.ifBlank { voice.error }
-        val processing = !voice.previewingTranscript && error.isBlank() && confirmation == null &&
+        val reviewing = confirmation == null && error.isBlank() &&
+            (voice.previewingTranscript || (voice.phase == VoicePhase.Paused && voice.transcriptPending))
+        val processing = !reviewing && error.isBlank() && confirmation == null &&
             (runtime.state.running || voice.phase in listOf(VoicePhase.Recognizing, VoicePhase.Thinking))
         if (processing && !wasProcessing) expandedProcessing = false
         wasProcessing = processing
@@ -58,10 +62,16 @@ internal class FloatingVoiceOverlay(private val context: Context, private val wi
             return
         }
         processingIndicator.hide()
+        // Expiring an empty follow-up microphone must not cover the task result
+        // with a new pause panel. The floating ball still opens the conversation.
+        if (voice.followUpListeningExpired && error.isBlank() && confirmation == null) {
+            hidePanel()
+            return
+        }
         if (panel == null) show(runtime)
         panel?.visibility = View.VISIBLE
         title?.text = when {
-            voice.previewingTranscript -> local("即将发送", "Sending shortly")
+            reviewing -> local("核对文字", "Review transcript")
             error.isNotBlank() -> local("语音暂不可用", "Voice unavailable")
             confirmation != null -> local("等待你的确认", "Waiting for confirmation")
             voice.noSpeechRecognized -> local("回答尚未提交", "Reply not sent")
@@ -78,14 +88,16 @@ internal class FloatingVoiceOverlay(private val context: Context, private val wi
         transcriptArea?.visibility = if (runtime.floatingTranscript.isBlank()) View.GONE else View.VISIBLE
         transcript?.text = local("你：%s", "You: %s").format(runtime.floatingTranscript)
         detail?.text = when {
-            voice.previewingTranscript -> local("1 秒后自动发送", "Sends automatically in 1 second")
+            voice.previewingTranscript -> local("即将发送 · 点修改可编辑文字", "Sending shortly · Tap Edit to change the text")
+            reviewing && voice.editingTranscript -> local("自动发送已停止，请在对话中修改文字", "Auto-send stopped. Edit the text in the conversation")
             error.isNotBlank() -> error
             confirmation != null -> confirmation
             voice.noSpeechRecognized -> local("未识别到语音，点击继续收听后再说一次", "No speech recognized. Tap Resume listening and try again.")
-            voice.phase == VoicePhase.Listening -> if (runtime.floatingHold) local("按住说话，松手发送", "Hold to speak, release to send")
-                else local("停顿后自动发送；3 秒无新文字也会发送", "Sends after a pause, or 3 seconds without new text")
+            voice.phase == VoicePhase.Listening -> if (runtime.floatingHold) local("按住说话，松手后核对文字", "Hold to speak, release to review")
+                else voice.response.takeIf { !runtime.state.running }?.ifBlank { null }
+                    ?: local("停顿后自动发送；3 秒无新文字也会发送", "Sends after a pause, or 3 seconds without new text")
             voice.phase == VoicePhase.Speaking -> voice.response.ifBlank { local("回复会直接播放", "Replies play aloud") }
-            voice.phase == VoicePhase.Paused && voice.transcriptPending -> local("回答尚未发送，点击发送继续处理", "Reply not sent. Tap Send to continue.")
+            voice.phase == VoicePhase.Paused && voice.transcriptPending -> local("文字尚未发送，可以修改或发送", "Not sent yet. Edit or send the text")
             voice.phase == VoicePhase.Paused && voice.listeningTimedOut -> local("已达到 30 秒收听上限，点击继续收听", "30-second listening limit reached. Tap Resume listening.")
             voice.phase == VoicePhase.Paused -> local("点击继续收听，可以回答追问或提出新任务", "Resume listening to answer or start a new task")
             else -> local("留在当前页面就能对话", "Talk without leaving this app")
@@ -99,11 +111,17 @@ internal class FloatingVoiceOverlay(private val context: Context, private val wi
         action?.text = when {
             confirmation != null -> local("确认", "Confirm")
             error.isNotBlank() -> local("重试", "Retry")
+            voice.previewingTranscript -> local("立即发送", "Send now")
+            voice.phase == VoicePhase.Recognizing -> local("正在转写", "Transcribing")
             voice.phase == VoicePhase.Paused -> if (voice.transcriptPending) local("发送", "Send") else local("继续收听", "Resume listening")
             voice.phase == VoicePhase.Listening -> if (voice.transcriptPending) local("发送", "Send") else local("暂停", "Pause")
             voice.phase == VoicePhase.Preparing -> local("暂停", "Pause")
             else -> local("说话", "Speak")
         }
+        action?.isEnabled = voice.phase != VoicePhase.Recognizing || voice.previewingTranscript
+        action?.alpha = if (action?.isEnabled == false) .5f else 1f
+        editAction?.visibility = if (reviewing && confirmation == null && error.isBlank()) View.VISIBLE else View.GONE
+        endAction?.text = if (reviewing) local("取消", "Cancel") else local("结束", "End")
     }
 
     private fun show(runtime: AssistantRuntime) {
@@ -164,8 +182,15 @@ internal class FloatingVoiceOverlay(private val context: Context, private val wi
             }
         }
         controls.addView(playbackToggle)
+        editAction = button(local("修改", "Edit")) {
+            runtime.beginVoiceTranscriptEdit()
+            context.startActivity(android.content.Intent(context, lifeos.md.tapilot.MainActivity::class.java)
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP))
+        }
+        controls.addView(editAction)
         controls.addView(action)
-        controls.addView(button(local("结束", "End")) { runtime.endVoice(); hide() })
+        endAction = button(local("结束", "End")) { runtime.endVoice(); hide() }
+        controls.addView(endAction)
         container.addView(controls)
         val params = WindowManager.LayoutParams(
             (windows.currentWindowMetrics.bounds.width() - dp(32)).coerceAtMost(dp(360)),
@@ -189,6 +214,6 @@ internal class FloatingVoiceOverlay(private val context: Context, private val wi
 
     private fun hidePanel() {
         panel?.let { runCatching { windows.removeView(it) } }
-        panel = null; title = null; detail = null; action = null; playbackToggle = null; transcript = null; transcriptArea = null
+        panel = null; title = null; detail = null; action = null; editAction = null; endAction = null; playbackToggle = null; transcript = null; transcriptArea = null
     }
 }

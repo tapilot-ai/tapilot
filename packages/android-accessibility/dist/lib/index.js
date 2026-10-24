@@ -70,7 +70,7 @@ var __webpack_exports__ = {};
         y: core_namespaceObject.z.number().finite().nonnegative()
     });
     const extended_actions_duration = core_namespaceObject.z.number().int().min(1).max(10000).default(600);
-    const gesture = core_namespaceObject.z.object({
+    const extended_actions_gesture = core_namespaceObject.z.object({
         fingers: core_namespaceObject.z.array(core_namespaceObject.z.array(extended_actions_point).min(2).max(128)).min(1).max(10),
         duration: extended_actions_duration,
         holdMs: core_namespaceObject.z.number().int().min(0).max(5000).default(0),
@@ -136,10 +136,10 @@ var __webpack_exports__ = {};
             (0, device_namespaceObject.defineAction)({
                 name: 'MultiTouchGesture',
                 description: 'Continuous screen-coordinate paths, one path per finger, all simultaneous. holdMs keeps contact at the start before movement; duration controls movement time; endHoldMs keeps contact at the endpoint before release. Contact stays down through all three phases. Separate actions release contact between calls. Do not simulate a pause with repeated path points; they have no timing. For curved/multi-segment drags add intermediate points. Coordinates must stay on screen. Inspect result afterwards.',
-                paramSchema: gesture,
+                paramSchema: extended_actions_gesture,
                 call: async (param)=>execute({
                         type: 'gesture',
-                        ...gesture.parse(param)
+                        ...extended_actions_gesture.parse(param)
                     })
             }),
             (0, device_namespaceObject.defineAction)({
@@ -387,17 +387,22 @@ var __webpack_exports__ = {};
             return this.latestFrame ? this.bridge.execute(action, this.latestFrame.frameId) : this.bridge.execute(action);
         }
         guardRepeatedGesture(action) {
-            if ('swipe' !== action.type) this.recentSwipes = [];
+            if ('swipe' !== action.type && 'gesture' !== action.type) this.recentGestures = [];
             else {
+                if (this.recentGestures.at(-1)?.action.type !== action.type) this.recentGestures = [];
                 const sequence = [
-                    ...this.recentSwipes,
+                    ...this.recentGestures,
                     {
                         action,
                         pixels: this.latestPixels
                     }
                 ];
-                if (7 === sequence.length && sequence.slice(2).every((item, index)=>isSameGestureTarget(item.action, sequence[index].action) && sameScreen(item.pixels, sequence[index].pixels))) throw new Error('Stopped an alternating Android swipe loop. Repeated back-and-forth navigation is not progress; inspect the current page and choose a different route.');
-                this.recentSwipes = sequence.slice(-6);
+                const windowSize = 'gesture' === action.type ? 5 : 7;
+                if (sequence.length === windowSize && sequence.slice(2).every((item, index)=>isSameGestureTarget(item.action, sequence[index].action) && sameScreen(item.pixels, sequence[index].pixels))) {
+                    const gesture = 'swipe' === action.type ? 'swipe' : 'drag';
+                    throw new Error(`Stopped an alternating Android ${gesture} loop. Returning to the same two observed states is not progress; inspect the active view before changing anything else. Use navigation or read-only observation to resolve ambiguity, not another reversed gesture.`);
+                }
+                this.recentGestures = sequence.slice(1 - windowSize);
             }
             if (!isRepeatableGesture(action)) {
                 this.repeatedGesture = void 0;
@@ -460,12 +465,12 @@ var __webpack_exports__ = {};
             _define_property(this, "repeatedGestureCount", void 0);
             _define_property(this, "latestPixels", void 0);
             _define_property(this, "gesturePixels", void 0);
-            _define_property(this, "recentSwipes", void 0);
+            _define_property(this, "recentGestures", void 0);
             this.bridge = bridge;
             this.capabilities = capabilities;
             this.interfaceType = 'android-accessibility';
             this.repeatedGestureCount = 0;
-            this.recentSwipes = [];
+            this.recentGestures = [];
             this.inputPrimitives = {
                 pointer: {
                     tap: (point, options)=>this.execute({

@@ -60,7 +60,7 @@ class VoiceConversationTest {
         s.time += 200; s.session.tick(autoSend = false); assertNull(s.mic.finished)
         s.session.tick(); assertNotNull(s.mic.finished)
     }
-    @Test fun releasedHoldShowsFinalTextForOneSecondBeforeSending() {
+    @Test fun releasedHoldKeepsFinalTextVisibleForOneAndAHalfSecondsBeforeSending() {
         val s = Setup(); s.start()
         s.session.finishUtterance(previewBeforeSend = true)
         s.time += 2500 // Recognition latency does not consume the preview interval.
@@ -68,16 +68,90 @@ class VoiceConversationTest {
         assertEquals("最终文字", s.session.state.transcript)
         assertTrue(s.session.state.previewingTranscript)
         assertTrue(s.questions.isEmpty())
-        s.time += 999; s.session.tick(); assertTrue(s.questions.isEmpty())
+        s.session.tick()
+        s.time += 1000; s.session.tick()
+        s.time += 499; s.session.tick(); assertTrue(s.questions.isEmpty())
         s.time++; s.session.tick()
         assertEquals(listOf("最终文字"), s.questions)
         assertFalse(s.session.state.previewingTranscript)
         s.session.tick(); assertEquals(1, s.questions.size)
     }
+    @Test fun allTranscriptLengthsUseTheSameOneAndAHalfSecondDelay() {
+        for (text in listOf("文".repeat(72), "word ".repeat(100), "😀".repeat(24))) {
+            val s = Setup(); s.start(); s.session.finishUtterance(previewBeforeSend = true)
+            s.mic.finished!!(Result.success(text))
+            s.session.tick(); s.time += 1499; s.session.tick()
+            assertTrue(s.questions.isEmpty())
+            s.time++; s.session.tick(); assertEquals(listOf(text.trim()), s.questions)
+        }
+    }
+    @Test fun hiddenCaptureTimeDoesNotConsumeTranscriptReviewTime() {
+        val s = Setup(); s.start(); s.session.finishUtterance(previewBeforeSend = true)
+        s.mic.finished!!(Result.success("核对文字"))
+        s.time += 10_000; s.session.tick(previewVisible = false)
+        s.session.tick(); s.time += 1000; s.session.tick()
+        s.session.tick(previewVisible = false); s.time += 10_000; s.session.tick(previewVisible = false)
+        s.session.tick(); s.time += 499; s.session.tick()
+        assertTrue(s.questions.isEmpty())
+        s.time++; s.session.tick(); assertEquals(listOf("核对文字"), s.questions)
+    }
+    @Test fun sendNowCancelsPreviewAndDoesNotDispatchTwice() {
+        val s = Setup(); s.start(); s.session.finishUtterance(previewBeforeSend = true)
+        s.mic.finished!!(Result.success("现在发送"))
+        s.session.sendPendingTranscript(); s.session.sendPendingTranscript()
+        s.time += 20_000; s.session.tick()
+        assertEquals(listOf("现在发送"), s.questions)
+        assertEquals(listOf("收到。"), s.player.spoken)
+        assertFalse(s.session.state.previewingTranscript)
+    }
+    @Test fun editingStopsAutoSendAndSendsOnlyTheRevisedText() {
+        val s = Setup(); s.start(); s.session.finishUtterance(previewBeforeSend = true)
+        s.mic.finished!!(Result.success("识别错的文字"))
+        s.session.tick(); s.time += 1400; s.session.tick()
+        s.session.beginTranscriptEdit()
+        assertTrue(s.session.state.editingTranscript)
+        assertFalse(s.session.state.previewingTranscript)
+        assertEquals(VoicePhase.Paused, s.session.state.phase)
+        s.session.editTranscript("修正后的指令")
+        s.time += 60_000; s.session.tick()
+        assertTrue(s.questions.isEmpty())
+        assertEquals(1, s.mic.starts)
+        s.session.sendPendingTranscript(); s.session.sendPendingTranscript()
+        assertEquals(listOf("修正后的指令"), s.questions)
+        assertFalse(s.session.state.editingTranscript)
+    }
+    @Test fun emptyEditedTextCannotSendAndCanStillBeCorrected() {
+        val s = Setup(); s.start(); s.session.finishUtterance(previewBeforeSend = true)
+        s.mic.finished!!(Result.success("原文")); s.session.beginTranscriptEdit()
+        s.session.editTranscript(""); s.session.sendPendingTranscript()
+        s.time += 60_000; s.session.tick(); assertTrue(s.questions.isEmpty())
+        s.session.editTranscript("新文字"); s.session.sendPendingTranscript()
+        assertEquals(listOf("新文字"), s.questions)
+    }
+    @Test fun lateAsrCannotOverwriteTheFinalPreviewOrEditedText() {
+        val s = Setup(); s.start(); val lateTranscript = s.mic.transcript
+        s.session.finishUtterance(previewBeforeSend = true)
+        s.mic.finished!!(Result.success("最终文字")); lateTranscript("迟到的中间结果")
+        assertEquals("最终文字", s.session.state.transcript)
+        s.session.beginTranscriptEdit(); s.session.editTranscript("修改后文字")
+        lateTranscript("迟到的中间结果")
+        assertEquals("修改后文字", s.session.state.transcript)
+        s.session.sendPendingTranscript(); assertEquals(listOf("修改后文字"), s.questions)
+    }
+    @Test fun finalizingRecognitionCannotSubmitTheEarlierPartialTranscript() {
+        val s = Setup(); s.start(); s.mic.transcript("识别中的半句")
+        s.session.finishUtterance(previewBeforeSend = true)
+        s.session.sendPendingTranscript(); s.session.beginTranscriptEdit()
+        assertTrue(s.questions.isEmpty())
+        assertFalse(s.session.state.editingTranscript)
+        s.mic.finished!!(Result.success("完整的最终文字"))
+        s.session.sendPendingTranscript()
+        assertEquals(listOf("完整的最终文字"), s.questions)
+    }
     @Test fun endingDuringReleasedHoldPreviewCancelsScheduledSend() {
         val s = Setup(); s.start(); s.session.finishUtterance(previewBeforeSend = true)
         s.mic.finished!!(Result.success("不要发送"))
-        s.session.stop(); s.time += 2000; s.session.tick()
+        s.session.stop(); s.time += 20_000; s.session.tick()
         assertTrue(s.questions.isEmpty())
         assertFalse(s.session.state.previewingTranscript)
     }
@@ -170,6 +244,7 @@ class VoiceConversationTest {
         s.mic.ready!!(Result.success(Unit)); s.mic.transcript("迟到结果"); s.mic.level(.8f)
         assertEquals(VoicePhase.Paused, s.session.state.phase)
         assertEquals("", s.session.state.transcript)
+        assertFalse(s.session.state.followUpListeningExpired)
         assertTrue(s.questions.isEmpty())
     }
     @Test fun missingAudioCallbacksAreNotSilence() {
@@ -200,6 +275,7 @@ class VoiceConversationTest {
         assertEquals(VoicePhase.Paused, s.session.state.phase)
         assertTrue(s.session.state.listeningTimedOut)
         assertEquals("尚未说完 299", s.session.state.transcript)
+        assertFalse(s.session.state.followUpListeningExpired)
         assertNull(s.mic.finished); assertTrue(s.questions.isEmpty()); assertEquals(1, s.mic.starts)
         s.session.setForeground(false); s.session.setForeground(true)
         assertEquals(1, s.mic.starts)
@@ -294,6 +370,7 @@ class VoiceConversationTest {
         s.time += 30_000; s.session.tick(autoSend = false)
         assertEquals(VoicePhase.Paused, s.session.state.phase)
         assertTrue(s.session.state.transcriptPending)
+        assertFalse(s.session.state.followUpListeningExpired)
         s.session.continueConversation(); s.session.continueConversation()
         late("迟到的识别")
         assertEquals(listOf("按用途分组"), s.questions)
@@ -398,8 +475,32 @@ class VoiceConversationTest {
         s.time += 30_000; s.session.tick()
         assertEquals(VoicePhase.Paused, s.session.state.phase)
         assertTrue(s.session.state.listeningTimedOut)
+        assertTrue(s.session.state.followUpListeningExpired)
+        assertEquals("", s.session.state.transcript)
+        assertEquals("完成", s.session.state.response)
         assertEquals(2, s.mic.starts)
         assertEquals(listOf("任务"), s.questions)
+    }
+
+    @Test fun mutedTaskResultsSurviveIdleTimeoutWithoutReplayingTheSubmittedInstruction() {
+        for (reply in listOf("已打开设置", "暂时无法操作：模型连接失败")) {
+            val s = Setup(); s.session.setPlaybackEnabled(false); s.start()
+            s.session.finishUtterance(previewBeforeSend = true)
+            s.mic.finished!!(Result.success("打开设置"))
+            s.session.tick(); s.time += 5000; s.session.tick()
+            s.session.update(listOf(VoiceReply("result", reply, true)), false, null)
+            assertEquals(VoicePhase.Listening, s.session.state.phase)
+            assertEquals("", s.session.state.transcript)
+            val lateTranscript = s.mic.transcript
+            s.time += 30_000; s.session.tick()
+            lateTranscript("迟到的旧指令")
+            assertTrue(s.session.state.followUpListeningExpired)
+            assertEquals(reply, s.session.state.response)
+            assertEquals("", s.session.state.transcript)
+            assertEquals(listOf("打开设置"), s.questions)
+            assertEquals(2, s.mic.starts)
+            assertTrue(s.player.spoken.isEmpty())
+        }
     }
 
     @Test fun foregroundReturnPreservesUnsentAnswerUntilExplicitContinue() {

@@ -12,7 +12,12 @@ data class InstalledNodeRuntime(
     val homeDirectory: File,
     val temporaryDirectory: File,
     val manifest: NodeRuntimeManifest,
-)
+) {
+    // Termux's OpenSSL CA paths belong to its own app sandbox. Use Node's
+    // bundled Mozilla roots in Tapilot, with normal certificate verification.
+    internal fun command(vararg arguments: String): List<String> =
+        listOf(nodeExecutable.absolutePath, "--use-bundled-ca") + arguments
+}
 
 class NodeRuntimeProvisioner(private val context: Context) {
     private val installDirectory = File(context.filesDir, NODE_RUNTIME_ASSET_DIRECTORY)

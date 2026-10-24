@@ -95,6 +95,49 @@ describe('AndroidAccessibilityDevice', () => {
     await swipe.call({ direction: 'left', y: 600 });
     expect(actions).toHaveLength(8);
   });
+  it('blocks a drag that would repeat the same two visual states even as the targets swap', async () => {
+    const { bridge, actions } = createBridge();
+    const capture = bridge.capture;
+    let revision = 0;
+    bridge.capture = async () => {
+      const frame = await capture();
+      const pixels = Buffer.alloc(64 * 96, 40);
+      pixels.fill(revision % 2 ? 160 : 80, 64 * 24, 64 * 40);
+      pixels.fill(++revision * 20, 0, 64 * 6); // Clock changes must not hide the cycle.
+      const frameId = `frame-${revision}`;
+      return { ...frame, geometry: { ...frame.geometry!, frameId }, fingerprint: {
+        algorithm: 'rgb-luma-64x96-v1', frameId, data: pixels.toString('base64'),
+      } };
+    };
+    const device = new AndroidAccessibilityDevice(bridge);
+    const left = { x: 100, y: 200 }, right = { x: 300, y: 200 };
+    for (let i = 0; i < 4; i++) {
+      await device.screenshotBase64();
+      await device.inputPrimitives.pointer.dragAndDrop!(i % 2 ? right : left, i % 2 ? left : right);
+    }
+    await device.screenshotBase64();
+    expect(() => device.inputPrimitives.pointer.dragAndDrop!(left, right)).toThrow('alternating Android drag loop');
+    expect(actions).toHaveLength(4);
+    await device.inputPrimitives.system!.backButton!();
+    await device.inputPrimitives.pointer.dragAndDrop!(left, right);
+    expect(actions).toHaveLength(6);
+  });
+  it('allows repeated opposite drags when the observed content actually progresses', async () => {
+    const { bridge, actions } = createBridge();
+    const capture = bridge.capture;
+    let revision = 0;
+    bridge.capture = async () => ({ ...(await capture()), fingerprint: {
+      algorithm: 'rgb-luma-64x96-v1', frameId: 'frame-1',
+      data: Buffer.alloc(64 * 96, revision++ * 30).toString('base64'),
+    } });
+    const device = new AndroidAccessibilityDevice(bridge);
+    const left = { x: 100, y: 200 }, right = { x: 300, y: 200 };
+    for (let i = 0; i < 6; i++) {
+      await device.screenshotBase64();
+      await device.inputPrimitives.pointer.dragAndDrop!(i % 2 ? right : left, i % 2 ? left : right);
+    }
+    expect(actions).toHaveLength(6);
+  });
   it('allows consecutive page swipes when each observed page changes', async () => {
     const { bridge, actions } = createBridge();
     const capture = bridge.capture;

@@ -11,7 +11,7 @@ export declare class AndroidAccessibilityDevice implements AbstractInterface {
     private repeatedGestureCount;
     private latestPixels?;
     private gesturePixels?;
-    private recentSwipes;
+    private recentGestures;
     constructor(bridge: NativeBridge, capabilities?: NativeCapabilities | undefined);
     screenshotBase64(): Promise<string>;
     size(): Promise<Size>;

@@ -98,6 +98,14 @@ android {
             .orElse("lifeos.md.tapilot.performance.NativeTaskPerformanceHarness").get()
         if (providers.gradleProperty("speechVerification").isPresent) applicationIdSuffix = ".speechverify"
         else if (providers.gradleProperty("e2eVerification").isPresent) applicationIdSuffix = ".e2everify"
+        val verificationLabel = when {
+            providers.gradleProperty("speechVerification").isPresent -> "Tapilot Speech Test"
+            providers.gradleProperty("e2eVerification").isPresent -> "Tapilot E2E Test"
+            else -> null
+        }
+        manifestPlaceholders["tapilotAppLabel"] = verificationLabel ?: "@string/app_name"
+        manifestPlaceholders["tapilotControlLabel"] = verificationLabel?.let { "$it · Device control" }
+            ?: "@string/accessibility_service_name"
         minSdk = 30
         targetSdk = 35
         // An older local build exercises the available-update UI against the real published feed.

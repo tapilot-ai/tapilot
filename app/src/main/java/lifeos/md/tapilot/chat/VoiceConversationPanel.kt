@@ -2,15 +2,26 @@ package lifeos.md.tapilot.chat
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.animation.core.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.dp
@@ -26,7 +37,9 @@ internal fun VoiceConversationPanel(controller: ChatController, connecting: Bool
     val colors = MaterialTheme.colorScheme
     val zh = controller.state.chinese
     fun label(a: String, b: String) = if (zh) a else b
-    val title = if (voice.previewingTranscript) label("即将发送", "Sending shortly") else when (voice.phase) {
+    val reviewing = controller.state.confirmation == null && voice.error.isBlank() &&
+        (voice.previewingTranscript || (voice.phase == VoicePhase.Paused && voice.transcriptPending))
+    val title = if (reviewing) label("核对文字", "Review transcript") else when (voice.phase) {
         VoicePhase.Preparing -> label("正在连接，请稍候", "Connecting, please wait")
         VoicePhase.Listening -> label("可以说话了", "Ready — go ahead")
         VoicePhase.Recognizing -> label("正在转写", "Transcribing")
@@ -65,32 +78,55 @@ internal fun VoiceConversationPanel(controller: ChatController, connecting: Bool
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         }
         val detail = when {
-            voice.previewingTranscript -> voice.transcript
+            voice.previewingTranscript -> label("即将发送 · 点文字或修改可编辑", "Sending shortly · Tap the text or Edit to change it")
+            reviewing && voice.editingTranscript -> label("已停止自动发送，修改后点击发送", "Auto-send stopped. Edit, then tap Send")
+            reviewing -> label("文字尚未发送，可以修改或发送", "Not sent yet. Edit or send the text")
             voice.error.isNotBlank() -> voice.error
             voice.noSpeechRecognized -> label("未识别到语音，回答尚未提交。请点击继续收听", "No speech recognized. Your reply was not sent. Tap Resume listening")
             voice.phase == VoicePhase.Listening -> voice.transcript.ifBlank {
-                if (controller.floatingHold) label("按住说话，松手发送", "Hold to speak, release to send")
+                if (controller.floatingHold) label("按住说话，松手后核对文字", "Hold to speak, release to review")
                 else label("停顿后自动发送；3 秒无新文字也会发送", "Sends after a pause, or 3 seconds without new text")
             }
             voice.phase == VoicePhase.Speaking -> label("点击说话可打断播报", "Tap Speak to interrupt playback")
+            voice.followUpListeningExpired -> label("30 秒内没有新指令，麦克风已关闭。上一条任务结果见上方", "No new instruction for 30 seconds. Microphone off. See the previous result above")
             voice.phase == VoicePhase.Paused && voice.listeningTimedOut -> label("已达到 30 秒收听上限，麦克风已关闭。点击继续收听", "30-second listening limit reached. Microphone off. Tap Resume listening") + voice.transcript.takeIf { it.isNotBlank() }?.let { "\n$it" }.orEmpty()
             voice.phase == VoicePhase.Paused -> if (controller.state.confirmation != null) label("请先确认手机操作", "Confirm the phone operation first") else label("点击继续收听，可以回答追问或提出新任务", "Resume listening to answer or start a new task") + if (voice.transcriptPending) "\n${voice.transcript}" else ""
             voice.phase == VoicePhase.Preparing -> label("麦克风就绪后会提示可以说话", "Wait for the ready prompt before speaking")
             else -> voice.transcript
         }
-        if (detail.isNotBlank()) Text(detail, color = if (voice.error.isNotBlank()) colors.error else colors.onSurfaceVariant, fontSize = 13.sp, maxLines = 3)
+        if (reviewing) {
+            if (voice.editingTranscript) {
+                val focus = remember { FocusRequester() }
+                val keyboard = LocalSoftwareKeyboardController.current
+                LaunchedEffect(Unit) { focus.requestFocus(); keyboard?.show() }
+                OutlinedTextField(value = voice.transcript, onValueChange = controller::editVoiceTranscript,
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 180.dp).focusRequester(focus), minLines = 2, maxLines = 6,
+                    label = { Text(label("语音文字", "Transcript")) },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardActions = KeyboardActions(onSend = { controller.voicePrimaryAction() }))
+            } else {
+                Text(voice.transcript, fontSize = 16.sp,
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 180.dp).verticalScroll(rememberScrollState())
+                        .clickable(onClickLabel = label("修改文字", "Edit transcript"), onClick = controller::beginVoiceTranscriptEdit)
+                        .padding(8.dp))
+            }
+        }
+        if (detail.isNotBlank()) Text(detail, color = if (voice.error.isNotBlank()) colors.error else colors.onSurfaceVariant, fontSize = 13.sp, maxLines = if (reviewing) 4 else 3)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (reviewing && !voice.editingTranscript) TextButton(onClick = controller::beginVoiceTranscriptEdit) { Text(label("修改", "Edit")) }
             TextButton(onClick = controller::voicePrimaryAction,
-                enabled = !connecting && controller.state.confirmation == null) {
-                Text(when (voice.phase) {
+                enabled = !connecting && controller.state.confirmation == null && (!reviewing || voice.transcript.isNotBlank()) &&
+                    (voice.phase != VoicePhase.Recognizing || voice.previewingTranscript)) {
+                Text(if (voice.previewingTranscript) label("立即发送", "Send now") else when (voice.phase) {
                     VoicePhase.Listening -> if (voice.transcriptPending) label("发送", "Send") else label("暂停", "Pause")
                     VoicePhase.Preparing -> label("暂停", "Pause")
                     VoicePhase.Paused -> if (voice.transcriptPending) label("发送", "Send") else label("继续收听", "Resume listening")
                     VoicePhase.Error -> label("重试", "Retry")
+                    VoicePhase.Recognizing -> label("正在转写", "Transcribing")
                     else -> label("说话", "Speak")
                 })
             }
-            TextButton(onClick = controller::endVoiceConversation, enabled = !connecting) { Text(label("结束", "End"), color = colors.onSurfaceVariant) }
+            TextButton(onClick = controller::endVoiceConversation, enabled = !connecting) { Text(if (reviewing) label("取消", "Cancel") else label("结束", "End"), color = colors.onSurfaceVariant) }
         }
     }
 }

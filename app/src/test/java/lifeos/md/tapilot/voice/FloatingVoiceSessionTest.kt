@@ -4,6 +4,21 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class FloatingVoiceSessionTest {
+    @Test fun heldInputSurfaceSurvivesReleaseUntilSubmissionButNotFollowUpOrRetry() {
+        val session = FloatingVoiceSession()
+        session.begin(true)
+        assertTrue(session.startedWithHold)
+        session.release()
+        assertTrue(session.startedWithHold)
+        session.finishInput()
+        assertFalse(session.startedWithHold)
+        assertTrue(session.active)
+        session.begin(false)
+        assertFalse(session.startedWithHold)
+        session.begin(true)
+        session.end()
+        assertFalse(session.startedWithHold)
+    }
     @Test fun slideOnlySelectsCancellationAndCanBeReversed() {
         val session = FloatingVoiceSession()
         session.begin(true)

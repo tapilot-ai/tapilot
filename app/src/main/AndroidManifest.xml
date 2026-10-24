@@ -28,7 +28,7 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="false"
         android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
+        android:label="${tapilotAppLabel}"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Tapilot"
@@ -84,7 +84,7 @@
             android:name=".accessibility.MidsceneAccessibilityService"
             android:description="@string/accessibility_description"
             android:exported="false"
-            android:label="@string/accessibility_service_name"
+            android:label="${tapilotControlLabel}"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />

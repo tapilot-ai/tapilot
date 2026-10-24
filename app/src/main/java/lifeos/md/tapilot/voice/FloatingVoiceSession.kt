@@ -11,6 +11,7 @@ class FloatingVoiceSession {
     var phase: Phase = Phase.Idle; private set
     var generation = 0; private set
     var contextReady = false; private set
+    var startedWithHold = false; private set
     private var finishWhenReady = false
     val active get() = phase != Phase.Idle
     val held get() = phase is Phase.Held
@@ -19,10 +20,12 @@ class FloatingVoiceSession {
 
     fun begin(held: Boolean): Int {
         generation++
+        startedWithHold = held
         phase = if (held) Phase.Held() else Phase.Released
         contextReady = false; finishWhenReady = false
         return generation
     }
+    fun finishInput() { startedWithHold = false }
     fun isCurrent(token: Int) = active && generation == token
     fun selectCancel(selected: Boolean) { if (held) phase = Phase.Held(selected) }
     fun release(): Boolean {
@@ -41,5 +44,5 @@ class FloatingVoiceSession {
         return true
     }
     fun fail(message: String) { end(); phase = Phase.Failed(message) }
-    fun end() { generation++; phase = Phase.Idle; contextReady = false; finishWhenReady = false }
+    fun end() { generation++; phase = Phase.Idle; contextReady = false; finishWhenReady = false; startedWithHold = false }
 }

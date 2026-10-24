@@ -20,7 +20,11 @@ data class ChatAttachment(val name: String, val kind: String, val preview: Strin
 data class ChatOperation(val instruction: String, val success: Boolean, val result: String)
 
 data class ChatTask(val phase: String, val plan: List<String>, val currentStep: Int,
-    val modelTurns: Int, val phoneOperations: Int, val attempt: Int, val operations: List<ChatOperation>)
+    val modelTurns: Int, val phoneOperations: Int, val attempt: Int, val operations: List<ChatOperation>,
+    val createdAt: Long = 0, val completedAt: Long = 0) {
+    val durationMillis: Long? get() = if (phase != "running" && createdAt > 0 && completedAt >= createdAt)
+        completedAt - createdAt else null
+}
 data class ChatProgress(val title: String, val detail: String, val operation: String, val startedAt: Long, val step: Int, val stopping: Boolean = false)
 
 data class ChatState(

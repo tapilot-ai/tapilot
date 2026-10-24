@@ -41,7 +41,7 @@ class NodeRuntimeProcessSupervisor(
         discardPrepared()
         val arguments = testArguments(request)
         val environment = childEnvironment(runtime, request.environment)
-        val process = processFactory(listOf(runtime.nodeExecutable.absolutePath, runtime.entrypoint.absolutePath,
+        val process = processFactory(runtime.command(runtime.entrypoint.absolutePath,
             "prepare") + arguments.drop(1), request.projectRoot, environment)
         prepared = Prepared(process, arguments, request.projectRoot.canonicalFile, environment, runtime)
     }
@@ -102,7 +102,7 @@ class NodeRuntimeProcessSupervisor(
         environment: Map<String, String>,
         listener: NodeRuntimeListener,
     ): Boolean {
-        val command = listOf(runtime.nodeExecutable.absolutePath, runtime.entrypoint.absolutePath) + arguments
+        val command = runtime.command(runtime.entrypoint.absolutePath) + arguments
         val childEnvironment = childEnvironment(runtime, environment)
         return synchronized(lock) {
             check(activeProcess == null) { "A Node runtime task is already running" }

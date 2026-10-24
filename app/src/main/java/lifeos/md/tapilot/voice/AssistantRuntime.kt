@@ -36,6 +36,9 @@ class AssistantRuntime(context: Context) {
     private val floatingSession = FloatingVoiceSession()
     val floatingEntryGeneration get() = floatingSession.generation
     val floatingHold get() = floatingSession.held
+    val floatingInputVisible get() = floatingHold || (floatingSession.startedWithHold && floatingVoice &&
+        floatingVoiceError.isBlank() && (voiceState.previewingTranscript ||
+        voiceState.phase in listOf(VoicePhase.Preparing, VoicePhase.Listening, VoicePhase.Recognizing)))
     val floatingCancelSelected get() = floatingSession.cancelSelected
     val floatingContextReady get() = floatingSession.contextReady
     val floatingVoice get() = floatingSession.active
@@ -44,7 +47,7 @@ class AssistantRuntime(context: Context) {
     fun beginFloatingRetry() { endVoice(); floatingSession.begin(held = false) }
     fun selectFloatingCancel(selected: Boolean) = floatingSession.selectCancel(selected)
     fun failFloatingEntry(message: String) { endVoice(); floatingSession.fail(message.ifBlank { appText("语音启动失败，请重试", "Unable to start voice input. Try again") }) }
-    var floatingTranscript = ""; private set
+    val floatingTranscript get() = voiceState.transcript
     var voiceEntryPending = false; private set
     private var openingUtterance: String? = null
     private var mutedUntilNextSend = false
@@ -61,10 +64,9 @@ class AssistantRuntime(context: Context) {
         { handler.post(it) }, { id, error -> speakingId = id; outputError = error; refreshService() })
     private val voice: VoiceConversation = VoiceConversation(SpeechTranscriber(context), ApiSpeechPlayback(context) { state.speechProvider },
         SystemClock::elapsedRealtime, { handler.post(it) },
-        { text -> if (voiceEntryPending) openingUtterance = text else sendSpoken(text) },
+        { text -> floatingSession.finishInput(); if (voiceEntryPending) openingUtterance = text else sendSpoken(text) },
         { next ->
             voiceState = next
-            if (next.active && next.transcript.isNotBlank()) floatingTranscript = next.transcript
             refreshService()
             if (next.phase == VoicePhase.Listening && floatingSession.consumeFinish()) {
                 val token = floatingEntryGeneration
@@ -74,7 +76,8 @@ class AssistantRuntime(context: Context) {
     private val clock = object : Runnable {
         override fun run() {
             if (!voiceState.active) return
-            voice.tick(autoSend = !floatingHold); voice.update(voiceReplies(), state.running, state.confirmation)
+            voice.tick(autoSend = !floatingHold, previewVisible = !floatingVoice || floatingInputVisible || floatingContextReady)
+            voice.update(voiceReplies(), state.running, state.confirmation)
             handler.postDelayed(this, 100)
         }
     }
@@ -119,7 +122,6 @@ class AssistantRuntime(context: Context) {
         }
     }
     fun prepareVoiceEntry() {
-        floatingTranscript = ""
         coordinator.globalMode = true
         coordinator.openGlobalConversation()
         voiceEntryPending = true
@@ -154,18 +156,25 @@ class AssistantRuntime(context: Context) {
         if (speakingId.isNotBlank()) replies.stop()
     }
     private fun refreshService() { service?.refresh(voiceState, speakingId.isNotBlank(), state.running && !mutedUntilNextSend && !voiceState.active && !speechMuted && config.autoRead && hasOutputKey()) }
-    fun endVoice() { floatingSession.end(); floatingTranscript = ""; voiceEntryPending = false; openingUtterance = null; startingVoice = false; voiceKey = ""; if (voiceState.active) voice.stop(); handler.removeCallbacks(clock) }
+    fun endVoice() { floatingSession.end(); voiceEntryPending = false; openingUtterance = null; startingVoice = false; voiceKey = ""; if (voiceState.active) voice.stop(); handler.removeCallbacks(clock) }
     fun pauseVoice() = voice.pause()
     fun resumeVoice() = voice.resume()
     fun voicePrimaryAction() {
+        if (voiceState.previewingTranscript || (voiceState.transcriptPending && voiceState.phase == VoicePhase.Paused)) {
+            voice.sendPendingTranscript()
+            return
+        }
         when (voiceState.phase) {
             VoicePhase.Error -> voice.resume()
-            VoicePhase.Paused -> if (voiceState.transcriptPending) voice.continueConversation() else voice.interrupt()
+            VoicePhase.Paused -> voice.interrupt()
+            VoicePhase.Recognizing -> Unit
             VoicePhase.Listening -> if (voiceState.transcriptPending) voice.finishUtterance() else voice.pause()
             VoicePhase.Preparing -> voice.pause()
             else -> voice.interrupt()
         }
     }
+    fun beginVoiceTranscriptEdit() = voice.beginTranscriptEdit()
+    fun editVoiceTranscript(text: String) = voice.editTranscript(text)
     fun interruptVoice() = voice.interrupt()
     fun finishUtterance() = voice.finishUtterance()
     fun completeFloatingContext(token: Int = floatingEntryGeneration) {

@@ -62,8 +62,7 @@ internal class NativePiConversation(context: Context) : ConversationAgent {
         val child = synchronized(lock) {
             check(process == null) { appText("Pi Agent 已在运行", "Pi Agent is already running") }
             if (stopped()) throw TaskFailure("task_stopped")
-            ProcessBuilder(runtime.nodeExecutable.absolutePath,
-                java.io.File(runtime.runtimeDirectory, "pi-runner.mjs").absolutePath)
+            ProcessBuilder(runtime.command(java.io.File(runtime.runtimeDirectory, "pi-runner.mjs").absolutePath))
                 .directory(runtime.runtimeDirectory).redirectErrorStream(true).apply {
                     environment()["LD_LIBRARY_PATH"] = runtime.nodeExecutable.parentFile!!.absolutePath
                     environment()["HOME"] = runtime.homeDirectory.absolutePath

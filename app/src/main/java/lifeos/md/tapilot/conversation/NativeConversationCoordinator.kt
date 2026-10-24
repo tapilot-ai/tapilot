@@ -131,7 +131,8 @@ class NativeConversationCoordinator(
                 ChatMessage("$id-assistant", "assistant", response, status, report?.optString("reportId").orEmpty(), id, task = ChatTask(e.optString("phase"),
                     e.optJSONArray("plan")?.strings().orEmpty(), e.optInt("currentStep"), e.optInt("modelTurns"),
                     e.optInt("phoneOperations"), e.optInt("attempt", 1), e.optJSONArray("completedOperations")?.objects().orEmpty()
-                        .map { ChatOperation(it.optString("instruction"), it.optBoolean("success"), it.optString("result")) })))
+                        .map { ChatOperation(it.optString("instruction"), it.optBoolean("success"), it.optString("result")) },
+                    createdAt = e.optLong("createdAt"), completedAt = e.optLong("completedAt"))))
         }.sortedBy { it.first }.map { it.second }
         // Build each conversation once; repeated capture progress must not scan
         // the entire history for every sidebar entry.
