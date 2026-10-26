@@ -1,14 +1,32 @@
 import { t, setLanguage, localize } from './i18n.mjs';
+import { BrowserApp } from './browser-app.mjs';
 import { App } from '@modelcontextprotocol/ext-apps';
 import { imagePoint } from './geometry.mjs';
 import { PreviewActivity } from './preview-activity.mjs';
-const app = new App({ name: 'Android Use', version: '0.5.12' }, {});
+const app = globalThis.__ANDROID_USE_BROWSER__ ? new BrowserApp() : new App({ name: 'Android Use', version: '0.6.0' }, {});
+const viewerId = crypto.randomUUID();
+const callServerTool = app.callServerTool.bind(app);
+app.callServerTool = request => {
+  const scoped = ['tapilot_preview_frame', 'tapilot_preview_control', 'tapilot_preview'].includes(request.name);
+  return callServerTool(scoped ? {...request, arguments:{...request.arguments, viewer_id:viewerId}} : request);
+};
 const image = document.querySelector('img');
 const status = document.querySelector('[role=status]');
 const resume = document.querySelector('#resume');
 const pause = document.querySelector('#pause');
 const disconnect = document.querySelector('#disconnect');
 const notice = document.querySelector('[role=alert]');
+for (const link of document.querySelectorAll('.installation a')) {
+  link.onclick = async event => {
+    event.preventDefault();
+    try {
+      const result = await app.openLink({url: link.href});
+      if (result?.isError) throw new Error('open failed');
+    } catch {
+      notice.textContent = t('无法打开下载链接，请用手机扫描下载二维码。'); notice.hidden = false;
+    }
+  };
+}
 const recovery = document.querySelector('#recovery');
 const pair = document.querySelector('#pair');
 const pairingLink = document.querySelector('#pairing-link');
@@ -64,6 +82,8 @@ function render(data) {
   resume.hidden = ['live', 'host_reload_required'].includes(state);
   pair.hidden = !pairingQr.hidden || !['setup_required', 'pairing_required', 'unavailable', 'disconnected'].includes(state);
   recovery.hidden = state === 'live';
+  const installation = document.querySelector('#installation');
+  if (installation) installation.hidden = !['setup_required', 'pairing_required', 'unavailable', 'disconnected'].includes(state);
   recovery.textContent = ({
     accessibility_required: t("请在手机系统辅助功能中开启 Tapilot 设备控制；若开关已开启，请关闭再开启。恢复后会自动连接，无需重新配对。"),
     host_reload_required: t("插件已更新或安装文件缺失。重载插件或重新打开客户端后继续，无需重新配对手机。"),
@@ -169,7 +189,7 @@ pair.onclick = async () => {
   ++epoch; clearTimeout(timer); clear();
   busy = true; syncControls(); notice.hidden = true; pairingLink.hidden = true; pairingLink.removeAttribute('href');
   try {
-    const result = await app.callServerTool({ name: 'tapilot_midscene', arguments: { action: 'pair' } });
+    const result = await app.callServerTool({ name: 'tapilot_preview_pair', arguments: { action: 'pair' } });
     if (result.isError || !result.structuredContent?.url) throw new Error('pairing unavailable');
     const url = new URL(result.structuredContent.url);
     if (url.protocol !== 'http:' || !['127.0.0.1', 'localhost'].includes(url.hostname)) throw new Error('invalid pairing window');
@@ -192,7 +212,7 @@ pair.onclick = async () => {
 };
 async function refreshPairing() {
   if (Date.now() >= pairingExpiresAt) { clearPairingQr(); return; }
-  const result = await app.callServerTool({name:'tapilot_midscene', arguments:{action:'pair_status'}});
+  const result = await app.callServerTool({name:'tapilot_preview_pair', arguments:{action:'pair_status'}});
   if (result.isError) { clearPairingQr(); notice.textContent = t("配对已过期或无法继续，请重新生成二维码。"); notice.hidden = false; return; }
   const data = result.structuredContent;
   if (data?.paired) { clearPairingQr(); pairingExpiresAt = 0; notice.hidden = true; return; }
@@ -203,7 +223,7 @@ pairConfirm.onclick = async () => {
   if (busy) return;
   busy = true; pairConfirm.disabled = true; syncControls(); notice.hidden = true;
   try {
-    const result = await app.callServerTool({name:'tapilot_midscene', arguments:{action:'pair_confirm'}});
+    const result = await app.callServerTool({name:'tapilot_preview_pair', arguments:{action:'pair_confirm'}});
     if (result.isError) throw Error('pairing failed');
     clearPairingQr(); pairingExpiresAt = 0;
   } catch { notice.textContent = t("无法完成配对，请保持手机解锁、确认 Wi-Fi 后重新扫码。"); notice.hidden = false; }

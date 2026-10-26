@@ -1,3 +1,4 @@
+import { installationHtml } from './installation-html.mjs';
 import { t } from '../ui/i18n.mjs';
 import { createServer } from 'node:http';
 import { createServer as createSecureServer } from 'node:https';
@@ -71,7 +72,7 @@ export async function createPairingWindow({ host = pairingAddress(), pair = pair
   try { await new Promise((resolve,reject)=>{receiver.once('error',reject);receiver.listen(0,'0.0.0.0',resolve);}); } catch(error) {server.close();throw error;}
   const port=server.address().port;
   const payload='tapilot://computer/'+Buffer.from(JSON.stringify({version:1,url:`https://${host}:${receiver.address().port}/offer/${nonce}`,fingerprint,expiresAt})).toString('base64url');
-  html=await readFile(new URL('../ui/pairing.html',import.meta.url),'utf8');
+  html=(await readFile(new URL('../ui/pairing.html',import.meta.url),'utf8')).replace('<!--INSTALLATION-->', await installationHtml());
   qr=await QRCode.toString(payload,{type:'svg',errorCorrectionLevel:'M',margin:4});
   server.requestTimeout=10000;server.headersTimeout=10000;receiver.requestTimeout=10000;receiver.headersTimeout=10000;
   const close=()=>{clearTimeout(timer);pending=undefined;server.closeAllConnections();server.close();receiver.closeAllConnections();receiver.close();};

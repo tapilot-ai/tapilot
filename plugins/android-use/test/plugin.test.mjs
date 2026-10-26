@@ -14,6 +14,8 @@ import { PhoneConnection } from '../server/transport.mjs';
 import { parsePairingLink, saveConfig } from '../server/config.mjs';
 import { callTool } from '../server/tools.mjs';
 
+import { runtimeRequest } from '../server/runtime-client.mjs';
+
 const token = 'a'.repeat(43);
 async function fixture(t, handler) {
   const dir = await mkdtemp(join(tmpdir(), 'tapilot-mcp-test-'));
@@ -39,7 +41,12 @@ async function fixture(t, handler) {
   });
   server.on('tlsClientError', () => {});
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  t.after(async () => { for (const socket of connections) socket.destroy(); await new Promise(resolve => server.close(resolve)); await rm(dir, { recursive: true, force: true }); });
+  const previousState=process.env.ANDROID_USE_STATE_DIR, previousConfig=process.env.TAPILOT_CONFIG;
+  process.env.ANDROID_USE_STATE_DIR=join(dir,'state'); process.env.TAPILOT_CONFIG=join(dir,'config.json');
+  t.after(async () => { await runtimeRequest('/stop',{}, {start:false});
+    if(previousState===undefined) delete process.env.ANDROID_USE_STATE_DIR; else process.env.ANDROID_USE_STATE_DIR=previousState;
+    if(previousConfig===undefined) delete process.env.TAPILOT_CONFIG; else process.env.TAPILOT_CONFIG=previousConfig;
+    for (const socket of connections) socket.destroy(); await new Promise(resolve => server.close(resolve)); await rm(dir, { recursive: true, force: true }); });
   return { dir, requests, config: { version: 1, host: '127.0.0.1', port: server.address().port, fingerprint: createHash('sha256').update(der).digest('hex'), token } };
 }
 
@@ -86,7 +93,12 @@ test('real MCP stdio handshake, image content, schema and disconnect', async t =
   const client = new Client({ name: 'acceptance', version: '1' });
   t.after(() => client.close());
   await client.connect(transport);
-  assert.equal((await client.listTools()).tools.length, 14);
+  const listed=(await client.listTools()).tools;
+  assert.equal(listed.length, 7);
+  assert.deepEqual(listed.filter(t=>!t._meta?.ui?.visibility).map(t=>t.name),['tapilot_preview_open']);
+  assert.equal((await client.callTool({name:'tapilot_midscene',arguments:{action:'home'}})).isError,true);
+  assert.equal((await client.callTool({name:'tapilot_preview_pair',arguments:{action:'home'}})).isError,true);
+  withRuntime(client);
   const settings = await client.callTool({name:'tapilot_midscene',arguments:{action:'settings'}});
   assert.equal(JSON.parse(settings.content[0].text).mode,'steps');
   assert.equal(requests.length,0, 'Settings must not connect to the phone');
@@ -118,7 +130,7 @@ test('real MCP stdio handshake, image content, schema and disconnect', async t =
   const released = await client.callTool({ name: 'tapilot_preview_frame', arguments: {} });
   assert.equal(released.structuredContent.state, 'disconnected');
   assert.equal(requests.length, requestCount, 'Polling must not undo explicit release');
-  assert.deepEqual(requests.map(r => r.method), ['authenticate', 'device.preview', 'authenticate', 'device.capture', 'device.preview', 'device.capture', 'device.execute', 'device.preview', 'disconnect']);
+  assert.deepEqual(requests.map(r => r.method), ['authenticate', 'device.preview', 'device.capture', 'device.preview', 'device.capture', 'device.execute', 'device.preview', 'disconnect']);
 });
 
 test('pairing links validate endpoint and credentials without echoing secrets', () => {
@@ -161,28 +173,22 @@ test('unlock interaction waits for actual acceptance and never repeats mutations
   assert.equal(JSON.parse(fallback.content[0].text).code, 'phone_locked'); assert.equal(repeated, 1);
 });
 
-test('real MCP lock elicits once then returns fresh screen after user completion', async t => {
-  let locked = true, prompts = 0;
-  const { dir, config, requests } = await fixture(t, (request, reply, socket) => {
-    if (locked) socket.write(JSON.stringify({ id: request.id, ok: false, error: 'Phone is locked. Unlock it on the device.' }) + '\n');
-    else reply({ dataUrl: 'data:image/png;base64,YQ==', geometry: { frameId: 'unlocked' } });
+test('locked CLI screenshot waits for explicit resume, without replay', async t => {
+  let locked=true;
+  const png='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
+  const {dir,config,requests}=await fixture(t,(request,reply,socket)=>{
+    if(locked) socket.write(JSON.stringify({id:request.id,ok:false,error:'Phone is locked. Unlock it on the device.'})+'\n');
+    else reply({dataUrl:`data:image/png;base64,${png}`,geometry:{frameId:'unlocked'}});
   });
-  const path = join(dir, 'config.json'); await saveConfig(config, path);
-  const client = new Client({ name: 'unlock-test', version: '1' }, { capabilities: { elicitation: { form: {} } } });
-  client.setRequestHandler(ElicitRequestSchema, async request => {
-    prompts++; assert.match(request.params.message, /Unlock your phone/);
-    const paused = await client.callTool({ name: 'tapilot_preview_frame', arguments: {} });
-    assert.equal(paused.structuredContent.state, 'device_locked');
-    assert.equal(paused.structuredContent.dataUrl, undefined);
-    locked = false;
-    return { action: 'accept', content: { completion: 'Continue' } };
-  });
-  t.after(() => client.close());
-  await client.connect(new StdioClientTransport({ command: process.execPath, args: [new URL('../server/index.mjs', import.meta.url).pathname], env: { ...process.env, TAPILOT_CONFIG: path, ANDROID_USE_STATE_DIR: join(dir,'state') }, stderr: 'pipe' }));
-  const result = await client.callTool({ name: 'tapilot_screen', arguments: {} });
-  assert.equal(result.isError, undefined); assert.equal(prompts, 1);
-  assert.equal(JSON.parse(result.content[0].text).frameId, 'unlocked');
-  assert.equal(requests.filter(r => r.method === 'device.capture').length, 2);
+  await saveConfig(config,join(dir,'config.json'));
+  const call=params=>runtimeRequest('/call',params);
+  assert.equal((await call({name:'tapilot_screen',arguments:{}})).structuredContent.state,'device_locked');
+  locked=false;
+  await call({name:'tapilot_preview',arguments:{action:'resume'}});
+  const result=await call({name:'tapilot_screen',arguments:{}});
+  assert.equal(result.isError,undefined);
+  assert.equal(JSON.parse(result.content[0].text).frameId,'unlocked');
+  assert.equal(requests.filter(r=>r.method==='device.execute').length,0);
 });
 
 
@@ -209,6 +215,7 @@ test('MCP pause interrupts Midscene while a phone action is pending; live frames
   const client=new Client({name:'midscene-pause-test',version:'1'});
   t.after(()=>client.close());
   await client.connect(new StdioClientTransport({command:process.execPath,args:[new URL('../server/index.mjs',import.meta.url).pathname],env:{...process.env,TAPILOT_CONFIG:path,ANDROID_USE_STATE_DIR:join(dir,'state')},stderr:'pipe'}));
+  withRuntime(client);
   await client.callTool({name:'tapilot_status',arguments:{}});
   const action=client.callTool({name:'tapilot_midscene',arguments:{action:'home'}});
   await started;
@@ -252,7 +259,7 @@ test('pause during unlock observation discards its late screen', async () => {
 test('existing panel automatically recovers after first pairing and external credential replacement', async t => {
   const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
   const {dir,config,requests} = await fixture(t, (request,reply) => reply({dataUrl:`data:image/png;base64,${png}`,capturedAt:Date.now(),language:'zh'}));
-  const path=join(dir,'new-pair.json');
+  const path=join(dir,'config.json');
   const client=new Client({name:'pair-recovery',version:'1'});
   t.after(()=>client.close());
   await client.connect(new StdioClientTransport({command:process.execPath,args:[new URL('../server/index.mjs',import.meta.url).pathname],env:{...process.env,TAPILOT_CONFIG:path,ANDROID_USE_STATE_DIR:join(dir,'state')},stderr:'pipe'}));
@@ -280,4 +287,55 @@ test('pairing invalidates old frames without bypassing a locked phone', () => {
 
 test('accessibility service failures have a distinct recovery state', () => {
   assert.equal(connectionState(new Error('Enable Tapilot device control in Accessibility settings')), 'accessibility_required');
+});
+
+function withRuntime(client) {
+ const original=client.callTool.bind(client);
+ client.callTool=(request,...args)=>['tapilot_midscene','tapilot_screen','tapilot_status','tapilot_tap'].includes(request.name)
+   ? runtimeRequest('/call',request) : original(request,...args);
+}
+
+test('CLI processes share frames with the MCP panel, generate reports, and reject stale mutations', async t => {
+  const {execFile}=await import('node:child_process');
+  const {promisify}=await import('node:util');
+  const exec=promisify(execFile);
+  const sharp=(await import('sharp')).default;
+  const png=(await sharp({create:{width:16,height:16,channels:3,background:'#ffaa00'}}).png().toBuffer()).toString('base64');
+  let frame=0;
+  const {dir,config,requests}=await fixture(t,(request,reply)=>{
+    if(request.method==='device.capture') reply({dataUrl:`data:image/png;base64,${png}`,geometry:{frameId:`f${++frame}`,imageWidth:16,imageHeight:16,logicalWidth:16,logicalHeight:16}});
+    else if(request.method==='device.preview') reply({dataUrl:`data:image/png;base64,${png}`,capturedAt:Date.now()});
+    else reply({canCapture:true});
+  });
+  await saveConfig(config,join(dir,'config.json'));
+  const cli=async (...args)=>{
+    try { const {stdout}=await exec(process.execPath,[new URL('../server/cli.mjs',import.meta.url).pathname,...args],{env:{...process.env}}); return JSON.parse(stdout); }
+    catch(error) { if(error.stdout) return JSON.parse(error.stdout); throw error; }
+  };
+  await Promise.all([cli('status'),cli('status'),cli('status')]);
+  const image=await cli('screenshot');
+  assert.ok(!image.isError,JSON.stringify(image));
+  assert.ok(image.images[0].path); assert.equal((await stat(image.images[0].path)).mode&0o777,0o600);
+  const {url}=await cli('preview'); const previewURL=new URL(url);
+  const headers={Authorization:`Bearer ${previewURL.hash.slice(1)}`,'Content-Type':'application/json',Origin:previewURL.origin};
+  const panel=async request=>(await fetch(`${previewURL.origin}/panel`,{method:'POST',headers,body:JSON.stringify(request)})).json();
+  assert.equal((await panel({name:'tapilot_preview_frame',arguments:{}})).structuredContent.state,'live');
+  await panel({name:'tapilot_preview',arguments:{action:'suspend'}});
+  const args=['--x','0','--y','0','--frame-id',image.geometry.frameId,'--report-id',image.report_id];
+  const tapped=await cli('tap',...args);
+  assert.ok(!tapped.isError,JSON.stringify(tapped));
+  assert.equal(requests.filter(r=>r.method==='authenticate').length,1,'one shared connection across CLI processes and preview');
+  const stale=await cli('tap',...args); assert.equal(stale.isError,true);
+  assert.equal(requests.filter(r=>r.method==='device.execute').length,1,'stale action is not sent');
+  await panel({name:'tapilot_preview',arguments:{action:'pause'}});
+  assert.equal((await cli('home')).isError,true);
+  const report=await cli('resume'); assert.ok(!report.isError);
+  const verdict=await cli('record','--text','fixture verified','--passed','true','--report-id',image.report_id);
+  assert.ok(verdict.report_link); assert.ok((await readFile(verdict.report,'utf8')).includes('fixture verified'));
+  assert.equal((await fetch(`${previewURL.origin}/panel`,{method:'POST',body:'{}'})).status,401);
+  assert.equal((await fetch(`${previewURL.origin}/call`,{method:'POST',headers,body:'{}'})).status,403);
+  assert.equal((await fetch(`${previewURL.origin}/panel`,{method:'POST',headers:{...headers,Origin:'https://example.com'},body:'{}'})).status,403);
+  assert.match((await panel({name:'tapilot_midscene',arguments:{action:'home'}})).error,/Unsupported/);
+  const html=await (await fetch(previewURL.origin)).text(); assert.match(html,/__ANDROID_USE_BROWSER__=true/);
+  assert.ok(!html.includes(previewURL.hash.slice(1)),'HTML does not embed the browser capability');
 });

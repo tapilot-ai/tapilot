@@ -2,7 +2,7 @@ import { AjvJsonSchemaValidator } from '@modelcontextprotocol/sdk/validation/ajv
 import { callTool } from './tools.mjs';
 
 const coordinate = { type: 'number', minimum: 0 };
-const base = { frame_id: { type: 'string', minLength: 1 } };
+const base = { frame_id: { type: 'string', minLength: 1 }, viewer_id: {type:'string',pattern:'^[A-Za-z0-9_-]{1,64}$'} };
 const variant = (action, properties = {}, required = Object.keys(properties)) => ({
   type: 'object', properties: { ...base, action: { const: action }, ...properties },
   required: ['frame_id', 'action', ...required], additionalProperties: false,

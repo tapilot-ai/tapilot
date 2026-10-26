@@ -141,7 +141,9 @@ class VoiceConversation(
         }
         val quiet = quietSince ?: return
         val audio = lastAudio ?: return
-        if (autoSend && state.phase == VoicePhase.Listening &&
+        // Noise or playback tail can cross the amplitude threshold without speech.
+        // Keep the current stream open until words arrive or its original deadline expires.
+        if (autoSend && state.phase == VoicePhase.Listening && state.transcriptPending &&
             (voiceFrames >= 4 || (state.transcript.isNotBlank() && peakLevel > maxOf(.08f, noiseFloor + .06f))) &&
             time - audio <= 300 && time - quiet >= 1500) finishUtterance()
     }

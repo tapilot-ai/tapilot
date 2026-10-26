@@ -190,3 +190,23 @@ test('missing plugin modules explain host recovery without exposing local paths'
   assert.equal(response.structuredContent.state,'host_reload_required');
   assert.equal(response.structuredContent.dataUrl,undefined);
 });
+
+test('independent preview windows retain their own frames and consume all frames on mutation', async () => {
+  const phone=device(), preview=new Preview();
+  const a=(await preview.frame(phone,'window-a')).structuredContent;
+  const b=(await preview.frame(phone,'window-b')).structuredContent;
+  await preview.frame(phone,'window-b');
+  await preview.frame(phone,'window-b');
+  await preview.control(phone,{viewer_id:'window-a',frame_id:a.frame_id,action:'home'});
+  assert.equal(phone.calls.filter(c=>c.method==='device.execute').length,1);
+  await assert.rejects(preview.control(phone,{viewer_id:'window-b',frame_id:b.frame_id,action:'home'}),/expired/);
+});
+
+test('suspending one preview window does not discard another window frame', async () => {
+  const phone=device(), preview=new Preview();
+  const a=(await preview.frame(phone,'window-a')).structuredContent;
+  await preview.frame(phone,'window-b');
+  preview.invalidateViewer('window-b');
+  await preview.control(phone,{viewer_id:'window-a',frame_id:a.frame_id,action:'back'});
+  assert.equal(phone.calls.filter(c=>c.method==='device.execute').length,1);
+});

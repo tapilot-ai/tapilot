@@ -1,7 +1,6 @@
 {
-  "name": "@tapilot/android-use",
-  "version": "0.5.12",
-  "private": true,
+  "name": "tapilot",
+  "version": "0.6.0",
   "type": "module",
   "engines": {
     "node": ">=22.19.0"
@@ -12,7 +11,9 @@
     "test": "node --test test/*.test.mjs",
     "build:ui": "node ui/build.mjs",
     "check:ui": "node ui/build.mjs --check",
-    "check": "npm run check:ui && npm test"
+    "check": "npm run check:ui && npm test",
+    "cli": "node server/cli.mjs",
+    "prepack": "npm run build:ui"
   },
   "dependencies": {
     "@midscene/core": "1.15.2-beta-20261012093542.0",
@@ -35,5 +36,27 @@
     "js-yaml": "4.3.2",
     "uuid": "11.1.1"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "bin": {
+    "tapilot": "server/cli.mjs",
+    "android-use": "server/cli.mjs"
+  },
+  "description": "Control Android phones over Wi-Fi from Codex, Claude Code, or any agent. No ADB required.",
+  "files": [
+    "server/",
+    "ui/",
+    "assets/",
+    "skills/",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/quanru/tapilot.git",
+    "directory": "plugins/android-use"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  }
 }

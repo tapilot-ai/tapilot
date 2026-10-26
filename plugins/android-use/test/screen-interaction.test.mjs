@@ -65,7 +65,7 @@ test('unpaired panel provides a local pairing window without phone access', asyn
   assert.equal(f.element('#pair').hidden,false);
   f.client.respond=async()=>({structuredContent:{url:'http://127.0.0.1:1234/pair'}});
   await f.element('#pair').onclick();
-  assert.deepEqual(f.client.calls[0],{name:'tapilot_midscene',arguments:{action:'pair'}});
+  assert.deepEqual(f.client.calls[0],{name:'tapilot_preview_pair',arguments:{action:'pair'}});
   assert.equal(f.element('#pairing-link').href,'http://127.0.0.1:1234/pair');
   f.client.respond=async()=>({structuredContent:{url:'https://example.com/untrusted'}});
   await f.element('#pair').onclick();
@@ -106,7 +106,7 @@ test('focus moving to host chat preserves the screen and the ongoing action', as
 test('pair completion polling resumes automatically without a reconnect click', async()=>{
   const f=await fixture();
   f.client.ontoolresult({structuredContent:{state:'pairing_required'}});
-  f.client.respond=async request=>request.name==='tapilot_midscene'
+  f.client.respond=async request=>request.name==='tapilot_preview_pair'
     ? {structuredContent:{url:'http://127.0.0.1:1234/pair'}} : {structuredContent:live};
   await f.element('#pair').onclick();
   assert.equal(f.timers.at(-1).delay,0);

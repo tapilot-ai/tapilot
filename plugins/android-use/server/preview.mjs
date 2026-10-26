@@ -1,7 +1,7 @@
 import { t } from '../ui/i18n.mjs';
 import { randomUUID } from 'node:crypto';
 import { control, imageSize } from './panel-controls.mjs';
-export const SCREEN_URI = 'ui://android-use/screen-0.5.12.html';
+export const SCREEN_URI = 'ui://android-use/screen-0.6.0.html';
 export const SCREEN_META = { ui: { csp: { connectDomains: [], resourceDomains: [] }, prefersBorder: false }, 'openai/ui': { availableDisplayModes: ['fullscreen'], preferredDisplayMode: 'fullscreen' } };
 export const PANEL_META = { 'openai/widgetSessionId': 'android-use-screen' };
 export const isLocked = error => /^(Unlock the phone first|Phone is locked\. Unlock it on the device\.)$/.test(error.message);
@@ -18,6 +18,7 @@ export class Preview {
   lastFrame;
   recentFrames = [];
   invalidate() { this.lastFrame = undefined; this.recentFrames = []; }
+  invalidateViewer(viewerId = 'default') { this.recentFrames = this.recentFrames.filter(f => f.viewerId !== viewerId); }
   pause(reason = 'manual') { this.reason = reason; this.revision++; this.invalidate(); }
   observe() { if (this.reason === 'disconnected') this.reason = null; }
   reconnect() {
@@ -34,7 +35,7 @@ export class Preview {
     return result({ state: 'live' });
   }
   async control(phone, args) {
-    const frame = this.recentFrames.find(frame => frame.id === args.frame_id);
+    const frame = this.recentFrames.find(frame => frame.id === args.frame_id && frame.viewerId === (args.viewer_id ?? 'default'));
     this.invalidate(); // Every submitted action consumes the visible frame.
     if (this.reason) throw new Error('Screen paused or disconnected. Resume and inspect first.');
     const start = performance.now();
@@ -44,10 +45,10 @@ export class Preview {
     });
     const actionMs = performance.now() - start;
     // One MCP response includes the next actionable frame; no extra host round trip.
-    const next = await this.frame(phone);
+    const next = await this.frame(phone, args.viewer_id);
     return result({...next.structuredContent, action_completed:true, timing:{action_ms:Math.round(actionMs),refresh_ms:Math.round(performance.now()-start-actionMs)}});
   }
-  async frame(phone) {
+  async frame(phone, viewerId = 'default') {
     if (this.reason) return result({ state: this.reason });
     const revision = this.revision;
     try {
@@ -56,10 +57,12 @@ export class Preview {
       if (phone.config && ['en', 'zh'].includes(frame.language)) phone.config.language = frame.language;
       if (revision !== this.revision) return result({ state: this.reason ?? 'disconnected' });
       const size = imageSize(frame.dataUrl);
-      this.lastFrame = { id: randomUUID(), receivedAt: performance.now(), ...size };
-      // A click may race the one outstanding polling request. Accept the
-      // displayed previous frame too; all mutations still consume both tokens.
-      this.recentFrames = [this.lastFrame, ...this.recentFrames].slice(0, 2);
+      this.lastFrame = { id: randomUUID(), viewerId, receivedAt: performance.now(), ...size };
+      // Keep two recent frames per window: other viewers must not evict the
+      // image a user is clicking. Mutations still consume every viewer's frames.
+      const recent = this.recentFrames.filter(f => performance.now() - f.receivedAt <= 10000);
+      const own = recent.filter(f => f.viewerId === viewerId).slice(0, 1);
+      this.recentFrames = [this.lastFrame, ...own, ...recent.filter(f => f.viewerId !== viewerId)].slice(0, 64);
       return result({ state: 'live', ...frame, frame_id: this.lastFrame.id, ...size });
     } catch (error) {
       if (revision !== this.revision) return result({ state: this.reason ?? 'disconnected' });

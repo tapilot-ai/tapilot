@@ -1,7 +1,6 @@
 package lifeos.md.tapilot.wireless
 
 import lifeos.md.tapilot.AppText.text as appText
-import android.net.Network
 import org.json.JSONObject
 import java.net.Inet4Address
 import java.net.InetAddress
@@ -16,7 +15,7 @@ import javax.net.ssl.X509TrustManager
 
 /** The physically scanned QR pins the temporary computer receiver's TLS certificate. */
 internal object ComputerPairing {
-    fun send(qr: String, phoneLink: String, network: Network) {
+    fun send(qr: String, phoneLink: String) {
         require(qr.startsWith("tapilot://computer/") && qr.length <= 4096) { appText("请扫描 Android Use 电脑配对窗口的二维码", "Scan the QR code in the Android Use computer pairing window") }
         val data = JSONObject(String(Base64.getUrlDecoder().decode(qr.removePrefix("tapilot://computer/"))))
         require(data.getInt("version") == 1 && data.getLong("expiresAt") > System.currentTimeMillis()) { appText("配对二维码已过期，请在电脑重新打开配对窗口", "Pairing QR expired. Open a new pairing window on the computer") }
@@ -37,7 +36,9 @@ internal object ComputerPairing {
             }
         }
         val ssl = SSLContext.getInstance("TLS").apply { init(null, arrayOf(trust), SecureRandom()) }
-        val connection = network.openConnection(uri.toURL()) as HttpsURLConnection
+        // Follow the app's default network and VPN routing. Binding this request to
+        // physical Wi-Fi fails with EPERM when the VPN disallows bypassing it.
+        val connection = uri.toURL().openConnection() as HttpsURLConnection
         try {
             connection.sslSocketFactory = ssl.socketFactory
             connection.connectTimeout = 5000; connection.readTimeout = 8000

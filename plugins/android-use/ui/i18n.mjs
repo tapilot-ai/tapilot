@@ -1,4 +1,13 @@
 const messages = {
+  "无法打开下载链接，请用手机扫描下载二维码。": "Cannot open the download link. Scan the download QR with your phone.",
+  "手机还没安装 Tapilot？先安装 APK": "Phone does not have Tapilot? Install it first",
+  "1. 用手机相机或浏览器扫描这个下载二维码。": "1. Scan this download QR with your phone camera or browser.",
+  "Tapilot APK 下载二维码": "Tapilot APK download QR",
+  "在 Android 手机上下载并安装 APK，按系统提示允许浏览器安装应用。需要 Android 11 及以上、ARM64。": "Download and install the APK on your Android phone. Allow the browser to install apps when Android asks. Android 11+ / ARM64 required.",
+  "2. 打开 Tapilot 设置，在系统辅助功能中开启设备控制，再开启无线控制。": "2. Open Tapilot settings. Enable Device control in system Accessibility, then enable wireless control.",
+  "3. 回到这里，在 Tapilot 无线控制中选择“扫描电脑二维码配对”，扫描下方配对码，再在电脑确认。": "3. Return here. In Tapilot wireless control, choose Scan computer QR, scan the pairing QR below, then confirm on this computer.",
+  "下载码用于安装，配对码用于连接。请保持手机与电脑的 Wi-Fi 可互通；如果安装期间配对码过期，请重新生成配对码。": "The download QR installs the app; the pairing QR connects it. Keep both devices on reachable Wi-Fi. If pairing expires during installation, generate a new pairing QR.",
+
   "秒后过期": "seconds remaining",
   "手机已扫码，请确认配对": "Phone scanned; confirm pairing",
   "请重载电脑上的 Android Use 插件": "Reload Android Use on your computer",

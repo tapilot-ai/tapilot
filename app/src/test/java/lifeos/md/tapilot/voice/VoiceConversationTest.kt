@@ -287,6 +287,28 @@ class VoiceConversationTest {
         assertEquals(VoicePhase.Paused, s.session.state.phase)
         assertTrue(s.session.state.listeningTimedOut)
     }
+    @Test fun followUpNoiseWithoutWordsKeepsListeningForTheActualAnswer() {
+        val s = Setup(); s.start(); s.ask("记住四十六")
+        s.session.update(listOf(VoiceReply("one", "记住了", true)), false, null)
+        s.player.completed!!(Result.success(Unit)); s.mic.finished = null
+        s.mic.level(.02f)
+        repeat(5) { s.time += 100; s.mic.level(.7f); s.session.tick() }
+        s.quiet()
+        assertEquals(VoicePhase.Listening, s.session.state.phase)
+        assertNull(s.mic.finished)
+        assertEquals(2, s.mic.starts)
+        s.ask("再加四")
+        assertEquals(listOf("记住四十六", "再加四"), s.questions)
+    }
+    @Test fun noiseWithoutWordsStillRespectsOriginalListeningDeadline() {
+        val s = Setup(); s.start(); s.mic.level(.02f)
+        repeat(5) { s.time += 100; s.mic.level(.7f); s.session.tick() }
+        s.quiet(); s.time = 30_001; s.session.tick()
+        assertEquals(VoicePhase.Paused, s.session.state.phase)
+        assertTrue(s.session.state.listeningTimedOut)
+        assertNull(s.mic.finished)
+        assertEquals(1, s.mic.starts)
+    }
     @Test fun emptyRecognitionNeverAutomaticallyReopensPaidStream() {
         for (result in listOf(Result.success(""), Result.failure(Exception("No speech recognized")))) {
             val s = Setup(); s.start(); s.session.finishUtterance(); s.mic.finished!!(result)

@@ -80,7 +80,8 @@ class WirelessControlService : Service() {
         startForeground(NOTIFICATION, notification())
         val connectivity = getSystemService(ConnectivityManager::class.java)
         // VPN capabilities can also include WIFI for their underlying network.
-        // Pairing and the LAN listener must use the physical Wi-Fi interface.
+        // Advertise the physical Wi-Fi address for the LAN listener. Outgoing
+        // pairing requests follow the system's default network, including VPNs.
         wifi = connectivity.allNetworks.firstOrNull {
             connectivity.getNetworkCapabilities(it)?.let { capabilities ->
                 capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
@@ -145,15 +146,18 @@ class WirelessControlService : Service() {
             WirelessState.pairingStage != PairingStage.WAITING) { "Pairing is already in progress" }
         WirelessState.pairingStage = PairingStage.SENDING
         WirelessState.pairingError = ""
-        val prepared = runCatching { pairingLink() to checkNotNull(wifi) { appText("请先连接 Wi-Fi", "Connect to Wi-Fi first") } }
+        val prepared = runCatching {
+            checkNotNull(wifi) { appText("请先连接 Wi-Fi", "Connect to Wi-Fi first") }
+            pairingLink()
+        }
         fun fail(error: Throwable) {
             WirelessState.pairingStage = PairingStage.FAILED
             WirelessState.pairingError = error.message?.takeIf { it.isNotBlank() }
                 ?: label("配对失败，请检查 Wi-Fi 并重新扫码。", "Pairing failed. Check Wi-Fi and scan again.")
         }
-        prepared.onFailure { fail(it) }.onSuccess { (link, network) ->
+        prepared.onFailure { fail(it) }.onSuccess { link ->
             worker.execute {
-                val result = runCatching { ComputerPairing.send(qr, link, network) }
+                val result = runCatching { ComputerPairing.send(qr, link) }
                 handler.post {
                     if (stopping || current !== this || WirelessState.pairingStage == PairingStage.PAIRED) return@post
                     result.fold({

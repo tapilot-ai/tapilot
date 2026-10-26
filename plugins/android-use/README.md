@@ -1,65 +1,108 @@
 # Android Use
 
-Control a paired Android phone from a **local** ChatGPT desktop / Codex session.
-By default ChatGPT decides from screenshots and Midscene records explicit wireless
-actions. Optional AI mode runs Midscene planning with separate ChatGPT authorization.
-Neither mode calls the phone's model provider or needs an API key. The computer still needs internet for
-ChatGPT. No ADB, USB, public server, or tunnel is used by the plugin. The live preview
-runs as a bundled MCP App inside the supporting desktop host.
+The npm package and primary command are `tapilot`; `android-use` remains a compatibility alias.
 
-## Install and pair
+```sh
+npm install -g tapilot
+tapilot setup
+tapilot pair
+tapilot preview --open
+```
 
-Download Tapilot on the Android phone:
-[Feishu APK download](https://www.feishu.cn/file/Ig0KbUKlJoADozxRbOocm5iqnXf) ·
-[GitHub Releases](https://github.com/quanru/tapilot/releases).
-The GitHub repository currently requires access and has no published Release;
-use Feishu when it is unavailable. Only use a build with ChatGPT wireless control.
-The plugin's `tapilot_midscene(action="setup")` returns these links and installation,
-accessibility, Wi-Fi and private pairing guidance without connecting a phone.
+Control a paired Android phone from Codex, Claude Code, or another local agent
+with shell execution and image reading. Agent actions use the **Android Use CLI**;
+the MCP server provides only the embedded screen panel. Without a plugin, use the
+same live screen in a local browser. All surfaces share one runtime and phone
+connection. No ADB, USB, public server, or tunnel is used.
 
-Requires Node.js 22.19+ (Node.js 24 recommended), an Android phone running this Tapilot build, and a Wi-Fi
-network that allows the computer to reach the phone. Corporate/guest networks
-may isolate devices. IPv4 is supported in this first version.
+The default `steps` mode lets the host agent inspect screenshots and decide each
+action; Midscene records the execution report. Optional `ai` mode retains separate
+OpenAI authorization. Installing this skill does not require that authorization.
 
-From the repository root:
+## Install
+
+Requires Node.js 22.19+, an unlocked phone running a Tapilot build with wireless
+control, accessibility enabled, and a Wi-Fi network reachable from the computer.
 
 ```sh
 npm ci --prefix plugins/android-use
+node plugins/android-use/server/cli.mjs --help
+```
+
+For the Codex embedded panel, install the plugin from the repository root:
+
+```sh
 codex plugin marketplace add .
 codex plugin add android-use@android-use-local
 ```
 
-On the phone, grant Tapilot accessibility access, keep it unlocked, then open
-Settings → ChatGPT wireless control → Enable wireless control → Copy pairing link.
-Transfer that link privately to the computer and run:
+For standalone Claude Code or another agent, install/copy the
+[`android-use-cli` skill](skills/android-use-cli/SKILL.md) using that agent's skill
+installation mechanism. Set `ANDROID_USE_ROOT` to the absolute installed
+`plugins/android-use` directory if the skill is copied independently. Its bundled
+launcher works directly without that variable when the whole plugin is installed.
+The runtime is currently distributed from this repository, not a published npm package.
+
+## Pair and operate
+
+Download Tapilot: [Feishu APK](https://www.feishu.cn/file/Ig0KbUKlJoADozxRbOocm5iqnXf)
+· [GitHub Releases](https://github.com/quanru/tapilot/releases).
+Use a build supporting wireless control; `setup` returns the installation guide.
 
 ```sh
-npm run pair --prefix plugins/android-use
+node plugins/android-use/server/cli.mjs setup
+node plugins/android-use/server/cli.mjs pair
+node plugins/android-use/server/cli.mjs pair-status
+node plugins/android-use/server/cli.mjs preview --open
+node plugins/android-use/server/cli.mjs capabilities
+node plugins/android-use/server/cli.mjs screenshot
 ```
 
-Paste the link into the local terminal prompt, **not into ChatGPT**. On macOS,
-`npm run pair --prefix plugins/android-use -- --clipboard` reads the clipboard without
-printing the link. The link expires after five minutes and can be redeemed once.
-Pairing a new computer replaces the previous computer's authorization.
+Open the returned pairing URL, scan its computer QR using Tapilot, and confirm the
+phone in that page. In the plugin, the panel provides the same pairing flow inline.
+Existing pairing remains in `~/.config/tapilot/wireless.json`; do not paste secrets
+into chat. The terminal `npm run pair --prefix plugins/android-use` remains an older
+phone-build fallback. Pairing a different computer replaces the previous authorization.
 
-Restart/reload the local plugin host after installation. Ask ChatGPT to use
-Android Use to inspect the phone. The plugin exposes status, screen, tap, swipe,
-text input, navigation/Enter, app launch, and disconnect tools. One action is
-followed by a fresh screenshot. It does not expose shell, arbitrary URLs, model
-credentials, app-private files, or a generic internal bridge proxy.
-
-If installing from a local plugin source is unavailable in your client, register
-the same MCP server directly instead (do not install both):
+The CLI prints JSON, with `images[].path`, `geometry.frameId`, `report_id`, and
+`report_link` for observations. Read the saved image before acting. Pass the latest
+frame and reuse the report ID, for example:
 
 ```sh
-codex mcp add android_use -- node /absolute/path/to/tapilot/plugins/android-use/server/index.mjs
+node plugins/android-use/server/cli.mjs tap --x 120 --y 300 --frame-id FRAME --report-id REPORT
+node plugins/android-use/server/cli.mjs record --text 'Observed expected result' --passed true --report-id REPORT
 ```
 
-Cloud-hosted ChatGPT conversations cannot use this local process automatically.
-This is a desktop/local plugin, not a published cloud connector.
+Replace placeholders with actual returned values. Failure exits nonzero. An action
+timeout is an uncertain outcome, never an instruction to replay. `pause` blocks
+capture/control for private login; `resume` requires user completion first.
+`disconnect` releases the phone; `runtime-stop` shuts down the shared local service.
+Neither resets pairing. Keep preview open after tasks unless the user requests release.
 
-The phone app remains Tapilot. Existing pairing credentials and the `tapilot_*`
-tool names are retained for compatibility; the plugin is named **Android Use**.
+## Runtime and panel boundary
+
+`server/runtime.mjs` owns the shared phone/controller/preview state. The local
+service starts on demand, binds only to loopback, and stores its capability in a
+private state directory. Concurrent CLI invocations share a singleton; serialized
+mutations and frame checks prevent stale coordinate replay. Closing or hiding a
+preview stops its polling but does not disconnect an active CLI task.
+
+The MCP exposes only `tapilot_preview_open` to the model. Preview, manual controls,
+private pause/resume, disconnect, and pairing calls are app-only. Both listing and
+server dispatch reject the removed model action tools. Agent operations use CLI.
+
+The browser gets a separate panel-only capability in the preview URL fragment,
+removed from the address bar after loading. It cannot invoke the CLI action route.
+HTTP requests enforce loopback Host and same-origin checks; no CORS is enabled.
+Screenshots and reports stay local. Browser and embedded previews share privacy
+pause and phone ownership; neither creates an independent phone connection.
+
+## Compatibility notes for earlier releases
+
+The sections below document the underlying transport, reports and release history.
+References to `tapilot_midscene` and raw model MCP tools describe the pre-0.6 API;
+those operations now run through CLI (`screenshot`, `tap`, `settings`, etc.).
+The MCP resource and manual preview tools remain for the embedded panel.
 
 ## Preview latency (0.4.3)
 
@@ -319,7 +362,10 @@ that code, then confirm the phone in the computer window. This needs the updated
 Tapilot phone build; older builds retain local terminal/link pairing.
 
 The QR pins the temporary computer receiver's TLS certificate. The phone uses its
-Wi-Fi network to submit a one-time pairing offer over HTTPS. Only explicit local
+default network route, including any VPN, to submit a one-time pairing offer over
+HTTPS. The VPN must allow access to the computer's LAN address; Tapilot does not
+bypass VPN routing. The phone still advertises its physical Wi-Fi address for
+the computer to connect back. Only explicit local
 browser confirmation redeems it and saves the pinned phone credential. The window
 expires after five minutes. No phone pairing secret is returned to chat or placed
 in DNS-SD. The browser controls bind to loopback; only the capability-protected TLS
