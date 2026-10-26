@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import { fork } from "node:child_process";
 import lockfile from "proper-lockfile";
 
-export const runtimeVersion = "0.6.0";
+export const runtimeVersion = "0.6.1";
 export function runtimePaths() {
   const root = resolve(
     process.env.ANDROID_USE_STATE_DIR ||

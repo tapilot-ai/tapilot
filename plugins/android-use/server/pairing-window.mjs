@@ -28,7 +28,7 @@ export async function createPairingWindow({ host = pairingAddress(), pair = pair
   const fingerprint = createHash('sha256').update(new X509Certificate(certificate.cert).raw).digest('hex');
   const nonce = randomBytes(32).toString('base64url');
   const expiresAt = Date.now()+lifetimeMs;
-  let pending, language, paired = false, pairing = false, offers = 0, html, qr;
+  let pending, language, paired = false, pairing = false, lastError, offers = 0, html, qr;
   const handler = async (req,res) => {
     res.setHeader('Cache-Control','no-store'); res.setHeader('Referrer-Policy','no-referrer');
     res.setHeader('X-Content-Type-Options','nosniff');
@@ -41,7 +41,7 @@ export async function createPairingWindow({ host = pairingAddress(), pair = pair
         if (paired || pairing || pending || ++offers > 10 || req.headers.origin) return json(409,{error:'Pairing offer unavailable'});
         if (!req.socket.encrypted) return json(403,{error:'TLS required'});
         const config = validateConfig(JSON.parse(await body(req)));
-        pending = config; language = config.language; return json(200,{received:true});
+        lastError = undefined; pending = config; language = config.language; return json(200,{received:true});
       }
       // Browser controls are loopback-only, origin checked, and capability protected.
       if (req.socket.encrypted || !['127.0.0.1','::ffff:127.0.0.1','::1'].includes(req.socket.remoteAddress) || req.headers.host !== `127.0.0.1:${server.address().port}`) return json(403,{error:'Open the pairing window on this computer'});
@@ -53,13 +53,22 @@ export async function createPairingWindow({ host = pairingAddress(), pair = pair
       if(req.method==='GET' && route==='i18n.mjs') {res.writeHead(200,{'Content-Type':'text/javascript'});res.end(await readFile(new URL('../ui/i18n.mjs',import.meta.url)));return;}
       if(req.method==='GET' && route==='pairing.css') {res.writeHead(200,{'Content-Type':'text/css'});res.end(await readFile(new URL('../ui/pairing.css',import.meta.url)));return;}
       if(req.method==='GET' && route==='qr.svg') {res.writeHead(200,{'Content-Type':'image/svg+xml'});res.end(qr);return;}
-      if(req.method==='GET' && route==='status') return json(200,{paired,pairing,expiresAt,language,pending:pending?{host:pending.host,fingerprint:pending.fingerprint}:null});
+      if(req.method==='GET' && route==='status') return json(200,{paired,pairing,expiresAt,language,error:lastError,pending:pending?{host:pending.host,fingerprint:pending.fingerprint}:null});
       if(req.method==='POST' && route==='discover') return json(200,{devices:await discover()});
       if(req.method==='POST' && route==='confirm') {
         if (!pending || paired || pairing) return json(409,{error:'No pending phone'});
-        pairing=true;
+        pairing=true; lastError=undefined;
         try {await pair(pending); onPaired(); paired=true; pending=undefined; return json(200,{paired:true});}
-        catch {pending=undefined;return json(502,{error:'无法完成配对，请保持手机解锁、确认 Wi-Fi 后重新扫码。'});}
+        catch (error) {
+          const retryable = error.code === 'phone_unreachable';
+          lastError = retryable
+            ? '已收到手机扫码信息，但电脑无法连接手机。请检查手机无线控制和两端网络，恢复后再次点击确认连接，无需重新扫码。'
+            : error.message === 'Pairing expired or invalid'
+              ? '手机配对码已过期或失效，请重新扫码。'
+              : '配对未完成，结果可能不确定。请重新扫码后确认连接。';
+          if (!retryable) pending=undefined;
+          return json(502,{error:lastError,retryable});
+        }
         finally {pairing=false;}
       }
       return json(404,{error:'Not found'});

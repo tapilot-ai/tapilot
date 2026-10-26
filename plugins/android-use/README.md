@@ -19,6 +19,29 @@ The default `steps` mode lets the host agent inspect screenshots and decide each
 action; Midscene records the execution report. Optional `ai` mode retains separate
 OpenAI authorization. Installing this skill does not require that authorization.
 
+## Saved devices
+
+The embedded panel and browser preview include a **Paired devices** list. One
+computer user shares these pairings across agents. Existing single-phone pairing
+files migrate automatically when first updated; update all local plugin copies
+before using the new registry format.
+
+```sh
+tapilot devices
+tapilot connect --device-id DEVICE_ID
+tapilot disconnect --device-id DEVICE_ID
+tapilot forget --device-id DEVICE_ID
+```
+
+`devices` lists saved devices without making a phone connection and never includes
+credentials. `disconnect` keeps pairing and persists the user's choice across
+runtime restarts. Background previews and agent observations cannot reconnect it;
+use `connect` or the panel's Reconnect button explicitly. Only one saved device is
+selected for control at a time. `forget` removes this computer's local credential;
+it does not remotely revoke other computers or disable wireless control on the phone.
+The panel asks for a second click before removal. A disconnected device is not
+necessarily offline; the list does not claim availability without a connection.
+
 ## Install
 
 Requires Node.js 22.19+, an unlocked phone running a Tapilot build with wireless
@@ -425,7 +448,7 @@ possible, reducing extra screenshot/model round trips. `observation.state` repor
 The observer never replays an action. `timing` includes aggregate worker and RPC
 durations without screenshots, coordinates or credentials in timing fields.
 
-See [measured results and limitations](../../docs/development/performance.md#wireless-steps-post-action-observation-2026-10-16).
+Measure latency on the current device and build; historical measurements do not establish current performance.
 
 ### Small screen changes (0.5.12)
 

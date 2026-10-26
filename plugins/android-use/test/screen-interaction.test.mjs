@@ -7,12 +7,19 @@ import { PreviewActivity } from '../ui/preview-activity.mjs';
 
 const source = (await readFile(new URL('../ui/screen.mjs', import.meta.url), 'utf8')).replace(/^import .*;\n/gm, '');
 const live = {state:'live',dataUrl:'data:image/png;base64,AA==',frame_id:'frame-1',width:100,height:200,capturedAt:0};
-async function fixture(locale) {
+async function fixture(locale, {autoLoad = true} = {}) {
   setLanguage('en');
   const elements = new Map();
   const element = key => {
-    if (!elements.has(key)) elements.set(key, {hidden:false,value:'',checked:true,dataset:{},handlers:{},
-      setAttribute(){},removeAttribute(){},addEventListener(name, fn){this.handlers[name]=fn;}});
+    if (!elements.has(key)) {
+      const value = {hidden:false,value:'',checked:true,dataset:{},handlers:{},
+        setAttribute(){},removeAttribute(){},addEventListener(name, fn){this.handlers[name]=fn;}};
+      if (key === 'img') Object.defineProperty(value, 'src', {
+        get() { return this.currentSrc; },
+        set(src) { this.currentSrc = src; if (autoLoad) queueMicrotask(() => this.onload?.()); },
+      });
+      elements.set(key, value);
+    }
     return elements.get(key);
   };
   const back = element('back'); back.dataset.action='back';
@@ -25,9 +32,46 @@ async function fixture(locale) {
   class App {constructor(){client=this;this.calls=[];} async connect(){} getHostContext(){return {locale};} async callServerTool(request){this.calls.push(request);return this.respond(request);} }
   await new (Object.getPrototypeOf(async function(){}).constructor)('App','imagePoint','PreviewActivity','document','window','setTimeout','clearTimeout','t','setLanguage','localize',source)(App,imagePoint,PreviewActivity,doc,win,(fn,delay)=>{timers.push({fn,delay});return timers.length;},()=>{},t,setLanguage,()=>{});
   client.ontoolresult({structuredContent:live});
+  await Promise.resolve();
   return {client,element,doc,back,win,timers};
 }
 const deferred = () => {let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
+
+test('phone controls wait until the displayed image has loaded the matching frame', async () => {
+  const f = await fixture('en', {autoLoad:false});
+  f.client.respond = async () => ({structuredContent:{...live,action_completed:true}});
+  assert.equal(f.back.disabled, true);
+  f.back.onclick();
+  assert.equal(f.client.calls.length, 0);
+  f.element('img').onload?.();
+  assert.equal(f.back.disabled, false);
+  f.client.ontoolresult({structuredContent:{...live,frame_id:'frame-2',dataUrl:'data:image/png;base64,AQ=='}});
+  assert.equal(f.back.disabled, true, 'the old pixels cannot use the new frame ID');
+  f.back.onclick();
+  assert.equal(f.client.calls.length, 0);
+  f.element('img').onload?.();
+  await f.back.onclick();
+  assert.equal(f.client.calls[0].arguments.frame_id, 'frame-2');
+});
+
+test('a late image load cannot restore controls after a privacy pause', async () => {
+  const f = await fixture('en', {autoLoad:false});
+  const loaded = f.element('img').onload;
+  f.client.ontoolresult({structuredContent:{state:'manual'}});
+  loaded?.();
+  assert.equal(f.element('img').hidden, true);
+  assert.equal(f.back.disabled, true);
+});
+
+test('an action without a refreshed image cannot reuse its consumed frame', async () => {
+  const f = await fixture();
+  f.client.respond = async () => ({structuredContent:{state:'live',action_completed:true}});
+  f.element('textarea').value = 'sent';
+  await f.element('form').onsubmit({preventDefault(){}});
+  assert.equal(f.back.disabled, true);
+  f.back.onclick();
+  assert.equal(f.client.calls.length, 1);
+});
 
 test('manual input preserves failed drafts and never queues a second mutation', async()=>{
   const f=await fixture(), pending=deferred(); f.client.respond=()=>pending.promise;
@@ -212,4 +256,35 @@ test('late live results cannot dismiss an active pairing QR', async () => {
   f.client.ontoolresult({structuredContent:live});
   assert.equal(f.element('#pairing-qr').hidden,false);
   assert.equal(f.element('img').hidden,true);
+});
+
+test('failed connection confirmation preserves pending phone and displays actionable error', async () => {
+  const f = await fixture('zh-CN');
+  const message = '已收到手机扫码信息，但电脑无法连接手机。请检查手机无线控制和两端网络，恢复后再次点击确认连接，无需重新扫码。';
+  let attempts = 0;
+  f.client.respond = async request => {
+    if (request.arguments.action === 'pair') return {structuredContent:{url:'http://127.0.0.1:1234/pair/',expires_at:Date.now()+300000},_meta:{pairingQr:'data:image/png;base64,AA=='}};
+    if (request.arguments.action === 'pair_status') return {structuredContent:{pending:{host:'192.168.1.10'},error:attempts ? message : undefined}};
+    if (request.arguments.action === 'pair_confirm') {attempts++;return {isError:true,content:[{type:'text',text:message}]};}
+    return {structuredContent:{state:'unavailable'}};
+  };
+  await f.element('#pair').onclick();
+  await f.timers.at(-1).fn();
+  await f.element('#pair-confirm').onclick();
+  await f.timers.at(-1).fn();
+  assert.equal(f.element('#pair-confirm').hidden,false);
+  assert.match(f.element('#pairing-status').textContent,/手机已扫码/);
+  assert.equal(f.element('[role=alert]').textContent,message);
+  assert.equal(attempts,1);
+});
+
+
+test('locked panel promises automatic recovery without requiring a resume button', async () => {
+  const f = await fixture('en');
+  f.client.ontoolresult({structuredContent:{state:'device_locked'}});
+  assert.equal(f.element('#resume').hidden, true);
+  assert.match(f.element('[role=status]').textContent, /resume automatically/);
+  f.client.ontoolresult({structuredContent:live});
+  assert.equal(f.element('img').hidden, false);
+  assert.equal(f.client.calls.filter(r => r.name === 'tapilot_preview_resume').length, 0);
 });

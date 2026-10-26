@@ -24,7 +24,7 @@ const fields = Object.keys(theme.light);
 const paletteSource = `// Generated from theme/brand.json.\npackage lifeos.md.tapilot.theme\n\nimport lifeos.md.tapilot.R\n\ninternal data class ThemePalette(\n${fields.map(k => `    val ${k}: Int,`).join('\n')}\n)\n\ninternal object ThemePalettes {\n` +
  ['light','dark','minimalLight','minimalDark'].map(mode => `    private val ${mode} = ThemePalette(\n${fields.map(k=>`        ${k} = BrandColors.${mode+k[0].toUpperCase()+k.slice(1)},`).join('\n')}\n    )`).join('\n') +
  `\n    fun get(id: String, dark: Boolean): ThemePalette =\n        if (id == "minimal") { if (dark) minimalDark else minimalLight } else { if (dark) this.dark else light }\n\n    fun resource(id: String, dark: Boolean, resource: Int): Int? {\n        val palette = get(id, dark)\n        return when (resource) {\n${fields.map(k=>`            R.color.brand_${snake(k)}, R.color.brand_dark_${snake(k)} -> palette.${k}`).join('\n')}\n            else -> null\n        }\n    }\n}\n`;
-const outputs = {'app/src/main/java/lifeos/md/tapilot/theme/ThemePalettes.kt':paletteSource,'legacy/web-ui/brand.generated.css':css,'app/src/main/res/values/colors.xml':xml,'app/src/main/java/lifeos/md/tapilot/theme/BrandColors.kt':kotlin};
+const outputs = {'app/src/main/java/lifeos/md/tapilot/theme/ThemePalettes.kt':paletteSource,'app/src/main/res/values/colors.xml':xml,'app/src/main/java/lifeos/md/tapilot/theme/BrandColors.kt':kotlin};
 let stale = false;
 for (const [path,value] of Object.entries(outputs)) {
  if(process.argv.includes('--check')) { if(readFileSync(root+path,'utf8')!==value){process.stderr.write(`Stale theme output: ${path}\n`);stale=true;} }

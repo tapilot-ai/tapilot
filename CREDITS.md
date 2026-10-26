@@ -33,5 +33,5 @@ when distributing source or APKs.
 
 Normal builds now retain installed npm, Termux and Android archive notices in
 APK assets and produce versioned inventories with explicit review flags. See
-[redistribution notes](docs/development/third-party-licenses.md) for collection,
+[redistribution notes](THIRD_PARTY_LICENSES.md) for collection,
 missing-license and LGPL/source requirements that remain before APK publication.

@@ -241,7 +241,7 @@ fs.writeFileSync(
   `${JSON.stringify(manifest, null, 2)}\n`,
 );
 
-fs.copyFileSync(path.join(assistantRoot, 'docs/protocols/fixtures/conversation.json'), path.join(stagingRoot, 'conversation-fixtures.json'));
+fs.copyFileSync(path.join(assistantRoot, 'tests/fixtures/conversation.json'), path.join(stagingRoot, 'conversation-fixtures.json'));
 const runtimeTests = fs.readdirSync(path.join(sourceRoot, 'tests')).filter(file => file.endsWith('.test.mjs')).sort();
 for (const file of runtimeTests) fs.copyFileSync(path.join(sourceRoot, 'tests', file), path.join(stagingRoot, file));
 run(process.execPath, ['--test', '--test-concurrency=1', '--test-timeout=10000', ...runtimeTests], stagingRoot);

@@ -14,18 +14,9 @@
 Android `AccessibilityService` 提供截图、手势、系统导航和文字输入能力。
 日常运行**不需要 ADB、Shizuku 或 root**。项目仍处于实验阶段，模型判断和设备操作都可能失败。
 
-## 看它实际操作
+## 演示
 
-发送：**“打开计算器，实际计算 12+34，核对屏幕后告诉我结果。”**
-手机会打开计算器、完成计算，并返回 **46**。
-
-[![观看计算器操作演示](docs/assets/demo-preview.gif)](docs/assets/demo.mp4)
-
-**[观看／下载操作视频](docs/assets/demo.mp4)** · OPPO Find N 真机录制 · 静音延时视频 · 中文界面
-
-| 输入指令 | Midscene 操作手机 | 查看结果 |
-| --- | --- | --- |
-| <img src="docs/assets/demo-request.png" width="240" alt="在 Tapilot 新对话中输入计算器任务"> | <img src="docs/assets/demo-calculator.png" width="240" alt="手机计算器显示 12 加 34 等于 46"> | <img src="docs/assets/demo-result.png" width="240" alt="Tapilot 执行手机操作后返回 46"> |
+[中文宣传片](promo-video/zh/tapilot-promo.mp4) · [English promotional video](promo-video/en/tapilot-promo.mp4) · 约 78 秒短版，正常语速。
 
 ## 纯视觉操作怎样完成
 
@@ -54,8 +45,7 @@ Midscene 负责视觉规划、目标定位、动作执行和报告。Tapilot 负
 - **连续完成跨应用任务。** 保留计划与操作结果，执行中追加要求，或明确停止后重试。
   应用重启后不会自动重放被打断的任务。
 - **根据画面核对结果。** 每次手机操作结束后，单独采集截图核验当前要求。
-  缺少证据时保留未知，已核验的进度供后续步骤使用。完成判定和重试边界见
-  [核验与恢复设计](docs/architecture/README.md#verification-and-recovery)。
+  缺少证据时保留未知，已核验的进度供后续步骤使用。
 - **回看实际执行过程。** 在 Midscene HTML 报告中查看截图、模型计划、动作和错误，
   按需导出。
 - **用语音交互。** 可选火山引擎或 Deepgram 转写与播报，分别配置服务凭据，支持自动朗读回答。
@@ -113,15 +103,13 @@ Tapilot 日常自动化不需要 ADB。
 | `node-runtime/` | 内置 Pi Agent、Midscene Runner 和部署依赖 |
 | `packages/android-accessibility/` | Android AccessibilityService 的 Midscene 适配器 |
 | `plugins/android-use/` | 电脑端 Wi-Fi 控制插件 |
-| `tests/midscene/` | 19 条 E2E 用例和显式开启的设备故障测试 |
-| `legacy/web-ui/` | 历史 Web UI，普通 APK 不包含它 |
+| `tests/midscene/` | 20 条 E2E 用例和显式开启的设备故障测试 |
 
 `pnpm check` 执行完整本地测试和构建检查，`pnpm check:security` 审计依赖。
-真机 E2E 单独运行；写好了 19 条用例，不代表 19 条都已通过。
-详见 [E2E 指南与验证记录](tests/midscene/README.md)、[架构说明](docs/architecture/README.md)
-和 [开发指南](docs/development/README.md)。
+真机 E2E 单独运行；写好了 20 条用例，不代表 20 条都已通过。
+详见 [E2E 指南与验证记录](tests/midscene/README.md)和[贡献指南](CONTRIBUTING.md)。
 
-当前有效证据与发布门禁见[验收入口](docs/development/validation-current.zh.md)。历史真机结果不代表最新源码已通过验收。
+历史真机结果不代表最新源码已通过验收。
 
 ## 能力边界与数据
 
@@ -153,4 +141,4 @@ Tapilot 日常自动化不需要 ADB。
 ## 许可证
 
 采用 [MIT 许可证](LICENSE)。第三方组件继续遵循各自许可证，详见
-[上游致谢](CREDITS.md)和[分发说明](docs/development/third-party-licenses.md)。
+[上游致谢](CREDITS.md)和[分发说明](THIRD_PARTY_LICENSES.md)。

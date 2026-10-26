@@ -1,0 +1,23 @@
+cases:
+  - name: CHAT-01 General answer completes after a clarification
+    tags: [live, conversation, clarification]
+    steps:
+      - app.open: {}
+      - aiAct: >-
+          Create a new Tapilot conversation. Preserve model and speech settings and do not
+          start the microphone. Submit this exact text: "帮我算两个数相乘。先问我是哪两个数，等我下一条消息再计算。不要操作手机，不用语音。"
+          Stop interacting after submission; do not answer on Tapilot's behalf.
+      - task.waitForIdle: {}
+      - aiAssert: >-
+          Tapilot asks which two numbers to multiply. The reply is waiting for the user's
+          answer and does not claim that a calculation or phone action is complete.
+      - aiAct: >-
+          In this same conversation, submit "50 和 2，请直接告诉我结果。" using text.
+          Do not create another conversation, change modes or open Calculator.
+          Stop interacting after submission.
+      - task.waitForIdle: {}
+      - aiAssert: >-
+          The newest Tapilot reply gives 100 as the product of 50 and 2. Its status is
+          completed ("Completed" or "任务已完成"), with zero phone operations. The newest
+          reply must not say "Waiting for your answer" or "等待你的回答". The earlier
+          clarification may still retain its historical waiting status.

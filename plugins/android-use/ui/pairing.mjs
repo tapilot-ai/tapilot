@@ -5,7 +5,7 @@ async function request(path,post=false){const r=await fetch(path,{method:post?'P
 function failure(e){error.textContent=t(e.message);error.hidden=false;}
 async function refresh(){
  if(stopped)return;
- try{const data=await request('status');if(data.language){setLanguage(data.language);localize();}confirm.hidden=!data.pending;confirm.disabled=data.pairing;
+ try{const data=await request('status');if(data.language){setLanguage(data.language);localize();}confirm.hidden=!data.pending;confirm.disabled=data.pairing;if(data.error)failure(Error(data.error));
  document.querySelector('#expiry').textContent=`${Math.max(0,Math.ceil((data.expiresAt-Date.now())/1000))} ${t('秒后过期')}`;
  status.textContent=data.paired?t("已配对，可以返回 ChatGPT 查看手机画面"):data.pairing?t("正在配对，请稍候…"):data.pending?`${data.pending.host} · ${t('手机已扫码，请确认配对')}`:t("等待手机扫码…");
  if(data.paired){stopped=true;document.querySelector('.qr').hidden=true;return;}

@@ -21,5 +21,7 @@ into subdirectories, update discovery at the same time. Runtime tests live in
 Real model/device scripts are opt-in and may use paid model calls or change phone
 state. Keep their model/network/device inputs and failure evidence with the report.
 The model-free benchmark measures host loop/serialization overhead only; it cannot
-establish phone task latency. See the [development guide](../docs/development/README.md)
-and [current validation](../docs/development/validation-current.zh.md).
+establish phone task latency. Record current device results separately from local build checks.
+
+Visual baseline checks require an explicit directory: `pnpm baseline:check -- /path/to/baseline`.
+Shared protocol fixtures live in `tests/fixtures/`.

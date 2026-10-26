@@ -35,10 +35,7 @@
     "theme:check": "node scripts/generate-brand.mjs --check",
     "baseline:check": "node scripts/visual-baseline.mjs --check",
     "check": "node scripts/check.mjs",
-    "test:legacy": "rstest run --pool.maxWorkers 2",
     "build:release": "pnpm run runtime:bundle && pnpm run runtime:node && ./gradlew assembleRelease --max-workers=2 --no-parallel --no-daemon && node scripts/verify-apk.mjs release",
-    "build:legacy": "pnpm run theme:check && rsbuild build",
-    "dev:legacy": "rsbuild dev",
     "build:beta:distribution": "pnpm run runtime:bundle && pnpm run runtime:node && ./gradlew assembleBeta --max-workers=2 --no-parallel --no-daemon && node scripts/verify-apk.mjs beta",
     "check:quick": "node scripts/check.mjs --quick",
     "check:plugin": "npm --prefix plugins/android-use run check",
@@ -56,8 +53,6 @@
     "@tapilot/android-accessibility": "workspace:*"
   },
   "devDependencies": {
-    "@rsbuild/core": "^1.6.15",
-    "@rstest/core": "0.11.5",
     "typescript": "^5.8.3"
   },
   "packageManager": "pnpm@12.4.1",

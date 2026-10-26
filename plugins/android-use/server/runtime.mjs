@@ -1,5 +1,5 @@
 import { setLanguage } from "../ui/i18n.mjs";
-import { loadConfig } from "./config.mjs";
+import { loadConfig, loadDevices, selectDevice } from "./config.mjs";
 import { PhoneConnection } from "./transport.mjs";
 import {
   Preview,
@@ -32,7 +32,9 @@ export function createRuntime() {
             isError: true,
             content: [{ type: "text", text: error.message }],
           }));
-      if (name === "tapilot_disconnect" && Object.keys(args).length === 0)
+      if ((name === "tapilot_disconnect" && Object.keys(args).length === 0) ||
+          (name === "tapilot_devices" && ["connect", "disconnect", "forget"].includes(args.action) &&
+           (args.action === "connect" || !args.device_id || args.device_id === phone?.config.fingerprint)))
         midscene.cancel();
       if (midscene.active && name === "tapilot_preview_control")
         return Promise.resolve({
@@ -94,6 +96,61 @@ export function createRuntime() {
           );
           if (name === "tapilot_midscene" && midscene.isAdmin(args.action))
             return await midscene.configure(args);
+          const explicitResume = name === 'tapilot_preview_resume' || (name === 'tapilot_preview' && args.action === 'resume');
+          if (explicitResume && Object.keys(args).some(key =>
+              !(name === 'tapilot_preview' ? ['action', 'viewer_id'] : []).includes(key)))
+            throw new Error('Invalid preview arguments');
+          const registry = await loadDevices();
+          let selected = registry.devices.find(d => d.fingerprint === registry.activeDeviceId);
+          // Another host can change pairing or selection without using this runtime.
+          // Release the old lease even for read-only device lists or missing config.
+          if (phone && (!selected || !selected.autoConnect ||
+              ["host", "port", "token", "fingerprint"].some(key => phone.config[key] !== selected[key]))) {
+            phone.close(); phone = undefined;
+            preview.reconnect();
+            midscene.invalidate();
+          }
+          if (name === 'tapilot_devices' || name === 'tapilot_disconnect') {
+            const action = name === 'tapilot_disconnect' ? 'disconnect' : args.action;
+            if (!['list','connect','disconnect','forget'].includes(action) ||
+                (name === 'tapilot_disconnect' && Object.keys(args).length > 0) ||
+                Object.keys(args).some(key => !['action','device_id'].includes(key)) ||
+                (args.device_id !== undefined && !/^[a-f0-9]{64}$/.test(args.device_id))) throw Error('Invalid device request');
+            const before = await loadDevices();
+            const id = args.device_id ?? before.activeDeviceId;
+            if (action !== 'list') {
+              await selectDevice(action, id);
+              if (action === 'connect' || id === before.activeDeviceId) {
+                preview.pause('disconnected');
+                midscene.invalidate();
+                if (phone?.connected) await callTool(phone,'tapilot_disconnect',{}).catch(() => {});
+                phone?.close(); phone = undefined;
+              }
+              if (action === 'connect') {
+                phone = new PhoneConnection(await loadConfig());
+                await phone.open();
+                preview.reconnect();
+              }
+            }
+            const registry = await loadDevices();
+            return {content:[], structuredContent:{state:phone?.connected ? (preview.reason ?? 'live') : 'disconnected',
+              devices:registry.devices.map(device => ({id:device.fingerprint,
+                name:device.name ?? `Android · ${device.host}`, host:device.host,
+                selected:device.fingerprint === registry.activeDeviceId,
+                state:phone?.connected && phone.config.fingerprint === device.fingerprint ? 'connected'
+                  : device.autoConnect ? 'not_connected' : 'disconnected'}))}};
+          }
+          if (selected && explicitResume && !selected.autoConnect) {
+            await selectDevice('connect', selected.fingerprint);
+            selected = {...selected, autoConnect:true};
+          }
+          if (selected && !selected.autoConnect) {
+            phone?.close(); phone = undefined;
+            preview.pause('disconnected');
+            return {content:[{type:'text',text:'Device disconnected by user. Use connect to resume; pairing is kept.'}],
+              isError:!['tapilot_preview_open','tapilot_preview_frame','tapilot_preview'].includes(name),
+              structuredContent:{state:'disconnected'}};
+          }
           if (name === "tapilot_preview_open") {
             if (Object.keys(args).length)
               throw new Error("Invalid preview arguments");

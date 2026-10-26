@@ -30,6 +30,7 @@
 *.gif    binary
 *.ico    binary
 *.webm   binary
+*.mp4    binary
 *.so     binary
 *.node   binary
 *.apk    binary

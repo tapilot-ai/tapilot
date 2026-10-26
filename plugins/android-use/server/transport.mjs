@@ -20,38 +20,58 @@ export class PhoneConnection {
   #socket;
   #pending = new Map();
   #buffer = Buffer.alloc(0);
+  #opening;
+  #authenticated = false;
+  #abortConnect;
   constructor(config) { this.config = config; }
-  get connected() { return !!this.#socket && !this.#socket.destroyed; }
+  get connected() { return this.#authenticated && !!this.#socket && !this.#socket.destroyed; }
   async open(pair = false, rediscover = true) {
+    if (this.#opening) return this.#opening;
     if (this.connected) return;
+    const opening = this.#open(pair, rediscover);
+    this.#opening = opening;
+    try { return await opening; }
+    finally { if (this.#opening === opening) this.#opening = undefined; }
+  }
+  async #open(pair, rediscover) {
     const socket = tls.connect({ host: this.config.host, port: this.config.port, localAddress: localAddressForPhone(this.config.host), minVersion: 'TLSv1.2', maxVersion: 'TLSv1.2', rejectUnauthorized: false });
     socket.setKeepAlive(true, 10000);
     socket.setNoDelay(true);
     this.#socket = socket;
     this.#buffer = Buffer.alloc(0);
-    socket.on('data', data => this.#receive(data));
+    socket.on('data', data => { if (this.#socket === socket) this.#receive(data); });
     socket.on('error', () => { if (this.#socket === socket) this.close(new Error('Phone connection failed. Check Wi-Fi and enable wireless control on the phone.')); });
     socket.on('close', () => { if (this.#socket === socket) this.close(new Error('Phone disconnected. Action outcome may be unknown; inspect the screen before retrying.')); });
+    let authenticatedTransport = false;
     try {
       await new Promise((resolve, reject) => {
-        const timer = setTimeout(() => { reject(new Error('Phone connection timed out')); socket.destroy(); }, 5000);
-        socket.once('error', () => { clearTimeout(timer); reject(new Error('Unable to connect to phone')); });
+        const finish = error => {
+          clearTimeout(timer); this.#abortConnect = undefined;
+          if (error) reject(error); else resolve();
+        };
+        const timer = setTimeout(() => { finish(new Error('Phone connection timed out')); socket.destroy(); }, 5000);
+        this.#abortConnect = finish;
         socket.once('secureConnect', () => {
-          clearTimeout(timer);
           const cert = socket.getPeerCertificate().raw;
           const actual = cert && createHash('sha256').update(cert).digest();
           const expected = Buffer.from(this.config.fingerprint, 'hex');
           if (!actual || actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
-            reject(new Error('Phone certificate changed. Pair again on the phone; no credential was sent.'));
+            finish(new Error('Phone certificate changed. Pair again on the phone; no credential was sent.'));
             socket.destroy(); return;
           }
-          resolve();
+          finish();
         });
       });
-      const result = await this.request(pair ? 'pair' : 'authenticate', {}, this.config.token);
+      authenticatedTransport = true;
+      const result = await this.#request(pair ? 'pair' : 'authenticate', {}, this.config.token);
+      if (this.#socket !== socket || socket.destroyed) throw new Error('Phone connection closed');
+      this.#authenticated = true;
       this.features = result?.features ?? {};
       return result;
     } catch (error) {
+      // Only pre-authentication connection failures are safe to confirm again.
+      if (!authenticatedTransport && /^(Phone connection timed out|Unable to connect to phone|Phone connection failed\.)/.test(error.message))
+        error.code = 'phone_unreachable';
       this.close(error);
       if (!pair && rediscover && !this.config.host.startsWith('127.') && /Unable to connect|connection timed out|connection failed/i.test(error.message)) {
         const { discoverPhones } = await import('./discovery.mjs');
@@ -61,8 +81,8 @@ export class PhoneConnection {
           const previous = this.config;
           this.config = {...previous,host:target.host,port:target.port};
           try {
-            const result = await this.open(false,false);
-            const {saveConfig} = await import('./config.mjs'); await saveConfig(this.config);
+            const result = await this.#open(false,false);
+            const {saveConfig} = await import('./config.mjs'); await saveConfig(this.config, undefined, {activate:false});
             return result;
           } catch (failure) { this.close(failure); this.config = previous; throw failure; }
         }
@@ -72,6 +92,10 @@ export class PhoneConnection {
   }
   request(method, params = {}, token) {
     if (!this.connected) return Promise.reject(new Error('Phone disconnected. Capture a new screen before continuing.'));
+    return this.#request(method, params, token);
+  }
+  #request(method, params, token) {
+    if (!this.#socket || this.#socket.destroyed) return Promise.reject(new Error('Phone connection closed'));
     const id = randomUUID();
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => this.close(new Error('Phone timed out; action outcome is unknown. Do not repeat automatically.')), 30000);
@@ -96,7 +120,8 @@ export class PhoneConnection {
     }
   }
   close(error = new Error('Phone connection closed')) {
-    const socket = this.#socket; this.#socket = undefined; this.features = {};
+    const socket = this.#socket; this.#socket = undefined; this.features = {}; this.#authenticated = false;
+    this.#abortConnect?.(error);
     socket?.destroy();
     for (const pending of this.#pending.values()) { clearTimeout(pending.timer); pending.reject(error); }
     this.#pending.clear(); this.#buffer = Buffer.alloc(0);

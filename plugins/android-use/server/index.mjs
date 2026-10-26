@@ -12,7 +12,7 @@ import { panelTools, panelRequest } from "./panel-tools.mjs";
 import { runtimeRequest } from "./runtime-client.mjs";
 
 const server = new Server(
-  { name: "android-use", version: "0.6.0" },
+  { name: "android-use", version: "0.6.1" },
   {
     capabilities: { tools: {}, resources: {} },
     instructions:

@@ -21,7 +21,14 @@ Below, `CLI` means `node <skill-dir>/scripts/android-use.mjs`.
 
 ## Start and pair
 
-1. Run `CLI status` to read saved mode and active-task state without taking the phone.
+1. Run `CLI devices` to list saved phones without connecting. Pairing is shared by
+   agents running as this computer user. If a device is `disconnected`, respect the
+   user's deliberate disconnect: do not run connect/resume unless the user asks.
+   `CLI connect --device-id ID` selects and connects a saved phone; `CLI disconnect`
+   keeps its pairing and prevents automatic reconnection, including after restart.
+   `CLI forget --device-id ID` removes only this computer's saved pairing, and must
+   only be used when the user explicitly requests removing it. Never use it to fix a timeout.
+   Run `CLI status` to read saved mode and active-task state without taking the phone.
 2. For a plugin with `tapilot_preview_open`, call it once to open the embedded panel.
    All other model actions still use CLI. Without this tool, run `CLI preview --open`
    for a browser live preview. Both use the same runtime and connection.

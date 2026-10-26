@@ -3,6 +3,12 @@ import { CONTROL_SCHEMA } from "./panel-controls.mjs";
 import { AjvJsonSchemaValidator } from "@modelcontextprotocol/sdk/validation/ajv";
 export const panelTools = [
   {
+    name:'tapilot_devices', description:'App-only saved devices: list, connect, disconnect, or remove local pairing.',
+    inputSchema:{type:'object',properties:{action:{type:'string',enum:['list','connect','disconnect','forget']},
+      device_id:{type:'string',pattern:'^[a-f0-9]{64}$'}},required:['action'],additionalProperties:false},
+    _meta:{ui:{visibility:['app']}},
+  },
+  {
     name: "tapilot_preview_open",
     description:
       "The only screen panel opener. Automatically call once at the start of a phone viewing or control task if no Android Use panel is already open. Reuse the existing panel for all subsequent observations/actions; call again only after the user closes it or explicitly requests reopening.",

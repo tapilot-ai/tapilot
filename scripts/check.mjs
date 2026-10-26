@@ -13,8 +13,6 @@ function run(command, args) {
 run('pnpm',['theme:check']);
 run('pnpm',['check:plugin']);
 run('pnpm',['check:e2e']);
-run('pnpm',['exec','tsc','--noEmit']);
-run('pnpm',['exec','rstest','run','--pool.maxWorkers','2']);
 run('pnpm',['--filter','@tapilot/android-accessibility','test','run','--pool.maxWorkers','2']);
 if (process.argv.includes('--quick')) process.exit(0);
 // Builds the adapter and runs every Node runtime test against the exact bundled sources.
@@ -24,4 +22,4 @@ run(process.execPath,['--test','--test-concurrency=1',...fs.readdirSync(path.joi
 run('pnpm',['runtime:node']);
 run('./gradlew',[':app:testDebugUnitTest',':app:lintBeta',':app:assembleBeta','--max-workers=2','--no-parallel','--no-daemon']);
 run(process.execPath,['scripts/verify-apk.mjs','beta','--local-check']);
-console.log('\nTapilot checks passed: plugin UI and tests, E2E definitions, types, legacy UI, adapter, Node agent, scripts, Kotlin, Android lint and non-debuggable beta APK.');
+console.log('\nTapilot checks passed: plugin UI and tests, E2E definitions, adapter, Node agent, scripts, Kotlin, Android lint and non-debuggable beta APK.');

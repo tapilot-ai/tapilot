@@ -64,6 +64,7 @@ class NativeConversationCoordinator(
     private val pendingTurns = ArrayDeque<PendingTurn>()
     private val running get() = execution.running
     private var error = ""
+        set(value) { field = value; errorEpoch++ }
     private var errorEpoch = 0
     private var draftEpoch = 0
     private var pendingAttachment: JSONObject? = null
@@ -576,7 +577,7 @@ class NativeConversationCoordinator(
         history().forEach { e -> e.put("reports", JSONArray(e.optJSONArray("reports")?.objects().orEmpty().filterNot { it.optString("reportId") in ids })) }
         save(); publish()
     }
-    private fun fail(t: Throwable) { error = t.message ?: appText("操作失败", "Operation failed"); errorEpoch++; publish() }
+    private fun fail(t: Throwable) { error = t.message ?: appText("操作失败", "Operation failed"); publish() }
     fun selectPreset(id: String) = settings.selectPreset(id)
     fun saveModel(profile: JSONObject, replacementKey: String = "", reset: Boolean = false) = settings.saveModel(profile, replacementKey, reset)
     fun preference(name: String, value: Any) = settings.preference(name, value)

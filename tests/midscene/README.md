@@ -64,6 +64,7 @@ the selected local file take precedence over inherited model variables; set
 | UI-01 | Fresh conversation, draft entry and clearing | Smoke |
 | UI-02 | Toggle automatic reply speech, verify persistence and leave it on | Smoke |
 | UI-03 | Wireless/accessibility guidance and model-access choices | Smoke |
+| CHAT-01 | Clarify a general question, then finish with an answer and completed status | Live |
 | LONG-01 | Three Calculator results, precedence and retained results | Live |
 | LONG-02 | Device facts agree with observed screens and reports | Live |
 | LONG-03 | Two browser pages, source dates and Calculator comparison | Live |
@@ -239,4 +240,4 @@ Regression tests cover ColorOS/Android confusion and missing observations. The
 original OPPO was disconnected during this follow-up, so LONG-02 remains awaiting
 real-device revalidation; these changes do not turn its previous failure into a pass.
 
-2026-10-19 candidate verification and the current evidence boundary are recorded in [release validation](../../docs/development/release-validation-20261019.zh.md). A selected model env file is now a complete model profile: undeclared protocol, planning/insight credentials and extra-body settings from other profiles are cleared. An explicitly missing file fails instead of falling back to another account.
+A selected model env file is now a complete model profile: undeclared protocol, planning/insight credentials and extra-body settings from other profiles are cleared. An explicitly missing file fails instead of falling back to another account.

@@ -7,7 +7,7 @@ import org.junit.Test
 
 class DeviceProtocolTest {
     @Test fun parsesSharedWireFixturesIntoTypedCommands() {
-        val fixture = JSONObject(checkNotNull(javaClass.getResource("/fixtures/device.json")).readText())
+        val fixture = JSONObject(checkNotNull(javaClass.getResource("/device.json")).readText())
         assertEquals(1, fixture.getInt("protocolVersion"))
         val actions = fixture.getJSONArray("actions")
         for (i in 0 until actions.length()) {

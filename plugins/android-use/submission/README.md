@@ -35,8 +35,8 @@ local MCP submissions, not an instruction to remove the server.
 - Record the actual desktop pairing, screenshot, navigation, pause/resume and
   report workflow. Add a reachable demo recording and actual host screenshots.
   Phone-only demos are not evidence of the desktop plugin workflow.
-- Complete a clean installation test and real-phone acceptance. See
-  ../../../docs/acceptance/20261015-plugin-ux.md.
+- Complete a clean installation test and real-phone acceptance, and record
+  the current host and physical-phone validation results.
 - Build an installable ZIP including runtime dependencies, license notices and
   both MCP configuration files. A source ZIP alone is not an offline-installable
   submission. Validate native dependency compatibility for each claimed platform.

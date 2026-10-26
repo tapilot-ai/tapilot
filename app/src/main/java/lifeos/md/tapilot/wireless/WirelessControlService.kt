@@ -28,6 +28,7 @@ import java.util.concurrent.Executors
 internal object WirelessState {
     var enabled by mutableStateOf(false)
     var address by mutableStateOf("")
+    var waitingForWifi by mutableStateOf(false)
     var connected by mutableStateOf(false)
     var error by mutableStateOf("")
     var paired by mutableStateOf(false)
@@ -40,27 +41,101 @@ internal enum class PairingStage { IDLE, SENDING, WAITING, PAIRED, FAILED }
 class WirelessControlService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private val worker = Executors.newSingleThreadExecutor()
-    private val serverLock = Any()
-    private var server: WirelessServer? = null
+    private val listeners = WirelessListenerOwner<Pair<Network, Inet4Address>, WirelessServer>()
+    private val networks = linkedMapOf<Network, Inet4Address>()
     private var tls: WirelessTls? = null
     private var discovery: WirelessDiscovery? = null
     private lateinit var pairing: WirelessPairing
-    private var wifi: Network? = null
+    private var registered = false
+    private var pairingAttempt = 0L
     @Volatile private var stopping = false
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
-        override fun onLost(network: Network) { if (network == wifi) handler.post { stopSelf() } }
-        override fun onLinkPropertiesChanged(network: Network, properties: android.net.LinkProperties) {
-            if (network == wifi && WirelessState.address.isNotEmpty() && properties.linkAddresses.none {
-                it.address.hostAddress == WirelessState.address
-            }) handler.post { stopSelf() }
+        override fun onAvailable(network: Network) = updateNetwork(network)
+        override fun onLost(network: Network) {
+            handler.post { networks.remove(network); reconcileNetwork() }
         }
+        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) =
+            updateNetwork(network, capabilities = capabilities)
+        override fun onLinkPropertiesChanged(network: Network, properties: android.net.LinkProperties) =
+            updateNetwork(network, properties = properties)
+    }
+
+    private fun updateNetwork(network: Network, capabilities: NetworkCapabilities? = null,
+                              properties: android.net.LinkProperties? = null) {
+        handler.post {
+            if (stopping) return@post
+            val connectivity = getSystemService(ConnectivityManager::class.java)
+            val caps = capabilities ?: connectivity.getNetworkCapabilities(network)
+            val physicalWifi = caps?.let { it.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                !it.hasTransport(NetworkCapabilities.TRANSPORT_VPN) && it.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN) } == true
+            val address = if (physicalWifi) (properties ?: connectivity.getLinkProperties(network))?.linkAddresses
+                ?.map { it.address }?.filterIsInstance<Inet4Address>()?.firstOrNull { !it.isLoopbackAddress } else null
+            if (address == null) networks.remove(network) else networks[network] = address
+            reconcileNetwork()
+        }
+    }
+
+    private fun reconcileNetwork() {
+        if (stopping || !WirelessState.enabled) return
+        val previous = listeners.target
+        val target = networks.entries.firstOrNull { it.key == previous?.first }
+            ?.let { it.key to it.value } ?: networks.entries.firstOrNull()?.let { it.key to it.value }
+        WirelessState.waitingForWifi = target == null
+        val ticket = listeners.change(target)
+        if (ticket == null) { updateNotification(); return }
+        discovery?.close(); discovery = null
+        WirelessState.address = ""
+        WirelessState.connected = false
+        WirelessState.error = ""
+        if (WirelessState.pairingStage in listOf(PairingStage.SENDING, PairingStage.WAITING)) {
+            pairingAttempt++
+            WirelessState.pairingStage = PairingStage.FAILED
+            WirelessState.pairingError = label("网络已变化。已有电脑配对保留；正在进行的扫码请在 Wi-Fi 恢复后重试。",
+                "Network changed. Existing pairing is kept; retry the pending scan after Wi-Fi returns.")
+        }
+        updateNotification()
+        if (target == null) return
+        worker.execute {
+            runCatching {
+                val identity = WirelessTls()
+                val listener = WirelessServer(identity.context(), target.second, PORT, pairing,
+                    { disconnect -> WirelessDeviceSession(applicationContext, disconnect) },
+                    { connected -> handler.post {
+                        if (listeners.isCurrent(ticket)) { WirelessState.connected = connected; updateNotification() }
+                    } })
+                handler.post {
+                    if (listeners.install(ticket, listener)) {
+                        tls = identity
+                        WirelessState.address = target.second.hostAddress.orEmpty()
+                        listener.start()
+                        discovery = WirelessDiscovery(applicationContext).also { service ->
+                            runCatching { service.start(listener.port, identity.fingerprint) }.onFailure { service.close() }
+                        }
+                        updateNotification()
+                    }
+                }
+            }.onFailure { error -> handler.post {
+                if (listeners.isCurrent(ticket)) {
+                    listeners.change(null)
+                    WirelessState.error = label("无线监听暂不可用，正在重试：", "Wireless listener unavailable, retrying: ") + error.message.orEmpty()
+                    handler.postDelayed({ reconcileNetwork() }, 3000)
+                }
+            } }
+        }
+    }
+
+    private fun updateNotification() {
+        if (!stopping) getSystemService(NotificationManager::class.java).notify(NOTIFICATION, notification())
     }
 
     override fun onCreate() {
         super.onCreate()
         current = this
         WirelessState.error = ""
-        WirelessState.enabled = true
+        WirelessState.enabled = false
+        WirelessState.address = ""
+        WirelessState.connected = false
+        WirelessState.waitingForWifi = false
         val preferences = getSharedPreferences("wireless-pairing", Context.MODE_PRIVATE)
         WirelessState.paired = preferences.getString("credentialHash", "").orEmpty().isNotEmpty()
         WirelessState.pairingStage = PairingStage.IDLE
@@ -78,66 +153,37 @@ class WirelessControlService : Service() {
         getSystemService(NotificationManager::class.java).createNotificationChannel(NotificationChannel(
             CHANNEL, label("无线控制", "Wireless control"), NotificationManager.IMPORTANCE_LOW))
         startForeground(NOTIFICATION, notification())
-        val connectivity = getSystemService(ConnectivityManager::class.java)
-        // VPN capabilities can also include WIFI for their underlying network.
-        // Advertise the physical Wi-Fi address for the LAN listener. Outgoing
-        // pairing requests follow the system's default network, including VPNs.
-        wifi = connectivity.allNetworks.firstOrNull {
-            connectivity.getNetworkCapabilities(it)?.let { capabilities ->
-                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
-                    !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
-                    capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
-            } == true
-        }
-        val address = wifi?.let { connectivity.getLinkProperties(it) }?.linkAddresses
-            ?.map { it.address }?.filterIsInstance<Inet4Address>()?.firstOrNull { !it.isLoopbackAddress }
-        if (address == null) {
-            WirelessState.error = label("请先连接 Wi-Fi，再开启无线控制。", "Connect to Wi-Fi before enabling wireless control.")
-            stopSelf(); return
-        }
-        connectivity.registerNetworkCallback(NetworkRequest.Builder().addTransportType(NetworkCapabilities.TRANSPORT_WIFI).build(), networkCallback)
-        worker.execute {
-            runCatching {
-                val identity = WirelessTls()
-                val listener = synchronized(serverLock) {
-                    if (stopping) return@execute
-                    WirelessServer(identity.context(), address, PORT, pairing,
-                    { disconnect -> WirelessDeviceSession(applicationContext, disconnect) },
-                    { connected -> handler.post {
-                        if (!stopping) { WirelessState.connected = connected; getSystemService(NotificationManager::class.java).notify(NOTIFICATION, notification()) }
-                    } }).also { server = it }
-                }
-                handler.post {
-                    if (stopping) listener.close() else {
-                        tls = identity
-                        WirelessState.address = address.hostAddress.orEmpty()
-                        listener.start()
-                        discovery = WirelessDiscovery(applicationContext).also { discovery ->
-                            runCatching { discovery.start(listener.port, identity.fingerprint) }
-                                .onFailure { discovery.close() }
-                        }
-                    }
-                }
-            }.onFailure { error -> handler.post {
-                if (!stopping && current === this) {
-                    WirelessState.error = error.message ?: "Unable to start wireless control"
-                    stopSelf()
-                }
-            } }
-        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == STOP) stopSelf()
-        return START_NOT_STICKY
+        val preferences = getSharedPreferences("wireless-pairing", Context.MODE_PRIVATE)
+        if (intent?.action == STOP) {
+            stop(this)
+            return START_NOT_STICKY
+        }
+        // A null intent is Android restarting an already enabled foreground service.
+        if (intent != null) preferences.edit().putBoolean("enabled", true).apply()
+        if (!preferences.getBoolean("enabled", false)) { stopSelf(); return START_NOT_STICKY }
+        WirelessState.enabled = true
+        if (!registered) {
+            val connectivity = getSystemService(ConnectivityManager::class.java)
+            connectivity.registerNetworkCallback(NetworkRequest.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN).build(), networkCallback)
+            registered = true
+            // Registration delivers existing Wi-Fi networks as well as future changes.
+        }
+        reconcileNetwork()
+        return START_STICKY
     }
 
     internal fun pairingLink(): String {
         check(!WirelessState.connected) { "Disconnect the controller before pairing another computer" }
         val identity = checkNotNull(tls) { "Wireless control is still starting" }
-        val data = JSONObject().put("version", 1).put("host", WirelessState.address).put("port", checkNotNull(server).port)
+        val data = JSONObject().put("version", 1).put("host", WirelessState.address).put("port", checkNotNull(listeners.listener).port)
             .put("fingerprint", identity.fingerprint).put("token", pairing.offer())
             .put("language", AppLanguage.resolved(this))
+            .put("name", "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
         return "tapilot://pair/" + Base64.getUrlEncoder().withoutPadding().encodeToString(data.toString().toByteArray())
     }
 
@@ -146,8 +192,10 @@ class WirelessControlService : Service() {
             WirelessState.pairingStage != PairingStage.WAITING) { "Pairing is already in progress" }
         WirelessState.pairingStage = PairingStage.SENDING
         WirelessState.pairingError = ""
+        val attempt = ++pairingAttempt
+        val pairingTarget = listeners.target
         val prepared = runCatching {
-            checkNotNull(wifi) { appText("请先连接 Wi-Fi", "Connect to Wi-Fi first") }
+            checkNotNull(listeners.listener) { appText("请等待 Wi-Fi 连接恢复", "Wait for Wi-Fi to reconnect") }
             pairingLink()
         }
         fun fail(error: Throwable) {
@@ -159,11 +207,11 @@ class WirelessControlService : Service() {
             worker.execute {
                 val result = runCatching { ComputerPairing.send(qr, link) }
                 handler.post {
-                    if (stopping || current !== this || WirelessState.pairingStage == PairingStage.PAIRED) return@post
+                    if (stopping || current !== this || listeners.target != pairingTarget || attempt != pairingAttempt || WirelessState.pairingStage != PairingStage.SENDING) return@post
                     result.fold({
                         WirelessState.pairingStage = PairingStage.WAITING
                         handler.postDelayed({
-                            if (!stopping && current === this && WirelessState.pairingStage == PairingStage.WAITING) {
+                            if (!stopping && current === this && attempt == pairingAttempt && WirelessState.pairingStage == PairingStage.WAITING) {
                                 fail(IllegalStateException(label("等待电脑确认超时，请重新打开电脑配对窗口并扫码。",
                                     "Computer confirmation timed out. Open a new pairing window and scan again.")))
                             }
@@ -174,16 +222,16 @@ class WirelessControlService : Service() {
         }
     }
 
-    internal fun revoke() { pairing.revoke(); stopSelf() }
+    internal fun revoke() { pairing.revoke(); stop(this) }
 
     override fun onDestroy() {
         stopping = true
         discovery?.close(); discovery = null
-        synchronized(serverLock) { server?.close(); server = null }
+        listeners.close()
         worker.shutdownNow()
         runCatching { getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(networkCallback) }
         if (current === this) current = null
-        WirelessState.enabled = false; WirelessState.connected = false; WirelessState.address = ""
+        WirelessState.enabled = false; WirelessState.connected = false; WirelessState.address = ""; WirelessState.waitingForWifi = false
         if (WirelessState.pairingStage == PairingStage.SENDING || WirelessState.pairingStage == PairingStage.WAITING) {
             WirelessState.pairingStage = PairingStage.FAILED
             WirelessState.pairingError = label("无线控制已停止，请重新开启后配对。", "Wireless control stopped. Enable it and pair again.")
@@ -199,11 +247,20 @@ class WirelessControlService : Service() {
         val stop = PendingIntent.getService(this, 0, Intent(this, WirelessControlService::class.java).setAction(STOP), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         return Notification.Builder(this, CHANNEL).setSmallIcon(android.R.drawable.stat_notify_sync_noanim)
             .setContentTitle(label("Tapilot 无线控制", "Tapilot wireless control"))
-            .setContentText(if (WirelessState.connected) label("电脑正在控制手机", "Computer is controlling this phone") else label("等待已配对的电脑连接", "Waiting for a paired computer"))
+            .setContentText(if (WirelessState.waitingForWifi) label("等待 Wi-Fi · 已有配对保留", "Waiting for Wi-Fi · Pairing kept") else if (WirelessState.connected) label("电脑正在控制手机", "Computer is controlling this phone") else label("等待已配对的电脑连接", "Waiting for a paired computer"))
             .setContentIntent(open).setOngoing(true).setOnlyAlertOnce(true)
             .addAction(Notification.Action.Builder(null, label("停止", "Stop"), stop).build()).build()
     }
     companion object {
+        internal fun stop(context: Context) {
+            context.getSharedPreferences("wireless-pairing", Context.MODE_PRIVATE).edit().putBoolean("enabled", false).apply()
+            current?.let { service ->
+                service.stopping = true
+                service.listeners.close()
+            }
+            context.stopService(Intent(context, WirelessControlService::class.java))
+        }
+
         internal var current: WirelessControlService? = null
             private set
         internal const val PORT = 39877

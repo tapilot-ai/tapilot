@@ -71,6 +71,22 @@ const messages = {
   "已配对，可以返回 ChatGPT 查看手机画面": "Paired. Return to ChatGPT; the phone screen connects automatically.",
   "正在配对，请稍候…": "Pairing, please wait…",
   "尚未发现。确认手机开启无线控制；网络屏蔽自动发现时仍可直接扫码。": "No phones found. Enable wireless control on the phone. You can still scan the QR if discovery is blocked.",
+  "已收到手机扫码信息，但电脑无法连接手机。请检查手机无线控制和两端网络，恢复后再次点击确认连接，无需重新扫码。": "Phone scan received, but the computer cannot connect to the phone. Check wireless control and network reachability, then confirm again without rescanning.",
+  "手机配对码已过期或失效，请重新扫码。": "The phone pairing code expired or is invalid. Scan again.",
+  "配对未完成，结果可能不确定。请重新扫码后确认连接。": "Pairing did not complete and its outcome may be uncertain. Scan again and confirm.",
+  "已连接": "Connected",
+  "未连接": "Not connected",
+  "已主动断开": "Disconnected by user",
+  "配对由此电脑上的各个 agent 共享。": "Pairing is shared by agents on this computer.",
+  "没有已配对设备": "No paired devices",
+  "无法读取设备列表": "Could not load paired devices",
+  "已配对设备": "Paired devices",
+  "刷新设备": "Refresh devices",
+  "连接设备": "Connect device",
+  "断开设备": "Disconnect device",
+  "移除本机配对": "Remove local pairing",
+  "确认移除": "Confirm removal",
+  "断开会保留配对。移除本机配对后，这台电脑需要重新扫码。": "Disconnect keeps pairing. Removing local pairing requires scanning again on this computer.",
   "无法完成配对，请保持手机解锁、确认 Wi-Fi 后重新扫码。": "Pairing failed. Keep the phone unlocked, check Wi-Fi and scan again.",
   "Android Use 已更新或安装文件缺失。请重载电脑上的插件或客户端；重启手机不会修复此问题。": "Android Use was updated or installation files are missing. Reload the plugin or client on this computer; restarting the phone will not fix this.",
   "请在手机上手动解锁，保持屏幕亮起。不要在聊天中输入密码。完成后选择“已完成继续”。": "Unlock your phone and keep its screen on. Do not enter the passcode in chat. Select Continue when ready.",
@@ -100,6 +116,15 @@ messages["确认连接"] = "Confirm connection";
 messages["配对已过期或无法继续，请重新生成二维码。"] = "Pairing expired or is unavailable. Generate a new QR code.";
 messages["手机的设备控制服务未连接"] = "Phone device control service is not connected";
 messages["请在手机系统辅助功能中开启 Tapilot 设备控制；若开关已开启，请关闭再开启。恢复后会自动连接，无需重新配对。"] = "Enable Tapilot device control in the phone's Accessibility settings. If already enabled, turn it off and on again. The screen reconnects automatically; no new pairing is needed.";
+Object.assign(messages, {
+  "连接": "Connect", "断开": "Disconnect", "你的手机": "Your phone",
+  "更多设备选项": "More device options", "无线连接你的手机": "Your phone, wirelessly.",
+  "连接已配对手机，在这里查看和操作屏幕。": "Connect a paired phone to see and control its screen here."
+});
+Object.assign(messages, {
+  "请在手机上解锁，画面会自动恢复": "Unlock your phone. The screen will resume automatically.",
+  "保持手机解锁，预览会自动恢复，无需刷新连接。": "Keep your phone unlocked. Preview resumes automatically; no reconnect needed."
+});
 const chinese = {"在手机上重新扫描电脑二维码，并在电脑窗口确认。完成后点击重新连接。": "在手机上重新扫描电脑二维码，并在电脑窗口确认。完成后会自动连接并显示画面。", "请检查手机无线控制已开启、两端 Wi-Fi 可互通。恢复后点击重新连接；不会重放之前的操作。": "请检查手机无线控制已开启、两端 Wi-Fi 可互通。恢复后会自动连接；不会重放之前的操作。", "请先在另一控制端结束任务或释放手机，然后重新连接。": "请先在另一控制端结束任务或释放手机，画面会自动恢复。", "打开配对窗口，用手机扫描二维码并在电脑确认，然后点击重新连接。窗口 5 分钟内有效。": "打开配对窗口，用手机扫描二维码并在电脑确认，画面会自动连接。窗口 5 分钟内有效。", "已配对，可以返回 ChatGPT 查看手机画面": "配对成功。返回 ChatGPT 后会自动连接并显示手机画面。"};
 let language = /^zh(?:-|$)/i.test(globalThis.navigator?.language ?? '') ? 'zh' : 'en';
 export function setLanguage(value) { if (value === 'zh' || value === 'en') language = value; }

@@ -96,10 +96,8 @@ android {
         // A test APK has one runner. Select the existing pairing harness explicitly.
         testInstrumentationRunner = providers.gradleProperty("tapilotTestRunner")
             .orElse("lifeos.md.tapilot.performance.NativeTaskPerformanceHarness").get()
-        if (providers.gradleProperty("speechVerification").isPresent) applicationIdSuffix = ".speechverify"
-        else if (providers.gradleProperty("e2eVerification").isPresent) applicationIdSuffix = ".e2everify"
+        if (providers.gradleProperty("e2eVerification").isPresent) applicationIdSuffix = ".e2everify"
         val verificationLabel = when {
-            providers.gradleProperty("speechVerification").isPresent -> "Tapilot Speech Test"
             providers.gradleProperty("e2eVerification").isPresent -> "Tapilot E2E Test"
             else -> null
         }
@@ -151,16 +149,10 @@ android {
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true }
 
-    if (providers.gradleProperty("speechVerification").isPresent) {
-        sourceSets["debug"].assets.srcDir("../dist/runtime")
-        sourceSets["debug"].java.srcDir("src/speechVerification/java")
-        sourceSets["debug"].manifest.srcFile("src/speechVerification/AndroidManifest.xml")
-    } else {
-        // Offline reports still need their export helper and branding assets.
-        sourceSets["main"].assets.srcDir("../public")
-    }
+    // Offline reports still need their export helper and branding assets.
+    sourceSets["main"].assets.srcDir("../public")
     sourceSets["main"].jniLibs.srcDir("../.cache/native")
-    sourceSets["test"].resources.srcDir("../docs/protocols")
+    sourceSets["test"].resources.srcDir("../tests/fixtures")
 
     packaging {
         jniLibs.useLegacyPackaging = true
@@ -192,16 +184,6 @@ val verifyBrandTheme by tasks.registering(Exec::class) {
     commandLine("node", "scripts/generate-brand.mjs", "--check")
 }
 
-val verifyRuntimeAssets by tasks.registering {
-    val runtimeIndex = rootProject.file("dist/runtime/index.html")
-    inputs.file(runtimeIndex)
-    doLast {
-        check(runtimeIndex.isFile) {
-            "Missing embedded Tapilot runtime. Run `pnpm --filter tapilot build`."
-        }
-    }
-}
-
 val verifyReportAssets by tasks.registering {
     val reportFiles = listOf("report-export.js", "tapilot-icon.png").map { rootProject.file("public/$it") }
     inputs.files(reportFiles)
@@ -224,7 +206,6 @@ val verifyNodeRuntimeAssets by tasks.registering(Exec::class) {
 
 tasks.named("preBuild") {
     dependsOn(verifyBrandTheme, verifyReportAssets)
-    if (providers.gradleProperty("speechVerification").isPresent) dependsOn(verifyRuntimeAssets)
 }
 
 val verifyReleaseSigning by tasks.registering {
@@ -239,7 +220,7 @@ tasks.configureEach {
     if (name in listOf("packageDebug", "packageRelease", "packageBeta")) {
         dependsOn(verifyNodeRuntimeAssets)
     }
-    if (name == "assembleDebug" && !providers.gradleProperty("speechVerification").isPresent) {
+    if (name == "assembleDebug") {
         doLast {
             ZipFile(layout.buildDirectory.file("outputs/apk/debug/app-debug.apk").get().asFile).use { apk ->
                 val names = apk.entries().asSequence().map { it.name }.toSet()

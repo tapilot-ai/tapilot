@@ -1,7 +1,7 @@
 import { t } from '../ui/i18n.mjs';
 import { randomUUID } from 'node:crypto';
 import { control, imageSize } from './panel-controls.mjs';
-export const SCREEN_URI = 'ui://android-use/screen-0.6.0.html';
+export const SCREEN_URI = 'ui://android-use/screen-0.6.1.html';
 export const SCREEN_META = { ui: { csp: { connectDomains: [], resourceDomains: [] }, prefersBorder: false }, 'openai/ui': { availableDisplayModes: ['fullscreen'], preferredDisplayMode: 'fullscreen' } };
 export const PANEL_META = { 'openai/widgetSessionId': 'android-use-screen' };
 export const isLocked = error => /^(Unlock the phone first|Phone is locked\. Unlock it on the device\.)$/.test(error.message);
@@ -49,7 +49,9 @@ export class Preview {
     return result({...next.structuredContent, action_completed:true, timing:{action_ms:Math.round(actionMs),refresh_ms:Math.round(performance.now()-start-actionMs)}});
   }
   async frame(phone, viewerId = 'default') {
-    if (this.reason) return result({ state: this.reason });
+    // A screen lock is temporary: keep probing without replaying any action.
+    // Explicit privacy pauses and disconnects still require user resumption.
+    if (this.reason && this.reason !== 'device_locked') return result({ state: this.reason });
     const revision = this.revision;
     try {
       await phone.open();
@@ -57,6 +59,7 @@ export class Preview {
       if (phone.config && ['en', 'zh'].includes(frame.language)) phone.config.language = frame.language;
       if (revision !== this.revision) return result({ state: this.reason ?? 'disconnected' });
       const size = imageSize(frame.dataUrl);
+      if (this.reason === 'device_locked') this.reason = null;
       this.lastFrame = { id: randomUUID(), viewerId, receivedAt: performance.now(), ...size };
       // Keep two recent frames per window: other viewers must not evict the
       // image a user is clicking. Mutations still consume every viewer's frames.

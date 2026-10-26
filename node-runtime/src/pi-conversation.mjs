@@ -92,6 +92,8 @@ export function createConversation({ messages, goal = '', userInput = '', resume
   let phoneCallsInTurn = 0;
   let invalidFinishes = 0, requirementRevision = 0, verifiedRevision = -1;
   let turns = 0, operations = 0, lastPhoneResult = null, final = null, planned = false, singlePhoneCall = false;
+  const resumedPhoneTask = resume.some(message => message.role === 'assistant' &&
+    message.content?.some(block => block.type === 'toolCall' && ['operate_phone', 'set_plan'].includes(block.name)));
   const checkLimit = (count, limit, code) => { if (limit > 0 && count >= limit)
     throw new RuntimeFailure(code, language); };
   // Bound prompt cost and treat launcher metadata as data, never instructions.
@@ -158,7 +160,7 @@ export function createConversation({ messages, goal = '', userInput = '', resume
     { name: 'answer_question', description: 'Answer a general question that needs no phone state or action. Never claim a phone action was performed, a screen was read, or a device task completed. For missing task information use finish_task(outcome=waiting_user).',
       parameters: Type.Object({ answer: Type.String({ minLength: 1 }) }),
       execute: async (_id, args) => {
-        if (operations > 0 || planned || resume.length) throw new Error('任务已有手机执行、计划或恢复上下文，不能改为普通知识问答。请用 finish_task 结束。');
+        if (operations > 0 || planned || resumedPhoneTask) throw new Error('任务已有手机执行或计划，不能改为普通知识问答。请用 finish_task 结束。');
         final = { outcome: 'completed', summary: args.answer, kind: 'answer' };
         return { content: [{ type: 'text', text: args.answer }], terminate: true };
       } },

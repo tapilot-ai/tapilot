@@ -5,7 +5,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ConversationContractTest {
-    private val fixture = JSONObject(javaClass.getResource("/fixtures/conversation.json")!!.readText())
+    private val fixture = JSONObject(javaClass.getResource("/conversation.json")!!.readText())
 
     @Test fun phoneOperationsAgreeWithNodeContract() {
         fixture.getJSONArray("valid").objects().forEach { test ->

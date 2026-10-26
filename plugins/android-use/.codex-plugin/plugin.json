@@ -1,6 +1,6 @@
 {
   "name": "android-use",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Control a paired Android phone over Wi-Fi with a cross-agent CLI and skill; MCP supplies the embedded preview panel.",
   "author": {
     "name": "quanru"

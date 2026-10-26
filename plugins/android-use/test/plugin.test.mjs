@@ -11,13 +11,13 @@ import { Preview, unlockRequired, connectionState } from '../server/preview.mjs'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { PhoneConnection } from '../server/transport.mjs';
-import { parsePairingLink, saveConfig } from '../server/config.mjs';
+import { parsePairingLink, saveConfig, selectDevice } from '../server/config.mjs';
 import { callTool } from '../server/tools.mjs';
 
 import { runtimeRequest } from '../server/runtime-client.mjs';
 
 const token = 'a'.repeat(43);
-async function fixture(t, handler) {
+async function fixture(t, handler, { automaticAuthentication = true } = {}) {
   const dir = await mkdtemp(join(tmpdir(), 'tapilot-mcp-test-'));
   execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', join(dir, 'key.pem'), '-out', join(dir, 'cert.pem'), '-subj', '/CN=Tapilot test', '-days', '1'], { stdio: 'ignore' });
   const key = await readFile(join(dir, 'key.pem')), cert = await readFile(join(dir, 'cert.pem'));
@@ -32,7 +32,7 @@ async function fixture(t, handler) {
       while ((end = buffer.indexOf('\n')) >= 0) {
         const request = JSON.parse(buffer.slice(0, end)); buffer = buffer.slice(end + 1); requests.push(request);
         const reply = value => socket.write(JSON.stringify({ id: request.id, ok: true, result: value }) + '\n');
-        if (request.method === 'authenticate') {
+        if (request.method === 'authenticate' && automaticAuthentication) {
           if (request.token !== token) socket.write(JSON.stringify({ id: request.id, ok: false, error: 'Not paired' }) + '\n');
           else reply({ protocolVersion: 1 });
         } else handler(request, reply, socket);
@@ -47,8 +47,30 @@ async function fixture(t, handler) {
     if(previousState===undefined) delete process.env.ANDROID_USE_STATE_DIR; else process.env.ANDROID_USE_STATE_DIR=previousState;
     if(previousConfig===undefined) delete process.env.TAPILOT_CONFIG; else process.env.TAPILOT_CONFIG=previousConfig;
     for (const socket of connections) socket.destroy(); await new Promise(resolve => server.close(resolve)); await rm(dir, { recursive: true, force: true }); });
-  return { dir, requests, config: { version: 1, host: '127.0.0.1', port: server.address().port, fingerprint: createHash('sha256').update(der).digest('hex'), token } };
+  return { dir, requests, connections, config: { version: 1, host: '127.0.0.1', port: server.address().port, fingerprint: createHash('sha256').update(der).digest('hex'), token } };
 }
+
+test('overlapping connection attempts wait for authentication before sending phone requests', async t => {
+  let authenticate;
+  const receivedAuthentication = new Promise(resolve => { authenticate = resolve; });
+  const {config, requests} = await fixture(t, (request, reply) => {
+    if (request.method === 'authenticate') authenticate(reply);
+    else reply({canCapture:true});
+  }, {automaticAuthentication:false});
+  const phone = new PhoneConnection(config); t.after(() => phone.close());
+  const first = phone.open();
+  const reply = await receivedAuthentication;
+  let secondReady = false;
+  const second = phone.open().then(() => { secondReady = true; });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(secondReady, false, 'a socket is not usable until authentication succeeds');
+  assert.equal(phone.connected, false);
+  reply({features:{jpegPreview:true}});
+  await Promise.all([first, second]);
+  assert.equal(phone.connected, true);
+  assert.equal(phone.features.jpegPreview, true);
+  assert.deepEqual(requests.map(request => request.method), ['authenticate']);
+});
 
 test('certificate mismatch sends no pairing credential', async t => {
   const { config, requests } = await fixture(t, () => {});
@@ -94,7 +116,7 @@ test('real MCP stdio handshake, image content, schema and disconnect', async t =
   t.after(() => client.close());
   await client.connect(transport);
   const listed=(await client.listTools()).tools;
-  assert.equal(listed.length, 7);
+  assert.equal(listed.length, 8);
   assert.deepEqual(listed.filter(t=>!t._meta?.ui?.visibility).map(t=>t.name),['tapilot_preview_open']);
   assert.equal((await client.callTool({name:'tapilot_midscene',arguments:{action:'home'}})).isError,true);
   assert.equal((await client.callTool({name:'tapilot_preview_pair',arguments:{action:'home'}})).isError,true);
@@ -139,7 +161,7 @@ test('pairing links validate endpoint and credentials without echoing secrets', 
 });
 
 
-test('preview uses independent capture, pauses on lock and requires explicit resume', async () => {
+test('preview automatically recovers after unlock but preserves explicit privacy pauses', async () => {
   const preview = new Preview(); let locked = false; const methods = [];
   const phone = { open: async () => {}, request: async method => {
     methods.push(method); if (locked) throw new Error('Phone is locked. Unlock it on the device.');
@@ -151,8 +173,9 @@ test('preview uses independent capture, pauses on lock and requires explicit res
   preview.observe(); assert.equal((await preview.frame(phone)).structuredContent.state, 'live');
   assert.deepEqual(methods, ['device.preview']);
   locked = true; assert.equal((await preview.frame(phone)).structuredContent.state, 'device_locked');
-  locked = false; assert.equal((await preview.frame(phone)).structuredContent.state, 'device_locked');
-  await preview.resume(phone); assert.equal(preview.reason, null);
+  locked = false; assert.equal((await preview.frame(phone)).structuredContent.state, 'live');
+  assert.equal(preview.reason, null);
+  assert.ok(methods.every(method => method === 'device.preview'));
   preview.pause(); preview.observe(); assert.equal(preview.reason, 'manual');
   assert.equal((await preview.frame(phone)).structuredContent.dataUrl, undefined);
 });
@@ -338,4 +361,78 @@ test('CLI processes share frames with the MCP panel, generate reports, and rejec
   assert.match((await panel({name:'tapilot_midscene',arguments:{action:'home'}})).error,/Unsupported/);
   const html=await (await fetch(previewURL.origin)).text(); assert.match(html,/__ANDROID_USE_BROWSER__=true/);
   assert.ok(!html.includes(previewURL.hash.slice(1)),'HTML does not embed the browser capability');
+});
+
+test('explicit disconnect persists across runtime restart and blocks every automatic entry point', async t => {
+  const {config,requests} = await fixture(t, (_request,reply) => reply({canCapture:true}));
+  await saveConfig(config);
+  const call = (name,args={}) => runtimeRequest('/call',{name,arguments:args});
+  const list = await call('tapilot_devices',{action:'list'});
+  assert.equal(requests.length,0);
+  assert.equal(list.structuredContent.devices[0].id,config.fingerprint);
+  assert.ok(!JSON.stringify(list).includes(config.token));
+  await call('tapilot_status');
+  assert.equal(requests[0].method,'authenticate');
+  const {promisify} = await import('node:util');
+  const {execFile} = await import('node:child_process');
+  const cli = async (...args) => JSON.parse((await promisify(execFile)(process.execPath,
+    [new URL('../server/cli.mjs',import.meta.url).pathname,...args],{env:process.env})).stdout);
+  assert.equal((await cli('devices')).devices[0].id,config.fingerprint);
+  await cli('disconnect');
+  const count=requests.length;
+  await runtimeRequest('/stop');
+  for (const [name,args] of [
+    ['tapilot_preview_open',{}],['tapilot_preview_frame',{}],['tapilot_status',{}],
+    ['tapilot_midscene',{action:'screenshot'}],['tapilot_midscene',{action:'home'}],
+    ['tapilot_preview',{action:'open'}],
+  ]) assert.equal((await call(name,args)).structuredContent.state,'disconnected');
+  assert.equal(requests.length,count,'No connection or action after restart until user connects');
+  assert.equal((await cli('connect','--device-id',config.fingerprint)).isError,false);
+  assert.equal(requests.length,count+1);
+  assert.equal(requests.at(-1).method,'authenticate');
+  await call('tapilot_devices',{action:'forget',device_id:config.fingerprint});
+  assert.equal((await call('tapilot_devices',{action:'list'})).structuredContent.devices.length,0);
+});
+
+test('removing pairing outside the runtime releases the old phone on the next device-list request', async t => {
+  const {config,connections} = await fixture(t, (_request, reply) => reply({canCapture:true}));
+  await saveConfig(config);
+  await runtimeRequest('/call', {name:'tapilot_status',arguments:{}});
+  assert.equal(connections.size, 1);
+  const closed = new Promise(resolve => [...connections][0].once('close', resolve));
+  await selectDevice('forget', config.fingerprint);
+  const result = await runtimeRequest('/call', {name:'tapilot_devices',arguments:{action:'list'}});
+  assert.equal(result.structuredContent.state, 'disconnected');
+  assert.deepEqual(result.structuredContent.devices, []);
+  await closed;
+});
+
+test('invalid resume arguments cannot undo an explicit disconnect', async t => {
+  const {config,requests} = await fixture(t, (_request,reply) => reply({canCapture:true}));
+  await saveConfig(config);
+  await selectDevice('disconnect', config.fingerprint);
+  const invalid = await runtimeRequest('/call', {name:'tapilot_preview_resume',arguments:{unexpected:true}});
+  assert.equal(invalid.isError, true);
+  const listed = await runtimeRequest('/call', {name:'tapilot_devices',arguments:{action:'list'}});
+  assert.equal(listed.structuredContent.devices[0].state, 'disconnected');
+  const observed = await runtimeRequest('/call', {name:'tapilot_status',arguments:{}});
+  assert.equal(observed.isError, true);
+  assert.equal(requests.length, 0);
+});
+
+
+test('manual pause or disconnect during an unlock probe discards the late frame', async () => {
+  for (const reason of ['manual', 'disconnected']) {
+    const preview = new Preview(); preview.pause('device_locked');
+    let release;
+    const pending = new Promise(resolve => { release = resolve; });
+    const phone = {open: async () => {}, request: () => pending};
+    const probe = preview.frame(phone);
+    await Promise.resolve();
+    preview.pause(reason);
+    release({dataUrl:'data:image/png;base64,invalid'});
+    assert.equal((await probe).structuredContent.state, reason);
+    assert.equal(preview.lastFrame, undefined);
+    assert.equal(preview.reason, reason);
+  }
 });

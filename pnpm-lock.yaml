@@ -179,12 +179,6 @@ importers:
         specifier: workspace:*
         version: link:packages/android-accessibility
     devDependencies:
-      '@rsbuild/core':
-        specifier: ^1.6.15
-        version: 1.7.6
-      '@rstest/core':
-        specifier: 0.11.5
-        version: 0.11.5(core-js@3.47.0)
       typescript:
         specifier: ^5.8.3
         version: 5.9.3

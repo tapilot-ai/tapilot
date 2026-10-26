@@ -463,6 +463,41 @@ test('plain clarification cannot default to completed, while knowledge has an ex
   assert.equal((await knowledge.run()).reply, 'An image of a display.');
 });
 
+test('a general question can finish after clarification without being stuck waiting for another answer', async () => {
+  let checkpoint = [];
+  const question = 'Which multiplication did you mean?';
+  const first = createConversation({messages:input('Explain that calculation'),
+    emit:event => { if (event.type === 'checkpoint') checkpoint = event.messages; },
+    rpc:async () => tool('finish_task', {outcome:'waiting_user', summary:question})});
+  assert.equal((await first.run()).phase, 'waiting_user');
+  let calls = 0;
+  const next = createConversation({messages:input('50 times 2'), resume:checkpoint, emit:() => {},
+    rpc:async (method, params) => {
+      assert.equal(method, 'model.complete');
+      assert.ok(JSON.stringify(params.messages).includes(question));
+      return calls++ === 0 ? tool('answer_question', {answer:'100'})
+        : tool('finish_task', {outcome:'waiting_user', summary:'100'});
+    }});
+  const result = await next.run();
+  assert.equal(result.phase, 'completed');
+  assert.equal(result.completionKind, 'answer');
+  assert.equal(result.reply, '100');
+  assert.equal(calls, 1);
+});
+
+test('a resumed phone operation or plan cannot use the general-answer exit', async () => {
+  for (const name of ['operate_phone', 'set_plan']) {
+    let calls = 0;
+    const resumed = createConversation({messages:input('Continue'),
+      resume:[{role:'assistant',content:[{type:'toolCall',id:'previous',name,arguments:{}}]}],
+      emit:() => {}, rpc:async () => calls++ === 0
+        ? tool('answer_question', {answer:'Everything succeeded'})
+        : tool('finish_task', {outcome:'failed',summary:'Needs phone verification'})});
+    assert.equal((await resumed.run()).phase, 'failed');
+    assert.equal(calls, 2);
+  }
+});
+
 test('knowledge exit cannot bypass a failed phone operation', async () => {
   let models = 0;
   const c = createConversation({ language: 'zh', messages: input('Read screen'), rpc: async method => {

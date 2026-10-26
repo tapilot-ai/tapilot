@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { WirelessDevice } from '../plugins/android-use/server/midscene/device.mjs';
 
-const fixture = JSON.parse(await readFile(new URL('../docs/protocols/fixtures/device.json', import.meta.url), 'utf8'));
+const fixture = JSON.parse(await readFile(new URL('../tests/fixtures/device.json', import.meta.url), 'utf8'));
 test('wireless adapter emits actions consumed by the Kotlin protocol parser', async () => {
   const sent = [];
   const device = new WirelessDevice(async (method, params) => {

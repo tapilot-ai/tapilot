@@ -15,19 +15,9 @@ UI-tree locators. Android's `AccessibilityService` supplies screenshots, gesture
 system navigation and text input. Normal use requires **no ADB, Shizuku or root**.
 This is an experimental project; model decisions and device behavior can fail.
 
-## See it in action
+## Demo
 
-Ask: **“Open Calculator, calculate 12 + 34, and check the result on screen.”**
-The phone opens Calculator, performs the calculation and returns **46**.
-
-[![Watch the Calculator demonstration](docs/assets/demo-preview.gif)](docs/assets/demo.mp4)
-
-**[Watch / download the video](docs/assets/demo.mp4)** · Real OPPO Find N capture ·
-Silent time-lapse · Chinese UI
-
-| Give an instruction | Midscene operates the phone | Read the result |
-| --- | --- | --- |
-| <img src="docs/assets/demo-request.png" width="240" alt="A new Tapilot conversation with a Calculator instruction"> | <img src="docs/assets/demo-calculator.png" width="240" alt="The phone Calculator showing 12 plus 34 equals 46"> | <img src="docs/assets/demo-result.png" width="240" alt="Tapilot returning 46 after phone execution"> |
+[English promotional video](promo-video/en/tapilot-promo.mp4) · [中文宣传片](promo-video/zh/tapilot-promo.mp4) · Normal-speed short edits, approximately 78 seconds.
 
 ## How the visual loop works
 
@@ -61,9 +51,7 @@ therefore remain unsupported even when their pixels are visible.
   automatically after an app restart.
 - **Check results on screen.** Each phone operation ends with a separate screenshot
   check against the current requirements. Missing evidence remains unknown, and
-  verified progress is retained for later steps. See the
-  [verification and recovery design](docs/architecture/README.md#verification-and-recovery)
-  for completion rules and retry boundaries.
+  verified progress is retained for later steps.
 - **Inspect what happened.** Open the Midscene HTML replay with screenshots,
   model plans, actions and errors; export it when needed.
 - **Talk to the phone.** Optional Volcengine / Deepgram transcription and speech
@@ -130,15 +118,14 @@ install and test; it is not required for Tapilot's runtime automation.
 | `node-runtime/` | Embedded Pi agent, Midscene runner and deployment dependencies |
 | `packages/android-accessibility/` | Midscene adapter for Android AccessibilityService |
 | `plugins/android-use/` | Computer-side Wi-Fi control plugin |
-| `tests/midscene/` | 19 E2E cases and opt-in device fault fixtures |
-| `legacy/web-ui/` | Historical Web UI, excluded from ordinary APKs |
+| `tests/midscene/` | 20 E2E cases and opt-in device fault fixtures |
 
 Run `pnpm check` for the full local test/build gate and `pnpm check:security` for
-dependency audits. Device-backed E2E is separate; 19 authored cases do not imply
-19 verified passes. See the [E2E guide and evidence](tests/midscene/README.md),
-[architecture](docs/architecture/README.md) and [development guide](docs/development/README.md).
+dependency audits. Device-backed E2E is separate; 20 authored cases do not imply
+20 verified passes. See the [E2E guide and evidence](tests/midscene/README.md) and
+[contribution guide](CONTRIBUTING.md).
 
-Current evidence and outstanding release gates: [validation index](docs/development/validation-current.zh.md). Historical device runs do not establish a pass for the latest source.
+Historical device runs do not establish a pass for the latest source.
 
 ## Limits and data
 
@@ -172,4 +159,4 @@ license identifiers and redistribution work still required before release.
 ## License
 
 [MIT](LICENSE). Third-party components retain their own licenses.
-See [CREDITS.md](CREDITS.md) and [redistribution notes](docs/development/third-party-licenses.md).
+See [CREDITS.md](CREDITS.md) and [redistribution notes](THIRD_PARTY_LICENSES.md).

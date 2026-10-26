@@ -37,7 +37,10 @@ Commands: ${[...commands].join(", ")}
   capabilities             Connect and list installed launchable apps
   preview [--open]          Return/open the local live preview URL
   pause | resume           Pause private capture/control; explicitly resume
-  disconnect               Release the phone
+  devices                  List saved devices without connecting
+  connect [--device-id ID]  Explicitly connect a saved device
+  disconnect [--device-id ID]  Disconnect and keep pairing
+  forget --device-id ID     Remove pairing from this computer
   runtime-stop             Stop this local runtime (not other hosts)
 Fields: --report-id, --frame-id, --x, --y, --end-x, --end-y,
         --text, --passed true|false, --mode steps|ai|off, --timeout-ms
@@ -150,7 +153,11 @@ try {
         pause: "pause",
         resume: "resume",
       };
-      if (Object.hasOwn(special, command)) {
+      if (['devices','connect','disconnect','forget'].includes(command)) {
+        if (Object.keys(args).some(k => k !== 'device_id') || (command === 'forget' && !args.device_id))
+          throw Error('Use --device-id ID (required for forget)');
+        request = {name:'tapilot_devices', arguments:{action:command === 'devices' ? 'list' : command,...args}};
+      } else if (Object.hasOwn(special, command)) {
         if (Object.keys(args).length) throw new Error("No options expected");
         request = ["pause", "resume"].includes(command)
           ? { name: "tapilot_preview", arguments: { action: command } }

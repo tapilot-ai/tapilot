@@ -50,10 +50,13 @@ cases:
           Open Tapilot settings and scroll to the very top of the settings content
           (swipe downward if the page retained its previous scroll position). Locate
           "ChatGPT 无线控制" / "ChatGPT wireless control" and verify its Wi-Fi control
-          explanation. Read the current wireless status. Then scroll down to
-          "设备控制（辅助功能）" and verify the Android Accessibility enablement guidance. Do not
+          explanation. Read the current wireless status. Immediately below wireless control,
+          locate "Model connection" / "模型连接" and verify ChatGPT (SIWC) and API Key
+          are available as access choices. Do not switch access modes, open login,
+          reveal credentials or modify the current account. Do not
           start, stop, revoke or pair wireless control, and do not copy a pairing secret.
       - aiAct: >-
-          Locate the model-access section and verify that ChatGPT (SIWC) and API Key
-          are available as access choices. Do not switch access modes, open login,
-          reveal credentials or modify the current account. Return to chat.
+          Continue downward through settings to "Device control (Accessibility)" /
+          "设备控制（辅助功能）" in the "Global assistant" section. Verify the Android
+          Accessibility enablement guidance. Do not change any setting or open system
+          Accessibility. Return to chat using the top-left back button.

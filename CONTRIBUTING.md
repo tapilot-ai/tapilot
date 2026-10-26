@@ -32,7 +32,6 @@ has an isolated production dependency lockfile. The standalone Midscene E2E pack
 | `pnpm check:e2e` | Type-check and validate Midscene YAML cases; no device or model needed |
 | `pnpm test:e2e` / `pnpm test:e2e:live` | Run visual smoke / explicitly opted-in native task E2E; see [E2E guide](tests/midscene/README.md) |
 | `pnpm check:plugin` | Plugin UI freshness and all plugin tests, no Android SDK needed |
-| `pnpm build:legacy` / `pnpm dev:legacy` | Optional legacy Web UI only |
 | `pnpm build:beta:distribution` | Maintainer Beta build, enforcing the existing certificate and binary redistribution review |
 | `pnpm build:release` | Production build requiring explicit signing credentials and completed binary redistribution review |
 
@@ -86,9 +85,8 @@ pins the historical Beta certificate; production has no default signing identity
 
 ## Structure and changes
 
-Start with the [architecture map](docs/architecture/README.md),
-[development guide](docs/development/README.md) and
-[device protocol](docs/protocols/device.md).
+Shared device and conversation contract fixtures live in `tests/fixtures/`.
+Android tests and the Node runtime bundle read the same files.
 
 Keep behavior changes separate from directory moves. Add regression coverage for
 cancellation, serialization and provider boundaries. Update both README locales
@@ -98,6 +96,5 @@ to acceptance artifacts. See [SECURITY.md](SECURITY.md) for vulnerability report
 
 ## Distribution and privacy
 
-Read [third-party redistribution](docs/development/third-party-licenses.md),
-[release verification](docs/development/releasing.md) and [privacy](PRIVACY.md)
+Read [third-party redistribution](THIRD_PARTY_LICENSES.md) and [privacy](PRIVACY.md)
 before distributing APKs or changing data flows.

@@ -49,3 +49,51 @@ test('discovery metadata contains no pairing secret and ignores malformed servic
  const found=discoveredPhones(service);assert.equal(found.length,1);assert.equal(found[0].fingerprint,config.fingerprint);assert.ok(!JSON.stringify(found).includes('must-not-leak'));
  assert.deepEqual(discoveredPhones({...service,txt:{version:'1',fingerprint:'bad'}}),[]);
 });
+
+test('connection failure preserves scanned phone until explicit confirmation succeeds', async t => {
+  let attempts = 0;
+  const window = await createPairingWindow({host:'127.0.0.1',pair:async () => {
+    attempts++;
+    if (attempts === 1) throw Object.assign(Error('private transport detail'), {code:'phone_unreachable'});
+  }});
+  t.after(() => window.close());
+  const qr = JSON.parse(Buffer.from(window.payload.slice('tapilot://computer/'.length),'base64url'));
+  await offer(qr.url, config, qr.fingerprint);
+  const confirm = () => fetch(window.url+'confirm',{method:'POST',headers:{Origin:new URL(window.url).origin}});
+  const failed = await confirm();
+  assert.equal(failed.status,502);
+  assert.equal((await failed.json()).retryable,true);
+  const status = await (await fetch(window.url+'status')).json();
+  assert.equal(status.pending.host,config.host);
+  assert.match(status.error,/无需重新扫码/);
+  assert.ok(!JSON.stringify(status).includes('private transport detail'));
+  assert.ok(!JSON.stringify(status).includes(config.token));
+  assert.equal(attempts,1); // Status polling must never repeat a confirmation.
+  assert.equal((await (await confirm()).json()).paired,true);
+  assert.equal(attempts,2);
+});
+
+test('uncertain pairing failure clears the offer and never exposes raw errors', async t => {
+  const window = await createPairingWindow({host:'127.0.0.1',pair:async () => {throw Error('secret credential');}});
+  t.after(() => window.close());
+  const qr = JSON.parse(Buffer.from(window.payload.slice('tapilot://computer/'.length),'base64url'));
+  await offer(qr.url,config,qr.fingerprint);
+  const response = await fetch(window.url+'confirm',{method:'POST',headers:{Origin:new URL(window.url).origin}});
+  const error = await response.json();
+  assert.equal(error.retryable,false);
+  assert.match(error.error,/结果可能不确定/);
+  assert.ok(!JSON.stringify(error).includes('secret credential'));
+  assert.equal((await (await fetch(window.url+'status')).json()).pending,null);
+});
+
+test('transport marks refused connections safe to retry before sending a pairing credential', async t => {
+  const {createServer} = await import('node:net');
+  const {PhoneConnection} = await import('../server/transport.mjs');
+  const server = createServer();
+  await new Promise(resolve => server.listen(0,'127.0.0.1',resolve));
+  const port = server.address().port;
+  await new Promise(resolve => server.close(resolve));
+  const phone = new PhoneConnection({...config,host:'127.0.0.1',port});
+  t.after(() => phone.close());
+  await assert.rejects(phone.open(true),error => error.code === 'phone_unreachable');
+});

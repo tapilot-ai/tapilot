@@ -21,3 +21,12 @@ node_modules/
 .env
 .env.*
 !.env.example
+
+# Publish only the two final promotional videos; production files stay local.
+/promo-video/*
+!/promo-video/en/
+!/promo-video/zh/
+/promo-video/en/*
+/promo-video/zh/*
+!/promo-video/en/tapilot-promo.mp4
+!/promo-video/zh/tapilot-promo.mp4

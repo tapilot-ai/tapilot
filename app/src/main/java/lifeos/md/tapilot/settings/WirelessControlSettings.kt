@@ -83,22 +83,27 @@ internal fun WirelessControlSettings(context: Context, zh: Boolean) {
         }) { Text(label("打开系统辅助功能", "Open Accessibility settings")) }
         Text(if (WirelessState.connected) label("已连接电脑", "Computer connected")
             else if (WirelessState.address.isNotEmpty()) (if (WirelessState.paired) label("已配对 · 等待电脑连接", "Paired · Waiting for computer") else label("未配对 · 请扫描电脑二维码", "Not paired · Scan computer QR")) + " · ${WirelessState.address}"
+            else if (WirelessState.waitingForWifi) label("等待 Wi-Fi · 已有配对保留", "Waiting for Wi-Fi · Pairing kept")
             else if (WirelessState.enabled) label("正在开启…", "Starting…") else label("未开启", "Off"), modifier = detailInset)
         TextButton(onClick = {
             status = ""
             runCatching {
-                if (WirelessState.enabled) context.stopService(Intent(context, WirelessControlService::class.java))
+                if (WirelessState.enabled) WirelessControlService.stop(context)
                 else ContextCompat.startForegroundService(context, Intent(context, WirelessControlService::class.java))
             }.onFailure { status = it.message.orEmpty() }
         }) { Text(if (WirelessState.enabled) label("停止无线控制", "Stop wireless control") else label("开启无线控制", "Enable wireless control")) }
-        TextButton(enabled = WirelessState.address.isNotEmpty() && !pairingBusy, onClick = {
+        TextButton(enabled = WirelessState.address.isNotEmpty() && !WirelessState.connected && !pairingBusy, onClick = {
                 scanner.launch(ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE)
                     .setPrompt(label("扫描电脑 Android Use 配对二维码", "Scan the Android Use pairing QR on your computer"))
                     .setCaptureActivity(PairingCaptureActivity::class.java)
                     .setBeepEnabled(false).setOrientationLocked(true))
         }) { Text(label("扫描电脑二维码配对", "Scan computer QR to pair")) }
-        if (WirelessState.address.isEmpty()) Text(label("请先开启无线控制，再扫描电脑上的 Android Use 配对二维码。",
-            "Enable wireless control first, then scan the Android Use pairing QR on your computer."), fontSize = 12.sp)
+        if (WirelessState.connected) Text(label("如需重新配对，请先在电脑端断开当前连接。", "Disconnect on the computer before pairing again."),
+            modifier = detailInset, fontSize = 12.sp)
+        if (WirelessState.address.isEmpty()) Text(if (WirelessState.enabled)
+            label("等待 Wi-Fi 就绪后自动连接，已有电脑配对无需重新扫码。", "Connection resumes when Wi-Fi is ready. Paired computers do not need to scan again.")
+            else label("请先开启无线控制，再扫描电脑上的 Android Use 配对二维码。",
+                "Enable wireless control first, then scan the Android Use pairing QR on your computer."), fontSize = 12.sp)
         if (WirelessState.enabled && WirelessState.paired) TextButton(onClick = { WirelessControlService.current?.revoke(); status = label("已撤销配对", "Pairing revoked") }) {
             Text(label("撤销电脑配对", "Revoke computer pairing"))
         }
