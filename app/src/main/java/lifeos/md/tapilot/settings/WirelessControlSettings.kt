@@ -69,6 +69,11 @@ internal fun WirelessControlSettings(context: Context, zh: Boolean) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(label("让电脑上的 ChatGPT 通过 Wi-Fi 查看屏幕、点击和输入。保持手机解锁；可随时从通知中停止。",
             "Let ChatGPT on your computer view and operate this phone over Wi-Fi. Keep the phone unlocked; stop at any time from the notification."), fontSize = 12.sp)
+        Text(label("设备控制（辅助功能）：", "Device control (Accessibility): ") + when (deviceControl) {
+            DeviceControlStatus.READY -> label("已连接", "Connected")
+            DeviceControlStatus.NEEDS_RECONNECT -> label("已授权 · 需要恢复连接", "Authorized · Reconnect required")
+            DeviceControlStatus.DISABLED -> label("未开启", "Not enabled")
+        }, fontSize = 12.sp)
         Text(label("设备控制开启路径：系统辅助功能 → 已安装／已下载的应用 → Tapilot 设备控制 → 打开开关并确认，再返回此页。",
             "Enable device control: Accessibility → Installed/Downloaded apps → Tapilot device control → Enable and confirm, then return here."), fontSize = 12.sp)
         if (deviceControl != DeviceControlStatus.READY) Text(
@@ -81,10 +86,10 @@ internal fun WirelessControlSettings(context: Context, zh: Boolean) {
             android.widget.Toast.makeText(context, if (deviceControl == DeviceControlStatus.NEEDS_RECONNECT) label("将 Tapilot 设备控制关闭再开启，然后返回 Tapilot", "Turn Tapilot device control off and on, then return to Tapilot") else label("找到 Tapilot 设备控制，打开开关并确认，再返回 Tapilot", "Enable Tapilot device control, confirm, then return to Tapilot"), android.widget.Toast.LENGTH_LONG).show()
             context.startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }) { Text(label("打开系统辅助功能", "Open Accessibility settings")) }
-        Text(if (WirelessState.connected) label("已连接电脑", "Computer connected")
+        Text(label("无线控制：", "Wireless control: ") + (if (WirelessState.connected) label("已连接电脑", "Computer connected")
             else if (WirelessState.address.isNotEmpty()) (if (WirelessState.paired) label("已配对 · 等待电脑连接", "Paired · Waiting for computer") else label("未配对 · 请扫描电脑二维码", "Not paired · Scan computer QR")) + " · ${WirelessState.address}"
             else if (WirelessState.waitingForWifi) label("等待 Wi-Fi · 已有配对保留", "Waiting for Wi-Fi · Pairing kept")
-            else if (WirelessState.enabled) label("正在开启…", "Starting…") else label("未开启", "Off"), modifier = detailInset)
+            else if (WirelessState.enabled) label("正在开启…", "Starting…") else label("未开启", "Off")), modifier = detailInset)
         TextButton(onClick = {
             status = ""
             runCatching {
