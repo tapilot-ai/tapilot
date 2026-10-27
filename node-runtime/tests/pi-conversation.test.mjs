@@ -60,6 +60,26 @@ test('failed phone verification cannot finish successfully; adjusted retry can',
   assert.ok(JSON.stringify(results).includes('不能标记手机任务完成'));
 });
 
+test('failed phone actions use deeper planning for recovery while observations and verified follow-ups stay fast', async () => {
+  let turn = 0;
+  const calls = [];
+  const modes = ['act', 'observe', 'act', 'act'];
+  const conversation = createConversation({ messages: input('Complete the phone task'), emit: () => {},
+    rpc: async (method, params) => {
+      if (method === 'phone.execute') {
+        calls.push(params);
+        return { success: calls.length >= 3, result: calls.length >= 3 ? 'Visible result verified' : 'The displayed result does not match' };
+      }
+      if (turn < modes.length) return tool('operate_phone', {
+        instruction: `Stage ${turn + 1}`, success_condition: 'Requested visible result',
+        mode: modes[turn++], effort: 'fast',
+      });
+      return tool('finish_task', { outcome: 'completed', summary: 'Verified' });
+    } });
+  assert.equal((await conversation.run()).phase, 'completed');
+  assert.deepEqual(calls.map(call => call.effort), ['fast', 'fast', 'deepThink', 'fast']);
+});
+
 test('waiting for clarification returns a durable waiting phase', async () => {
   const conversation = createConversation({ language: 'zh', messages: input('打开那个应用'), rpc: async () =>
     tool('finish_task', { outcome: 'waiting_user', summary: '要打开哪个应用？' }), emit: () => {} });
@@ -441,6 +461,48 @@ test('delivered user amendment changes next verification contract, not an in-fli
   assert.deepEqual(contracts[0].userRequirements, ['Read A']);
   assert.deepEqual(contracts[1].userRequirements, ['Read A', 'Instead read B, preserving its exact label']);
   assert.equal(contracts[1].scope, 'intermediate_step');
+});
+
+test('a final step after verified intermediate results does not require all past screens again', async () => {
+  let models = 0;
+  const contracts = [];
+  const conversation = createConversation({ messages: input('Compute 12 times 3, check it, then add 5 and check the final result'),
+    emit: () => {}, rpc: async (method, params) => {
+      if (method === 'phone.execute') {
+        contracts.push(JSON.parse(params.success_condition));
+        return { success: true, result: contracts.length === 1 ? '12 × 3 = 36' : '36 + 5 = 41' };
+      }
+      return [
+        tool('operate_phone', { instruction: 'Multiply and evaluate', success_condition: '12 × 3 = 36 is visible' }),
+        tool('operate_phone', { instruction: 'Add 5 to the verified result', success_condition: '36 + 5 = 41 is visible', finishWhenVerified: true }),
+        tool('finish_task', { outcome: 'completed', summary: '12 × 3 = 36, then 36 + 5 = 41' }),
+      ][models++];
+    } });
+  assert.equal((await conversation.run()).phase, 'completed');
+  assert.equal(contracts[1].scope, 'intermediate_step');
+  assert.equal(contracts[1].proposedStepCondition, '36 + 5 = 41 is visible');
+  assert.deepEqual(contracts[1].userRequirements, contracts[0].userRequirements);
+  assert.equal(models, 3); // Whole-task synthesis still belongs to the conversation.
+});
+
+test('an explicit plan keeps screenshot verification scoped to its current step', async () => {
+  let models = 0;
+  let contract;
+  const conversation = createConversation({ messages: input('Read a value, then use it on the next screen'), emit: () => {},
+    rpc: async (method, params) => {
+      if (method === 'phone.execute') {
+        contract = JSON.parse(params.success_condition);
+        return { success: true, result: 'Current result observed' };
+      }
+      return [
+        tool('operate_phone', { instruction: 'Read this step', success_condition: 'Current value visible', finishWhenVerified: true,
+          plan: { steps: ['Read the first screen', 'Use the value on the next screen'], currentStep: 0 } }),
+        tool('finish_task', { outcome: 'waiting_user', summary: 'Which destination should receive it?' }),
+      ][models++];
+    } });
+  assert.equal((await conversation.run()).phase, 'waiting_user');
+  assert.equal(contract.scope, 'intermediate_step');
+  assert.equal(contract.proposedStepCondition, 'Current value visible');
 });
 
 test('zero-operation completion is rejected and can recover to clarification', async () => {

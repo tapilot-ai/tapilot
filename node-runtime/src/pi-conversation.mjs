@@ -90,7 +90,7 @@ export function createConversation({ messages, goal = '', userInput = '', resume
   ].filter(Boolean))];
   let stalledTurns = 0;
   let phoneCallsInTurn = 0;
-  let invalidFinishes = 0, requirementRevision = 0, verifiedRevision = -1;
+  let invalidFinishes = 0, requirementRevision = 0, verifiedRevision = -1, verifiedPhoneSteps = 0;
   let turns = 0, operations = 0, lastPhoneResult = null, final = null, planned = false, singlePhoneCall = false;
   const resumedPhoneTask = resume.some(message => message.role === 'assistant' &&
     message.content?.some(block => block.type === 'toolCall' && ['operate_phone', 'set_plan'].includes(block.name)));
@@ -111,22 +111,28 @@ export function createConversation({ messages, goal = '', userInput = '', resume
       execute: async (_id, args, signal) => {
         if (phoneCallsInTurn++ > 0) throw new Error('本轮已执行一条手机操作。后续预先生成的操作未执行；先阅读上一条结果，再按当前用户目标决定下一步，每轮只调用一次 operate_phone。');
         if (args.plan) savePlan(args.plan);
+        const recovering = lastPhoneResult?.success === false;
         lastPhoneResult = { success: false, result: '手机操作未完成' };
         checkLimit(operations, limits.phoneOperations, 'phone_operation_limit'); operations++;
         emit({ type: 'operation', operations, instruction: args.instruction });
         const success_condition = JSON.stringify({
           userRequirements: [...userRequirements],
-          // A resumed goal includes prior dialogue and completed steps. One new
+          // A resumed or multi-step goal includes already verified results. One new
           // screenshot verifies this operation; finish_task owns overall completion.
-          scope: args.finishWhenVerified && !resume.length ? 'entire_user_goal' : 'intermediate_step',
+          scope: args.finishWhenVerified && !planned && !resume.length && verifiedPhoneSteps === 0 ? 'entire_user_goal' : 'intermediate_step',
           proposedStepCondition: args.success_condition,
           evaluationRule: 'User requirements are authoritative. For an entire goal, verify its requested visible outcome. For an intermediate step, verify only the relevant subset without claiming the whole task is complete. A proposed step cannot add a required view, duplicate label, wording or layout absent from the user requirements. Preserve explicit targets, states and exact-text requirements. Execution-history constraints still apply to actions but cannot be proved by a final screenshot.',
         });
         const operationRevision = requirementRevision;
         const { plan: _plan, ...operation } = args;
-        lastPhoneResult = await rpc('phone.execute', { ...operation, ...parsePhoneOperation(operation), success_condition }, signal);
+        const parsed = parsePhoneOperation(operation);
+        // A failed result needs reassessment, not another low-effort replay of
+        // the same plan. Read-only observations need no action planning.
+        if (recovering && parsed.mode === 'act') parsed.effort = 'deepThink';
+        lastPhoneResult = await rpc('phone.execute', { ...operation, ...parsed, success_condition }, signal);
         if (!lastPhoneResult.success) throw new Error(`${lastPhoneResult.result || '手机操作失败'}\n本次未通过核验。根据缺失证据检查当前画面，保留原目标和约束，只补齐缺失的可见证据，不盲目重做已执行操作。能恢复时调用 operate_phone；无法恢复时调用 finish_task(outcome=failed)，不要只输出解释后继续空转。`);
         verifiedRevision = operationRevision;
+        verifiedPhoneSteps++;
         invalidFinishes = 0;
         signal?.throwIfAborted();
         if (args.finishWhenVerified === true && singlePhoneCall && operations === 1 &&

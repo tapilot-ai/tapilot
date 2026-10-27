@@ -15,3 +15,10 @@ test('keeps an explicit deep-locate override for advanced callers', () => {
   assert.equal(withAndroidAiActDefaults({ deepLocate: true }).deepLocate, true);
   assert.equal(withAndroidAiActDefaults({ effort: 'deepThink' }).effort, 'deepThink');
 });
+
+test('deep planning also rechecks visual targets while preserving explicit locate choices', () => {
+  assert.equal(withAndroidAiActDefaults({ effort: 'deepThink' }).deepLocate, true);
+  assert.equal(withAndroidAiActDefaults({ effort: 'deepThink', deepLocate: false }).deepLocate, false);
+  assert.equal(withAndroidAiActDefaults({ effort: 'fast' }).deepLocate, undefined);
+  assert.equal(withAndroidAiActDefaults({ effort: 'balance' }).deepLocate, undefined);
+});
