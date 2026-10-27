@@ -1,6 +1,7 @@
 import { applyModelEnvironment } from './model-environment.js';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { setTimeout as delay } from 'node:timers/promises';
 import { config as loadEnv } from 'dotenv';
 import { AndroidAgent, AndroidDevice } from '@midscene/android';
 import { defineNode, z, type NodeExecutionContext } from '@midscene/test';
@@ -60,8 +61,11 @@ const appOpen = defineNode({
     context.device = createDevice(context.serial);
     await context.device.connect();
     await context.device.launch(packageName);
+    // am start returns before the Android activity transition finishes. An assertion
+    // immediately after restart would otherwise inspect the previous app mid-animation.
+    await delay(500);
     context.agent = new AndroidAgent(context.device, {
-      aiContexts: { aiAct: `You test Tapilot on Android. Its exact installed package is ${packageName}. The phone app owns task execution. For native tasks, device control means the AccessibilityService connection: the main chat shows 设备控制未连接 only when it is unavailable. Wireless control is a separate optional Wi-Fi service; its 未开启 status does not mean accessibility is unavailable. Never require wireless control for a local task. If a prerequisite is unavailable, fail BEFORE submitting any task; after submission observe the accepted task to terminal state and do not revisit settings to check readiness. Never perform its requested Calculator, Settings or browser task yourself. Observe and verify actual visible results. Execute only the current step. Do not anticipate later steps or invent extra controls, labels or outcomes. Once every explicit requirement of the current step is met, finish immediately; a separate assertion checks the outcome. Do not interact with private notifications, authentication, payments or message sending. If an unexpected installer or system permission dialog interrupts the case, stop and report the interruption; never approve, dismiss or navigate through it.` },
+      aiContexts: { aiAct: `You test Tapilot on Android. Its exact installed package is ${packageName}. The phone app owns task execution. Return to its main chat using Launch with that exact package or Android recent apps. Do not use the floating assistant bubble to return: it starts a new input with a screen attachment and can contaminate the next task. For native tasks, device control means the AccessibilityService connection: the main chat shows 设备控制未连接 only when it is unavailable. Wireless control is a separate optional Wi-Fi service; its 未开启 status does not mean accessibility is unavailable. Never require wireless control for a local task. For a task that asks Tapilot to operate the phone, fail BEFORE submission if device control is unavailable. Draft-only UI checks and general questions do not require device control. To dismiss a visible keyboard use AndroidBackButton. The keyboard Enter/Done/Send action key can submit the composer; never use it merely to dismiss the keyboard or finish typing an unsent draft. After submission, follow the current step's stopping condition: a task may intentionally remain running for later steps. Do not revisit settings to check readiness. Never perform its requested Calculator, Settings or browser task yourself. Observe and verify actual visible results. When Activity opens a record selector, choose the operation that supports the fact being checked. Each record contains only its own operation; return to the selector for earlier operations instead of searching the last record for every prior page. In execution reports use Player screenshots as visual evidence; raw prompts describe requirements and are never proof that they were satisfied. Once the required screenshot is confirmed, return to the chat instead of scrolling through raw prompt details. Execute only the current step. Do not anticipate later steps or invent extra controls, labels or outcomes. Once every explicit requirement of the current step is met, finish immediately; a separate assertion checks the outcome. Do not interact with private notifications, authentication, payments or message sending. If an unexpected installer or system permission dialog interrupts the case, stop and report the interruption; never approve, dismiss or navigate through it.` },
       replanningCycleLimit: 80,
     });
   },
@@ -113,5 +117,7 @@ export default defineTestProject<Context>({
     fixtureNode('wireless.disconnect', fixture => fixture.disconnectController()),
     fixtureNode('wireless.verifyReconnect', fixture => fixture.verifyReconnect()),
     fixtureNode('fixture.restore', fixture => fixture.restore()),
+    fixtureNode('fixture.attachment', fixture => fixture.stageAttachment()),
+    fixtureNode('fixture.shareText', fixture => fixture.shareText()),
   ],
 });

@@ -37,10 +37,18 @@ cases:
       - aiAct: >-
           Return to the main Tapilot chat while active and submit "修改要求：最终不要除以8，
           改为除以4；前面的乘法和加法仍然保留。最终只核对修改后的结果。" Stop interacting after it accepts the instruction;
-          let the native agent continue.
+          let the native agent continue. If the task has already stopped before the amendment is submitted,
+          fail this case; a late follow-up does not validate an in-flight update.
+          While entering the update, the chat must stay usable. Fail if native actions repeatedly
+          navigate away from the chat or interfere with the typed instruction.
       - task.waitForIdle: {}
       - aiAct: >-
           Observe until execution stops. Return to Tapilot and inspect the final reply and
           Calculator record. Verify the amended final result is 1298 and supported by the
           recorded calculation. Fail if the original 649 is presented as the final requested
           result, if the update is dropped, or if no phone verification exists.
+      - aiAssert: >-
+          The amended Calculator task is marked completed successfully, and its final reply
+          confirms the actually verified result 1298. It is not marked failed, incomplete,
+          stopped, or waiting for user input. Mentioning the expected number in a failure
+          explanation does not satisfy this check.

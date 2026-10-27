@@ -1,0 +1,73 @@
+afterEach:
+  - fixture.restore: {}
+cases:
+  - name: DRAFT-01 Retry uses the original message while preserving an unrelated draft
+    tags: [live, attachments, retry-draft]
+    steps:
+      - app.open: {}
+      - fixture.attachment: {}
+      - aiAct: >-
+          Create a new Tapilot conversation. Submit exactly
+          "只回复 RETRY-BASELINE。不操作手机，不用语音。" with no attachment.
+          Stop interacting after submission.
+      - task.waitForIdle: {}
+      - aiAssert: The assistant answered RETRY-BASELINE and the task is completed.
+      - aiAct: >-
+          Add an attachment through the plus button and Files. In the system file picker,
+          open Downloads and select the text file whose name starts with tapilot-attachment-qa-.
+          Do not open any other document. Return to Tapilot, switch to keyboard input if needed,
+          and replace the composer text with DRAFT-KEEP-UNSENT without sending it. Verify the text and
+          attachment chip are both present. If the keyboard obscures the old reply, hide it
+          using AndroidBackButton. Never tap the keyboard Enter/Done/Send action key to dismiss
+          it; that key submits the draft.
+      - aiAct: >-
+          Tap Retry on the existing RETRY-BASELINE assistant reply and confirm Run.
+          Do not press the composer Send button. Stop interacting after the retry starts.
+      - task.waitForIdle: {}
+      - aiAssert: >-
+          The retried task completed with RETRY-BASELINE. Its user message has no attachment
+          link. The composer still contains the unsent text DRAFT-KEEP-UNSENT and the
+          tapilot-attachment-qa- text attachment. The draft text was not sent as a message.
+      - aiAct: Remove the test attachment from the composer and clear DRAFT-KEEP-UNSENT without sending.
+
+  - name: DRAFT-02 App restart preserves an unsent attachment and text
+    tags: [live, resilience, attachments, draft-restart]
+    steps:
+      - app.open: {}
+      - fixture.attachment: {}
+      - aiAct: >-
+          This step only edits an unsent draft; do not submit or execute any task.
+          It works even when Tapilot device control is off; no AccessibilityService is needed.
+          Create a new Tapilot conversation. Add an attachment through plus and Files.
+          In Downloads select only the file whose name starts with tapilot-attachment-qa-.
+          Switch to keyboard input if needed and replace the composer text with DRAFT-RESTART-UNSENT without sending.
+          Verify both the attachment chip and the unsent text are present, then stop interacting.
+      - fault.restart: {}
+      - app.open: {}
+      - aiAssert: >-
+          The composer still contains DRAFT-RESTART-UNSENT and the tapilot-attachment-qa-
+          text attachment after restarting. No task was sent or automatically started.
+      - aiAct: >-
+          This is only a local preview UI check; no device-control service or submitted task is needed.
+          Open the draft attachment preview and verify TAPILOT-ATTACHMENT-QA is readable.
+          Close the preview, remove only the draft attachment, and clear the unsent test text.
+
+  - name: DRAFT-03 Sharing text preserves the existing unsent attachment
+    tags: [live, attachments, share-draft]
+    steps:
+      - app.open: {}
+      - fixture.attachment: {}
+      - aiAct: >-
+          This case only edits an unsent draft; do not submit or start any task or microphone.
+          Create a new Tapilot conversation. Add a file through plus and Files. In Downloads
+          select only the file whose name starts with tapilot-attachment-qa-.
+          Replace the composer text with DRAFT-BEFORE-SHARE without sending, then stop interacting.
+          Leave the keyboard open. Do not press Enter, Done, Send, or the keyboard action key.
+      - aiAssert: The composer contains DRAFT-BEFORE-SHARE and the tapilot-attachment-qa- text attachment.
+      - fixture.shareText: {}
+      - aiAssert: >-
+          The composer contains both DRAFT-BEFORE-SHARE and SHARED-TEXT-QA, and the same
+          tapilot-attachment-qa- text attachment is still present. Neither text was sent as a task.
+      - aiAct: >-
+          Preview the draft attachment and verify TAPILOT-ATTACHMENT-QA is readable.
+          Close the preview, remove only this test attachment, and clear the unsent test text.

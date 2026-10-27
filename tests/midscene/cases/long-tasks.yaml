@@ -38,7 +38,9 @@ cases:
       - task.waitForIdle: {}
       - aiAct: >-
           Return to Tapilot and compare every factual claim in the final answer with the
-          screens from the execution record. Verify Android version, both storage numbers and
+          screens from the execution records. If Activity shows a selector, inspect each
+          relevant operation separately; the last record alone may only contain brightness.
+          Use actual Player screenshots, not raw prompts, as evidence. Verify Android version, both storage numbers and
           the automatic-brightness state all match. Fail on any mismatch even if the app says
           "任务已完成". In particular an enabled switch must never be described as disabled, and
           device storage must never be replaced by another device's capacity.

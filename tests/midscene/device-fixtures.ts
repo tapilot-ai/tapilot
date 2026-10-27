@@ -1,6 +1,8 @@
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { isIP } from 'node:net';
+import { randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 
 type Connection = {
@@ -15,6 +17,7 @@ export class DeviceFixtures {
   private portProcess?: ChildProcess;
   private portPid?: string;
   private controller?: Connection;
+  private attachmentPath?: string;
   constructor(private serial: string, private packageName: string,
     private runAdb = (args: string[]) => execFileSync('adb', ['-s', serial, ...args], { encoding: 'utf8', timeout: 15_000 }).trim()) {}
 
@@ -23,6 +26,15 @@ export class DeviceFixtures {
   }
   private requireFaults() {
     if (process.env.TAPILOT_E2E_FAULTS !== '1') throw new Error('Use test:resilience to opt into device faults');
+  }
+  stageAttachment() {
+    if (this.attachmentPath) throw new Error('Attachment fixture is already active');
+    this.attachmentPath = `/sdcard/Download/tapilot-attachment-qa-${randomUUID()}.txt`;
+    this.adb(['push', fileURLToPath(new URL('./fixtures/attachment.txt', import.meta.url)), this.attachmentPath]);
+  }
+  shareText() {
+    this.adb(['shell', 'am', 'start', '-W', '-n', `${this.packageName}/lifeos.md.tapilot.MainActivity`,
+      '-a', 'android.intent.action.SEND', '-t', 'text/plain', '--es', 'android.intent.extra.TEXT', 'SHARED-TEXT-QA']);
   }
   async offline() {
     this.requireFaults();
@@ -128,6 +140,10 @@ export class DeviceFixtures {
   async restore() {
     this.disconnectController();
     const errors: unknown[] = [];
+    if (this.attachmentPath) {
+      try { this.adb(['shell', 'rm', '-f', this.attachmentPath]); this.attachmentPath = undefined; }
+      catch (error) { errors.push(error); }
+    }
     if (this.portPid) {
       try {
         const command = this.adb(['shell', 'cat', `/proc/${this.portPid}/cmdline`]);

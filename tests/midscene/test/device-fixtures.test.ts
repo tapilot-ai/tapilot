@@ -83,3 +83,31 @@ test('task observation times out honestly while the native service is active', a
   const fixture = new DeviceFixtures('test', 'lifeos.md.tapilot', () => '* ServiceRecord{123 u0 lifeos.md.tapilot/.TaskRuntimeService}');
   await assert.rejects(fixture.waitForTaskIdle(new AbortController().signal, 0), /still running/);
 });
+
+test('attachment fixture cleanup removes only its own unique document and can be retried', async () => {
+  const commands: string[][] = [];
+  let failCleanup = true;
+  const fixture = new DeviceFixtures('test', 'lifeos.md.tapilot', args => {
+    commands.push(args);
+    if (args[1] === 'rm' && failCleanup) throw new Error('device unavailable');
+    return '';
+  });
+  fixture.stageAttachment();
+  const path = commands[0][2];
+  assert.match(path, /^\/sdcard\/Download\/tapilot-attachment-qa-[a-f0-9-]+\.txt$/);
+  assert.throws(() => fixture.stageAttachment(), /already active/);
+  await assert.rejects(fixture.restore(), /cleanup failed/);
+  failCleanup = false;
+  await fixture.restore();
+  assert.deepEqual(commands.at(-1), ['shell', 'rm', '-f', path]);
+  const count = commands.length;
+  await fixture.restore();
+  assert.equal(commands.length, count);
+});
+
+test('text sharing uses the Android share entry of the selected app without submitting a task', () => {
+  const commands: string[][] = [];
+  new DeviceFixtures('test', 'lifeos.md.tapilot.e2everify', args => { commands.push(args); return ''; }).shareText();
+  assert.deepEqual(commands, [['shell', 'am', 'start', '-W', '-n', 'lifeos.md.tapilot.e2everify/lifeos.md.tapilot.MainActivity',
+    '-a', 'android.intent.action.SEND', '-t', 'text/plain', '--es', 'android.intent.extra.TEXT', 'SHARED-TEXT-QA']]);
+});
