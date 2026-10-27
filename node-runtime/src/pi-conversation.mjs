@@ -151,11 +151,11 @@ export function createConversation({ messages, goal = '', userInput = '', resume
         savePlan(args);
         return { content: [{ type: 'text', text: '任务计划已保存，继续推进任务。' }] };
       } },
-    { name: 'finish_task', description: 'Deliver the final user-facing answer from verified results, or ask a specific question before continuing. This tool terminates the turn: no separate answer follows. For reading tasks, include every requested reading in summary, including results from earlier pages. A progress note such as done or verified is not an answer.',
+    { name: 'finish_task', description: 'Finish a phone task from verified device results, report a genuine failure, or ask a specific clarification question. For requests fulfilled entirely by a text response (including repeat this text, writing, translation and general questions), use answer_question instead; those requests do not need phone verification. This tool terminates the turn: no separate answer follows. For device-reading tasks, include every requested reading in summary, including results from earlier pages. A progress note such as done or verified is not an answer.',
       parameters: Type.Object({ outcome: Type.Union([Type.Literal('completed'), Type.Literal('waiting_user'), Type.Literal('failed')]), summary: Type.String({ minLength: 1, description: 'The complete answer shown to the user, not a task-status summary. For completed reading tasks, provide all requested actual values, labels and states from verified tool results; combine earlier and latest pages without omitting either. Keep it concise by removing process narration, never by removing requested facts. For waiting_user, ask the specific missing information.' }) }),
       execute: async (_id, args) => {
         if (args.outcome === 'completed' && (lastPhoneResult?.success !== true || verifiedRevision !== requirementRevision)) {
-          const reason = '未获得当前用户要求的成功画面核验，不能标记手机任务完成。需要澄清时使用 waiting_user；普通知识问答使用 answer_question。';
+          const reason = '未获得当前用户要求的成功画面核验，不能标记手机任务完成。若当前请求只需要文字回复（包括原样回复指定文字、写作、翻译、知识问答），请改用 answer_question(answer=完整回复) 成功结束，不要仅因没有手机画面而报告 failed。需要手机操作的请求仍须先执行并核验；缺少用户信息时使用 waiting_user。';
           if (++invalidFinishes < 3) throw new Error(reason);
           final = { outcome: 'failed', summary: runtimeMessage('task_verification_missing', language), errorCode: 'task_verification_missing' };
           return { content: [{ type: 'text', text: reason }], terminate: true };
@@ -163,7 +163,7 @@ export function createConversation({ messages, goal = '', userInput = '', resume
         final = args;
         return { content: [{ type: 'text', text: args.summary }], terminate: true };
       } },
-    { name: 'answer_question', description: 'Answer a general question that needs no phone state or action. Never claim a phone action was performed, a screen was read, or a device task completed. For missing task information use finish_task(outcome=waiting_user).',
+    { name: 'answer_question', description: 'Successfully fulfill any request that needs only a text response, including replying with exact user-specified text, writing, translation, summarization and general questions. The request need not be phrased as a question. This tool terminates the turn and marks the text request completed; no phone screenshot or action is needed. Never claim a phone action was performed, a screen was read, or a device task completed. For missing task information use finish_task(outcome=waiting_user).',
       parameters: Type.Object({ answer: Type.String({ minLength: 1 }) }),
       execute: async (_id, args) => {
         if (operations > 0 || planned || resumedPhoneTask) throw new Error('任务已有手机执行或计划，不能改为普通知识问答。请用 finish_task 结束。');
