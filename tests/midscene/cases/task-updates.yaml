@@ -47,6 +47,8 @@ cases:
           Calculator record. Verify the amended final result is 1298 and supported by the
           recorded calculation. Fail if the original 649 is presented as the final requested
           result, if the update is dropped, or if no phone verification exists.
+          After inspecting the replay, return to the main Tapilot chat and leave the amended
+          task's final reply and completion status visible for the following independent assertion.
       - aiAssert: >-
           The amended Calculator task is marked completed successfully, and its final reply
           confirms the actually verified result 1298. It is not marked failed, incomplete,
