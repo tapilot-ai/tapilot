@@ -1,10 +1,24 @@
 package lifeos.md.tapilot.chat
 
 import org.json.JSONObject
+import org.json.JSONArray
 import lifeos.md.tapilot.conversation.ExecutionMode
 
 data class ChatMessage(val id: String, val role: String, val text: String, val status: String, val reportId: String,
-    val entryId: String = "", val attachment: ChatAttachment? = null, val task: ChatTask? = null)
+    val entryId: String = "", val attachment: ChatAttachment? = null, val task: ChatTask? = null,
+    val reports: List<ChatReport> = emptyList())
+data class ChatReport(val id: String, val title: String) {
+    companion object {
+        fun from(values: JSONArray?): List<ChatReport> {
+            val entries = if (values == null) emptyList() else List(values.length()) { values.getJSONObject(it) }
+            val available = entries.filter { it.optString("reportId").isNotBlank() }
+            val agents = available.filter { it.optString("kind") == "agent" }
+            return (agents.ifEmpty { available }).distinctBy { it.getString("reportId") }.map {
+                ChatReport(it.getString("reportId"), it.optString("instruction").ifBlank { it.optString("title") })
+            }
+        }
+    }
+}
 data class ChatConversation(val id: String, val title: String)
 data class ChatAttachment(val name: String, val kind: String, val preview: String = "",
     val id: String = "", val text: String = "", val images: List<String> = emptyList(), val pageCount: Int = 0) {
@@ -70,7 +84,7 @@ data class ChatState(
                 messages = List(messages.length()) { index -> messages.getJSONObject(index).let {
                     ChatMessage(it.getString("id"), it.getString("role"), it.optString("text"),
                         it.optString("status"), it.optString("reportId"), it.optString("entryId", it.getString("id").substringBeforeLast("-")),
-                        ChatAttachment.parse(it.optJSONObject("attachment")))
+                        ChatAttachment.parse(it.optJSONObject("attachment")), reports = ChatReport.from(it.optJSONArray("reports")))
                 } },
                 conversations = List(conversations.length()) { index -> conversations.getJSONObject(index).let {
                     ChatConversation(it.getString("id"), it.getString("title"))

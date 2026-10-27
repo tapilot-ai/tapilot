@@ -138,18 +138,18 @@ class NativeConversationCoordinator(
         val messages = history.filter { conversation(it) == active() }.flatMap { e ->
             val id = e.getString("id")
             val status = e.optString("status")
-            val reports = e.optJSONArray("reports")?.objects().orEmpty()
-            val report = reports.lastOrNull { it.optString("kind") == "agent" } ?: reports.lastOrNull()
+            val reports = ChatReport.from(e.optJSONArray("reports"))
+            val report = reports.lastOrNull()
             val response = TaskFeedback.response(e, chinese)
             val user = e.optLong("createdAt") to ChatMessage("$id-user", "user", e.optString("inputText", e.optString("source")).ifBlank { e.optString("source") }, status, "", id,
                 ChatAttachment.parse(e.optJSONObject("attachment")))
             if (e.optString("kind") == "instruction" && status !in listOf("stopped", "failed")) listOf(user)
             else listOf(user, (if (status == "running") Long.MAX_VALUE else e.optLong("completedAt", e.optLong("createdAt") + 1)) to
-                ChatMessage("$id-assistant", "assistant", response, status, report?.optString("reportId").orEmpty(), id, task = ChatTask(e.optString("phase"),
+                ChatMessage("$id-assistant", "assistant", response, status, report?.id.orEmpty(), id, task = ChatTask(e.optString("phase"),
                     e.optJSONArray("plan")?.strings().orEmpty(), e.optInt("currentStep"), e.optInt("modelTurns"),
                     e.optInt("phoneOperations"), e.optInt("attempt", 1), e.optJSONArray("completedOperations")?.objects().orEmpty()
                         .map { ChatOperation(it.optString("instruction"), it.optBoolean("success"), it.optString("result")) },
-                    createdAt = e.optLong("createdAt"), completedAt = e.optLong("completedAt"))))
+                    createdAt = e.optLong("createdAt"), completedAt = e.optLong("completedAt")), reports = reports))
         }.sortedBy { it.first }.map { it.second }
         // Build each conversation once; repeated capture progress must not scan
         // the entire history for every sidebar entry.

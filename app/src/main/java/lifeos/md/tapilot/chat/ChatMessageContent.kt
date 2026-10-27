@@ -45,6 +45,7 @@ internal fun MessageBubble(message: ChatMessage, zh: Boolean, controller: ChatCo
     var menu by remember(message.id) { mutableStateOf(false) }
     var details by remember(message.id) { mutableStateOf(false) }
     var rerun by remember(message.id) { mutableStateOf(false) }
+    var reportPicker by remember(message.id) { mutableStateOf(false) }
     val failed = message.status == "failed" || message.status == "stopped"
     val quotaFailure = !user && failed && message.text.contains("Arrearage", true)
     fun copy() {
@@ -82,7 +83,9 @@ internal fun MessageBubble(message: ChatMessage, zh: Boolean, controller: ChatCo
                         enabled = !busy, contentPadding = PaddingValues(0.dp)) {
                         Text(if (zh) (if (failed) "重试" else "重新执行") else "Retry", fontSize = 12.sp)
                     }
-                    if (message.reportId.isNotEmpty()) TextButton(onClick = { controller.command("report", id = message.reportId) }, contentPadding = PaddingValues(0.dp)) {
+                    if (message.reportId.isNotEmpty()) TextButton(onClick = {
+                        if (message.reports.size > 1) reportPicker = true else controller.command("report", id = message.reportId)
+                    }, contentPadding = PaddingValues(0.dp)) {
                         Text(if (zh) "执行记录 →" else "Activity →", fontSize = 12.sp, fontWeight = FontWeight.Medium)
                     }
                 }
@@ -96,6 +99,20 @@ internal fun MessageBubble(message: ChatMessage, zh: Boolean, controller: ChatCo
         }
     }
     }
+    if (reportPicker) AlertDialog(onDismissRequest = { reportPicker = false },
+        title = { Text(if (zh) "执行记录" else "Activity") },
+        text = {
+            LazyColumn(Modifier.heightIn(max = 400.dp)) {
+                items(message.reports.size, key = { message.reports[it].id }) { index ->
+                    val report = message.reports[index]
+                    TextButton(onClick = { reportPicker = false; controller.command("report", id = report.id) }, modifier = Modifier.fillMaxWidth()) {
+                        Text("${index + 1}. ${report.title.ifBlank { if (zh) "执行记录" else "Execution record" }}",
+                            modifier = Modifier.fillMaxWidth(), maxLines = 3, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { reportPicker = false }) { Text(if (zh) "关闭" else "Close") } })
     if (rerun) AlertDialog(onDismissRequest = { rerun = false }, title = { Text(if (zh) "重新执行？" else "Run again?") },
         text = { Text(if (zh) "将重新发送原消息和附件，手机操作可能再次执行。" else "Resend the original message and attachment. Phone actions may run again.") },
         confirmButton = { TextButton(onClick = { rerun = false; controller.command("retry", id = message.entryId) }) { Text(if (zh) "执行" else "Run") } },

@@ -52,7 +52,11 @@ internal class ConversationTaskRunner(
         var phoneStarted = input.phoneStarted
         var phase = ""
         fun checkActive() { if (stopped()) throw TaskFailure("task_stopped") }
-        fun rememberReports(run: JSONObject) { run.optJSONArray("reports")?.objects()?.forEach(reports::put) }
+        fun rememberReports(run: JSONObject, instruction: String = "") {
+            run.optJSONArray("reports")?.objects()?.forEach {
+                reports.put(JSONObject(it.toString()).apply { if (instruction.isNotBlank()) put("instruction", instruction) })
+            }
+        }
         val outcome = runCatching {
             checkActive()
             services.status(if (input.handoff) TaskExecutionStatus.RUNNING else TaskExecutionStatus.STARTING)
@@ -117,7 +121,7 @@ internal class ConversationTaskRunner(
                         checkActive()
                         val run = services.run(NativeConversationAgent.verifiedTask(revised, operation.successCondition,
                             operation.mode.wireValue, component, operation.effort.wireValue), environment)
-                        rememberReports(run)
+                        rememberReports(run, revised)
                         checkActive()
                         PhoneResult.fromRun(run).also { result ->
                             operations.put(JSONObject().put("instruction", revised).put("success", result.success).put("result", result.result)

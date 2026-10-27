@@ -154,6 +154,18 @@ class ConversationTaskRunnerTest {
         assertSame(entry, TaskLifecycle.continuation(listOf(entry), "continue"))
     }
 
+    @Test fun eachOperationKeepsItsOwnReplayAndConfirmedInstruction() {
+        val services = Services()
+        val result = runner(Agent { _, callbacks ->
+            callbacks.phone(PhoneOperation("Read version", "Version visible", PhoneMode.OBSERVE))
+            terminal("completed", callbacks.phone(PhoneOperation("Read storage", "Storage visible", PhoneMode.OBSERVE)))
+        }, services, confirm = { "$it (confirmed)" }).run(input()) { false }
+        assertTrue(result.outcome.isSuccess)
+        assertEquals(listOf("replay-1", "replay-2"), result.reports.objects().map { it.getString("reportId") })
+        assertEquals(listOf("Read version (confirmed)", "Read storage (confirmed)"),
+            result.reports.objects().map { it.getString("instruction") })
+    }
+
     @Test fun cleanupFailureCannotRemainCompletedOrAutomaticallyResumeAsClarification() {
         for (phase in listOf("completed", "waiting_user")) {
             val services = Services().apply { discardError = IllegalStateException("cleanup failed") }
