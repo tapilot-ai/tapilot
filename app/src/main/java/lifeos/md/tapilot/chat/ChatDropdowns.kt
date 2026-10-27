@@ -18,6 +18,9 @@ internal fun ConversationDropdown(controller: ChatController, expanded: Boolean,
         DropdownMenuItem(text = { Text(label("新对话", "New conversation")) }, enabled = state.ready,
             leadingIcon = { ChatIcon("plus", MaterialTheme.colorScheme.onSurfaceVariant) },
             onClick = { onDismiss(); controller.command("new") })
+        if (state.advancedMode) {
+            DropdownMenuItem(text = { Text("YAML") }, onClick = { onDismiss(); controller.command("advanced") })
+        }
         if (state.conversations.isNotEmpty()) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         state.conversations.forEach { conversation ->
             val selected = conversation.id == state.activeConversationId
@@ -25,10 +28,6 @@ internal fun ConversationDropdown(controller: ChatController, expanded: Boolean,
                 color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface) },
                 trailingIcon = if (selected) ({ Text("✓", color = MaterialTheme.colorScheme.primary) }) else null,
                 onClick = { onDismiss(); controller.command("select", id = conversation.id) })
-        }
-        if (state.advancedMode) {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            DropdownMenuItem(text = { Text("YAML") }, onClick = { onDismiss(); controller.command("advanced") })
         }
     }
 }
