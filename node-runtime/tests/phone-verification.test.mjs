@@ -126,8 +126,9 @@ test('intermediate verification separates this page from the full multi-page goa
   const original = ['Read item A on page one, then item B on page two; do not modify either.'];
   const contract = { userRequirements: original, scope: 'intermediate_step', proposedStepCondition: 'A and its label visible' };
   const step = verificationCriteria(JSON.stringify(contract), 'Read A');
-  assert.equal(step.requiredVisibleOutcome, 'A and its label visible');
-  assert.deepEqual(step.userRequirementsContext, original);
+  assert.equal(step.proposedStepOutcome, 'A and its label visible');
+  assert.equal(Object.hasOwn(step, 'requiredVisibleOutcome'), false);
+  assert.deepEqual(step.userRequirements, original);
   assert.equal(step.scope, 'intermediate_step');
   const whole = verificationCriteria(JSON.stringify({ ...contract, scope: 'entire_user_goal' }), 'Read both');
   assert.deepEqual(whole.requiredVisibleOutcome, original);
@@ -137,9 +138,24 @@ test('intermediate verification separates this page from the full multi-page goa
 // A current screenshot must not be asked to prove a historical page transition.
 test('page-reading criteria preserve visible targets while deferring navigation history', () => {
   const criteria = verificationCriteria(JSON.stringify({ scope: 'intermediate_step', userRequirements: ['Move icons across pages'], proposedStepCondition: 'Read File Manager on the next page' }), 'Swipe left then read this page');
-  assert.equal(criteria.requiredVisibleOutcome, 'Read File Manager on the next page');
+  assert.equal(criteria.proposedStepOutcome, 'Read File Manager on the next page');
   assert.match(criteria.rule, /conversation can compare separately recorded pages/);
   assert.match(criteria.rule, /does NOT prove a requested cross-page move/);
+});
+
+test('an intermediate proposal cannot become an authoritative superseded requirement', () => {
+  const original = 'Compute 128*37, add 456, then divide by 8; verify each step.';
+  const amendment = 'Keep multiplication and addition, divide by 4 instead; verify only the amended final result.';
+  const proposal = 'All multiplication, addition and division expressions must be visible together.';
+  const criteria = verificationCriteria(JSON.stringify({
+    scope: 'intermediate_step', userRequirements: [original, amendment],
+    proposedStepCondition: proposal,
+  }));
+  assert.deepEqual(criteria.userRequirements, [original, amendment]);
+  assert.equal(criteria.latestUserRequirement, amendment);
+  assert.equal(criteria.proposedStepOutcome, proposal);
+  assert.equal(Object.hasOwn(criteria, 'requiredVisibleOutcome'), false);
+  assert.match(criteria.requirementPrecedence, /cannot restore a superseded requirement/);
 });
 
 // An imperative retry plan can incorrectly describe a completed view as unfinished.
