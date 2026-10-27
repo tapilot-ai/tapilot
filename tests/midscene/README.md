@@ -7,6 +7,11 @@ The suite uses `@midscene/test` and `@midscene/android` 1.15.3. YAML in `cases/`
 is the single source of truth. UI actions and visible checks use `aiAct`, split
 at product-stage boundaries.
 
+Latest fixed-APK coverage, first-run failures and performance measurements are
+tracked in the [2026-10-27 verification ledger](verification-2026-10-27.md).
+The chronological notes below include earlier APKs and must not be pooled as one
+current-build pass.
+
 ## Setup
 
 Use Node 24 and ADB. Install Tapilot on an unlocked test device. Keep its display
@@ -65,6 +70,9 @@ the selected local file take precedence over inherited model variables; set
 | UI-02 | Toggle automatic reply speech, verify persistence and leave it on | Smoke |
 | UI-03 | Wireless/accessibility guidance and model-access choices | Smoke |
 | CHAT-01 | Clarify a general question, then finish with an answer and completed status | Live |
+| DRAFT-01 | Retry only the historical message and preserve the unrelated composer text/attachment | Live |
+| DRAFT-02 | Restart with an unsent attachment, then preview the preserved content | Resilience |
+| DRAFT-03 | Share text through Android while preserving the unsent draft attachment | Live |
 | LONG-01 | Three Calculator results, precedence and retained results | Live |
 | LONG-02 | Device facts agree with observed screens and reports | Live |
 | LONG-03 | Two browser pages, source dates and Calculator comparison | Live |
@@ -155,7 +163,7 @@ before starting another test.
 ## Verification and reports
 
 `pnpm check:e2e` runs TypeScript, native Midscene node-schema normalization and
-case checks, plus seven model-free fixture guard, recovery and native-task wait tests. It requires no model, Android SDK or phone. Ordinary CI runs this
+case checks, plus model-free fixture guard, recovery and native-task wait tests. It requires no model, Android SDK or phone. Ordinary CI runs this
 check; it does not run device/model-backed cases. Root `pnpm check:security` also
 audits this package. The lockfile pins compatible fixes for affected transitive
 Android/Appium dependencies; keep overrides until upstream ranges include the fixes.
@@ -241,3 +249,93 @@ original OPPO was disconnected during this follow-up, so LONG-02 remains awaitin
 real-device revalidation; these changes do not turn its previous failure into a pass.
 
 A selected model env file is now a complete model profile: undeclared protocol, planning/insight credentials and extra-body settings from other profiles are cleared. An explicitly missing file fails instead of falling back to another account.
+
+2026-10-27 draft and amendment audit: DRAFT-03 reproduced loss of the unsent
+attachment after Android text sharing in `20261027081336-836bdefa`. After the fix,
+`20261027081725-62b55cfa` passed 1/1 on its first attempt. The final build then
+passed DRAFT-02 and DRAFT-03, 2/2 with zero retries, in
+`20261027083306-b3d46d09`, including restart recovery and attachment previews.
+An earlier DRAFT-03 setup attempt accidentally tapped the keyboard Send key and
+never reached sharing; it is not counted as a product reproduction.
+
+At this stage, UPDATE-02 was still unverified end to end. `20261027080549-a6e29fcf` exposed a
+late amendment being accepted as a separate goal and an incorrectly grouped
+calculation reported as 4,850. Explicit amendments to failed/paused tasks now
+retain the original goal, with old-fails/new-passes JVM coverage. Calculation
+guidance and verification also preserve operation grouping. On the final build,
+`20261027082149-c383087b` accepted the amendment while running but ended with an
+explicit incomplete result after model connection failures. The native report
+records `UND_ERR_CONNECT_TIMEOUT`; the expected 1,298 was not substituted for
+phone evidence. Do not count this as a Calculator pass. The observer now follows
+each step's stopping condition instead of always waiting for terminal state, and
+UPDATE-02 explicitly rejects amendments submitted after the task already stopped.
+
+2026-10-27 continued audit: after the user authorized starting the phone's existing
+VPN, native model requests succeeded. UPDATE-02 `20261027090145-05294838` was a
+false green: Calculator displayed 1,298 but the native task was incomplete. That
+result is invalidated. The case now independently requires successful completion.
+The run also reproduced native actions navigating away while the user typed an
+amendment. Native conversation device access now pauses when the user returns to
+chat or focuses input; continuing requires a fresh screenshot after the pause.
+
+Per-operation verification now checks the current step after a plan, resume, or
+earlier verified step. It does not require all historical expressions to remain on
+one screenshot. The conversation still owns overall completion. Failed phone
+actions use deeper planning for recovery, with the same configured model/account;
+read-only observations and ordinary successful follow-ups retain their effort.
+Intermediate builds still failed UPDATE-02 (`20261027092146-34ba9334` and
+`20261027094152-1fdd5139`); these are retained as failures, not retry passes.
+
+Recovery-planning APK SHA-256
+`4bf8ed23512f195309991f35ee9cb2e577f19ed5acee51df7cab311868ae669d`
+passed the full `pnpm check`: Kotlin 384 passed / 1 skipped, Node 125,
+plugin 94, E2E fixture checks 12, script checks 22, plus adapter, Android lint,
+beta build, embedded-runtime and signing checks. On this APK:
+
+- UPDATE-02 `20261027101117-24ee42fd`: 1/1, zero retries, all six steps passed.
+  Native screenshots show 128×37=4736, 4736+456=5192 and 5192÷4=1298;
+  final completion passed the independent assertion. Native elapsed time was
+  218.171 seconds including the input pause; the full case took 290.025 seconds.
+- TASK-01 `20261027101812-5526d8a0`: 1/1, zero retries. The old task stayed
+  stopped, and a new Settings task completed with actual Settings replay evidence.
+- DRAFT-01 `20261027102538-474835ba` failed during setup when the observer used
+  the keyboard Send key to dismiss it, before Retry was exercised. After changing
+  the case to use Android Back, `20261027102921-8777891d` passed 1/1 without
+  automatic retries: the original message was retried while unrelated draft text
+  and its attachment remained unsent. Test artifacts were cleaned afterwards.
+- LONG-02 `20261027103413-d8afb741`: 1/1, zero retries, 339.637 seconds
+  including report inspection. Android 14, storage 55.7/256 GB and enabled
+  automatic brightness all matched the native replay and separately captured
+  read-only screen evidence. The original ColorOS/Android evidence gap is now
+  revalidated on a physical phone; native execution took about 2m35s.
+
+Observer guidance now returns via Launch/recent apps, inspects actual Player
+screenshots instead of treating raw prompts as evidence, and uses Android Back
+to dismiss a keyboard without submitting a draft. These selected device results
+do not establish a live pass for every authored case.
+
+An independent UPDATE-02 repeat, `20261027104022-e72e3c7b`, also passed all
+six steps without observer retries on that APK, but native elapsed time rose to
+699.507 seconds. Its native report exposed repeated visual mislocation: the
+requested digit 2 was located over 5 four times before recovery. This operation
+already used deepThink, so the delay cannot be attributed to fast planning alone.
+Deep planning now also enables deepLocate by default, while preserving an
+explicit override and the ordinary fast/balance behavior.
+
+The resulting APK SHA-256 is
+`6c76275844c4a1a1a699aa4a26a8abdac45abc5c3d4482375d24425ae81dcc99`.
+Full `pnpm check` passed again, including 126 Node tests. Strict UPDATE-02
+`20261027110005-12addf4f` passed 1/1, zero observer retries; native elapsed time
+was 396.088 seconds and the complete case took 485.792 seconds. The comparison
+is one run per condition, not a general latency guarantee. Cancellation, draft
+retry and device-fact results above belong to the preceding APK; they were not
+rerun immediately after this Node-only locating-policy change. See the current
+verification ledger for the later fixed-APK regressions.
+
+The final native report confirms deepLocate was active. Two ambiguous digit-2
+locations failed and their taps were cancelled; a later location using the
+neighboring 1/2/3 row succeeded. The earlier repeated taps on 5 did not recur in
+this recorded operation. This is recovery within a passing case, not an entirely
+error-free model run. The exported operation used 53 model calls / 302.482 seconds,
+versus 84 calls / 582.931 seconds in the preceding slow operation; these operation
+times exclude the remaining conversation and observer work.

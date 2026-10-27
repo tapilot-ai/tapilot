@@ -118,11 +118,11 @@ install and test; it is not required for Tapilot's runtime automation.
 | `node-runtime/` | Embedded Pi agent, Midscene runner and deployment dependencies |
 | `packages/android-accessibility/` | Midscene adapter for Android AccessibilityService |
 | `plugins/android-use/` | Computer-side Wi-Fi control plugin |
-| `tests/midscene/` | 20 E2E cases and opt-in device fault fixtures |
+| `tests/midscene/` | 23 E2E cases and opt-in device fault fixtures |
 
 Run `pnpm check` for the full local test/build gate and `pnpm check:security` for
-dependency audits. Device-backed E2E is separate; 20 authored cases do not imply
-20 verified passes. See the [E2E guide and evidence](tests/midscene/README.md) and
+dependency audits. Device-backed E2E is separate; 23 authored cases do not imply
+23 verified passes. See the [E2E guide and evidence](tests/midscene/README.md) and
 [contribution guide](CONTRIBUTING.md).
 
 Historical device runs do not establish a pass for the latest source.

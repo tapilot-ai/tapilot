@@ -103,10 +103,10 @@ Tapilot 日常自动化不需要 ADB。
 | `node-runtime/` | 内置 Pi Agent、Midscene Runner 和部署依赖 |
 | `packages/android-accessibility/` | Android AccessibilityService 的 Midscene 适配器 |
 | `plugins/android-use/` | 电脑端 Wi-Fi 控制插件 |
-| `tests/midscene/` | 20 条 E2E 用例和显式开启的设备故障测试 |
+| `tests/midscene/` | 23 条 E2E 用例和显式开启的设备故障测试 |
 
 `pnpm check` 执行完整本地测试和构建检查，`pnpm check:security` 审计依赖。
-真机 E2E 单独运行；写好了 20 条用例，不代表 20 条都已通过。
+真机 E2E 单独运行；写好了 23 条用例，不代表 23 条都已通过。
 详见 [E2E 指南与验证记录](tests/midscene/README.md)和[贡献指南](CONTRIBUTING.md)。
 
 历史真机结果不代表最新源码已通过验收。
