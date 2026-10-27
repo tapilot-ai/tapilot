@@ -297,3 +297,92 @@ pairing was reconnected in steps mode, with a fresh Computer connected screensho
 and successful Back/readback to the completed chat; speech remained enabled.
 Restoration report: `394c2176-81f0-4162-af09-5e1789ac6c70`. The connection and
 preview were left open. This is a restoration check, not a WIFI suite pass.
+
+## Round-nine verification comparison
+
+The existing eleven commits were pushed to
+`origin/fix/conversation-recovery-validation` at `083f30a` before this round.
+The phone still uses the same 665a APK and gpt-6-luna. A read-only comparison
+kept the evaluated Calculator screen at 5192÷4=1298 and alternated the current
+verifier prompt with a candidate that resolves a separate `requirement` field
+before judging the screenshot. The intermediate-step proposal deliberately
+repeats the expanded-expression wording from the captured false negative.
+
+Native task `7af9bf5f-2ff4-4813-9fe1-e6fed3320a63` completed eleven queries in
+152.286s. Converted report
+`/tmp/tapilot-bug-audit-round9/verification-probe-native-1/report.md` records
+eleven model calls / 82.638s model time. HTTP instrumentation separately records
+thirteen requests / 132.386s, including two failed transports (5.120s and
+45.000s) and their recovery. These are not eleven fault-free network requests.
+An earlier fixture attempt was rejected before any model query because
+`aiQuery.options.cacheable` is not in the current schema; it is retained as a
+test-setup failure, not a product-verification failure.
+
+| Probe | Current prompt | Candidate with resolved requirement |
+| --- | --- | --- |
+| Positive pair 1 | true | true |
+| Positive pair 2 | false | false |
+| Positive pair 3 | false | true |
+| Wrong divisor | not run | false |
+| Wrong grouping | not run | false |
+| Explicit expanded-expression display missing | not run | false |
+| Requested multiplication stage missing | not run | false |
+| Requested Settings page missing | not run | false |
+
+The current prompt accepted only 1/3 correct screens; the candidate accepted
+2/3, while rejecting all five negative controls. The failed candidate already
+transcribed 5192÷4=1298 correctly and resolved the amendment but still returned
+false. The candidate is therefore not merged on this evidence. A successful YAML
+task means the queries ran, not that every verification judgment was correct.
+These are component checks, so the complete-case coverage table is unchanged.
+
+A second candidate removed duplicated guidance and required a resolved arithmetic
+expression and expected value. In task `5cee4b8f-8b46-4613-aa71-232d66011b94`,
+the alternating current prompt again accepted 1/3 positives, while the shorter
+candidate accepted 0/3. All five negative controls were rejected. Each candidate
+positive computed 4736, 5192 and 1298 correctly, but still promoted the proposal's
+expanded-display wording into a requirement. One negative-control explanation
+also computed the unrelated expression incorrectly (4844 instead of 4850); its
+false verdict was correct, but its arithmetic explanation was not.
+
+The compact candidate is also rejected, not merged. The task took 111.454s;
+`compact-probe-native-1/report.md` records eleven calls / 100.375s model time,
+and HTTP timing records eleven requests / 99.910s with no transport failures.
+Both reports and passive frames remain under the round-nine artifact directory.
+
+A third comparison changed only the positive contract scope to
+`entire_user_goal`, using the existing production verifier. This removes the
+model proposal from its visible-result predicate. Task
+`ff45cbd3-d260-4d56-bf66-80ffbe60ce9c` still accepted only 1/3 positives, versus
+0/3 for the alternating intermediate-step control. All five negative controls
+were rejected. Two whole-goal judgments still demanded the superseded intermediate
+checks. Thus selecting whole-goal scope alone also fails to solve the problem;
+the intermediate-step safeguards for multi-page work remain unchanged.
+
+The third task took 104.555s; `scope-probe-native-1/report.md` records eleven
+calls / 93.248s model time, while HTTP timing records eleven requests / 92.769s
+with no transport errors. A temporary local scope-routing regression confirmed
+that plans force intermediate scope, but its proposed override was removed after
+the live comparison failed to establish the intended repair. No production
+prompt, scope, model, verification guard or installed APK changed in this round.
+
+Across these three separate configurations, 33 queries ran on the physical phone.
+Each candidate rejected its five negative controls, but none reliably accepted
+the correct amended final result. The results narrow the remaining problem to
+requirement interpretation independently of action/localization errors. They do
+not establish convergence or a latency improvement. Further work should evaluate
+resolving the amended requirements before the visual judgment, with preservation
+of non-conflicting requirements tested separately; another prompt-only change
+should not be merged without stronger positive and negative evidence.
+
+Round-nine cleanup restored the original YAML and visually confirmed Advanced
+YAML mode off. The three owned Download exports (17,709,011 bytes) were removed
+after SHA-256 checks against retained local copies and successful report
+conversion. Passive capture and performance logging were stopped. Installed
+`base.apk` was hashed again and still matched 665a. The original saved Android
+Use connection was restored in steps mode; fresh screenshot, Back actions and
+chat readback succeeded, with speech still enabled. The connection/preview remain
+open. Report `e78d6369-d6a7-45ee-92aa-2dd06e703a1f` explicitly records the overall
+verification investigation as unresolved and distinguishes that verdict from
+the successful device restoration. This round changes only this evidence ledger;
+the previous full build/test gate is historical, not a newly repeated gate.
