@@ -113,4 +113,14 @@ class TaskLifecycleTest {
         assertTrue(TaskLifecycle.isNewTask("换个任务打开设置"))
         assertFalse(TaskLifecycle.isNewTask("请不要切换任务"))
     }
+
+    @Test fun recoveryRepairsContradictoryTerminalPhasesWithoutChangingDurations() {
+        val failed = entry("failed").put("status", "failed").put("phase", "completed").put("completedAt", 42L)
+        val stopped = entry("stopped").put("status", "stopped").put("phase", "waiting_user").put("completedAt", 43L)
+        TaskLifecycle.recover(ConversationStore.empty().put("history", JSONArray().put(failed).put(stopped)))
+        assertEquals("failed", failed.getString("phase"))
+        assertEquals("paused", stopped.getString("phase"))
+        assertEquals(42L, failed.getLong("completedAt"))
+        assertEquals(43L, stopped.getLong("completedAt"))
+    }
 }

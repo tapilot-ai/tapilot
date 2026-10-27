@@ -8,9 +8,12 @@ internal class TaskFailure(val code: String, cause: Throwable? = null) : Illegal
     override val message: String get() = localized(code) ?: appText("任务失败", "Task failed")
 
     companion object {
+        private val transportFailure = Regex("\\b(UND_ERR_(CONNECT|HEADERS|BODY)_TIMEOUT|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET)\\b")
         fun localized(code: String, chinese: Boolean? = null): String? {
             val pair = when (code) {
                 "request_timeout" -> "请求超时，请稍后重试" to "Request timed out. Try again later."
+                "network_request_failed" -> "网络请求失败。请检查手机网络或 VPN 后重试；任务尚未确认完成。" to "The network request failed. Check the phone connection or VPN and retry; task completion is not confirmed."
+                "task_context_missing" -> "原任务记录已不存在，无法单独重试补充要求。请重新发送完整任务。" to "The original task is no longer available. Resend the complete task to retry this update."
                 "task_stopped" -> "任务已停止" to "Task stopped"
                 "model_turn_limit" -> "本次任务已达到对话轮次上限，可继续或在设置中调整上限。" to "The task reached its model turn limit. Continue or adjust the limit in settings."
                 "phone_operation_limit" -> "本次任务已达到手机操作上限，可继续或在设置中调整上限。" to "The task reached its phone operation limit. Continue or adjust the limit in settings."
@@ -27,6 +30,9 @@ internal class TaskFailure(val code: String, cause: Throwable? = null) : Illegal
             }
             return when (chinese) { true -> pair.first; false -> pair.second; null -> appText(pair.first, pair.second) }
         }
+        /** Keep transport diagnostics in the saved record, not in chat or spoken feedback. */
+        fun displayDetail(detail: String, chinese: Boolean): String =
+            if (transportFailure.containsMatchIn(detail)) localized("network_request_failed", chinese)!! else detail
         fun from(value: JSONObject): Throwable {
             val code = value.optString("errorCode")
             return if (localized(code) != null) TaskFailure(code)

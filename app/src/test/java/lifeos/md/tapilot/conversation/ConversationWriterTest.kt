@@ -76,4 +76,27 @@ class ConversationWriterTest {
             assertThrows(IllegalStateException::class.java) { writer.flush() }
         } finally { writer.close(); directory.deleteRecursively() }
     }
+
+    @Test fun savingDraftCannotHideAnUnsavedTaskCheckpoint() {
+        val directory = Files.createTempDirectory("tapilot-writer-checkpoint-failure").toFile()
+        val file = directory.resolve("state.json")
+        val store = ConversationStore(file)
+        val failed = CountDownLatch(1)
+        val writer = ConversationWriter(store) { failed.countDown() }
+        try {
+            val state = ConversationStore.empty()
+            writer.save(state); writer.flush()
+            val previous = file.readText()
+            assertTrue(file.delete()); assertTrue(file.mkdir())
+            state.put("history", JSONArray().put(JSONObject().put("id", "accepted-task").put("status", "running")))
+            writer.save(state)
+            assertTrue(failed.await(2, TimeUnit.SECONDS))
+            assertTrue(file.delete()); file.writeText(previous)
+            writer.saveDraft("typed after the storage failure")
+            assertThrows(IllegalStateException::class.java) { writer.flush() }
+            assertEquals(0, store.read().getJSONArray("history").length())
+            writer.save(state); writer.flush()
+            assertEquals("accepted-task", store.read().getJSONArray("history").getJSONObject(0).getString("id"))
+        } finally { writer.close(); directory.deleteRecursively() }
+    }
 }

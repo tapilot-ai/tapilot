@@ -30,7 +30,7 @@ class HoldToRecordEditor(context: Context) : EditText(context) {
     private var pending = false
     var appliedDraftEpoch = -1
     var typingHint = ""
-    var speechHint = "Hold to speak"
+    var speechHint = "Tap to type · hold to talk"
     fun refreshHint() { hint = if (canHoldToSpeak(holdEnabled, hasFocus(), text)) speechHint else typingHint }
 
     override fun onFocusChanged(focused: Boolean, direction: Int, previouslyFocusedRect: android.graphics.Rect?) {

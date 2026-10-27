@@ -54,12 +54,13 @@ class AssistantRuntime(context: Context) {
     private val config = VoiceOutputSettings(context)
     var speechMuted by androidx.compose.runtime.mutableStateOf(config.muted); private set
     val device = lifeos.md.tapilot.device.AndroidDeviceService(context)
-    val bridge = lifeos.md.tapilot.services.AppServices(context = context, device = device,
+    private val conversationDevice = ConversationDeviceControl(device)
+    val bridge = lifeos.md.tapilot.services.AppServices(context = context, device = conversationDevice,
         onProgress = { coordinator.phoneProgress(it) },
         onPickAttachment = { kind, callback -> picker?.invoke(kind, callback)
             ?: callback(Result.failure(IllegalStateException("Open Tapilot to select an attachment"))) })
     val coordinator: NativeConversationCoordinator = NativeConversationCoordinator(context, bridge,
-        ConversationStore(File(context.filesDir, "native-conversation.json")), ::accept, { focus?.invoke() })
+        ConversationStore(File(context.filesDir, "native-conversation.json")), ::accept, { focus?.invoke() }, conversationDevice)
     private val replies = ReplySpeech(ApiSpeechPlayback(context) { state.speechProvider },
         { handler.post(it) }, { id, error -> speakingId = id; outputError = error; refreshService() })
     private val voice: VoiceConversation = VoiceConversation(SpeechTranscriber(context), ApiSpeechPlayback(context) { state.speechProvider },

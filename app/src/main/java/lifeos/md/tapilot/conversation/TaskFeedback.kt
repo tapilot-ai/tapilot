@@ -8,7 +8,11 @@ object TaskFeedback {
         fun local(chinese: String, english: String) = if (zh) chinese else english
         val status = entry.optString("status")
         if (status !in listOf("stopped", "failed")) return entry.optString("reply")
-        val detail = TaskFailure.localized(entry.optString("errorCode"), zh) ?: entry.optString("detail")
+        if (entry.optString("kind") == "instruction") return local(
+            "原任务尚未完成，补充要求已保留。重试会继续原任务。",
+            "The original task is not complete. Your update was saved; retry continues the original task.",
+        )
+        val detail = TaskFailure.localized(entry.optString("errorCode"), zh) ?: TaskFailure.displayDetail(entry.optString("detail"), zh)
         val parts = mutableListOf<String>()
         if (status == "failed") {
             parts += detail.ifBlank { local("任务失败，未记录具体原因。", "Task failed without a recorded reason.") }
@@ -34,7 +38,7 @@ object TaskFeedback {
         }
         if (last != null && !last.optBoolean("success")) {
             val result = last.optString("result")
-            val reason = result.substringAfter("Reason:", result).trim()
+            val reason = TaskFailure.displayDetail(result.substringAfter("Reason:", result).trim(), zh)
             if (reason.isNotBlank() && !parts.any { it.contains(reason) }) {
                 parts += local("最近一步未通过验证：", "The last completed operation failed verification: ") + reason
             }

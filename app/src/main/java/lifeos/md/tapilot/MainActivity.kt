@@ -129,6 +129,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         if (::rootView.isInitialized) applyWindowTheme(rootView)
         if (::coordinator.isInitialized) {
+            coordinator.setChatVisible(true)
             coordinator.publish(); coordinator.receiveLaunchContext()
             if (coordinator.ready) {
                 coordinator.removeReports(DeletedReportStore.consume(this))
@@ -137,6 +138,10 @@ class MainActivity : ComponentActivity() {
         }
     }
     override fun onPostResume() { super.onPostResume(); startPendingVoice() }
+    override fun onPause() {
+        if (::coordinator.isInitialized && (!::chatController.isInitialized || !chatController.picking)) coordinator.setChatVisible(false)
+        super.onPause()
+    }
     private fun startPendingVoice() {
         if (!pendingVoiceLaunch || !::chatController.isInitialized || !coordinator.ready || chatController.state.running ||
             !lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) return

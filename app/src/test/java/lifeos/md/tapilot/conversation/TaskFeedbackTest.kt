@@ -48,4 +48,28 @@ class TaskFeedbackTest {
         assertTrue(TaskFeedback.response(task, true).contains("整个任务尚未确认完成"))
         assertEquals("failed", task.getString("status"))
     }
+
+    @Test fun modelConnectionFailureIsReadableWithoutDiscardingItsDiagnosticRecord() {
+        val diagnostic = "Node aiAct failed: AI model request failed after 1 retry. " +
+            "Cause: ConnectTimeoutError [UND_ERR_CONNECT_TIMEOUT]: attempted addresses: 192.0.2.1:443, timeout: 10000ms"
+        val task = JSONObject().put("status", "failed").put("detail", diagnostic)
+            .put("completedOperations", JSONArray().put(operation(false, diagnostic)))
+        val text = TaskFeedback.response(task, false)
+        assertFalse(text.contains("UND_ERR_CONNECT_TIMEOUT"))
+        assertFalse(text.contains("192.0.2.1"))
+        assertTrue(text.contains("network"))
+        assertTrue(text.contains("not confirmed"))
+        assertEquals(1, text.split("\n\n").size)
+        assertEquals(diagnostic, task.getString("detail"))
+        assertEquals(diagnostic, task.getJSONArray("completedOperations").getJSONObject(0).getString("result"))
+        assertTrue(TaskFeedback.response(task, true).contains("手机网络"))
+    }
+
+    @Test fun failedAmendmentExplainsThatRetryContinuesItsOriginalTask() {
+        val input = JSONObject().put("kind", "instruction").put("status", "failed").put("detail", "duplicated parent failure")
+        val text = TaskFeedback.response(input, false)
+        assertFalse(text.contains("duplicated parent failure"))
+        assertTrue(text.contains("original task"))
+        assertTrue(TaskFeedback.response(input, true).contains("补充要求"))
+    }
 }

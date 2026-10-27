@@ -144,4 +144,25 @@ class ConversationTaskRunnerTest {
         val result = runner(Agent { _, _ -> terminal("unknown") }, Services()).run(input()) { false }
         assertTrue(result.outcome.isFailure)
     }
+
+    @Test fun failedFinalVerificationCannotBeSavedAsACompletedTask() {
+        val result = runner(Agent { _, _ -> terminal("completed") }, Services()).run(input()) { false }
+        assertEquals("task_verification_missing", TaskFailure.find(result.outcome.exceptionOrNull())?.code)
+        val entry = JSONObject().put("id", "failed-verification").put("source", "Read screen")
+        TaskLifecycle.finish(entry, "failed", result.phase)
+        assertEquals("failed", entry.getString("phase"))
+        assertSame(entry, TaskLifecycle.continuation(listOf(entry), "continue"))
+    }
+
+    @Test fun cleanupFailureCannotRemainCompletedOrAutomaticallyResumeAsClarification() {
+        for (phase in listOf("completed", "waiting_user")) {
+            val services = Services().apply { discardError = IllegalStateException("cleanup failed") }
+            val result = runner(Agent { _, _ -> terminal(phase).put("completionKind", "answer") }, services).run(input()) { false }
+            assertTrue(result.outcome.isFailure)
+            val entry = JSONObject().put("id", "cleanup-failed").put("source", "Original task")
+            TaskLifecycle.finish(entry, "failed", result.phase)
+            assertEquals("failed", entry.getString("phase"))
+            assertNull(TaskLifecycle.continuation(listOf(entry), "A separate question"))
+        }
+    }
 }

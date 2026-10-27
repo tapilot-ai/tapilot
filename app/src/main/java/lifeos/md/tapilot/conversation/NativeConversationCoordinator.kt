@@ -30,6 +30,7 @@ class NativeConversationCoordinator(
     private val store: ConversationStore,
     private val emit: (ChatState) -> Unit,
     private val focus: () -> Unit,
+    private val inputControl: ConversationDeviceControl,
     private val worker: java.util.concurrent.ExecutorService = Executors.newSingleThreadExecutor(),
 ) : AutoCloseable {
     var data by mutableStateOf(ConversationStore.empty())
@@ -46,6 +47,7 @@ class NativeConversationCoordinator(
     val chinese: Boolean get() = AppLanguage.resolved(activity) == "zh"
     val settingsBusy get() = settings.busy
     private val handler = Handler(Looper.getMainLooper())
+    private val messageLoads = ConversationMessageLoader(worker) { handler.post(it) }
     private val persistence = ConversationWriter(store, onTiming = { phase, duration ->
         android.util.Log.i("TapilotPerformance", JSONObject().put("phase", "persistence.$phase").put("durationMs", duration).toString())
     }) { failure -> handler.post {
@@ -67,7 +69,9 @@ class NativeConversationCoordinator(
         set(value) { field = value; errorEpoch++ }
     private var errorEpoch = 0
     private var draftEpoch = 0
-    private var pendingAttachment: JSONObject? = null
+    private var pendingAttachment: JSONObject?
+        get() = data.optJSONObject("draftAttachment")
+        set(value) { data.put("draftAttachment", value) }
     private var preview: ChatAttachment? = null
     private var progress: ChatProgress? = null
     private var confirmation: CompletableFuture<String>? = null
@@ -81,6 +85,18 @@ class NativeConversationCoordinator(
         { phase, duration, success -> android.util.Log.i("TapilotPerformance", JSONObject()
             .put("phase", "model.$phase").put("role", "outer").put("durationMs", duration).put("success", success).toString()) })
     private val queuedContexts = ArrayDeque<JSONObject>()
+    private var chatVisible = false
+    private var phoneInteractionStarted = false
+
+    fun setChatVisible(visible: Boolean) {
+        if (visible == chatVisible) return
+        chatVisible = visible
+        if (running && !cancellation.get()) {
+            if (visible && phoneInteractionStarted) inputControl.pause()
+            else if (!visible) inputControl.resume()
+            publish()
+        }
+    }
 
     private val settings = ConversationSettings(activity, { data }, { running }, { closed }, credentials, chatGpt, models, services, worker, handler, ::save, ::publish, ::local)
     val preset: String get() = settings.preset
@@ -103,7 +119,7 @@ class NativeConversationCoordinator(
                     val recovered = it.optJSONArray("pendingTurns")?.objects().orEmpty().map(PendingTurn::from)
                     if (recovered.isNotEmpty()) {
                         data.put("draft", (listOf(data.optString("draft")) + recovered.map { turn -> turn.text }).filter { text -> text.isNotBlank() }.joinToString("\n"))
-                        pendingAttachment = recovered.firstNotNullOfOrNull { turn -> turn.attachment }
+                        pendingAttachment = pendingAttachment ?: recovered.firstNotNullOfOrNull { turn -> turn.attachment }
                         save()
                     }
                     ready = true; publish(); receiveLaunchContext() }, onFailure = { fail(it) })
@@ -150,11 +166,15 @@ class NativeConversationCoordinator(
             configured = if (data.optBoolean("chatgptConversation")) chatGpt.ready else model.optString("baseUrl").isNotBlank() && model.optString("modelName").isNotBlank() && model.optString("modelFamily").isNotBlank() && hasKey(preset),
             modelName = if (data.optBoolean("chatgptConversation")) chatGpt.model else model.optString("modelName"), speechProvider = data.optString("speechProvider", "volcengine"),
             error = error, errorEpoch = errorEpoch, needsAccessibility = MidsceneAccessibilityService.current() == null,
-            attachment = ChatAttachment.parse(pendingAttachment), preview = preview, progress = progress, confirmation = confirmationText))
+            attachment = ChatAttachment.parse(pendingAttachment), preview = preview,
+            progress = if (inputControl.paused && running && !cancellation.get()) progress?.copy(
+                title = local("已暂停 · 发送或离开聊天后继续", "Paused · send or leave to resume"), operation = "") else progress,
+            confirmation = confirmationText))
     }
     fun command(value: JSONObject) {
         if (closed || !ready) return
         if (value.optString("action") == "draft") {
+            messageLoads.discard(MessageLoadAction.EDIT)
             data.put("draft", value.optString("text"))
             handler.removeCallbacks(persistDraft)
             handler.postDelayed(persistDraft, 350)
@@ -163,6 +183,7 @@ class NativeConversationCoordinator(
         runCatching {
             val action = value.getString("action")
             when (action) {
+                "inputFocus" -> if (running && !cancellation.get()) inputControl.pause()
                 "send" -> {
                     val preservedDraft = if (value.optBoolean("preserveDraft")) data.optString("draft") else null
                     submit(value.optString("text", data.optString("draft")))
@@ -174,18 +195,25 @@ class NativeConversationCoordinator(
                     preference("executionMode", mode.wireValue)
                 }
                 "stop" -> stop()
-                "settings" -> if (!running) { settingsOpen = true; settings.clearStatus() }
-                "advanced" -> if (!running && data.optBoolean("advanced")) advancedOpen = true
-                "new" -> if (!running) { panelResumeId = null; data.put("active", "chat-${UUID.randomUUID()}"); preview = null; save() }
-                "select" -> if (!running && history().any { conversation(it) == value.optString("id") }) { panelResumeId = null; data.put("active", value.getString("id")); preview = null; save() }
-                "attachment" -> pendingAttachment = value.getJSONObject("attachment")
-                "removeAttachment" -> pendingAttachment = null
-                "closePreview" -> preview = null
-                "preview", "editMessage", "retry" -> loadMessage(action, value.optString("id"))
+                "settings" -> if (!running) { messageLoads.discard(); settingsOpen = true; settings.clearStatus() }
+                "advanced" -> if (!running && data.optBoolean("advanced")) { messageLoads.discard(); advancedOpen = true }
+                "new" -> if (!running) { messageLoads.discard(); panelResumeId = null; data.put("active", "chat-${UUID.randomUUID()}"); preview = null; save() }
+                "select" -> if (!running && history().any { conversation(it) == value.optString("id") }) { messageLoads.discard(); panelResumeId = null; data.put("active", value.getString("id")); preview = null; save() }
+                "attachment", "removeAttachment" -> {
+                    messageLoads.discard(MessageLoadAction.EDIT); messageLoads.discard(MessageLoadAction.PREVIEW)
+                    pendingAttachment = if (action == "attachment") value.getJSONObject("attachment") else null; save()
+                }
+                "closePreview" -> { messageLoads.discard(MessageLoadAction.PREVIEW); preview = null }
+                "preview" -> loadMessage(MessageLoadAction.PREVIEW, value.optString("id"))
+                "editMessage" -> loadMessage(MessageLoadAction.EDIT, value.optString("id"))
+                "retry" -> loadMessage(MessageLoadAction.RETRY, value.optString("id"))
                 "report" -> services.call("report.open", JSONObject().put("reportId", value.getString("id"))) { it.onFailure(::fail) }
                 "accessibility" -> services.call("app.openAccessibilitySettings") { it.onFailure(::fail) }
                 "confirm" -> {
-                    if (value.optBoolean("accepted") && value.optString("text").isNotBlank()) confirmation?.complete(value.getString("text").trim())
+                    if (value.optBoolean("accepted") && value.optString("text").isNotBlank()) {
+                        confirmation?.complete(value.getString("text").trim())
+                        inputControl.resume()
+                    }
                     else stop(reason = "declined")
                     confirmation = null; confirmationText = null
                 }
@@ -210,6 +238,7 @@ class NativeConversationCoordinator(
             return
         }
         // Text amendments stay in the active Pi task. Persist before writing to its pipe.
+        var continueOf = panelResumeId?.takeUnless { TaskLifecycle.isNewTask(text) }
         if (pendingAttachment == null && find(activeTaskId)?.optString("kind") == "task" && !cancellation.get()) {
             val inputId = UUID.randomUUID().toString()
             val amendment = JSONObject().put("id", inputId).put("conversationId", active()).put("createdAt", System.currentTimeMillis())
@@ -218,14 +247,16 @@ class NativeConversationCoordinator(
             data.put("history", JSONArray(listOf(amendment) + history())); save()
             if (pi.steer(inputId, text)) {
                 data.put("draft", ""); draftEpoch++; save()
+                inputControl.resume()
                 progress = progress?.copy(title = local("已收到补充，将调整任务", "Update received, adjusting task")); publish()
                 return
             }
             // Agent may still be provisioning or settling. Keep the input for the next attempt.
+            continueOf = activeTaskId
             find(inputId)?.let { it.put("status", "stopped"); TaskLifecycle.finish(it, "stopped") }; save()
         }
         pendingTurns.add(PendingTurn(text, globalMode, pendingAttachment?.let { JSONObject(it.toString()) },
-            panelResumeId?.takeUnless { TaskLifecycle.isNewTask(text) }))
+            continueOf))
         panelResumeId = null
         data.put("draft", ""); pendingAttachment = null; draftEpoch++; save()
         stop(clearPending = false, reason = "new_input")
@@ -242,25 +273,33 @@ class NativeConversationCoordinator(
         }
         return running
     }
-    private fun loadMessage(action: String, id: String) {
-        if (action != "preview" && running) return
-        val entry = history().find { it.optString("id") == id && conversation(it) == active() }
-        if (id.isNotEmpty() && entry == null) return
+    private fun loadMessage(action: MessageLoadAction, id: String) {
+        if (action != MessageLoadAction.PREVIEW && running) return
+        val selected = history().find { it.optString("id") == id && conversation(it) == active() }
+        if (id.isNotEmpty() && selected == null) return
+        if (selected == null && action != MessageLoadAction.PREVIEW) return
+        val entry = if (action == MessageLoadAction.RETRY && selected != null) TaskHistorySnapshot.retryTarget(selected, history()) else selected
+        val continueOf = entry?.optString("id")?.takeIf { action == MessageLoadAction.RETRY && selected?.optString("kind") == "instruction" }
         val cid = active()
         val draftAttachment = pendingAttachment
-        worker.execute {
-            val result = runCatching { entry?.optJSONObject("attachment")?.let { await("app.readAttachment", JSONObject().put("id", it.getString("id"))) as JSONObject } ?: draftAttachment }
-            handler.post {
-                if (closed || cid != active() || (action != "preview" && running)) return@post
+        messageLoads.load(action, read = { canceled ->
+            if (entry == null) draftAttachment
+            else entry.optJSONObject("attachment")?.let {
+                await("app.readAttachment", JSONObject().put("id", it.getString("id")), stopped = canceled) as JSONObject
+            }
+        }, complete = { result ->
+            if (!closed && cid == active() && (action == MessageLoadAction.PREVIEW || !running)) {
                 result.fold(onSuccess = { file ->
                     when (action) {
-                        "preview" -> preview = ChatAttachment.parse(file)
-                        "editMessage" -> { data.put("draft", entry!!.optString("inputText", entry.optString("source"))); pendingAttachment = file; draftEpoch++; save(); focus() }
-                        "retry" -> start(entry!!.optString("inputText", entry.optString("source")), file, entry.optString("id"), kind = entry.optString("kind", "task"))
+                        MessageLoadAction.PREVIEW -> preview = ChatAttachment.parse(file)
+                        MessageLoadAction.EDIT -> { data.put("draft", entry!!.optString("inputText", entry.optString("source"))); pendingAttachment = file; draftEpoch++; save(); focus() }
+                        MessageLoadAction.RETRY -> start(selected!!.optString("inputText", selected.optString("source")), file, entry!!.optString("id"),
+                            kind = entry.optString("kind", "task"), restoreDraft = data.optString("draft"), restoreAttachment = pendingAttachment,
+                            continueOf = continueOf)
                     }; publish()
                 }, onFailure = ::fail)
             }
-        }
+        })
     }
     fun openGlobalConversation() {
         // Opening a foreground panel changes the screen under Midscene. Stop safely,
@@ -278,6 +317,7 @@ class NativeConversationCoordinator(
     private fun consumeQueue(handoff: TaskHandoff? = null) {
         if (running || queuedContexts.isEmpty() || !ready) return
         val context = queuedContexts.removeFirst()
+        messageLoads.discard()
         val text = context.optString("text")
         val file = context.optString("dataUrl").takeIf { it.isNotBlank() }?.let {
             JSONObject().put("name", context.optString("label", appText("当前屏幕", "Current screen"))).put("kind", "image").put("images", JSONArray().put(it))
@@ -288,12 +328,13 @@ class NativeConversationCoordinator(
             start(text, file, global = context.optBoolean("fromPanel"), restoreDraft = previousDraft, restoreAttachment = previousAttachment, handoff = handoff)
         } else {
             data.put("draft", listOf(data.optString("draft"), text).filter { it.isNotBlank() }.joinToString("\n"))
-            pendingAttachment = file; draftEpoch++; save(); publish()
+            pendingAttachment = file ?: pendingAttachment; draftEpoch++; save(); publish()
             if (!context.optBoolean("voice")) focus()
         }
     }
     private fun start(text: String, file: JSONObject? = pendingAttachment, retryOf: String? = null, global: Boolean = globalMode,
                       restoreDraft: String? = null, restoreAttachment: JSONObject? = null, kind: String = "task", continueOf: String? = null, handoff: TaskHandoff? = null) {
+        messageLoads.discard()
         if (running || (text.isBlank() && file == null)) return
         if (execution.stopUnconfirmed) {
             data.put("draft", text); pendingAttachment = file; draftEpoch++; save()
@@ -330,6 +371,10 @@ class NativeConversationCoordinator(
                     .put("MIDSCENE_MODEL_API_KEY", key).put("MIDSCENE_MODEL_NAME", model.getString("modelName"))
                     .put("MIDSCENE_MODEL_FAMILY", model.getString("modelFamily"))
         }.getOrElse { fail(it); return }
+        val cid = active()
+        val before = history()
+        val taskHistory = runCatching { TaskHistorySnapshot.capture(before, cid, text, kind, retryOf, continueOf) }
+            .getOrElse { fail(it); return }
         val runSession = UUID.randomUUID().toString()
         runCatching {
             if (kind == "task") pi.prepare()
@@ -341,13 +386,11 @@ class NativeConversationCoordinator(
             }
         }.onFailure { fail(it); return }
         error = ""; preview = null; settingsOpen = false; advancedOpen = false
-        val cid = active()
         val id = UUID.randomUUID().toString()
         val stopped = execution.begin(id, runSession)
+        phoneInteractionStarted = kind == "yaml"
         val startedAt = System.currentTimeMillis()
         val limits = AgentLimits.from(data)
-        val before = history()
-        val taskHistory = TaskHistorySnapshot.capture(before, cid, text, kind, retryOf, continueOf)
         val retry = taskHistory.retry
         val source = text.trim().ifBlank { local("请查看附件", "Please inspect the attachment") }
         val entry = JSONObject().put("id", id).put("conversationId", cid).put("createdAt", startedAt)
@@ -357,7 +400,8 @@ class NativeConversationCoordinator(
         retry?.let { entry.put("retryOf", it.getString("id")) }
         TaskLifecycle.begin(entry, retry?.takeIf { continueOf != null || it.optString("phase") != "completed" })
         data.put("history", JSONArray(listOf(entry) + before).let { all -> JSONArray(all.objects().take(200)) })
-        data.put("draft", ""); pendingAttachment = null; draftEpoch++; save()
+        // Preserve an unrelated composer before the attempt, including if the app exits mid-task.
+        data.put("draft", restoreDraft.orEmpty()); pendingAttachment = restoreAttachment; draftEpoch++; save()
         progress = ChatProgress(local("正在理解任务", "Understanding task"), "", "", handoff?.startedAt ?: startedAt, 0)
         publish()
         worker.execute {
@@ -374,6 +418,7 @@ class NativeConversationCoordinator(
             )
             val runner = ConversationTaskRunner(pi, taskServices,
                 complete = { chat, tools ->
+                    waitFor(inputControl.ready, stopped, 0)
                     if (chatGptAccount.isNotBlank()) requestChatGpt(chatGptAccount, chatGptModel, chat, tools, runSession, stopped)
                     else requestCompletion(model, key, chat, runSession, stopped, tools)
                 },
@@ -382,6 +427,7 @@ class NativeConversationCoordinator(
                     if (stopped.get() || !execution.owns(runSession)) return@onMain
                     when (event) {
                         is TaskRunEvent.Progress -> {
+                            if (event.stage in listOf(TaskStage.PREPARING_PHONE, TaskStage.OPERATING_PHONE)) phoneInteractionStarted = true
                             val title = when (event.stage) {
                                 TaskStage.UNDERSTANDING -> local("正在理解任务", "Understanding task")
                                 TaskStage.PREPARING_PHONE -> local("准备操作手机", "Preparing phone operation")
@@ -449,12 +495,10 @@ class NativeConversationCoordinator(
                     val feedback = find(id)?.let { TaskFeedback.response(it, chinese) } ?: message
                     val nextHandoff = TaskHandoff(progress?.startedAt ?: startedAt, phoneStarted)
                     execution.finish(runSession); progress = null; confirmation = null; confirmationText = null
+                    if (stopAcknowledged) inputControl.resume()
                     ActiveTaskStopRegistry.unregister(stopRegistration); stopRegistration = null
                     // Keep cancellation marked if the runtime has not acknowledged stopping.
                     if (stopAcknowledged) services.call("task.complete", sessionId = runSession) {}
-                    if (restoreDraft != null && data.optString("draft").isEmpty() && pendingAttachment == null) {
-                        data.put("draft", restoreDraft); pendingAttachment = restoreAttachment; draftEpoch++
-                    }
                     if (!stopAcknowledged) {
                         error = local("旧任务尚未确认停止，新消息已保留，请稍后重试。", "Previous task has not confirmed stopping. Your message is retained.")
                         data.put("draft", (listOf(data.optString("draft")) + pendingTurns.map { it.text }).filter { it.isNotBlank() }.joinToString("\n"))
@@ -497,6 +541,7 @@ class NativeConversationCoordinator(
         publish()
     }
     private fun confirmOperation(text: String, stopped: AtomicBoolean): String {
+        waitFor(inputControl.ready, stopped, 0)
         if (!ExecutionMode.from(data).requiresConfirmation(text)) return text
         val promise = CompletableFuture<String>()
         onMain { confirmation = promise; confirmationText = text; publish() }
@@ -532,6 +577,7 @@ class NativeConversationCoordinator(
     }
 
     private fun await(method: String, params: JSONObject = JSONObject(), sessionId: String = "native", stopped: AtomicBoolean = AtomicBoolean(false), seconds: Long = 120): Any? {
+        if (method == "runtime.runTest") waitFor(inputControl.ready, stopped, 0)
         val started = android.os.SystemClock.elapsedRealtime()
         try { return effects.call(method, params, sessionId, stopped, seconds) }
         finally {
@@ -551,6 +597,7 @@ class NativeConversationCoordinator(
             .put("durationMs", android.os.SystemClock.elapsedRealtime() - started).toString())
     }
     fun stop(clearPending: Boolean = true, reason: String = "user") {
+        messageLoads.discard()
         if (clearPending) { pendingTurns.clear(); queuedContexts.clear(); if (ready) save() }
         if (!running) return
         if (cancellation.get()) { publish(); return }
@@ -565,12 +612,15 @@ class NativeConversationCoordinator(
         services.call("runtime.stop") { it.fold(barrier::complete, barrier::completeExceptionally) }
         publish()
     }
-    fun back(): Boolean = when {
-        confirmationText != null -> { stop(reason = "declined"); true }
-        preview != null -> { preview = null; publish(); true }
-        advancedOpen -> { advancedOpen = false; true }
-        settingsOpen -> { settingsOpen = false; publish(); true }
-        else -> false
+    fun back(): Boolean {
+        messageLoads.discard()
+        return when {
+            confirmationText != null -> { stop(reason = "declined"); true }
+            preview != null -> { preview = null; publish(); true }
+            advancedOpen -> { advancedOpen = false; true }
+            settingsOpen -> { settingsOpen = false; publish(); true }
+            else -> false
+        }
     }
     fun removeReports(ids: Set<String>) {
         if (!ready || ids.isEmpty()) return
@@ -588,6 +638,7 @@ class NativeConversationCoordinator(
     fun testModel() = settings.testModel()
     fun clearHistory() {
         if (running) return
+        messageLoads.discard()
         data.put("history", JSONArray()).put("active", "chat-${UUID.randomUUID()}"); preview = null; pendingAttachment = null; save(); publish()
         services.call("app.pruneAttachments", JSONObject().put("ids", JSONArray())) {}
     }

@@ -78,6 +78,7 @@ internal fun ChatComposer(controller: ChatController) {
                     onMove = controller::moveRecording
                     onRelease = controller::releaseRecording
                     onCancel = controller::cancelRecording
+                    setOnFocusChangeListener { _, focused -> if (focused) controller.command("inputFocus") }
                     addTextChangedListener(object : TextWatcher {
                         override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
                         override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -98,7 +99,7 @@ internal fun ChatComposer(controller: ChatController) {
                 field.setTextColor(colors.onSurface.toArgb())
                 field.setHintTextColor(colors.onSurfaceVariant.copy(alpha = .55f).toArgb())
                 field.typingHint = if (state.chinese) "输入消息" else "Type a message"
-                field.speechHint = if (state.chinese) "长按语音输入" else "Hold to speak"
+                field.speechHint = if (state.chinese) "点按输入，长按说话" else "Tap to type · hold to talk"
                 val desired = controller.draft
                 // Local typing already lives in EditText. A delayed composition must not
                 // replace in-flight IME input with an earlier draft snapshot.
