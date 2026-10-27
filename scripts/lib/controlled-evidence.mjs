@@ -1,3 +1,15 @@
+/** Every inference must use the requested screenshot-to-logical coordinate ratio. */
+export function hasExpectedScreenshotScale(tasks, factor) {
+  if (![1, 1.5].includes(factor)) return false;
+  const inference = tasks.filter(task => task.usage);
+  return inference.length > 0 && inference.every(task => {
+    const context = task.uiContext;
+    const dpr = context?.deprecatedDpr, ratio = context?.shrunkShotToLogicalRatio;
+    return Number.isFinite(dpr) && dpr > 0 && Number.isFinite(ratio) && ratio > 0 &&
+      Math.abs(ratio - dpr / factor) < 1e-6;
+  });
+}
+
 export function controlledEvidence(html, screenshot = { width: 988, height: 1972 }) {
   if (![screenshot.width, screenshot.height].every(v => Number.isSafeInteger(v) && v > 0)) throw Error('Invalid expected screenshot dimensions');
   const tasks = new Map();

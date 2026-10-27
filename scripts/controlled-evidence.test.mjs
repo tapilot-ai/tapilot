@@ -1,8 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { controlledEvidence } from './lib/controlled-evidence.mjs';
+import { controlledEvidence, hasExpectedScreenshotScale } from './lib/controlled-evidence.mjs';
 const task = () => ({taskId:'query',timing:{cost:1},subType:'Query',usage:{model_name:'gpt-6-luna',response_model_name:'gpt-6-luna'},uiContext:{shotSize:{width:988,height:1972},shrunkShotToLogicalRatio:1},output:{success:true,observation:'Auto brightness on'}});
 const html = t => `<script type="midscene_web_dump">${JSON.stringify({tasks:[t]})}</script>`;
+test('screenshot A/B evidence uses DPR divided by shrink factor on every model call', () => {
+ const capture = (dpr, ratio) => ({ usage: { model_name: 'gpt-6-luna' }, uiContext: { deprecatedDpr: dpr, shrunkShotToLogicalRatio: ratio } });
+ // These values are from the converted 659x1315 replay of a 988x1972 frame.
+ const smaller = capture(1, 2 / 3);
+ assert.equal(hasExpectedScreenshotScale([smaller], 1.5), true);
+ assert.equal(hasExpectedScreenshotScale([capture(1, 1)], 1), true);
+ assert.equal(hasExpectedScreenshotScale([capture(2, 4 / 3)], 1.5), true);
+ assert.equal(hasExpectedScreenshotScale([capture(1, 1.5)], 1.5), false);
+ assert.equal(hasExpectedScreenshotScale([smaller, capture(1, 1)], 1.5), false);
+ assert.equal(hasExpectedScreenshotScale([smaller, { subType: 'Tap' }], 1.5), true);
+ for (const entries of [[], [{ usage: {} }], [capture(undefined, 2 / 3)], [capture(1, NaN)]]) {
+  assert.equal(hasExpectedScreenshotScale(entries, 1.5), false);
+ }
+ assert.equal(hasExpectedScreenshotScale([smaller], 2), false);
+});
 test('controlled comparisons require actual model, full-size image and independent success',()=>{
  assert.equal(controlledEvidence(html(task())).modelCalls,1);
  for (const mutate of [t=>t.usage.response_model_name='different',t=>delete t.usage.response_model_name,t=>t.output.success=false,t=>t.output.observation='',t=>t.uiContext.shotSize.width=659]) {

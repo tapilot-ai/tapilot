@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { hasExpectedScreenshotScale } from './lib/controlled-evidence.mjs';
 
 const serial = process.env.TAPILOT_E2E_DEVICE_ID;
 if (!serial) throw new Error('Set TAPILOT_E2E_DEVICE_ID; never select the first device');
@@ -108,7 +109,7 @@ for (let sample = 0; sample < samples; sample++) {
     const factor = summary.samples[sample].screenshotShrinkFactor;
     if (!sampleTasks.some(task => task.subType === 'Tap' && task.status === 'finished'))
       throw new Error(`Screenshot A/B sample ${sample} has no successful coordinate tap`);
-    if (!sampleTasks.some(task => task.usage && Math.abs(task.uiContext?.shrunkShotToLogicalRatio - factor) < 0.01))
+    if (!hasExpectedScreenshotScale(sampleTasks, factor))
       throw new Error(`Screenshot A/B sample ${sample} did not use the requested image scaling`);
   }
 }
