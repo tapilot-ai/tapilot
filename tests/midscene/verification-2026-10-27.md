@@ -5,6 +5,10 @@ attempts from independent reruns, and observer failures from native task failure
 The authored suite has 23 cases; an authored or historically passing case is not
 automatically a pass on this APK.
 
+The subsequent [frozen screenshot replay](../verification/results-2026-10-27.md)
+isolates requirement resolution, arithmetic checking and numeric locating. Those
+host-side component results do not add physical-device passes to this ledger.
+
 ## Frozen comparison baseline
 
 - Device: OPPO PEUM00, Android 14, USB serial `e7ed3f17`.

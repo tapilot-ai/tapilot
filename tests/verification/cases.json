@@ -1,0 +1,52 @@
+[
+  {
+    "id": "amended-final", "screenshot": "calculator-final", "expected": true,
+    "contract": {"scope": "intermediate_step", "userRequirements": ["打开计算器，先计算 128×37，再把结果加456，最后除以8；逐项核对屏幕。", "修改要求：最终不要除以8，改为除以4；前面的乘法和加法仍然保留。最终只核对修改后的结果。"], "proposedStepCondition": "Calculator visibly displays the revised expression (128 × 37 + 456) ÷ 4 and its evaluated result."},
+    "resolution": {"kind": "calculation", "expression": "(128*37+456)/4", "requireExpandedExpression": false}
+  },
+  {
+    "id": "wrong-divisor", "screenshot": "calculator-final", "expected": false,
+    "contract": {"scope": "entire_user_goal", "userRequirements": ["Compute 5192 divided by 8 and verify its evaluated expression and result."], "proposedStepCondition": "Final expression and value are visible."},
+    "resolution": {"kind": "calculation", "expression": "5192/8", "requireExpandedExpression": false}
+  },
+  {
+    "id": "wrong-grouping", "screenshot": "calculator-final", "expected": false,
+    "contract": {"scope": "entire_user_goal", "userRequirements": ["Compute 128*37+(456/4) and verify its evaluated expression and result."], "proposedStepCondition": "Final expression and value are visible."},
+    "resolution": {"kind": "calculation", "expression": "128*37+(456/4)", "requireExpandedExpression": false}
+  },
+  {
+    "id": "explicit-expanded", "screenshot": "calculator-final", "expected": false,
+    "contract": {"scope": "entire_user_goal", "userRequirements": ["Show the complete expanded expression (128×37+456)÷4 visibly on Calculator with its evaluated result. The full expanded expression itself must remain visible."], "proposedStepCondition": "Final expression and value are visible."},
+    "resolution": {"kind": "calculation", "expression": "(128*37+456)/4", "requireExpandedExpression": true}
+  },
+  {
+    "id": "intermediate-multiply", "screenshot": "calculator-final", "expected": false,
+    "contract": {"scope": "intermediate_step", "userRequirements": ["Compute 128×37, add 456, then divide by 8; check each stage."], "proposedStepCondition": "The current multiplication 128 × 37 and its evaluated result 4736 are visible."},
+    "resolution": {"kind": "calculation", "expression": "128*37", "requireExpandedExpression": false}
+  },
+  {
+    "id": "unevaluated-preview", "screenshot": "calculator-preview", "expected": false,
+    "contract": {"scope": "entire_user_goal", "userRequirements": ["Evaluate 4736+456/4 in Calculator and verify the committed expression and result. A live preview is insufficient."], "proposedStepCondition": "Evaluated expression and result visible."},
+    "resolution": {"kind": "calculation", "expression": "4736+456/4", "requireExpandedExpression": false}
+  },
+  {
+    "id": "read-result", "screenshot": "calculator-final", "expected": true,
+    "contract": {"scope": "entire_user_goal", "userRequirements": ["Read the current evaluated Calculator result and verify it is 1298. Do not press any buttons."], "proposedStepCondition": "1298 is visibly evaluated in Calculator."},
+    "resolution": {"kind": "visual"}
+  },
+  {
+    "id": "android-version", "screenshot": "android-version", "expected": true,
+    "contract": {"scope": "entire_user_goal", "userRequirements": ["Read Android version in Settings and confirm it is 14. Do not change any setting."], "proposedStepCondition": "Android version visible."},
+    "resolution": {"kind": "visual"}
+  },
+  {
+    "id": "android-missing-other-page", "screenshot": "android-version", "expected": true,
+    "contract": {"scope": "intermediate_step", "userRequirements": ["Read Android version, then storage, then auto-brightness in Settings. Do not change settings."], "proposedStepCondition": "Android version and its visible value are shown in Settings."},
+    "resolution": {"kind": "visual"}
+  },
+  {
+    "id": "added-requirement-retained", "screenshot": "android-version", "expected": false,
+    "contract": {"scope": "entire_user_goal", "userRequirements": ["Read Android version and storage capacity in Settings; do not change settings.", "Also read auto-brightness. Preserve both earlier requested facts."], "proposedStepCondition": "Android version is visible."},
+    "resolution": {"kind": "visual"}
+  }
+]

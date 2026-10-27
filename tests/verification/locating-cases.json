@@ -1,0 +1,6 @@
+[
+  { "id": "digit-2", "screenshot": "calculator-final", "expected": true, "prompt": "calculator keypad digit 2", "center": [375, 1544], "radius": 85 },
+  { "id": "digit-5", "screenshot": "calculator-final", "expected": true, "prompt": "calculator keypad digit 5", "center": [375, 1328], "radius": 85 },
+  { "id": "digit-8", "screenshot": "calculator-final", "expected": true, "prompt": "calculator keypad digit 8", "center": [375, 1110], "radius": 85 },
+  { "id": "digit-0", "screenshot": "calculator-final", "expected": true, "prompt": "calculator keypad single digit 0, not the 00 key", "center": [375, 1762], "radius": 85 }
+]

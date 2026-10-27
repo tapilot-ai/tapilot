@@ -1,0 +1,32 @@
+[
+  {
+    "id": "drop-expanded-amendment", "screenshot": "calculator-final", "expected": true,
+    "contract": { "scope": "entire_user_goal", "userRequirements": ["Compute (128*37+456)/8 and keep the full expanded expression visible.", "Change only the last divisor to 4. I no longer need the expanded expression; a committed intermediate operand is fine. Verify the final operation and evaluated value."], "proposedStepCondition": "Old expanded expression is visible." },
+    "resolution": { "kind": "calculation", "expression": "(128*37+456)/4", "requireExpandedExpression": false }
+  },
+  {
+    "id": "preserve-earlier-addition", "screenshot": "calculator-final", "expected": true,
+    "contract": { "scope": "entire_user_goal", "userRequirements": ["Multiply 128 by 37, then add 456 and divide the total by 4. Check each stage.", "Only check the final operation and result; all requested arithmetic stays the same."], "proposedStepCondition": "Verify 128*37/4." },
+    "resolution": { "kind": "calculation", "expression": "(128*37+456)/4", "requireExpandedExpression": false }
+  },
+  {
+    "id": "wrong-read-value", "screenshot": "calculator-final", "expected": false,
+    "contract": { "scope": "entire_user_goal", "userRequirements": ["Read the current evaluated Calculator result and confirm it is 649. Do not change the display."], "proposedStepCondition": "The requested value is visible." },
+    "resolution": { "kind": "visual" }
+  },
+  {
+    "id": "wrong-app", "screenshot": "android-version", "expected": false,
+    "contract": { "scope": "entire_user_goal", "userRequirements": ["In Calculator, evaluate 5192 divided by 4 and check the expression and result."], "proposedStepCondition": "Result visible." },
+    "resolution": { "kind": "calculation", "expression": "5192/4", "requireExpandedExpression": false }
+  },
+  {
+    "id": "retain-exact-display-format", "screenshot": "calculator-final", "expected": false,
+    "contract": { "scope": "entire_user_goal", "userRequirements": ["Evaluate 5192/4. The result text must visibly be exactly 1298.00, with two decimal places and no thousands separator."], "proposedStepCondition": "1298 is visible." },
+    "resolution": { "kind": "visual" }
+  },
+  {
+    "id": "preview-reading-allowed", "screenshot": "calculator-preview", "expected": true,
+    "contract": { "scope": "entire_user_goal", "userRequirements": ["Read the current live preview value in Calculator and confirm it is 4850. Do not press equals; I only want to read the preview."], "proposedStepCondition": "A committed value must be visible." },
+    "resolution": { "kind": "visual" }
+  }
+]
