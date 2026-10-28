@@ -351,3 +351,9 @@ enables airplane mode and disables Wi-Fi, waits up to 30 seconds for readback,
 and restores all three choices in cleanup. This also covers OEMs where
 `svc data disable` leaves `mobile_data=1` despite no usable cellular service.
 A failed model preflight is not an offline-recovery pass.
+
+Offline recovery waits for Android to mark the active default network INTERNET +
+VALIDATED before submitting the explicit retry. A different validated network or
+an enabled Wi-Fi switch is insufficient. This is a system-connectivity precondition,
+not proof that the configured model endpoint is reachable; the final real task
+still determines recovery success. The wait is bounded to 60 seconds.

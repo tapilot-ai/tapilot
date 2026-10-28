@@ -20,6 +20,7 @@ cases:
           If the phone still reaches its model and succeeds, fail the offline fixture.
           Do not enable phone networking or perform the Settings task yourself.
       - fixture.restore: {}
+      - fixture.waitForNetwork: {}
       - aiAct: >-
           After the phone network reconnects, explicitly retry the failed request once.
           Stop interacting after submitting the retry.

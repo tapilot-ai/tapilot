@@ -76,6 +76,21 @@ export class DeviceFixtures {
       throw new Error(`Phone radio controls did not reach the offline fixture state: ${observedWifi}; airplane-mode=${observedData}`);
     } catch (error) { await this.restore(); throw error; }
   }
+  async waitForNetwork(signal: AbortSignal, timeoutMs = 60_000) {
+    const started = Date.now();
+    do {
+      signal.throwIfAborted();
+      const snapshot = this.adb(['shell', 'dumpsys', 'connectivity']);
+      const id = snapshot.match(/^Active default network: (\d+)$/m)?.[1];
+      const network = id && snapshot.split('\n').find(line => line.includes(`NetworkAgentInfo{network{${id}}`));
+      if (network && /\bCapabilities: [^\]]*\bINTERNET\b[^\]]*\bVALIDATED\b/.test(network)) {
+        return { validated: true, elapsedMs: Date.now() - started };
+      }
+      if (Date.now() - started >= timeoutMs) break;
+      await delay(250, undefined, { signal });
+    } while (true);
+    throw new Error('Android default network did not become validated; model recovery was not attempted');
+  }
   async waitForTaskIdle(signal: AbortSignal, timeoutMs = 25 * 60_000) {
     const started = Date.now();
     let polls = 0;

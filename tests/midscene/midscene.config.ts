@@ -108,6 +108,14 @@ export default defineTestProject<Context>({
         return { summary: 'Native task service settled; verify the actual UI outcome next', data };
       },
     }),
+    defineNode({
+      name: 'fixture.waitForNetwork',
+      description: 'Wait for Android to validate the default network; does not claim model endpoint reachability.',
+      inputSchema: z.strictObject({}),
+      async execute({ context, signal }: NodeExecutionContext<unknown, Context>) {
+        return { summary: 'Android default network validated', data: await context.fixtures.waitForNetwork(signal) };
+      },
+    }),
     fixtureNode('fault.offline', fixture => fixture.offline()),
     fixtureNode('fault.restart', fixture => fixture.restart()),
     fixtureNode('fault.lockAndWake', fixture => fixture.lockAndWake()),

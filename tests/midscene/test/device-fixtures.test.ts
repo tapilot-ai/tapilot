@@ -156,3 +156,18 @@ test('text sharing uses the Android share entry of the selected app without subm
   assert.deepEqual(commands, [['shell', 'am', 'start', '-W', '-n', 'lifeos.md.tapilot.e2everify/lifeos.md.tapilot.MainActivity',
     '-a', 'android.intent.action.SEND', '-t', 'text/plain', '--es', 'android.intent.extra.TEXT', 'SHARED-TEXT-QA']]);
 });
+
+
+test('network recovery requires the active default network to be validated', async () => {
+  for (const snapshot of [
+    'Active default network: 141\nNetworkAgentInfo{network{139} nc{[ Capabilities: INTERNET&VALIDATED ]}}',
+    'Active default network: 141\nNetworkAgentInfo{network{141} nc{[ Capabilities: INTERNET&NOT_VALIDATED ]}}',
+    'Active default network: none',
+  ]) {
+    const fixture = new DeviceFixtures('test', 'lifeos.md.tapilot', () => snapshot);
+    await assert.rejects(fixture.waitForNetwork(new AbortController().signal, 0), /did not become validated/);
+  }
+  const fixture = new DeviceFixtures('test', 'lifeos.md.tapilot', () =>
+    'Active default network: 141\nNetworkAgentInfo{network{141} nc{[ Capabilities: INTERNET&TRUSTED&VALIDATED ]}}');
+  assert.equal((await fixture.waitForNetwork(new AbortController().signal, 0)).validated, true);
+});
