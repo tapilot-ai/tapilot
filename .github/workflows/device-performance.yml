@@ -36,7 +36,7 @@ jobs:
       MIDSCENE_MODEL_FAMILY: ${{ vars.MIDSCENE_MODEL_FAMILY }}
       NODE_OPTIONS: --network-family-autoselection-attempt-timeout=2000
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
