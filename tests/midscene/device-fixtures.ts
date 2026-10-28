@@ -4,6 +4,7 @@ import { isIP } from 'node:net';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
+import { networkWatchdogScript, shellQuote, type RadioState } from './network-watchdog.js';
 
 type Connection = {
   open(pair?: boolean, rediscover?: boolean): Promise<unknown>;
@@ -13,7 +14,8 @@ type Connection = {
 
 /** Owns only resources created by this test; never terminates another controller. */
 export class DeviceFixtures {
-  private network?: { wifi: boolean; data: boolean; airplane: boolean };
+  private network?: RadioState;
+  private networkGuard?: string;
   private portProcess?: ChildProcess;
   private portPid?: string;
   private controller?: Connection;
@@ -45,6 +47,19 @@ export class DeviceFixtures {
     if (!/^Wifi is (enabled|disabled)/.test(wifi) || !/^[01]$/.test(data) || !/^(enabled|disabled)$/.test(airplane)) throw new Error('Cannot safely snapshot network state');
     this.network = { wifi: wifi.startsWith('Wifi is enabled'), data: data === '1', airplane: airplane === 'enabled' };
     try {
+      this.networkGuard = `/data/local/tmp/tapilot-radio-${randomUUID()}`;
+      const dir = shellQuote(this.networkGuard);
+      const script = shellQuote(networkWatchdogScript(this.networkGuard, this.network));
+      this.adb(['shell', `mkdir ${dir} && printf '%s' ${script} > ${dir}/restore.sh && touch ${dir}/pending`]);
+      // Background only the fully redirected process. Backgrounding a compound
+      // setup command leaves its subshell holding adb's output pipe open.
+      this.adb(['shell', `nohup sh ${dir}/restore.sh > ${dir}/log 2>&1 < /dev/null &`]);
+      let armed = false;
+      for (let attempt = 0; attempt < 30; attempt++) {
+        if (this.adb(['shell', `if [ -f ${dir}/armed ]; then echo armed; fi`]) === 'armed') { armed = true; break; }
+        await delay(100);
+      }
+      if (!armed) throw new Error('Phone-side network recovery watchdog did not arm');
       this.adb(['shell', 'cmd', 'connectivity', 'airplane-mode', 'enable']);
       this.adb(['shell', 'svc', 'wifi', 'disable']);
       this.adb(['shell', 'svc', 'data', 'disable']);
@@ -169,6 +184,16 @@ export class DeviceFixtures {
       }
       if (networkErrors.length) errors.push(...networkErrors);
       else this.network = undefined;
+    }
+    // Leave the device-side guard armed if any radio restoration failed.
+    if (this.networkGuard && !this.network) {
+      try {
+        const dir = shellQuote(this.networkGuard);
+        const fired = this.adb(['shell', `if [ -f ${dir}/fired ]; then echo fired; fi`]) === 'fired';
+        this.adb(['shell', 'rm', '-rf', this.networkGuard]);
+        this.networkGuard = undefined;
+        if (fired) errors.push(new Error('Phone network recovery watchdog expired; offline acceptance is invalid'));
+      } catch (error) { errors.push(error); }
     }
     if (errors.length) throw new AggregateError(errors, 'Device fixture cleanup failed; inspect the device before another run');
   }

@@ -137,6 +137,10 @@ Use a dedicated test device for resilience cases. The network fixture snapshots
 airplane mode, Wi-Fi and mobile-data state and restores them after each case.
 Offline injection enables airplane mode and disables Wi-Fi; keep USB connected
 until restoration has completed and inspect cleanup failures before proceeding.
+Before injection, a phone-side watchdog must arm successfully. It restores the
+captured radio preferences after five minutes even if USB disconnects. Normal
+cleanup cancels it only after restoring every radio. A watchdog expiration fails
+the case, so automatic recovery cannot masquerade as a successful offline test.
 Force-stop retains app data. Lock/wake requires a device without a secure screen
 lock: the fixture never enters a PIN or bypasses authentication. Port-conflict
 coverage requires `TAPILOT_E2E_WIFI_ADDRESS`; the test owns and removes only its

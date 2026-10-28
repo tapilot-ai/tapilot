@@ -34,6 +34,15 @@ cases:
           The app must show interrupted, stopped, failed or an explicit recovery choice.
           Verify no old-task action occurs while inspecting it; do not click Retry/Continue.
       - aiAct: >-
+          Check device control before submitting a new task. Some Android vendors revoke
+          the app's Accessibility enablement on force-stop. If it is disconnected, verify
+          Tapilot clearly presents the missing prerequisite, then follow its explicit
+          Accessibility setup and re-enable only the ordinary Tapilot service in the
+          expected Android permission screen. Preserve other services. Return to Tapilot
+          and verify device control is connected. This is an explicit permission recovery,
+          not automatic recovery. Never retry or continue the interrupted task, and never
+          change model credentials. If a different prerequisite blocks recovery, fail.
+      - aiAct: >-
           Submit a fresh request "换个任务：打开系统设置首页并核对 WLAN 项目，只读。"
           Stop interacting after submission.
       - task.waitForIdle: {}

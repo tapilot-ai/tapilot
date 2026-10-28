@@ -12,6 +12,7 @@ function radios() {
   const commands: string[] = [];
   const run = (args: string[]) => {
     const command = args.join(' '); commands.push(command);
+    if (command.includes('/armed')) return 'armed';
     if (command === 'shell cmd connectivity airplane-mode') return airplane ? 'enabled' : 'disabled';
     if (command.startsWith('shell cmd connectivity airplane-mode ')) airplane = command.endsWith('enable');
     if (command === 'shell cmd wifi status') return `Wifi is ${wifi ? 'enabled' : 'disabled'}`;
@@ -29,6 +30,29 @@ test('radio fault cannot run in the ordinary live profile', async () => {
   const state = radios(); const fixture = new DeviceFixtures('test', 'lifeos.md.tapilot', state.run);
   await assert.rejects(fixture.offline(), /opt into device faults/);
   assert.equal(state.commands.length, 0);
+});
+
+test('a failed recovery guard startup never disables phone networking', async () => {
+  process.env.TAPILOT_E2E_FAULTS = '1';
+  const state = radios();
+  const fixture = new DeviceFixtures('test', 'lifeos.md.tapilot', args => {
+    if (args.join(' ').includes('nohup sh')) throw new Error('guard startup failed');
+    return state.run(args);
+  });
+  await assert.rejects(fixture.offline(), /guard startup failed/);
+  assert.equal(state.commands.includes('shell svc wifi disable'), false);
+  assert.equal(state.commands.includes('shell cmd connectivity airplane-mode enable'), false);
+});
+
+test('watchdog expiration restores state but cannot count as successful offline acceptance', async () => {
+  process.env.TAPILOT_E2E_FAULTS = '1';
+  const state = radios();
+  const fixture = new DeviceFixtures('test', 'lifeos.md.tapilot', args =>
+    args.join(' ').includes('/fired') ? 'fired' : state.run(args));
+  await fixture.offline();
+  await assert.rejects(fixture.restore(), /cleanup failed/);
+  assert.deepEqual(state.state(), { wifi: true, data: false, airplane: false });
+  await fixture.restore();
 });
 
 test('cleanup restores original radio choices and is safe to repeat', async () => {
@@ -53,6 +77,7 @@ test('offline fixture accepts airplane mode when an OEM retains mobile_data=1', 
   let wifi = true, airplane = false;
   const fixture = new DeviceFixtures('test', 'lifeos.md.tapilot', args => {
     const command = args.join(' ');
+    if (command.includes('/armed')) return 'armed';
     if (command === 'shell cmd wifi status') return `Wifi is ${wifi ? 'enabled' : 'disabled'}`;
     if (command === 'shell settings get global mobile_data') return '1';
     if (command === 'shell cmd connectivity airplane-mode') return airplane ? 'enabled' : 'disabled';

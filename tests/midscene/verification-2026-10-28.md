@@ -225,3 +225,84 @@ accessibility service enabled. USB remained connected. This is targeted acceptan
 of the report-link fix, not a complete regression of the new APK. Earlier failed
 offline recovery and unexecuted acceptance cases remain outstanding; hosted CI and
 the four distribution-material blockers are unchanged.
+
+### Evening acceptance continuation (same fd370537 beta)
+
+- Smoke: `20261028204906-6b57c5ec`, 3/3 passed on first attempts
+  (UI-01 64.646s, UI-02 253.053s, UI-03 179.099s).
+- Added a phone-side five-minute radio recovery watchdog to the opt-in offline
+  fixture. It arms before fault injection and restores the original radio state
+  even if USB is lost. Normal cleanup cancels it only after successful restoration;
+  expiration invalidates the case. Fixture/schema/type checks: 17 passed.
+  A real-device three-second probe returned from ADB in 60ms, then restored the
+  original Wi-Fi on / data on / airplane off state on its own. This probe did not
+  inject a radio outage. The first compound-shell startup attempt held the ADB
+  pipe open and timed out before fault injection (`20261028205836-86792a4f`);
+  startup now backgrounds only the fully redirected watchdog process.
+- Offline case `20261028210250-2e6496d7` remains FAILED: offline failure UI and
+  radio restoration passed, but the immediate explicit retry timed out at the
+  model connection. No false completion was shown. USB remained connected.
+  A later explicit retry of that same task, `20261028210904-24886474`, passed
+  in 140.582s with real Settings/WLAN screenshot evidence. No account, model,
+  proxy or VPN changes were made. This proves delayed recovery, not immediate
+  or automatic recovery.
+- Rejected-auth fixture used isolated `lifeos.md.tapilot.e2everify`, APK SHA-256
+  `66b23eeaa9723d06c7b9ba0c27171048141cb22885fce2df8db986e6c7eb870a`,
+  and a synthetic invalid key. Setup `20261028211329-61683c16` passed;
+  FAIL-02 `20261028211927-ac1a388d` passed in 72.507s: explicit authentication
+  failure, retryable state, no false completion or exposed credential.
+  Earlier setup `20261028211221-9f4674dc` did not run because installation was
+  awaiting the OEM prompt; a permission helper later failed at a residual
+  installer screen. Neither is counted as a pass. The isolated app was then
+  uninstalled and its accessibility entry disappeared. Main-app credentials
+  were not modified.
+- Real microphone continuous conversation passed: Mac speakers delivered acoustic
+  speech to the phone microphone; no text was injected. Turn one asked to remember
+  63 and received “新的数字已记住”; after automatic listening resumed, turn two
+  asked to subtract three and received “60”, then listening resumed again.
+  No phone tap occurred between utterances. Both cards showed completed tasks
+  (6s and 4s). ASR misrecognized the second utterance's final “不要操作手机” as
+  “不要超过手机”; the arithmetic request was correctly understood. This is not
+  perfect-ASR evidence. Initial manual timing attempts missed the 30-second
+  listening window and are not counted as continuous-conversation passes.
+  Evidence: ignored `build/acceptance-voice/continuous/frame-009.png` and
+  `frame-018.png`, local log `/tmp/tapilot-acceptance-continuous-voice.log`.
+  Voice was ended and Mac audio restored to volume 17, muted. USB remained
+  attached for observation; this is not a physically unplugged acceptance run.
+- Force-stop LIFE-02 `20261028213012-4c70afa3`: 1/1 passed, 388.291s.
+  Old task remained interrupted and was not replayed; a fresh task succeeded.
+  The fixture now explicitly follows the system UI to restore accessibility
+  after OEM force-stop revocation. This pass requires that permission recovery;
+  it does not establish automatic recovery after force-stop.
+- Afterwards the phone showed wireless control Off. Enabling it again showed
+  Paired, and the installed plugin CLI connected using the saved computer pairing
+  without scanning. A fresh Wi-Fi screenshot showed Computer connected, recorded
+  in report `83ff8115-2e08-4afc-b671-a20f96e60e75`. The panel opener returned,
+  but the current client's MCP Apps browser access host was unavailable, so actual
+  embedded-panel rendering is NOT accepted from this run.
+
+Secure-lock/user-unlock acceptance, hosted CI billing, and the four distribution
+material blockers remain unresolved. No package or APK was published.
+
+### Actual Claude Code Skill client check
+
+A temporary project-local copy of the repository Skill was loaded by real Claude
+Code, using the previously verified globally installed package through
+ANDROID_USE_ROOT. Shared managed skills were not modified. The first run was
+blocked by a scoped Bash allowlist mismatch (`/tmp` versus macOS canonical
+`/private/tmp`), before any phone command ran. After correcting that exact command
+path, the second run completed in 45.628s with no permission denials: devices,
+status, wireless screenshot, image Read, then record in the same report. It reused
+the connected saved phone without pairing or ADB. Report:
+`a5a9b6e1-cce5-44d1-bbea-1e9d69906b0a`; local result:
+`/tmp/tapilot-acceptance-claude-retry.json`. This is read-only screenshot/report
+integration evidence, not a new multi-step control test. Claude Code retained its
+existing configured provider/model (`auto_model/seed-evolving-auto`); it does not
+establish an Anthropic-hosted model test.
+
+A separate native Codex GUI inspection was explicitly rejected by Computer Use:
+“not allowed to use the app 'com.openai.codex' for safety reasons”. No alternate
+GUI-control route was attempted. Together with the unavailable MCP Apps browser
+host, this leaves embedded-panel visual acceptance blocked, despite successful
+plugin CLI screenshot/report evidence. No report was generated by either failed
+GUI inspection.
