@@ -178,8 +178,8 @@ importers:
   .:
     dependencies:
       '@lobehub/icons-static-svg':
-        specifier: ^1.95.0
-        version: 1.95.1
+        specifier: ^1.98.0
+        version: 1.98.0
       '@tapilot/android-accessibility':
         specifier: workspace:*
         version: link:packages/android-accessibility
@@ -442,8 +442,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@lobehub/icons-static-svg@1.95.1':
-    resolution: {integrity: sha512-Hw7EPPgVnC4NZLXBfTNJG6hyQgqECfUPC11VVXodPSr1aebKcFxDZlSpxhWwYNdCc6bhxps/x5TtXoPmfKH2ag==}
+  '@lobehub/icons-static-svg@1.98.0':
+    resolution: {integrity: sha512-soyLV2g74ujV+9BBymPwXrorJ+kQsEz7WvVd4uzhN2wZnd4Jbyc2FsmyjZBosGaufOirCs1RGJQlLe6l9bjwLg==}
 
   '@midscene/core@1.15.2':
     resolution: {integrity: sha512-XJbT5FDKAOQYD59VJhQoqMH4cDuvQnhIA5GGdwUDhRiGKN3AxVYvxGn1rui5l644NvChDxoSAETmM5uTa9tGAA==}
@@ -1163,7 +1163,7 @@ snapshots:
   '@img/sharp-win32-x64@0.35.5':
     optional: true
 
-  '@lobehub/icons-static-svg@1.95.1': {}
+  '@lobehub/icons-static-svg@1.98.0': {}
 
   '@midscene/core@1.15.2(@types/node@18.19.130)(supports-color@7.2.0)(ws@8.22.0)':
     dependencies:
