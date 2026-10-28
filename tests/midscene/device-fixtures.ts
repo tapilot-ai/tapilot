@@ -13,7 +13,7 @@ type Connection = {
 
 /** Owns only resources created by this test; never terminates another controller. */
 export class DeviceFixtures {
-  private network?: { wifi: boolean; data: boolean };
+  private network?: { wifi: boolean; data: boolean; airplane: boolean };
   private portProcess?: ChildProcess;
   private portPid?: string;
   private controller?: Connection;
@@ -41,17 +41,24 @@ export class DeviceFixtures {
     if (this.network) throw new Error('Network fault is already active');
     const wifi = this.adb(['shell', 'cmd', 'wifi', 'status']);
     const data = this.adb(['shell', 'settings', 'get', 'global', 'mobile_data']);
-    if (!/^Wifi is (enabled|disabled)/.test(wifi) || !/^[01]$/.test(data)) throw new Error('Cannot safely snapshot network state');
-    this.network = { wifi: wifi.startsWith('Wifi is enabled'), data: data === '1' };
+    const airplane = this.adb(['shell', 'cmd', 'connectivity', 'airplane-mode']);
+    if (!/^Wifi is (enabled|disabled)/.test(wifi) || !/^[01]$/.test(data) || !/^(enabled|disabled)$/.test(airplane)) throw new Error('Cannot safely snapshot network state');
+    this.network = { wifi: wifi.startsWith('Wifi is enabled'), data: data === '1', airplane: airplane === 'enabled' };
     try {
+      this.adb(['shell', 'cmd', 'connectivity', 'airplane-mode', 'enable']);
       this.adb(['shell', 'svc', 'wifi', 'disable']);
       this.adb(['shell', 'svc', 'data', 'disable']);
-      for (let attempt = 0; attempt < 20; attempt++) {
-        if (this.adb(['shell', 'cmd', 'wifi', 'status']).startsWith('Wifi is disabled') &&
-            this.adb(['shell', 'settings', 'get', 'global', 'mobile_data']) === '0') return;
-        await delay(100);
+      // OEM radio transitions can take several seconds after svc returns.
+      // A successful command is not proof of an offline device.
+      const deadline = Date.now() + 30_000;
+      let observedWifi = '', observedData = '';
+      while (Date.now() < deadline) {
+        observedWifi = this.adb(['shell', 'cmd', 'wifi', 'status']).split('\n')[0];
+        observedData = this.adb(['shell', 'cmd', 'connectivity', 'airplane-mode']);
+        if (observedWifi.startsWith('Wifi is disabled') && observedData === 'enabled') return;
+        await delay(250);
       }
-      throw new Error('Phone radio controls did not reach the offline fixture state');
+      throw new Error(`Phone radio controls did not reach the offline fixture state: ${observedWifi}; airplane-mode=${observedData}`);
     } catch (error) { await this.restore(); throw error; }
   }
   async waitForTaskIdle(signal: AbortSignal, timeoutMs = 25 * 60_000) {
@@ -154,6 +161,8 @@ export class DeviceFixtures {
     if (this.network) {
       const original = this.network;
       const networkErrors: unknown[] = [];
+      try { this.adb(['shell', 'cmd', 'connectivity', 'airplane-mode', original.airplane ? 'enable' : 'disable']); }
+      catch (error) { networkErrors.push(error); }
       for (const [radio, enabled] of [['wifi', original.wifi], ['data', original.data]] as const) {
         try { this.adb(['shell', 'svc', radio, enabled ? 'enable' : 'disable']); }
         catch (error) { networkErrors.push(error); }

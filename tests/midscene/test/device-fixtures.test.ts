@@ -8,10 +8,12 @@ afterEach(() => {
 });
 
 function radios() {
-  let wifi = true, data = false, failRestore = false;
+  let wifi = true, data = false, airplane = false, failRestore = false;
   const commands: string[] = [];
   const run = (args: string[]) => {
     const command = args.join(' '); commands.push(command);
+    if (command === 'shell cmd connectivity airplane-mode') return airplane ? 'enabled' : 'disabled';
+    if (command.startsWith('shell cmd connectivity airplane-mode ')) airplane = command.endsWith('enable');
     if (command === 'shell cmd wifi status') return `Wifi is ${wifi ? 'enabled' : 'disabled'}`;
     if (command === 'shell settings get global mobile_data') return data ? '1' : '0';
     if (command === 'shell svc wifi enable' && failRestore) throw new Error('Wi-Fi restore unavailable');
@@ -19,7 +21,7 @@ function radios() {
     if (command.startsWith('shell svc data ')) data = command.endsWith('enable');
     return '';
   };
-  return { run, commands, state: () => ({ wifi, data }), failRestore: (value: boolean) => { failRestore = value; } };
+  return { run, commands, state: () => ({ wifi, data, airplane }), failRestore: (value: boolean) => { failRestore = value; } };
 }
 
 test('radio fault cannot run in the ordinary live profile', async () => {
@@ -32,8 +34,8 @@ test('radio fault cannot run in the ordinary live profile', async () => {
 test('cleanup restores original radio choices and is safe to repeat', async () => {
   process.env.TAPILOT_E2E_FAULTS = '1';
   const state = radios(); const fixture = new DeviceFixtures('test', 'lifeos.md.tapilot', state.run);
-  await fixture.offline(); assert.deepEqual(state.state(), { wifi: false, data: false });
-  await fixture.restore(); assert.deepEqual(state.state(), { wifi: true, data: false });
+  await fixture.offline(); assert.deepEqual(state.state(), { wifi: false, data: false, airplane: true });
+  await fixture.restore(); assert.deepEqual(state.state(), { wifi: true, data: false, airplane: false });
   const count = state.commands.length; await fixture.restore(); assert.equal(state.commands.length, count);
 });
 
@@ -43,7 +45,25 @@ test('one failed radio restoration does not prevent restoring the other and can 
   await fixture.offline(); state.failRestore(true);
   await assert.rejects(fixture.restore(), /cleanup failed/);
   assert.equal(state.commands.at(-1), 'shell svc data disable');
-  state.failRestore(false); await fixture.restore(); assert.deepEqual(state.state(), { wifi: true, data: false });
+  state.failRestore(false); await fixture.restore(); assert.deepEqual(state.state(), { wifi: true, data: false, airplane: false });
+});
+
+test('offline fixture accepts airplane mode when an OEM retains mobile_data=1', async () => {
+  process.env.TAPILOT_E2E_FAULTS = '1';
+  let wifi = true, airplane = false;
+  const fixture = new DeviceFixtures('test', 'lifeos.md.tapilot', args => {
+    const command = args.join(' ');
+    if (command === 'shell cmd wifi status') return `Wifi is ${wifi ? 'enabled' : 'disabled'}`;
+    if (command === 'shell settings get global mobile_data') return '1';
+    if (command === 'shell cmd connectivity airplane-mode') return airplane ? 'enabled' : 'disabled';
+    if (command.startsWith('shell cmd connectivity airplane-mode ')) airplane = command.endsWith('enable');
+    if (command.startsWith('shell svc wifi ')) wifi = command.endsWith('enable');
+    return '';
+  });
+  await fixture.offline();
+  assert.equal(airplane, true); assert.equal(wifi, false);
+  await fixture.restore();
+  assert.equal(airplane, false); assert.equal(wifi, true);
 });
 
 test('auth fixture refuses the personal main-app package even when opted in', () => {

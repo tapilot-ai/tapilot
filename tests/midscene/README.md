@@ -339,3 +339,9 @@ this recorded operation. This is recovery within a passing case, not an entirely
 error-free model run. The exported operation used 53 model calls / 302.482 seconds,
 versus 84 calls / 582.931 seconds in the preceding slow operation; these operation
 times exclude the remaining conversation and observer work.
+
+The offline fault snapshots airplane mode, Wi-Fi and mobile-data preferences. It
+enables airplane mode and disables Wi-Fi, waits up to 30 seconds for readback,
+and restores all three choices in cleanup. This also covers OEMs where
+`svc data disable` leaves `mobile_data=1` despite no usable cellular service.
+A failed model preflight is not an offline-recovery pass.
