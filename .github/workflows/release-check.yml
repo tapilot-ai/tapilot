@@ -54,7 +54,7 @@ jobs:
           shutil.copytree('app/src/main/assets/third-party', output / 'third-party', dirs_exist_ok=True)
           shutil.copytree('app/build/generated/third-party-assets/release/third-party/android', output / 'third-party/android', dirs_exist_ok=True)
           PYCODE
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-verification-evidence
           path: build/release-evidence/
