@@ -45,9 +45,7 @@ internal class ReportService(
             }
             "report.open" -> {
                 val reportId = params.getString("reportId")
-                check(reportRepository.reportFile(reportId).isFile) {
-                    "Report does not exist: $reportId"
-                }
+                reportRepository.requireReport(reportId)
                 open(
                     Intent(activity, ReportActivity::class.java)
                         .putExtra(ReportActivity.EXTRA_REPORT_ID, reportId),
@@ -106,9 +104,7 @@ internal class ReportService(
     }
     private fun requireReport(params: JSONObject): File {
         val reportId = params.getString("reportId")
-        return reportRepository.reportFile(reportId).also {
-            check(it.isFile) { "Report does not exist: $reportId" }
-        }
+        return reportRepository.requireReport(reportId)
     }
 
     private fun reportUri(report: File) = FileProvider.getUriForFile(

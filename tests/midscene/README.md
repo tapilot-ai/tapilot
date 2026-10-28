@@ -134,8 +134,10 @@ pnpm test:e2e:auth-fixture
 ```
 
 Use a dedicated test device for resilience cases. The network fixture snapshots
-Wi-Fi and mobile-data state and restores both independently after each case;
-force-stop retains app data. Lock/wake requires a device without a secure screen
+airplane mode, Wi-Fi and mobile-data state and restores them after each case.
+Offline injection enables airplane mode and disables Wi-Fi; keep USB connected
+until restoration has completed and inspect cleanup failures before proceeding.
+Force-stop retains app data. Lock/wake requires a device without a secure screen
 lock: the fixture never enters a PIN or bypasses authentication. Port-conflict
 coverage requires `TAPILOT_E2E_WIFI_ADDRESS`; the test owns and removes only its
 own listener. Wireless transport coverage requires `TAPILOT_E2E_PAIRING_FILE`,

@@ -141,7 +141,10 @@ Historical device runs do not establish a pass for the latest source.
   and API keys stay in Android Keystore-backed storage; this does not make model
   requests local or prevent provider-side processing.
 - Reports contain screenshots, prompts and model output. Review them before
-  sharing. Exported reports and computer-plugin data have their own lifetimes.
+  sharing. The phone automatically prunes older reports to keep at most 20 files
+  and 200 MB, always retaining the newest report even if it exceeds that size.
+  Export reports you need to keep before running many more operations. Exported
+  reports and computer-plugin data have their own lifetimes.
 
 Read [PRIVACY.md](PRIVACY.md) for data handling and deletion, and
 [SECURITY.md](SECURITY.md) for transport, credential storage and vulnerability reporting.

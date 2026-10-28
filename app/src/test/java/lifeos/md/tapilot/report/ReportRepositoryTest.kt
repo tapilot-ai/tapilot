@@ -8,6 +8,26 @@ import org.junit.Test
 
 class ReportRepositoryTest {
     @Test
+    fun `missing and pruned reports expose the exact unavailable id`() {
+        val directory = Files.createTempDirectory("midscene-reports").toFile()
+        try {
+            val repository = ReportRepository(directory)
+            val ids = (1..2).map { index ->
+                "$index-00000000-0000-0000-0000-000000000000".also { id ->
+                    directory.resolve("$id.html").apply { writeText("report"); setLastModified(index.toLong()) }
+                }
+            }
+            repository.pruneCompletedReports(maxCount = 1)
+            val failure = runCatching { repository.requireReport(ids[0]) }.exceptionOrNull()
+            assertTrue(failure is MissingReportException)
+            assertEquals(ids[0], (failure as MissingReportException).reportId)
+            assertEquals("report", repository.requireReport(ids[1]).readText())
+            repository.delete(ids[1])
+            assertTrue(runCatching { repository.requireReport(ids[1]) }.exceptionOrNull() is MissingReportException)
+        } finally { directory.deleteRecursively() }
+    }
+
+    @Test
     fun `writes report chunks and atomically publishes html`() {
         val directory = Files.createTempDirectory("midscene-reports").toFile()
         try {

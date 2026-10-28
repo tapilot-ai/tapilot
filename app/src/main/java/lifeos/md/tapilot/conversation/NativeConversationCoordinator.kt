@@ -207,7 +207,17 @@ class NativeConversationCoordinator(
                 "preview" -> loadMessage(MessageLoadAction.PREVIEW, value.optString("id"))
                 "editMessage" -> loadMessage(MessageLoadAction.EDIT, value.optString("id"))
                 "retry" -> loadMessage(MessageLoadAction.RETRY, value.optString("id"))
-                "report" -> services.call("report.open", JSONObject().put("reportId", value.getString("id"))) { it.onFailure(::fail) }
+                "report" -> services.call("report.open", JSONObject().put("reportId", value.getString("id"))) { result ->
+                    result.onFailure { failure ->
+                        if (failure is lifeos.md.tapilot.report.MissingReportException) {
+                            removeReports(setOf(failure.reportId))
+                            fail(IllegalStateException(local(
+                                "此报告已被清理或删除，失效入口已移除。请及时导出需要长期保留的报告。",
+                                "This report was cleaned up or deleted. Its unavailable link has been removed. Export reports you want to keep."
+                            )))
+                        } else fail(failure)
+                    }
+                }
                 "accessibility" -> services.call("app.openAccessibilitySettings") { it.onFailure(::fail) }
                 "confirm" -> {
                     if (value.optBoolean("accepted") && value.optString("text").isNotBlank()) {

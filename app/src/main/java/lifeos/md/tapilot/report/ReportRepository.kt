@@ -7,6 +7,8 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.util.UUID
 
+class MissingReportException(val reportId: String) : IllegalStateException("Report is no longer available: $reportId")
+
 class ReportRepository(private val directory: File) : AutoCloseable {
     private val writers = mutableMapOf<String, BufferedWriter>()
 
@@ -123,6 +125,10 @@ class ReportRepository(private val directory: File) : AutoCloseable {
     fun reportFile(reportId: String): File {
         require(SAFE_REPORT_ID.matches(reportId)) { "Invalid report id" }
         return File(directory, "$reportId.html")
+    }
+
+    fun requireReport(reportId: String): File = reportFile(reportId).also {
+        if (!it.isFile) throw MissingReportException(reportId)
     }
 
     @Synchronized

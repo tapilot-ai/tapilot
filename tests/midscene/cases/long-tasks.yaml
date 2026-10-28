@@ -37,13 +37,25 @@ cases:
           after submitting. Do not query system settings yourself.
       - task.waitForIdle: {}
       - aiAct: >-
-          Return to Tapilot and compare every factual claim in the final answer with the
-          screens from the execution records. If Activity shows a selector, inspect each
-          relevant operation separately; the last record alone may only contain brightness.
-          Use actual Player screenshots, not raw prompts, as evidence. Verify Android version, both storage numbers and
-          the automatic-brightness state all match. Fail on any mismatch even if the app says
-          "任务已完成". In particular an enabled switch must never be described as disabled, and
-          device storage must never be replaced by another device's capacity.
+          Return to Tapilot and read its final Android-version claim. Open Activity, tap
+          the numbered operation row for Android version (the instruction text is a
+          clickable replay entry), and use Player screenshots to compare the actual version
+          with that claim. Raw instruction text is not evidence. Fail on a mismatch or
+          missing screenshot even if the task says completed. Return to the main chat after
+          this one fact is verified; do not inspect storage or brightness in this step.
+      - aiAct: >-
+          Read both storage numbers in the final reply. Open Activity and tap the numbered
+          storage operation row to open its own Replay, then use Player screenshots to
+          verify both used and total storage against the reply. The numbered instructions
+          in the Activity dialog are clickable entries, not the progress summary rows in
+          chat. Fail if either value differs or lacks screenshot evidence. Return to the
+          main chat after verifying these two values; do not inspect other facts.
+      - aiAct: >-
+          Read the final reply's automatic-brightness claim. Open Activity, tap the numbered
+          brightness operation row, and inspect its actual Player screenshot. Verify the
+          switch state agrees with the reply: an enabled switch must not be called disabled.
+          Fail on a mismatch or missing evidence. Return to the main chat and verify the
+          task is completed. Do not repeat the Android-version or storage checks.
   - name: LONG-03 Browser research followed by Calculator
     tags:
       - live

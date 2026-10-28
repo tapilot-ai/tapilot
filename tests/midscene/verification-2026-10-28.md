@@ -133,3 +133,95 @@ and asked to reconnect USB (or restore those switches locally). A bounded
 to serial e7ed3f17 when it reconnects. Final restoration remains unverified
 until a subsequent readback is recorded. No further device test runs while
 this cleanup is outstanding.
+
+### USB reconnected and fault cleanup completed
+
+After the owner reconnected USB, serial `e7ed3f17` was available again.
+The expired host watcher was no longer running. Explicit restoration commands
+disabled airplane mode and enabled Wi-Fi and mobile data. Subsequent readbacks
+confirmed airplane mode disabled, Wi-Fi connected, and mobile data enabled.
+Tapilot remained in the enabled accessibility-service list. A fresh screenshot
+of Clash showed Running with the unchanged MC profile activated; no VPN profile
+or account was edited. This closes the failed cleanup, not the FAIL-03 test:
+that interrupted offline-recovery case remains failed.
+
+FAIL-01 passed on the subsequent connected-device run, batch
+`20261028172733-461b9993` (1/1, first attempt, 182.104s). The native task
+opened and inspected Settings, reported the missing target without claiming
+completion, and the observer checked the execution screenshots. This also
+provides a real model-and-device operation after network restoration.
+
+The follow-up live suite also passed TASK-01 on this APK (first attempt,
+390.239s): cancellation, a new Settings task, and final execution-record checks.
+The remaining cases in that suite are still being evaluated; this entry does
+not certify the entire batch.
+
+The same follow-up suite passed DRAFT-01 (158.805s), LIFE-01 (228.817s), and
+LONG-01 (552.493s), each on its first attempt. LONG-01's native-service wait
+was 274.886s and its visual replay check was 218.395s; total test duration is
+not the native task's execution time.
+
+LONG-02 failed its final observer action after 701.082s and 80 replanning cycles.
+The native service had settled after 99.190s, but the observer repeatedly
+mistook the clickable, instruction-labelled Activity selector for a noninteractive
+prompt dialog and never finished verifying storage evidence. This is not a
+passing device-facts test. The observer also contradicted its own earlier reading
+of the brightness reply, so its intermediate reasoning is not accepted as a
+product defect. Preserve the original replay for investigation.
+
+The observer guidance now explicitly distinguishes clickable numbered Activity
+entries from noninteractive progress rows. LONG-02's final verification is split
+into Android version, storage, and brightness checks, retaining actual Player
+screenshots and all original truthfulness requirements. TypeScript/schema checks
+and all 13 model-free E2E tests pass. Live verification of this adjustment remains
+pending; it does not change the failed original result.
+
+### Completed live batch and separate follow-ups
+
+Batch `20261028173109-901c6907` finished 6/8 passed, 2 failed, without retries.
+In addition to TASK-01, DRAFT-01, LIFE-01 and LONG-01 above, LONG-03 passed
+(571.908s total; native-service wait 353.475s) and UPDATE-02 passed (417.751s),
+including the independent successful-status assertion for the amended result 1298.
+UPDATE-01 failed because its observer did not find a recorded storage screenshot.
+
+Read-only follow-up `20261028183138-139a2d3d` inspected existing conversations
+without submitting or retrying their tasks. UPDATE-01's original 256 GB capacity
+was supported by an existing Player screenshot (READBACK-02 passed, 149.971s).
+This supplies missing evidence independently; the original batch remains 6/8.
+LONG-02's old Android-version replay returned `Report does not exist`, so its
+readback failed. The repository automatically retains at most 20 reports / 200 MB
+(always keeping the newest), but chat references had not reflected pruning.
+
+LONG-02 was then fully rerun with split evidence checks in
+`20261028183552-132571b6`: 1/1 passed, 348.444s. Android version, used/total
+storage and brightness were individually verified from actual Player screenshots.
+All preceding live results still apply to installed APK `ed26d1eb...`, not the
+subsequent report-link fix.
+
+### Report-link fix build
+
+Unavailable report opens now produce a typed missing-report error. The chat
+removes only that report reference and explains that the file was cleaned up or
+deleted, with advice to export reports for retention. Other failures still follow
+the normal error path. README now documents the existing retention limits.
+Kotlin: 390 tests, 389 passed, 1 skipped; Lint and beta build passed. Added
+repository coverage checks exact missing ids after pruning and explicit deletion,
+and confirms retained reports remain readable. E2E schema/type/fixture checks pass.
+
+APK `fd370537dd86c17adae7cde910a2df09d1f17f305a78c7ce1f9ff2c9f73b5fd0`
+was installed with data preserved and its device hash matched the local artifact.
+Local APK verification passed (non-debuggable, runtime current, local certificate;
+not approved for distribution). The first verification invocation lacked
+ANDROID_HOME and failed before validation; it was rerun with the SDK configured.
+Targeted UI batch `20261028184305-46251902` selected the newer same-title
+conversation, opened an existing replay, and correctly failed its expired-report
+precondition. A separate attempt targets the older same-title conversation.
+
+That attempt, `20261028184511-5b9983cd`, passed (1/1, 73.462s): the old
+report showed the cleanup/deletion explanation, its particular unavailable entry
+was removed, and other report entries remained. The final phone readbacks showed
+airplane mode disabled, Wi-Fi enabled, mobile data enabled, and Tapilot's
+accessibility service enabled. USB remained connected. This is targeted acceptance
+of the report-link fix, not a complete regression of the new APK. Earlier failed
+offline recovery and unexecuted acceptance cases remain outstanding; hosted CI and
+the four distribution-material blockers are unchanged.
