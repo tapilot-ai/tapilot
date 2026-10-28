@@ -6,6 +6,7 @@ object ChatGptModelSelection {
     fun select(available: List<String>, selected: String = ""): String {
         require(available.isNotEmpty()) { "No available ChatGPT models" }
         if (selected in available) return selected
+        if ("gpt-6.1-terra" in available) return "gpt-6.1-terra"
         return available.mapNotNull { id -> luna.matchEntire(id)?.let { id to it.groupValues } }
             .maxWithOrNull(compareBy<Pair<String, List<String>>> { it.second[1].toInt() }
                 .thenBy { it.second[2].toIntOrNull() ?: 0 }
