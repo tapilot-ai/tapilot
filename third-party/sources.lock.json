@@ -1048,6 +1048,14 @@
       "path": ".cache/distribution-sources/upstream/sqlite-3.54.1-sqlite.h.in",
       "sha256": "a66be104bd89782526c11e251b88a92d7aaf91a2bf53460a8a6a3fb4dfb13226",
       "bytes": 559460
+    },
+    {
+      "component": "android-ndk-r30",
+      "kind": "toolchain-archive",
+      "url": "https://dl.google.com/android/repository/android-ndk-r30-linux.zip",
+      "path": ".cache/distribution-sources/upstream/android-ndk-r30-linux.zip",
+      "sha256": "753611f410d002cfcd3f3dc2ef49aad532089d3180b436c060a90bf0fcb64df2",
+      "bytes": 738633529
     }
   ]
 }

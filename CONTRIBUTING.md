@@ -22,10 +22,16 @@ pnpm build:android
 
 The plugin is an independently installable npm project with its own lockfile.
 The root pnpm workspace owns the Android adapter; the Node deployment bundle
-has an isolated production dependency lockfile. The standalone Midscene E2E package has its own npm lockfile. All four dependency trees are checked by CI. The supported CLI installation is currently a source checkout with its own
-lockfile and overrides. Do not publish a registry/tarball package until its
-consumer installation also passes the dependency audit; parent overrides are
-not inherited by npm consumers.
+has an isolated production dependency lockfile. The standalone Midscene E2E package has its own npm lockfile. All four dependency trees are checked by CI. Build and verify the standalone CLI tarball with `pnpm check:cli-package`.
+It installs the frozen tree in staging, applies the Zod compatibility patch,
+bundles production dependencies (including the portable Sharp WASM fallback),
+then installs the artifact with scripts disabled in a new consumer project.
+Both source and consumer audits must pass, as must all plugin tests and a forced
+WASM image conversion. The artifact path is recorded in
+`build/cli-package-validation/latest.json`. Plain `npm pack`/`npm publish` from
+the plugin source is rejected: root overrides are not inherited by consumers.
+This verifies a local artifact; it neither publishes to npm nor approves binary
+redistribution. The third-party materials gate still applies.
 
 Midscene 1.15 still uses Zod 3 schema internals. The pinned Zod 4 package supplies
 the compatible API at `zod/v3`; the install step rewrites only the reviewed

@@ -47,7 +47,8 @@
     "test:e2e:live": "npm --prefix tests/midscene run test:live",
     "test:e2e:resilience": "npm --prefix tests/midscene run test:resilience",
     "test:e2e:auth-fixture": "npm --prefix tests/midscene run test:auth-fixture",
-    "postinstall": "node plugins/android-use/scripts/patch-midscene-zod.mjs"
+    "postinstall": "node plugins/android-use/scripts/patch-midscene-zod.mjs",
+    "check:cli-package": "node scripts/check-cli-package.mjs"
   },
   "dependencies": {
     "@lobehub/icons-static-svg": "^1.95.0",

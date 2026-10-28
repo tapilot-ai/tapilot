@@ -12,5 +12,22 @@
     "sha256": "85806d613cfda5901f848b3b5b4b04396c8c64e89c97c0af3706c42b0c44bb47",
     "extraction": "First complete comment block from the pinned upstream header",
     "upstreamSha256": "a66be104bd89782526c11e251b88a92d7aaf91a2bf53460a8a6a3fb4dfb13226"
+  },
+  {
+    "id": "libc++_30_aarch64.deb",
+    "path": "third-party/notices/native/ndk-r30-LLVM-NOTICE.txt",
+    "url": "https://dl.google.com/android/repository/android-ndk-r30-linux.zip",
+    "sha256": "f96f763beb66a7ba7a667647fc64c0226ace875e590c831fdd9579ec1c1d91e1",
+    "extraction": "android-ndk-r30/toolchains/llvm/prebuilt/linux-x86_64/NOTICE",
+    "upstreamSha256": "753611f410d002cfcd3f3dc2ef49aad532089d3180b436c060a90bf0fcb64df2",
+    "verification": {
+      "ndkLibrarySha256": "7466ed097631a564ed6bff0b47768caa76bf03270d2047b5a65c03f497b824df",
+      "termuxLibrarySha256": "05bef9d3901910c3ff8ab450b03bc8b28383d363a2290f2f7b9aed7331ea6ff7",
+      "matchingSections": [
+        ".text",
+        ".rodata",
+        ".note.gnu.build-id"
+      ]
+    }
   }
 ]

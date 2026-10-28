@@ -466,3 +466,14 @@ Initial and inter-frame waits are shorter; a changed frame still needs a second
 stable observation. Unchanged screens and continuing animations retain the bounded
 wait and an inconclusive result. This affects host-directed steps, not the phone's
 independent AI planner. Pixel stability never replaces visual task verification.
+
+### Verify a standalone CLI package
+
+From the repository root, run `pnpm check:cli-package`. This builds a tarball
+with locked production dependencies, installs it into an independent consumer,
+audits it, runs the plugin tests and exercises portable WASM image processing.
+The artifact path is in `build/cli-package-validation/latest.json`; install that
+local file with `npm install -g /absolute/path/to/tapilot-0.6.1.tgz`.
+The registry package is not published by this command. Plain `npm pack` from
+this directory is blocked because it would omit the dependency overrides.
+Binary redistribution review remains a separate release requirement.

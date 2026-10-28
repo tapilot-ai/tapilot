@@ -35,6 +35,8 @@ jobs:
           node plugins/android-use/scripts/patch-midscene-zod.mjs plugins/android-use
           node plugins/android-use/scripts/patch-midscene-zod.mjs tests/midscene
       - run: pnpm check:security
+      - name: Verify standalone CLI installation and portable image runtime
+        run: pnpm check:cli-package
       - run: pnpm check
       - name: Measure model-free conversation overhead
         run: |

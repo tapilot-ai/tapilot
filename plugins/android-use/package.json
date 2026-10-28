@@ -13,7 +13,7 @@
     "check:ui": "node ui/build.mjs --check",
     "check": "npm run check:ui && npm test",
     "cli": "node server/cli.mjs",
-    "prepack": "npm run build:ui",
+    "prepack": "node scripts/check-pack-policy.mjs && npm run build:ui && node scripts/patch-midscene-zod.mjs",
     "postinstall": "node scripts/patch-midscene-zod.mjs"
   },
   "dependencies": {
@@ -27,7 +27,8 @@
     "qrcode": "1.5.4",
     "selfsigned": "5.5.0",
     "zod": "4.6.7",
-    "sharp": "0.35.5"
+    "sharp": "0.35.5",
+    "@img/sharp-wasm32": "0.35.5"
   },
   "devDependencies": {
     "esbuild": "0.25.11"

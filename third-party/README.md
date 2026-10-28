@@ -34,6 +34,13 @@ these headers and full Apache terms alongside notices found in the binary archiv
 header and OpenSSL license are also checksum-pinned distribution materials.
 These close missing-notice entries, not the native source/rebuild review.
 
+The libc++ 30 supplement is the LLVM NOTICE from the checksum-verified official
+NDK r30 Linux archive. The Termux library has identical `.text`, `.rodata`, and
+GNU build-ID sections to the NDK arm64 library; full files differ (Termux omits
+debug information). The manifest records both file hashes and the matching
+sections. The complete NDK archive is pinned as a reproducible notice source;
+it is not substituted for the remaining native corresponding-source review.
+
 ## Remaining blockers
 
 - This is a materials collection, not a completed binary redistribution review.
