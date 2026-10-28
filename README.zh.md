@@ -88,7 +88,9 @@ Midscene 负责视觉规划、目标定位、动作执行和报告。Tapilot 负
 ```sh
 pnpm install --frozen-lockfile
 npm ci --prefix plugins/android-use
+node plugins/android-use/scripts/patch-midscene-zod.mjs plugins/android-use
 npm ci --prefix tests/midscene
+node plugins/android-use/scripts/patch-midscene-zod.mjs tests/midscene
 pnpm build:android
 pnpm check:quick
 ```
@@ -113,8 +115,8 @@ Tapilot 日常自动化不需要 ADB。
 
 ## 能力边界与数据
 
-- 模型可能误读画面、推断未看到的信息，或错误地报告任务完成。目前设备信息的证据核对
-  仍有已知问题，记录在 E2E 指南中。重要结果应以真实画面为准。
+- 模型可能误读画面、推断未看到的信息，或错误地报告任务完成。E2E 记录分别标明
+  已修复用例、尚未解决的失败和未测试版本。重要结果应以真实画面为准。
 - 锁屏、受保护页面、厂商后台限制和无法通过无障碍输入的自绘控件，都可能中断执行。
   当前只内置 arm64 运行时。
 - 截图和任务内容会发给你选择的模型服务。可选 ASR/TTS 会将音频或回答文本发给所选

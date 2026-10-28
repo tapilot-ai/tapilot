@@ -30,7 +30,7 @@ In scope:
 - The Android application and its accessibility service
 - The native bridge and JSON-RPC protocol between Android and the embedded
   Node runtime
-- The native UI, legacy WebView adapter and report storage
+- The native UI, report WebView and report storage
 - The Wi-Fi control service, pairing/discovery and computer-side Android Use plugin
 
 Out of scope:
@@ -55,8 +55,9 @@ Out of scope:
   controls. Keep pairing links and QR payloads out of chat, logs and screenshots.
 - Wireless operations require an unlocked phone and exclusive device access. Locking
   blocks capture/actions; stopping the service or revoking pairing disconnects the
-  controller. Revocation invalidates the stored phone credential. Network loss stops
-  the service. Mutations with uncertain outcomes must not be automatically replayed.
+  controller. Revocation invalidates the stored phone credential. Network loss closes the active listener and waits for Wi-Fi;
+  recovery rebinds the listener and retains existing pairing. Only an explicit
+  stop disables wireless control. Mutations with uncertain outcomes must not be automatically replayed.
 - Phone API keys are encrypted with Android Keystore. Pairing stores a credential
   hash on the phone. The computer stores its endpoint, certificate fingerprint and
   bearer credential in `~/.config/tapilot/wireless.json` (override: `TAPILOT_CONFIG`),
@@ -68,3 +69,11 @@ Out of scope:
 - Phone reports normally stay in app-private storage. Explicit export/share operations
   create copies outside that storage; clearing app data does not delete those copies
   or the computer plugin's data.
+
+## Repository checks
+
+`pnpm check:security` audits all four dependency trees, including after an earlier
+audit fails. CI scans Git history with checksum-pinned Gitleaks and redacts output.
+The exact historical entries in `.gitleaksignore` are reviewed Feishu file
+resource identifiers, not authentication credentials; the exception does not
+cover new commits, files or matches. Do not add broad token/path exclusions.

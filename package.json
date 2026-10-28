@@ -39,14 +39,15 @@
     "build:beta:distribution": "pnpm run runtime:bundle && pnpm run runtime:node && ./gradlew assembleBeta --max-workers=2 --no-parallel --no-daemon && node scripts/verify-apk.mjs beta",
     "check:quick": "node scripts/check.mjs --quick",
     "check:plugin": "npm --prefix plugins/android-use run check",
-    "check:security": "pnpm audit && pnpm --dir node-runtime/bundle audit && npm audit --prefix plugins/android-use && npm audit --prefix tests/midscene",
+    "check:security": "node scripts/check-security.mjs",
     "check:distribution": "node scripts/distribution-readiness.mjs",
     "release:materials": "node scripts/prepare-distribution-materials.mjs",
     "check:e2e": "npm --prefix tests/midscene run check",
     "test:e2e": "npm --prefix tests/midscene test",
     "test:e2e:live": "npm --prefix tests/midscene run test:live",
     "test:e2e:resilience": "npm --prefix tests/midscene run test:resilience",
-    "test:e2e:auth-fixture": "npm --prefix tests/midscene run test:auth-fixture"
+    "test:e2e:auth-fixture": "npm --prefix tests/midscene run test:auth-fixture",
+    "postinstall": "node plugins/android-use/scripts/patch-midscene-zod.mjs"
   },
   "dependencies": {
     "@lobehub/icons-static-svg": "^1.95.0",

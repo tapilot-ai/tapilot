@@ -5,7 +5,7 @@ import {
   defineActionInput,
   defineActionScroll,
 } from "@midscene/core/device";
-import { z } from "zod";
+import { z } from "zod/v3";
 
 // Borrow the MCP owner's TLS session through IPC. Never create an ADB controller.
 export class WirelessDevice {

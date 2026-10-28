@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { patchMidsceneZod } from '../plugins/android-use/scripts/patch-midscene-zod.mjs';
 import { sourceFingerprint } from './runtime-integrity.mjs';
 import { pruneAndroidPackages, pruneAndroidSourceMaps } from './android-runtime-tree.mjs';
 import { execFileSync, spawn } from 'node:child_process';
@@ -169,6 +170,7 @@ run(
   ],
   stagingRoot,
 );
+patchMidsceneZod(stagingRoot);
 verifySharpRuntimeVersions();
 
 const workspacePackages = ['android-accessibility'];

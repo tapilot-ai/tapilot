@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-script_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-assistant_root="$(cd "${script_root}/.." && pwd)"
+script_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+assistant_root="$(cd "${script_root}/.." && pwd -P)"
 source "${script_root}/termux-package-cache.sh"
 
 output_directory="${assistant_root}/.cache/native/arm64-v8a"
@@ -11,7 +11,7 @@ staging="${work_directory}/staging"
 trap 'rm -rf "${work_directory}"' EXIT
 
 packages=(
-  'n/nodejs-lts/nodejs-lts_24.18.0-2_aarch64.deb c799ca24e353ee6a3dc016577592142da7b8defadc32b225bfc189b00a639076'
+  'n/nodejs-lts/nodejs-lts_24.22.1_aarch64.deb c4aae57009e4398613807d77ff395026455fe03b6d9d8a29f929212b04f74719'
   'c/c-ares/c-ares_1.34.9_aarch64.deb 623d84855e176f3f2a415d24c0e1d2f529356f4b5439bb3313e6d7ff0da4585c'
   'libc/libc++/libc++_30_aarch64.deb 53d0b84a7ba7459024257cb94d5b136fe13ef858567f65a8064b35950799f2ca'
   'libi/libicu/libicu_78.3_aarch64.deb f536403f65a08fe0df6e7304184e902d54def77d5c3bd5edfd9109d57601d276'

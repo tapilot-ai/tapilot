@@ -1,16 +1,20 @@
-# Android Use
+# Tapilot — wireless Android control
 
 The npm package and primary command are `tapilot`; `android-use` remains a compatibility alias.
 
 ```sh
-npm install -g tapilot
+git clone https://github.com/quanru/tapilot.git
+cd tapilot
+npm ci --prefix plugins/android-use
+node plugins/android-use/scripts/patch-midscene-zod.mjs plugins/android-use
+npm link --prefix plugins/android-use
 tapilot setup
 tapilot pair
 tapilot preview --open
 ```
 
 Control a paired Android phone from Codex, Claude Code, or another local agent
-with shell execution and image reading. Agent actions use the **Android Use CLI**;
+with shell execution and image reading. Agent actions use the **Tapilot CLI**;
 the MCP server provides only the embedded screen panel. Without a plugin, use the
 same live screen in a local browser. All surfaces share one runtime and phone
 connection. No ADB, USB, public server, or tunnel is used.
@@ -49,6 +53,7 @@ control, accessibility enabled, and a Wi-Fi network reachable from the computer.
 
 ```sh
 npm ci --prefix plugins/android-use
+node plugins/android-use/scripts/patch-midscene-zod.mjs plugins/android-use
 node plugins/android-use/server/cli.mjs --help
 ```
 
@@ -65,6 +70,8 @@ installation mechanism. Set `ANDROID_USE_ROOT` to the absolute installed
 `plugins/android-use` directory if the skill is copied independently. Its bundled
 launcher works directly without that variable when the whole plugin is installed.
 The runtime is currently distributed from this repository, not a published npm package.
+The repository marketplace uses `.claude-plugin/marketplace.json`, supported by Codex;
+no root `.agents` directory is required.
 
 ## Pair and operate
 
@@ -208,6 +215,7 @@ Rebuild the bundled, offline UI after source edits:
 
 ```sh
 npm ci --prefix plugins/android-use
+node plugins/android-use/scripts/patch-midscene-zod.mjs plugins/android-use
 npm run build:ui --prefix plugins/android-use
 ```
 

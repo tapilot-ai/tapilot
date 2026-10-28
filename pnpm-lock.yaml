@@ -167,6 +167,11 @@ overrides:
   js-yaml: 4.3.2
   uuid: 11.1.1
   glob@>=11.0.0 <11.1.0: 11.1.0
+  undici@>=6 <7: 6.29.1
+  undici@>=8 <9: 8.12.3
+  zod: 4.6.7
+  ip-address: 10.7.5
+  qs: 6.17.0
 
 importers:
 
@@ -773,8 +778,8 @@ packages:
     resolution: {integrity: sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==}
     engines: {node: '>=8'}
 
-  ip-address@10.7.1:
-    resolution: {integrity: sha512-4OUAqU9Z1i3vCnS05hzGiFnEMDpQ+62pAD/MVQOp83fYyNC8GleCqaS0QikQBmcWCrKFiUs/B8ztRRiYOAXuCA==}
+  ip-address@10.7.5:
+    resolution: {integrity: sha512-t2v0rkILYv9WXmSL7TpAaU3HXgaFYOPUcH3QHgwQ++gpJuH3bqyMy4Fvt/DJCTKwzH3Cf+bAp5W/mFL39KPLzA==}
     engines: {node: '>= 12'}
 
   jiti@2.7.0:
@@ -885,7 +890,7 @@ packages:
     hasBin: true
     peerDependencies:
       ws: ^8.18.0
-      zod: ^3.25 || ^4.0
+      zod: 4.6.7
     peerDependenciesMeta:
       ws:
         optional: true
@@ -950,12 +955,12 @@ packages:
   undici-types@5.26.5:
     resolution: {integrity: sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==}
 
-  undici@6.28.1:
-    resolution: {integrity: sha512-zWpdTVD54H48CIybL0rWQ3ukpb9d23wM7eH5RtfdmeP70cWHNjtfo7P4vZX+5CoDcO53J4Pu5uXp7lNfjc6DRA==}
+  undici@6.29.1:
+    resolution: {integrity: sha512-EvRlUt/QqAEvXdQeRMYUfwOQsfzpDztykrG2owGEE/rBOBoYv9uF39ZzsNDh4lTFHhTr2XOZjKkYgueD12ZmGA==}
     engines: {node: '>=18.17'}
 
-  undici@8.10.2:
-    resolution: {integrity: sha512-/y4/bH9YNU5hi9NIrpOuvGXFcxrj3CMrV+/AYpowAYTpHn8gX/XPFjNy766FPoYY0miQhdW977JFWKGNhBdwyQ==}
+  undici@8.12.3:
+    resolution: {integrity: sha512-+fdndUTwBP86cVjihTp21hZHo7d6oj1c/47XPA3lL8mM0XHs+C4EkcjmgRsFnFk2f/UONGDy9ItBItmXsLOQHw==}
     engines: {node: '>=22.19.0'}
 
   unist-util-is@6.0.1:
@@ -989,8 +994,8 @@ packages:
   yallist@4.0.0:
     resolution: {integrity: sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A==}
 
-  zod@3.25.76:
-    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
+  zod@4.6.7:
+    resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
@@ -1171,10 +1176,10 @@ snapshots:
       jsonrepair: 3.15.0
       mdast-util-from-markdown: 2.0.3(supports-color@7.2.0)
       mdast-util-to-markdown: 2.1.2
-      openai: 6.3.0(ws@8.22.0)(zod@3.25.76)
+      openai: 6.3.0(ws@8.22.0)(zod@4.6.7)
       semver: 7.5.2
-      undici: 6.28.1
-      zod: 3.25.76
+      undici: 6.29.1
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@types/node'
       - supports-color
@@ -1188,7 +1193,7 @@ snapshots:
       js-sha256: 0.11.0
       sharp: 0.35.5(@types/node@18.19.130)
       uuid: 11.1.1
-      zod: 3.25.76
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@types/node'
       - supports-color
@@ -1472,12 +1477,12 @@ snapshots:
   fetch-socks@1.3.3:
     dependencies:
       socks: 2.8.10
-      undici: 8.10.2
+      undici: 8.12.3
 
   has-flag@4.0.0:
     optional: true
 
-  ip-address@10.7.1: {}
+  ip-address@10.7.5: {}
 
   jiti@2.7.0: {}
 
@@ -1670,10 +1675,10 @@ snapshots:
 
   ms@2.1.3: {}
 
-  openai@6.3.0(ws@8.22.0)(zod@3.25.76):
+  openai@6.3.0(ws@8.22.0)(zod@4.6.7):
     optionalDependencies:
       ws: 8.22.0
-      zod: 3.25.76
+      zod: 4.6.7
 
   rsbuild-plugin-dts@0.18.6(@rsbuild/core@1.7.6)(typescript@5.9.3):
     dependencies:
@@ -1725,7 +1730,7 @@ snapshots:
 
   socks@2.8.10:
     dependencies:
-      ip-address: 10.7.1
+      ip-address: 10.7.5
       smart-buffer: 4.2.0
 
   supports-color@7.2.0:
@@ -1739,9 +1744,9 @@ snapshots:
 
   undici-types@5.26.5: {}
 
-  undici@6.28.1: {}
+  undici@6.29.1: {}
 
-  undici@8.10.2: {}
+  undici@8.12.3: {}
 
   unist-util-is@6.0.1:
     dependencies:
@@ -1769,6 +1774,6 @@ snapshots:
 
   yallist@4.0.0: {}
 
-  zod@3.25.76: {}
+  zod@4.6.7: {}
 
   zwitch@2.0.4: {}

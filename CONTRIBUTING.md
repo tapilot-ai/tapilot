@@ -13,21 +13,32 @@ Set `JAVA_HOME` and `ANDROID_HOME` to your local installations.
 ```sh
 pnpm install --frozen-lockfile
 npm ci --prefix plugins/android-use
+node plugins/android-use/scripts/patch-midscene-zod.mjs plugins/android-use
 npm ci --prefix tests/midscene
+node plugins/android-use/scripts/patch-midscene-zod.mjs tests/midscene
 pnpm check:quick
 pnpm build:android
 ```
 
 The plugin is an independently installable npm project with its own lockfile.
 The root pnpm workspace owns the Android adapter; the Node deployment bundle
-has an isolated production dependency lockfile. The standalone Midscene E2E package has its own npm lockfile. All four dependency trees are checked by CI.
+has an isolated production dependency lockfile. The standalone Midscene E2E package has its own npm lockfile. All four dependency trees are checked by CI. The supported CLI installation is currently a source checkout with its own
+lockfile and overrides. Do not publish a registry/tarball package until its
+consumer installation also passes the dependency audit; parent overrides are
+not inherited by npm consumers.
+
+Midscene 1.15 still uses Zod 3 schema internals. The pinned Zod 4 package supplies
+the compatible API at `zod/v3`; the install step rewrites only the reviewed
+Midscene versions to use it. Run the explicit compatibility commands above even
+when npm disables install scripts. New Midscene versions require reviewing this
+patch and passing the real SDK action regression before updating the version gate.
 
 ## Commands
 
 | Command | Purpose |
 | --- | --- |
 | `pnpm build` / `pnpm build:android` / `pnpm dev` | Build a local non-debuggable Beta APK; accept this machine's signing certificate |
-| `pnpm check:quick` | Generated theme, plugin UI freshness and tests, E2E definitions, TypeScript, legacy UI and adapter tests |
+| `pnpm check:quick` | Generated theme, plugin UI freshness and tests, E2E definitions/type checks and adapter tests |
 | `pnpm check` / `pnpm test` | Quick checks, Node bundle and smoke tests, conversation overhead benchmark, script tests, Kotlin tests, full Android Lint, Beta build and APK integrity checks |
 | `pnpm check:e2e` | Type-check and validate Midscene YAML cases; no device or model needed |
 | `pnpm test:e2e` / `pnpm test:e2e:live` | Run visual smoke / explicitly opted-in native task E2E; see [E2E guide](tests/midscene/README.md) |
@@ -53,7 +64,9 @@ run these commands in order (stop if any command fails):
 ```sh
 pnpm install --frozen-lockfile
 npm ci --prefix plugins/android-use
+node plugins/android-use/scripts/patch-midscene-zod.mjs plugins/android-use
 npm ci --prefix tests/midscene
+node plugins/android-use/scripts/patch-midscene-zod.mjs tests/midscene
 pnpm check:security
 pnpm check
 mkdir -p build/performance

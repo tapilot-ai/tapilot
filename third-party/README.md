@@ -29,6 +29,11 @@ source copyright/license headers and Apache-2.0 declarations (including inherite
 parent declarations for ZXing and Guava). Gradle checks notice hashes and includes
 these headers and full Apache terms alongside notices found in the binary archives.
 
+`native-supplements.json` retains the exact OpenSSL 3.6.5 license and SQLite
+3.54.1 public-domain declaration from pinned upstream revisions. The SQLite
+header and OpenSSL license are also checksum-pinned distribution materials.
+These close missing-notice entries, not the native source/rebuild review.
+
 ## Remaining blockers
 
 - This is a materials collection, not a completed binary redistribution review.

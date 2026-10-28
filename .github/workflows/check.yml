@@ -30,6 +30,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: npm ci --prefix plugins/android-use
       - run: npm ci --prefix tests/midscene
+      - name: Apply reviewed Midscene compatibility even when npm disables scripts
+        run: |
+          node plugins/android-use/scripts/patch-midscene-zod.mjs plugins/android-use
+          node plugins/android-use/scripts/patch-midscene-zod.mjs tests/midscene
       - run: pnpm check:security
       - run: pnpm check
       - name: Measure model-free conversation overhead

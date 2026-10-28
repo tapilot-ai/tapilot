@@ -1,0 +1,10 @@
+# Reviewed 2026-10-28: exact historical Feishu download-file identifiers.
+# These are resource IDs from release metadata, not API/OAuth credentials.
+# Scope each exception to its original commit, file, rule and line; new matches fail.
+e1a214200ae1932d775afb924f3d8911102f0d30:docs/release-20261010.json:generic-api-key:39
+0d17d3770b05c53e2eecf1255eba26b2e59f312f:docs/release-20261010.json:generic-api-key:32
+a3810b0e4a34bcbe5c89ec4382e4d73230158e2d:docs/release-20261010.json:generic-api-key:11
+0a611114eee9ddab5f95b22333070801ccf049db:docs/release-20261008.json:generic-api-key:17
+213380a2358a07f79d5e9c715d5d9b62f10799e3:docs/release-20261009.json:generic-api-key:20
+469730d1818fcc16050a2533046a0c1b397068ab:docs/release-20261008.json:generic-api-key:10
+89d66f4120a89efb1d07d3d6e8d240e4ec70f8db:docs/release-20261008.json:generic-api-key:17

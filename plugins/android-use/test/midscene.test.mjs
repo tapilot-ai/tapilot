@@ -308,7 +308,8 @@ test("installation guidance includes both APK sources and needs no phone", async
   assert.match(result.structuredContent.download_links, /\[Download Tapilot APK from Feishu/);
   assert.match(result.structuredContent.compatibility, /wireless control/);
   assert.equal(result.structuredContent.pairing.command, 'node');
-  assert.match(result.structuredContent.pairing.script, /server\/pair\.mjs$/);
+  assert.match(result.structuredContent.pairing.script, /server\/cli\.mjs$/);
+  assert.deepEqual(result.structuredContent.pairing.args, ["pair"]);
   assert.equal(calls.length, 0);
 });
 

@@ -3,7 +3,7 @@ name: android-use-cli
 description: Use when asked to pair, view, or operate an Android phone through Tapilot Wi-Fi, including Android Use from Codex, Claude Code, or another agent with shell and image-reading tools. For ADB devices use the separate Android automation skill.
 ---
 
-# Android Use over Wi-Fi
+# Tapilot over Wi-Fi
 
 Use the bundled CLI for agent actions. No ADB, USB, or separate model credentials
 are needed in default `steps` mode; you inspect screenshots and decide actions.

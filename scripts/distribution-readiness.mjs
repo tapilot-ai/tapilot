@@ -21,7 +21,7 @@ export function distributionBlockers(inventories, materials) {
   return blockers;
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const root = fileURLToPath(new URL('../', import.meta.url));
   const variant = process.argv[2] ?? 'beta';
   if (!['beta', 'release'].includes(variant)) throw Error('Expected beta or release');

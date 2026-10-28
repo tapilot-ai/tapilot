@@ -13,7 +13,8 @@
     "check:ui": "node ui/build.mjs --check",
     "check": "npm run check:ui && npm test",
     "cli": "node server/cli.mjs",
-    "prepack": "npm run build:ui"
+    "prepack": "npm run build:ui",
+    "postinstall": "node scripts/patch-midscene-zod.mjs"
   },
   "dependencies": {
     "@midscene/core": "1.15.2-beta-20261012093542.0",
@@ -25,7 +26,7 @@
     "proper-lockfile": "4.1.2",
     "qrcode": "1.5.4",
     "selfsigned": "5.5.0",
-    "zod": "3.25.76",
+    "zod": "4.6.7",
     "sharp": "0.35.5"
   },
   "devDependencies": {
@@ -34,7 +35,14 @@
   "overrides": {
     "sharp": "0.35.5",
     "js-yaml": "4.3.2",
-    "uuid": "11.1.1"
+    "uuid": "11.1.1",
+    "undici@>=6 <7": "6.29.1",
+    "undici@>=8 <9": "8.12.3",
+    "zod": "4.6.7",
+    "body-parser": "2.4.0",
+    "ip-address": "10.7.5",
+    "qs": "6.17.0",
+    "fast-uri": "4.2.3"
   },
   "license": "MIT",
   "bin": {
@@ -48,7 +56,12 @@
     "assets/",
     "skills/",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "plugin.json",
+    "mcp.json",
+    ".codex-plugin/",
+    ".mcp.json",
+    "scripts/"
   ],
   "repository": {
     "type": "git",

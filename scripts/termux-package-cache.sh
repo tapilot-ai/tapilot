@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-termux_pool="${TERMUX_POOL:-https://packages.termux.dev/apt/termux-main/pool/main}"
+termux_pool="${TERMUX_POOL:-https://packages-cf.termux.dev/apt/termux-main/pool/main}"
 termux_cache="${TERMUX_CACHE:-${assistant_root}/.cache/termux}"
 
 verify_sha256() {

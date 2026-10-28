@@ -39,3 +39,33 @@ test('missing metadata uses the retained upstream terms only for the reviewed ve
     assert.throws(() => collectNpmNotices(path.join(root, 'node_modules'), path.join(root, 'out')), /Conflicting license/);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+test('CLI collects an inventory when invoked through a symlinked checkout', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const { fileURLToPath } = await import('node:url');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tapilot-notices-cli-'));
+  try {
+    fs.symlinkSync(fileURLToPath(new URL('../', import.meta.url)), path.join(root, 'checkout'), 'dir');
+    const source = path.join(root, 'native/package.deb');
+    fs.mkdirSync(source, {recursive:true});
+    fs.writeFileSync(path.join(source, 'LICENSE'), 'fixture notice');
+    const output = path.join(root, 'notices');
+    const result = spawnSync(process.execPath, [path.join(root,'checkout/scripts/third-party-notices.mjs'), 'native', path.join(root,'native'), output], {encoding:'utf8'});
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(output,'index.json'))).packages.length, 1);
+  } finally { fs.rmSync(root, {recursive:true,force:true}); }
+});
+
+test('native supplemental notices apply only to the reviewed binary version', async () => {
+  const { collectNativeNotices } = await import('./third-party-notices.mjs');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(),'tapilot-native-notices-'));
+  try {
+    for (const name of ['openssl_1%3A3.6.5_aarch64.deb','openssl_1%3A3.6.6_aarch64.deb']) {
+      fs.mkdirSync(path.join(root,'input',name),{recursive:true});
+    }
+    const result = collectNativeNotices(path.join(root,'input'),path.join(root,'output'));
+    assert.equal(result.find(p=>p.id.includes('3.6.5')).reviewRequired,false);
+    assert.equal(result.find(p=>p.id.includes('3.6.6')).reviewRequired,true);
+    assert.match(result[0].files[0].source,/c8bd5a57108599ac650bbae77fcabe3109dab2e8/);
+  } finally { fs.rmSync(root,{recursive:true,force:true}); }
+});

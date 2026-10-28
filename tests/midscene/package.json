@@ -9,7 +9,8 @@
     "nodes": "node scripts/run.mjs nodes",
     "check:model": "node scripts/run.mjs model verify",
     "test:resilience": "node scripts/run.mjs --resilience",
-    "test:auth-fixture": "node scripts/run.mjs --auth-fixture"
+    "test:auth-fixture": "node scripts/run.mjs --auth-fixture",
+    "postinstall": "node ../../plugins/android-use/scripts/patch-midscene-zod.mjs"
   },
   "engines": {
     "node": ">=22.19.0"
@@ -35,7 +36,13 @@
     "moment": "2.31.0",
     "shell-quote": "1.12.0",
     "yauzl": "3.4.0",
-    "@appium/support": "7.2.8"
+    "@appium/support": "7.2.8",
+    "undici@>=6 <7": "6.29.1",
+    "undici@>=8 <9": "8.12.3",
+    "zod": "4.6.7",
+    "body-parser": "2.4.0",
+    "ip-address": "10.7.5",
+    "qs": "6.17.0"
   },
   "license": "MIT"
 }

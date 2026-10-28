@@ -69,7 +69,7 @@ verified public release pipeline yet; build a development APK using the steps be
    Accessibility settings.
 2. In Tapilot settings, configure an HTTPS vision-model API, or choose the existing
    ChatGPT (SIWC) connection option where available. Fill credentials on the phone.
-3. Start with a simple visible task, such as the Calculator example above. Inspect
+3. Start with a simple visible task, such as opening Calculator and computing 12 × 8. Inspect
    the actual screen and execution record before relying on the reply.
 
 The composer offers automatic execution (YOLO), confirmation for critical
@@ -102,7 +102,9 @@ complete host prerequisites and signing setup.
 ```sh
 pnpm install --frozen-lockfile
 npm ci --prefix plugins/android-use
+node plugins/android-use/scripts/patch-midscene-zod.mjs plugins/android-use
 npm ci --prefix tests/midscene
+node plugins/android-use/scripts/patch-midscene-zod.mjs tests/midscene
 pnpm build:android
 pnpm check:quick
 ```
@@ -130,8 +132,8 @@ Historical device runs do not establish a pass for the latest source.
 ## Limits and data
 
 - A model can misread a screen, infer an unobserved fact or give an incorrect
-  completion answer. Device-fact evidence currently has a known gap documented
-  in the E2E guide. Verify important outcomes from the actual screen.
+  completion answer. The E2E ledger distinguishes repaired cases, remaining
+  failures and untested builds. Verify important outcomes from the actual screen.
 - Locked or protected screens, OEM background restrictions and inaccessible
   custom text inputs can stop execution. Only arm64 devices are bundled today.
 - Screenshots and task content are sent to your selected model provider. Optional

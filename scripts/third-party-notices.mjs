@@ -70,10 +70,19 @@ export function collectNpmNotices(modules, output) {
   return packages;
 }
 export function collectNativeNotices(unpacked, output) {
+  const supplements = JSON.parse(fs.readFileSync(path.join(repositoryRoot, 'third-party/native-supplements.json'), 'utf8'));
   fs.rmSync(output, { recursive: true, force: true });
   fs.mkdirSync(output, { recursive: true });
   const packages = fs.readdirSync(unpacked).sort().filter(name => name.endsWith('.deb')).map(name => {
     const files = copyNotices(path.join(unpacked, name), path.join(output, name));
+    for (const supplement of supplements.filter(item => item.id === name)) {
+      const bytes = fs.readFileSync(path.join(repositoryRoot, supplement.path));
+      if (sha256(bytes) !== supplement.sha256) throw new Error(`Native supplement checksum mismatch: ${name}`);
+      const relative = `upstream-${path.basename(supplement.path)}`;
+      fs.mkdirSync(path.join(output, name), { recursive: true });
+      fs.writeFileSync(path.join(output, name, relative), bytes);
+      files.push({ path: relative, sha256: supplement.sha256, source: supplement.url });
+    }
     return { id: name, files, reviewRequired: files.length === 0,
       sourceRecipes: 'https://github.com/termux/termux-packages',
       modifications: 'ELF dependency/SONAME changes documented in scripts/patch-node-elf.py' };
@@ -81,7 +90,7 @@ export function collectNativeNotices(unpacked, output) {
   fs.writeFileSync(path.join(output, 'index.json'), JSON.stringify({ schemaVersion: 1, packages }, null, 2)+'\n');
   return packages;
 }
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const [kind, source, output] = process.argv.slice(2);
   if (!['npm','native'].includes(kind) || !source || !output) throw new Error('Usage: third-party-notices.mjs npm|native <installed tree> <output>');
   const entries = kind === 'npm' ? collectNpmNotices(source, output) : collectNativeNotices(source, output);
