@@ -31,6 +31,22 @@ class ModelTransportTest {
         .request(request).protocol(Protocol.HTTP_1_1).code(code).message("fixture")
         .body("{}".toResponseBody()).build()
 
+    @Test fun `unreachable configured proxy produces recovery guidance without leaking its address`() {
+        val port = ServerSocket(0).use { it.localPort }
+        val client = OkHttpClient.Builder()
+            .proxy(java.net.Proxy(java.net.Proxy.Type.HTTP, java.net.InetSocketAddress("127.0.0.1", port)))
+            .connectTimeout(200, TimeUnit.MILLISECONDS).retryOnConnectionFailure(false).build()
+        val records = mutableListOf<JSONObject>()
+        ModelTransport(client, onTiming = { records.add(it) }).use { transport ->
+            val error = execute(transport).exceptionOrNull()
+            assertTrue(error is ModelTransport.ModelProxyConnectionException)
+            assertTrue(error!!.message!!.contains("system proxy"))
+            assertFalse(error.message!!.contains("127.0.0.1"))
+            assertEquals(2, records.size)
+            records.forEach { assertFalse(it.has("requestHeadersStartMs")); assertFalse(it.has("tlsStartMs")) }
+        }
+    }
+
     @Test fun `a cancelled request never starts network work`() {
         val calls = AtomicInteger()
         val client = OkHttpClient.Builder().addInterceptor { chain ->
@@ -86,7 +102,7 @@ class ModelTransportTest {
         }
     }
 
-    @Test fun `consecutive requests reuse a connection and emit only numeric transport metrics`() {
+    @Test fun `consecutive requests reuse a connection and emit redacted transport metrics`() {
         ServerSocket(0).use { server ->
             server.soTimeout = 4000
             var serverError: Throwable? = null
@@ -120,11 +136,18 @@ class ModelTransportTest {
             worker.join(4500)
             assertFalse(worker.isAlive); assertNull(serverError)
             assertEquals(2, records.size)
+            assertEquals("DIRECT", records.first().getString("proxyType"))
+            assertEquals("IPv4", records.first().getString("addressFamily"))
+            assertTrue(records.first().has("connectEndMs"))
+            assertFalse(records.last().has("connectStartMs")) // pooled connection
             records.forEach {
                 assertEquals(2, it.getInt("responseBytes"))
                 assertTrue(it.getDouble("totalMs") >= it.getDouble("firstBodyMs"))
                 assertTrue(it.getDouble("firstBodyMs") >= it.getDouble("headersMs"))
                 assertFalse(it.has("url")); assertFalse(it.has("headers")); assertFalse(it.has("body"))
+                assertFalse(it.toString().contains("127.0.0.1"))
+                assertFalse(it.toString().contains("model.example"))
+                assertTrue(it.has("requestHeadersStartMs"))
             }
         }
     }

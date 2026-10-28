@@ -67,7 +67,13 @@ class ModelTransport(
                     // Reserve time for one reconnect when no response headers arrive.
                     // Streaming bodies retain the overall deadline and are never replayed on timeout.
                     val retryPool = if (attempt > 0) ConnectionPool() else null
+                    val started = System.nanoTime()
+                    fun elapsed() = (System.nanoTime() - started) / 1_000_000.0
+                    val measurement = JSONObject().put("phase", "model.http")
+                        .put("requestId", requestId).put("attempt", attempt)
+                        .put("requestBytes", body?.contentLength() ?: 0)
                     val attemptClient = client.newBuilder()
+                        .eventListener(ModelConnectionTiming(measurement, ::elapsed))
                         .readTimeout(minOf(client.readTimeoutMillis, HEADER_IDLE_TIMEOUT_MS).toLong(), TimeUnit.MILLISECONDS)
                         .apply { if (retryPool != null) connectionPool(retryPool) }
                         .build()
@@ -75,12 +81,6 @@ class ModelTransport(
                     call.timeout().deadlineNanoTime(deadline)
                     activeRequests[requestId] = ActiveRequest(sessionId, call)
                     var responseStatus: Int? = null
-                    val started = System.nanoTime()
-                    fun elapsed() = (System.nanoTime() - started) / 1_000_000.0
-                    val measurement = JSONObject().put("phase", "model.http")
-                        .put("requestId", requestId).put("attempt", attempt)
-                        .put("requestBytes", body?.contentLength() ?: 0)
-
                     try {
                         if (isCancelled(requestId, sessionId)) throw RequestCancelledException()
                         call.execute().use { response ->
@@ -105,6 +105,7 @@ class ModelTransport(
                         }
                         break
                     } catch (error: IOException) {
+                        measurement.put("errorType", error.javaClass.simpleName)
                         if (isCancelled(requestId, sessionId)) throw RequestCancelledException()
                         val disconnected = error is EOFException || error is SocketException ||
                             (error is ProtocolException && error.message?.contains("unexpected end of stream") == true) ||
@@ -112,8 +113,13 @@ class ModelTransport(
                         val headerTimeout = responseStatus == null &&
                             (error is SocketTimeoutException ||
                                 (error is InterruptedIOException && error.message == "timeout"))
-                        if ((!disconnected && !headerTimeout) || (responseStatus != null && responseStatus !in 200..299)) throw ModelNetworkException(error)
-                        if (attempt == 1 || System.nanoTime() >= deadline) throw ModelNetworkException(error)
+                        val proxyConnectFailed = measurement.optString("proxyType") in setOf("HTTP", "SOCKS") &&
+                            measurement.has("connectStartMs") && !measurement.has("tlsStartMs") &&
+                            !measurement.has("connectEndMs") && !measurement.has("requestHeadersStartMs") &&
+                            (error is java.net.ConnectException || error is java.net.NoRouteToHostException || error is SocketTimeoutException)
+                        fun failure(): IOException = if (proxyConnectFailed) ModelProxyConnectionException(error) else ModelNetworkException(error)
+                        if ((!disconnected && !headerTimeout) || (responseStatus != null && responseStatus !in 200..299)) throw failure()
+                        if (attempt == 1 || System.nanoTime() >= deadline) throw failure()
                     } finally {
                         measurement.put("totalMs", elapsed())
                         runCatching { onTiming(measurement) }
@@ -168,6 +174,11 @@ class ModelTransport(
         closed || cancelledRequests.contains(requestId) || cancelledSessions.contains(sessionId)
 
     class ModelNetworkException(cause: IOException) : IOException(appText("模型连接中断或请求超时，请检查网络后重试", "Model connection interrupted or timed out. Check your network and try again"), cause)
+
+    class ModelProxyConnectionException(cause: IOException) : IOException(appText(
+        "无法连接系统代理。请检查或重新连接手机的 VPN/代理服务，再重试；任务尚未完成",
+        "Cannot connect to the system proxy. Check or reconnect the phone's VPN/proxy service, then retry. Task incomplete",
+    ), cause)
 
     class RequestCancelledException : IllegalStateException("Model request was cancelled")
 
