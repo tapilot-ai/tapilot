@@ -55,7 +55,7 @@
     "@tapilot/android-accessibility": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "^5.8.3"
+    "typescript": "^7.0.2"
   },
   "packageManager": "pnpm@12.4.1",
   "engines": {
