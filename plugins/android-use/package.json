@@ -31,7 +31,7 @@
     "@img/sharp-wasm32": "0.35.5"
   },
   "devDependencies": {
-    "esbuild": "0.25.11"
+    "esbuild": "0.28.2"
   },
   "overrides": {
     "sharp": "0.35.5",
