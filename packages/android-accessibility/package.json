@@ -46,7 +46,7 @@
     "test": "rstest"
   },
   "dependencies": {
-    "@midscene/core": "1.15.2"
+    "@midscene/core": "1.17.1"
   },
   "devDependencies": {
     "@rslib/core": "^0.18.3",
