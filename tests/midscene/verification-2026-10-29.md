@@ -224,3 +224,30 @@ audio, cancellation, and readiness callbacks across playback. Android tests:
 passed. Log: `build/acceptance-standalone-voice/turn-ready-build.log`. Installation,
 audible readiness validation and another unplugged voice run remain pending USB
 reconnection. No new real-device success is claimed for this repair.
+
+### Readiness repair installed; original 18-second-gap scenario passed
+
+After USB reconnection, installed the readiness repair and confirmed installed
+`base.apk` matches build SHA-256
+`fe61dce92f18a09b17defa940d134d1e60ccd48e9dbc47060973cb887f37496f`.
+Enabled wireless control after package replacement; existing pairing worked.
+The user unplugged again and ADB listed no devices. Opened a fresh conversation,
+confirmed Ready, and disconnected the wireless controller before acoustic playback.
+
+Reused the original three utterances and 18-second gaps, rather than the easier
+25-second pacing. Visually inspected after native execution: remembered 73 (12s);
+the second transcript retained the full subtraction question and the assistant
+answered 70 (3s); Calculator showed committed `70×2=140`, and the third task was
+completed (51s, one operation). Ready appeared again after the task. No phone input
+or captures occurred during the sequence; voice was ended only after readback.
+The nonessential “不要操作手机” phrase was still transcribed as “不要超过手机”
+in turn two, so this is not word-perfect ASR acceptance. No arithmetic prefix was
+lost. Mac output restored to volume 17/muted; saved pairing remains connected.
+
+The 18-second arithmetic/reference scenario passes on the installed repair. One
+pass does not establish arbitrary timing or full-duplex reliability. The readiness
+beep was not independently recorded/listened to, and phase logs were not retrieved
+while USB remained unplugged. The cause of the earlier lost prefix is therefore
+not conclusively established. Acoustic log:
+`build/acceptance-standalone-voice/readiness-18s.log`.
+Report: `76de35be-8ea3-4c92-a83c-a1313d24aeb8`.
