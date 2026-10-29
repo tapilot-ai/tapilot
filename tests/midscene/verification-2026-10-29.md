@@ -96,3 +96,24 @@ and report generation on the latest phone beta, not embedded-panel rendering.
 Secure-lock recovery remains pending the user's availability to unlock physically.
 The phone was not locked, credentials were not requested, and neither mocked
 recovery tests nor this unlocked wireless task count as secure-lock acceptance.
+
+### Real secure-lock recovery — completed with user unlock
+
+On the same installed phone beta and existing pairing, exercised the installed
+plugin's `tapilot_preview_frame` API with one viewer id. At 08:27:05.944 UTC the
+baseline was live with an image. The wired test harness sent sleep/wake key events;
+Android trust state confirmed `deviceLocked=1`. At 08:27:14.613 UTC the frame API
+returned `device_locked` with no image. No passcode was requested or entered.
+
+After the user physically unlocked and confirmed completion, the very next frame
+request at 08:36:39.006 UTC returned `live`, a new frame id and a new Settings
+image (visually inspected). No resume, connect, refresh, pairing or task mutation
+occurred between the locked and recovered probes. The long interval reflects
+waiting for user confirmation, not recovery latency. This passes real-device
+secure-lock recovery at the panel transport API layer; actual Codex window
+rendering and its polling latency remain unverified due to the host restrictions.
+
+Local evidence: `build/acceptance-lock-recovery/events.jsonl`, `before.jpg`,
+`unlocked.jpg`, and the probe source in that directory. The existing Midscene
+report `2bd55745-4cca-411c-b8f6-a7724ccb3434` includes the observed verdict and a
+fresh post-unlock capture. Connection remains available; phone is unlocked.
