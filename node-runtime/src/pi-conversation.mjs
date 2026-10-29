@@ -79,6 +79,12 @@ export function checkpointMessages(messages) {
 export function createConversation({ messages, goal = '', userInput = '', resume = [], pendingInputs = [], installedApps = [], limits = {}, language = 'en', rpc, emit }) {
   const textOf = content => typeof content === 'string' ? content :
     (content ?? []).filter(block => block.type === 'text').map(block => block.text).join('\n');
+  // Copy the actual previous reply, never the current model's proposed answer.
+  // It can resolve "the number you just answered", but cannot prove phone state.
+  // Omit oversized replies whole: a truncated quotation could change its meaning.
+  const previousReply = textOf(messages.slice(0, -1).findLast(m => m.role === 'assistant')?.content);
+  const referenceContext = previousReply && previousReply.length <= 4096
+    ? { previousAssistantReply: previousReply } : undefined;
   // The native goal is user-authored; message content also includes attachment text and
   // provenance notes. Keep that context in the model transcript, not in acceptance criteria.
   // Preserve raw answers separately from enriched model content across checkpoints.
@@ -117,6 +123,7 @@ export function createConversation({ messages, goal = '', userInput = '', resume
         emit({ type: 'operation', operations, instruction: args.instruction });
         const success_condition = JSON.stringify({
           userRequirements: [...userRequirements],
+          ...(referenceContext ? { referenceContext } : {}),
           // A resumed or multi-step goal includes already verified results. One new
           // screenshot verifies this operation; finish_task owns overall completion.
           scope: args.finishWhenVerified && !planned && !resume.length && verifiedPhoneSteps === 0 ? 'entire_user_goal' : 'intermediate_step',

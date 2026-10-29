@@ -117,3 +117,45 @@ Local evidence: `build/acceptance-lock-recovery/events.jsonl`, `before.jpg`,
 `unlocked.jpg`, and the probe source in that directory. The existing Midscene
 report `2bd55745-4cca-411c-b8f6-a7724ccb3434` includes the observed verdict and a
 fresh post-unlock capture. Connection remains available; phone is unlocked.
+
+## Physically unplugged continuous voice — real failure and repair
+
+The user unplugged USB; `adb devices` listed no devices. After opening a fresh
+voice conversation, disconnected the Wi-Fi controller while retaining pairing.
+Played three Chinese utterances through the Mac speaker into the phone microphone,
+with 18 seconds between utterances: remember 73; subtract three from that remembered
+number; open Calculator and multiply the previous answer by two, checking its display.
+No phone text injection, screenshots or controller actions occurred during these
+turns. Mac speaker output was restored afterward. The phone rejected observer
+reconnection while its native task ran; no task was stopped to obtain a screenshot.
+
+After completion, reconnected with the existing pairing and visually inspected both
+Calculator and the conversation. The first two replies were “记住了！” and “70”,
+each marked completed. Calculator displayed `70×2` and `140`. The third task was
+nevertheless marked incomplete: its verifier lacked the prior assistant reply and
+reported that the previously answered number was absent. This proves continuous
+acoustic input and actual cross-turn execution, but fails overall task acceptance.
+Voice mode was ended after readback. Report:
+`1f36197b-92fb-4509-a00b-439a1554877d` (recorded failed).
+
+The repair carries the exact previous assistant reply as bounded reference data,
+separate from authoritative user requirements and model-authored step proposals.
+It cannot prove earlier phone state or override the current user request. Oversized
+replies are omitted whole. An unresolved reference must remain unknown, rather than
+being guessed from a plausible screenshot. Regression checks preserve negative
+screen judgments and reject model-invented reference targets.
+
+Local evidence is in `build/acceptance-standalone-voice/`. The first frozen-image
+model replay passed the supplied-70 and wrong-71 cases, but incorrectly accepted
+the missing-reference case. That failed experiment is retained in `replay-1/`;
+it prompted the explicit missing-reference rule. Frozen-image checks are host-side
+component evidence only. Installation and another unplugged acoustic run remain
+required before claiming the native fix passes.
+
+The final frozen-image replay (`replay-2/`, existing authorized account,
+`gpt-6-luna`, current Midscene runtime) passed all six judgments: two each for
+the actual prior reply 70, a conflicting prior reply 71, and missing reference
+context. The original Calculator screenshot bytes were reused unchanged. The
+129 runtime tests passed; Android unit tests reported 391 total, zero failures,
+one skipped. These results do not substitute for reinstalling and repeating the
+physical voice test. No phone account or model setting was changed.

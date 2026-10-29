@@ -5,6 +5,29 @@ const input = text => [{ role: 'system', content: 'Tapilot' }, { role: 'user', c
 const answer = content => ({ choices: [{ message: { content } }] });
 const tool = (name, args) => ({ choices: [{ message: { tool_calls: [{ id: `call-${name}`, function: { name, arguments: JSON.stringify(name === 'operate_phone' ? { mode: 'act', app: '', finishWhenVerified: false, ...args } : args) } }] } }] });
 
+test('cross-turn verification receives the exact prior reply, not an invented step target', async () => {
+  for (const reply of ['70', 'x'.repeat(4097), '']) {
+    let contract, models = 0;
+    const goal = 'Calculate the number you just answered times two';
+    const messages = [...input('Remember 73'), { role: 'assistant', content: 'Remembered' },
+      { role: 'user', content: 'Subtract three' }, { role: 'assistant', content: reply },
+      { role: 'user', content: goal }];
+    const conversation = createConversation({ messages, goal, emit: () => {}, rpc: async (method, args) => {
+      if (method === 'phone.execute') {
+        contract = JSON.parse(args.success_condition);
+        return { success: false, result: 'No evaluated result visible' };
+      }
+      return models++ === 0
+        ? tool('operate_phone', { instruction: 'Calculate', success_condition: '999 is visible', finishWhenVerified: true })
+        : tool('finish_task', { outcome: 'waiting_user', summary: 'Result not verified' });
+    } });
+    assert.notEqual((await conversation.run()).phase, 'completed');
+    assert.deepEqual(contract.userRequirements, [goal]);
+    assert.equal(contract.proposedStepCondition, '999 is visible');
+    assert.deepEqual(contract.referenceContext, reply === '70' ? { previousAssistantReply: '70' } : undefined);
+  }
+});
+
 test('Pi pushes a planned phone task to verified completion through native RPC', async () => {
   let count = 0;
   const events = [], methods = [];
