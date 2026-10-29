@@ -159,3 +159,41 @@ context. The original Calculator screenshot bytes were reused unchanged. The
 129 runtime tests passed; Android unit tests reported 391 total, zero failures,
 one skipped. These results do not substitute for reinstalling and repeating the
 physical voice test. No phone account or model setting was changed.
+
+### Installed repair and unplugged voice reruns
+
+Installed the repaired beta over USB and compared the installed `base.apk` SHA-256
+with the build: both were
+`7314589d962941c9be75575e36418bd312f42933d0a30a09b5e3be6413d9d152`.
+Wireless control was Off after replacement; enabled it through the visible settings.
+The saved pairing reconnected without scanning. After the user unplugged again,
+`adb devices` was empty for both following acoustic runs. Each began in a fresh
+conversation with voice Ready, then the Wi-Fi controller was disconnected before
+playback and remained disconnected throughout all three turns.
+
+The first rerun retained the original 18-second gaps. The second utterance lost
+its prefix, including the subtraction request, and its transcript contained only
+“回答数字不要超过手机”. The assistant answered 73 and subsequently calculated
+`73×2=146`, with the task marked completed. This establishes reference propagation
+but FAILS the intended three-utterance acceptance. Missing audio at the transition
+is not fixed by the verifier change. Reading `VoiceConversation.read` confirms
+listening resumes after playback completion; the exact acoustic loss timing was
+not instrumented, so overlap remains an explanation rather than proven causality.
+
+The second rerun used the same utterances with 25-second gaps. Visually inspected
+the transcript: first reply “记住了” (4s), second question included “减去三” and
+reply 70 (6s), third request referenced the prior answer. Calculator displayed
+`70×2` and 140; the third task was marked completed (54s, one operation). The
+screen was in editable-expression/preview-result state, so this is evidence of
+visible calculation and cross-turn checking, not pressing equals or committing
+the expression. The original missing-prior-reply rejection did not recur.
+
+This passes the paced, unplugged three-turn voice/reference scenario, not reliable
+barge-in or arbitrary inter-utterance timing. Both attempts are preserved, rather
+than replacing the unsuccessful run with the successful one. No phone text was
+injected; speech came from the Mac speaker into the phone mic. No phone control or
+captures occurred during either sequence. Observer reconnection during the first
+native task was refused; the task was not interrupted. Voice was ended after
+readback, and Mac audio restored to volume 17 / muted. Report:
+`76de35be-8ea3-4c92-a83c-a1313d24aeb8`. Local acoustic logs:
+`build/acceptance-standalone-voice/rerun-acoustic.log` and `rerun-paced.log`.
