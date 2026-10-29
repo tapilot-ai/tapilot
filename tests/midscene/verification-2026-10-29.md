@@ -197,3 +197,30 @@ native task was refused; the task was not interrupted. Voice was ended after
 readback, and Mac audio restored to volume 17 / muted. Report:
 `76de35be-8ea3-4c92-a83c-a1313d24aeb8`. Local acoustic logs:
 `build/acceptance-standalone-voice/rerun-acoustic.log` and `rerun-paced.log`.
+
+### Follow-up turn readiness repair — local checks complete, device pending
+
+Code inspection found that the Volcengine playback reader accepted terminal
+code `20000000` but continued reading until HTTP EOF. The provider documents this
+code as successful synthesis completion:
+https://docs.volcengine.com/docs/doubao-voice/http-chunked-sse-unidirectional-streaming-v3?lang=zh
+The reader now stops on that event, preserves any final audio payload, and leaves
+the existing AudioTrack drain in place before reopening the microphone. Early EOF
+without a terminal event fails instead of silently treating truncated speech as
+complete. This removes a concrete possible wait, but does not prove it caused the
+earlier lost prefix; no timing trace was captured during that run.
+
+A short local readiness cue now follows successful microphone start, respecting
+mute and suppressing the cue during a held floating-input gesture. Duplicate,
+failed and stale microphone callbacks do not emit it. Speaking UI explicitly asks
+users to wait for Ready or tap Speak to interrupt. Phase-transition logs contain
+only phase names and elapsed milliseconds, with no transcript or audio samples.
+This change does not implement full-duplex voice interruption.
+
+Regression tests include a response source that throws if read after its terminal
+event (simulating a still-open HTTP stream), truncated/failed synthesis, null final
+audio, cancellation, and readiness callbacks across playback. Android tests:
+396 total, 395 passed, one skipped; Lint and beta build passed. APK local verification
+passed. Log: `build/acceptance-standalone-voice/turn-ready-build.log`. Installation,
+audible readiness validation and another unplugged voice run remain pending USB
+reconnection. No new real-device success is claimed for this repair.

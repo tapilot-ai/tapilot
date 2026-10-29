@@ -23,6 +23,7 @@ class VoiceConversation(
     private val dispatch: (() -> Unit) -> Unit,
     private val onQuestion: (String) -> Unit,
     private val onChange: (VoiceState) -> Unit,
+    private val onListening: () -> Unit = {},
 ) : AutoCloseable {
     var state = VoiceState(); private set
     private var provider = ""
@@ -101,7 +102,10 @@ class VoiceConversation(
                 } }, onSpeechBoundary = { ended -> dispatch {
                     if (current() && state.phase in listOf(VoicePhase.Preparing, VoicePhase.Listening)) speechEnded = ended
                 } }, onError = { error -> dispatch { if (current()) fail(error) } }) { result -> dispatch {
-                if (current() && state.phase == VoicePhase.Preparing) result.fold({ change(state.copy(phase = VoicePhase.Listening)) }, { fail(it) })
+                if (current() && state.phase == VoicePhase.Preparing) result.fold({
+                    change(state.copy(phase = VoicePhase.Listening))
+                    onListening()
+                }, { fail(it) })
             } }
         }.onFailure { fail(it) }
     }

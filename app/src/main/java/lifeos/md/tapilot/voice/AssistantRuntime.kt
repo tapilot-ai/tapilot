@@ -28,6 +28,7 @@ class AssistantRuntime(context: Context) {
     var picker: ((String, (Result<JSONObject?>) -> Unit) -> Unit)? = null
     var state = ChatState(); private set
     var voiceState by androidx.compose.runtime.mutableStateOf(VoiceState()); private set
+    private var voicePhaseStartedAt = SystemClock.elapsedRealtime()
     var speakingId by androidx.compose.runtime.mutableStateOf(""); private set
     var outputError by androidx.compose.runtime.mutableStateOf(""); private set
     var startingVoice by androidx.compose.runtime.mutableStateOf(false); private set
@@ -67,11 +68,24 @@ class AssistantRuntime(context: Context) {
         SystemClock::elapsedRealtime, { handler.post(it) },
         { text -> floatingSession.finishInput(); if (voiceEntryPending) openingUtterance = text else sendSpoken(text) },
         { next ->
+            if (next.phase != voiceState.phase) {
+                val time = SystemClock.elapsedRealtime()
+                // Phase durations only: no transcript, credentials, or audio samples.
+                android.util.Log.i("TapilotVoiceTiming", "${voiceState.phase}->${next.phase} elapsedMs=${time - voicePhaseStartedAt}")
+                voicePhaseStartedAt = time
+            }
             voiceState = next
             refreshService()
             if (next.phase == VoicePhase.Listening && floatingSession.consumeFinish()) {
                 val token = floatingEntryGeneration
                 handler.post { if (floatingSession.isCurrent(token) && !floatingHold && voiceState.phase == VoicePhase.Listening) voice.finishUtterance(previewBeforeSend = true) }
+            }
+        }, onListening = {
+            if (!speechMuted && !floatingHold) runCatching {
+                ToneGenerator(AudioManager.STREAM_MUSIC, 35).also {
+                    it.startTone(ToneGenerator.TONE_PROP_BEEP, 80)
+                    handler.postDelayed({ it.release() }, 130)
+                }
             }
         })
     private val clock = object : Runnable {

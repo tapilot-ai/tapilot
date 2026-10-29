@@ -131,15 +131,8 @@ class ApiSpeechPlayback(context: Context, private val provider: () -> String) : 
                 }
                 val source = response.body?.source() ?: throw IOException("Empty speech response")
                 if (volc) {
-                    while (!source.exhausted() && generation.get() == token) {
-                        val newline = source.indexOf('\n'.code.toByte(), 0, 2L * 1024 * 1024)
-                        val line = if (newline >= 0) source.readUtf8LineStrict(2L * 1024 * 1024).trim()
-                            else { check(source.buffer.size <= 2L * 1024 * 1024) { "Speech response line is too large" }; source.readUtf8().trim() }
-                        if (line.isEmpty()) continue
-                        val event = JSONObject(line)
-                        val code = event.optInt("code", -1)
-                        if (code != 0 && code != 20000000) throw IOException(appText("火山引擎播报失败（$code）：${event.optString("message").take(180)}", "Volcengine playback failed ($code): ${event.optString("message").take(180)}"))
-                        event.optString("data").takeIf { it.isNotBlank() }?.let { write(Base64.decode(it, Base64.DEFAULT)) }
+                    readSeedSpeechStream(source, { generation.get() == token }) {
+                        write(Base64.decode(it, Base64.DEFAULT))
                     }
                 } else {
                     val buffer = ByteArray(8192)

@@ -37,13 +37,40 @@ class VoiceConversationTest {
     }
     private class Setup {
         val mic = Mic(); val player = Player(); var time = 1L; val questions = mutableListOf<String>()
-        val session = VoiceConversation(mic, player, { time }, { it() }, { questions.add(it) }, {})
+        var readyCues = 0
+        val session = VoiceConversation(mic, player, { time }, { it() }, { questions.add(it) }, {}, { readyCues++ })
         fun start(history: List<VoiceReply> = emptyList()) = session.start("volcengine", "test-key", "zh-CN", history)
         fun quiet() { repeat(17) { time += 100; mic.level(.02f); session.tick() } }
         fun ask(text: String) {
             mic.transcript(text); repeat(4) { mic.level(.7f); time += 100 }; quiet()
             session.tick(); mic.finished!!(Result.success(text)); player.completed!!(Result.success(Unit)); player.spoken.clear()
         }
+    }
+    @Test fun readyCueWaitsForActualMicrophoneAndRejectsStaleCallbacks() {
+        val s = Setup(); s.mic.readyImmediately = false; s.start()
+        assertEquals(0, s.readyCues)
+        val stale = s.mic.ready!!
+        s.session.pause(); stale(Result.success(Unit))
+        assertEquals(0, s.readyCues)
+        s.session.resume(); s.mic.ready!!(Result.success(Unit))
+        s.mic.ready!!(Result.success(Unit))
+        assertEquals(1, s.readyCues)
+        s.session.pause(); s.session.resume()
+        s.mic.ready!!(Result.failure(IllegalStateException("Microphone unavailable")))
+        assertEquals(1, s.readyCues)
+    }
+
+    @Test fun followUpCueOccursAfterPlaybackAndNewMicrophoneReadiness() {
+        val s = Setup(); s.start(); s.ask("Remember 73")
+        s.session.update(listOf(VoiceReply("one", "Remembered", true)), false, null)
+        assertEquals(1, s.readyCues)
+        s.mic.readyImmediately = false
+        s.player.completed!!(Result.success(Unit))
+        assertEquals(VoicePhase.Preparing, s.session.state.phase)
+        assertEquals(1, s.readyCues)
+        s.mic.ready!!(Result.success(Unit))
+        assertEquals(VoicePhase.Listening, s.session.state.phase)
+        assertEquals(2, s.readyCues)
     }
     @Test fun unchangedTranscriptSendsAfterThreeSecondsDespiteNoiseAndRepeatedResults() {
         val s = Setup(); s.start(); s.mic.transcript("这是回答")

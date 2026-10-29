@@ -87,7 +87,7 @@ internal fun VoiceConversationPanel(controller: ChatController, connecting: Bool
                 if (controller.floatingHold) label("按住说话，松手后核对文字", "Hold to speak, release to review")
                 else label("停顿后自动发送；3 秒无新文字也会发送", "Sends after a pause, or 3 seconds without new text")
             }
-            voice.phase == VoicePhase.Speaking -> label("点击说话可打断播报", "Tap Speak to interrupt playback")
+            voice.phase == VoicePhase.Speaking -> label("播报结束、提示可以说话后再开口；也可点击说话打断", "Wait for Ready before speaking, or tap Speak to interrupt")
             voice.followUpListeningExpired -> label("30 秒内没有新指令，麦克风已关闭。上一条任务结果见上方", "No new instruction for 30 seconds. Microphone off. See the previous result above")
             voice.phase == VoicePhase.Paused && voice.listeningTimedOut -> label("已达到 30 秒收听上限，麦克风已关闭。点击继续收听", "30-second listening limit reached. Microphone off. Tap Resume listening") + voice.transcript.takeIf { it.isNotBlank() }?.let { "\n$it" }.orEmpty()
             voice.phase == VoicePhase.Paused -> if (controller.state.confirmation != null) label("请先确认手机操作", "Confirm the phone operation first") else label("点击继续收听，可以回答追问或提出新任务", "Resume listening to answer or start a new task") + if (voice.transcriptPending) "\n${voice.transcript}" else ""
