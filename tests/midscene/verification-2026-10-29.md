@@ -276,8 +276,9 @@ change was made. This entry records preparation, not publication approval.
   collection does not resolve these entries.
 
 The two final promotional MP4s were sampled every four seconds and selected
-WeChat/plugin frames inspected at full resolution. They contain identifiable
-WeChat photo avatars and a local network address in the plugin interface.
+WeChat/plugin frames inspected at full resolution. They contain visible
+WeChat photo avatars and a local network address in the plugin interface. The
+inspection does not establish the identity of anyone pictured.
 Before public promotion, redact those details or explicitly approve their
 disclosure. This was a sampled visual inspection, not exhaustive frame/audio
 inspection or verification of music/voice asset rights. The original final
@@ -288,3 +289,28 @@ Local scan logs, redacted JSON findings and sampled frames are under
 `build/distribution-materials/`. These generated files are not committed.
 Existing acceptance limitations still apply: actual Codex embedded GUI acceptance
 is outstanding, and GitHub CI could not run due to the account billing restriction.
+
+
+### Publication follow-up — remove an unresolved runtime dependency
+
+The Android bundle now patches `http-server@14.1.1` to use Node's
+`crypto.timingSafeEqual` with UTF-16 buffers, and a scoped pnpm override removes
+`secure-compare`. Its copyright/license gap is resolved by excluding its code
+from this bundle, not by asserting new license terms. Desktop dependency trees
+are unchanged. The replacement retains HTTP Basic authentication.
+
+Validation on Node 24.21.0: all 130 runtime tests passed, including real HTTP
+requests with valid Unicode credentials and rejected incorrect/missing
+credentials. Both runtime smoke tests passed (the Android bridge is simulated,
+not a fresh real-device acceptance). The deployment notice inventory contains
+281 npm packages with two requiring review; `secure-compare` is absent.
+`pnpm check:quick` and all four `pnpm check:security` audits passed. Beta assembly
+and `verify-apk.mjs beta --local-check` passed with JDK 17. No APK was installed
+or published in this follow-up. Logs are in `build/open-source-review/`.
+
+`check:distribution` now reports three blockers: proxy-agent-negotiate's notice,
+Sharp WASM provenance, and overall native corresponding-source/rebuild review.
+These are still unresolved. This change does not claim the remaining upstream
+material or Codex embedded GUI acceptance is complete. Videos are unchanged
+pending the user's preference on the two photo avatars around 32 seconds.
+Repository visibility remains private.

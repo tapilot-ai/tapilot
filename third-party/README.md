@@ -53,9 +53,9 @@ it is not substituted for the remaining native corresponding-source review.
 - The Termux snapshot is a retained recipe reference, not proof that it produced
   every pinned `.deb`. Identify the corresponding recipe revisions and sources,
   and retain the native component notices before distribution.
-- Some npm packages omit full license texts. `secure-compare@3.0.1`, for example,
-  declares MIT but its published-revision README only names the license. The
-  generated inventory preserves unresolved entries rather than inventing terms.
+- Some npm packages omit full license texts. `proxy-agent-negotiate@1.1.0`
+  remains unresolved. The generated inventory preserves unresolved entries
+  rather than inventing terms.
 - Maven source archives and POMs preserve the attribution evidence used by the
   generated notices. Further bundled third-party components, if discovered, must
   retain their own notices rather than inheriting the parent artifact's license.
@@ -75,5 +75,15 @@ Do not change `redistributionApproved` to true merely because this command passe
   That tree has no license file; naming MIT in metadata and the README does not
   provide the missing copyright notice and full terms.
 
-Both entries remain blocked pending attributable upstream notices or replacement
-of the dependency. No upstream issue was submitted as part of this check.
+The Android runtime now removes `secure-compare` through a scoped pnpm override.
+A pinned patch to `http-server@14.1.1` replaces its only use with Node's
+`crypto.timingSafeEqual`, comparing UTF-16 buffers to preserve JavaScript string
+equality. The server's existing license remains included. The runtime regression
+test exercises real HTTP Basic authentication: valid Unicode credentials succeed;
+wrong username/password, unequal lengths, empty password and missing credentials
+are rejected. This replacement does not approve redistribution of the removed
+package, nor change the separate desktop dependency trees.
+
+`proxy-agent-negotiate` remains blocked pending an attributable upstream notice
+or a separately validated replacement. No upstream issue was submitted as part
+of this check.

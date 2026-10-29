@@ -1,0 +1,21 @@
+diff --git a/lib/http-server.js b/lib/http-server.js
+--- a/lib/http-server.js
++++ b/lib/http-server.js
+@@ -6,7 +6,16 @@
+   auth = require('basic-auth'),
+   httpProxy = require('http-proxy'),
+   corser = require('corser'),
+-  secureCompare = require('secure-compare');
++  crypto = require('node:crypto');
++
++// Tapilot: use Node's maintained primitive instead of secure-compare.
++function secureCompare(left, right) {
++  if (typeof left !== 'string' || typeof right !== 'string') return false;
++  // UTF-16 preserves JavaScript string equality, including lone surrogates.
++  var a = Buffer.from(left, 'utf16le');
++  var b = Buffer.from(right, 'utf16le');
++  return a.length === b.length && crypto.timingSafeEqual(a, b);
++}
+ 
+ //
+ // Remark: backwards compatibility for previous

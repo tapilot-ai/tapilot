@@ -6,6 +6,7 @@ minimumReleaseAgeExclude:
   - '@midscene/test@1.15.2'
   - qs@6.17.0
 patchedDependencies:
+  'http-server@14.1.1': patches/http-server-native-compare.patch
   '@midscene/core@1.15.2': patches/midscene-core-runtime.patch
   '@midscene/test@1.15.2': patches/midscene-test-unbounded.patch
 supportedArchitectures:
@@ -19,6 +20,7 @@ supportedArchitectures:
 
 # Security fixes until upstream dependency ranges include these releases.
 overrides:
+  'http-server@14.1.1>secure-compare': '-'
   sharp: 0.35.5
   js-yaml: 4.3.2
   uuid: 11.1.1
