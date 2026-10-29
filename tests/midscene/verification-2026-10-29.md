@@ -74,3 +74,25 @@ Settings/WLAN. No Tapilot restart or account/model change was needed. Device APK
 SHA-256 readback matched the local artifact exactly. Focused transport tests were
 rerun successfully after the final test-name cleanup. Phone proxy service is left
 Running with its original profile/mode; airplane mode is off and Wi-Fi enabled.
+
+## Afternoon plugin acceptance continuation
+
+Plugin UI build consistency and all 94 plugin tests passed. Installed plugin
+screen.html SHA-256 matched the source file exactly:
+`2b94974a290e0915ffeb6be4193d9c44c9b969149cd29fad125cc3264701c4c3`.
+This is artifact consistency, not rendered UI acceptance. The browser inventory
+still returned “The browser access host is unavailable”; the previously forbidden
+Codex native app was not accessed through an alternative path.
+
+The first wireless connection attempt failed. A wired setup inspection showed
+Tapilot accessibility Connected and wireless control Off. After enabling the
+existing wireless-control service through its visible UI, the installed plugin
+CLI connected with the saved pairing, without QR scanning. All following acceptance
+operations used Wi-Fi CLI: fresh capture, package discovery, launch Android Settings,
+inspect the resulting screenshot with Wi-Fi/mobile network rows, and record pass.
+Report id: `2bd55745-4cca-411c-b8f6-a7724ccb3434`. This proves real wireless action
+and report generation on the latest phone beta, not embedded-panel rendering.
+
+Secure-lock recovery remains pending the user's availability to unlock physically.
+The phone was not locked, credentials were not requested, and neither mocked
+recovery tests nor this unlocked wireless task count as secure-lock acceptance.
