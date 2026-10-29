@@ -251,3 +251,40 @@ while USB remained unplugged. The cause of the earlier lost prefix is therefore
 not conclusively established. Acoustic log:
 `build/acceptance-standalone-voice/readiness-18s.log`.
 Report: `76de35be-8ea3-4c92-a83c-a1313d24aeb8`.
+
+### Pre-publication audit — repository remains private
+
+Audited source baseline `157ed2b6ba9244bb59fe7a0feef6056fe48b5454`.
+GitHub reported `isPrivate: true`; no visibility, release or package publication
+change was made. This entry records preparation, not publication approval.
+
+- Gitleaks 8.30.1 with `git . --log-opts=--all --redact` completed successfully:
+  234 commits and 13,262,217 bytes scanned, no findings. A separate `dir` scan of
+  a snapshot containing only `git ls-files` completed successfully:
+  41,467,488 bytes scanned, no findings. These are detector results, not a
+  guarantee that every type of sensitive content is absent. An earlier broad
+  worktree scan was interrupted and is not counted as a successful check.
+- `pnpm check:security` passed for the root, runtime bundle, plugin and Midscene
+  test dependency trees. This is dependency vulnerability checking, separate
+  from the secret scans.
+- `pnpm release:materials` verified and assembled all 132 checksum-pinned
+  materials. It intentionally retained `redistributionApproved: false`.
+- `pnpm check:distribution` remains blocked by four entries: Sharp WASM source
+  and rebuild provenance, proxy-agent-negotiate and secure-compare notices, and
+  the overall native corresponding-source/rebuild review. See
+  `third-party/README.md` for pinned upstream evidence. Passing material
+  collection does not resolve these entries.
+
+The two final promotional MP4s were sampled every four seconds and selected
+WeChat/plugin frames inspected at full resolution. They contain identifiable
+WeChat photo avatars and a local network address in the plugin interface.
+Before public promotion, redact those details or explicitly approve their
+disclosure. This was a sampled visual inspection, not exhaustive frame/audio
+inspection or verification of music/voice asset rights. The original final
+videos were left unchanged; extracted review images are ignored build artifacts.
+
+Local scan logs, redacted JSON findings and sampled frames are under
+`build/open-source-review/`; assembled materials are under
+`build/distribution-materials/`. These generated files are not committed.
+Existing acceptance limitations still apply: actual Codex embedded GUI acceptance
+is outstanding, and GitHub CI could not run due to the account billing restriction.

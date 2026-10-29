@@ -62,3 +62,18 @@ it is not substituted for the remaining native corresponding-source review.
 - Device acceptance and production signing are separate from these materials.
 
 Do not change `redistributionApproved` to true merely because this command passes.
+
+### Missing npm notice provenance checked on 2026-10-29
+
+- `proxy-agent-negotiate@1.1.0` points to `packages/negotiate` in
+  [proxy-agents at its release commit](https://github.com/TooTallNate/proxy-agents/tree/b7e5f7ccce1a3ac5b339cc4c587974e8989cbc16/packages/negotiate).
+  The release tag resolves to this commit. Neither that package directory nor the
+  repository root includes a license file. Licenses in sibling packages are not
+  treated as authorization for this package.
+- `secure-compare@3.0.1` publishes
+  [this gitHead](https://github.com/vdemedes/secure-compare/tree/13176da54bc4223f435d082a224559b6e168a490).
+  That tree has no license file; naming MIT in metadata and the README does not
+  provide the missing copyright notice and full terms.
+
+Both entries remain blocked pending attributable upstream notices or replacement
+of the dependency. No upstream issue was submitted as part of this check.
