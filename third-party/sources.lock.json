@@ -1056,6 +1056,14 @@
       "path": ".cache/distribution-sources/upstream/android-ndk-r30-linux.zip",
       "sha256": "753611f410d002cfcd3f3dc2ef49aad532089d3180b436c060a90bf0fcb64df2",
       "bytes": 738633529
+    },
+    {
+      "component": "kleisauke/wasm-vips@dca91909178800875b575eb896d1fe4ed0a27931",
+      "kind": "candidate-source-archive",
+      "url": "https://codeload.github.com/kleisauke/wasm-vips/tar.gz/dca91909178800875b575eb896d1fe4ed0a27931",
+      "path": ".cache/distribution-sources/upstream/wasm-vips-dca91909178800875b575eb896d1fe4ed0a27931.tar.gz",
+      "sha256": "37e18bb8d1a7469587a645d1418bfb7f9b9590516f8e04e629a7ea3ec748cac5",
+      "bytes": 7715177
     }
   ]
 }

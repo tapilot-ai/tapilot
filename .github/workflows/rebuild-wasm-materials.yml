@@ -1,0 +1,35 @@
+name: Rebuild WASM distribution materials
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/release-materials-0.1.8]
+    paths:
+      - .github/workflows/rebuild-wasm-materials.yml
+      - scripts/distribution/**
+permissions:
+  contents: read
+concurrency:
+  group: tapilot-wasm-materials
+  cancel-in-progress: false
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Rebuild libvips and retain source inputs
+        run: bash scripts/distribution/rebuild-vips-wasm.sh "$RUNNER_TEMP/tapilot-wasm-materials" 2>&1 | tee "$RUNNER_TEMP/wasm-build.log"
+      - name: Preserve build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasm-materials-${{ github.sha }}
+          retention-days: 14
+          compression-level: 0
+          path: |
+            ${{ runner.temp }}/wasm-build.log
+            ${{ runner.temp }}/tapilot-wasm-materials/*.tar.gz
+            ${{ runner.temp }}/tapilot-wasm-materials/*.txt
+            ${{ runner.temp }}/tapilot-wasm-materials/downloads/requests.tsv
