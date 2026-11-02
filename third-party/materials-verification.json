@@ -1,0 +1,8 @@
+{
+  "materialsVerified": 151,
+  "redistributionApproved": false,
+  "remaining": "See third-party/README.md; collecting source archives does not resolve all source/rebuild and notice requirements.",
+  "sourcesLockSha256": "b1eb8768e15cf8bc3f9a681121d458d28e5da0ba74129f6c53a384c30e196da2",
+  "run": "41459097107",
+  "commit": "70fb318e95917ffe20a48607fb72262dbcf1bb2a"
+}

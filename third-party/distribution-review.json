@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "reviewComplete": true,
+  "reviewedAt": "2026-11-02",
+  "receiptSha256": "accee32fc57bf57c4651553fc231fd5894e126f0e72a9f96069d298b3e59b6a7",
+  "sharpRebuildSha256": "e66ca245027bf4b2a1bd67d74de7c6ab2691d7c25af3704b695c898998ddaf3f",
+  "evidence": {
+    "sourceVerification": "https://github.com/tapilot-ai/tapilot/actions/runs/41459097107",
+    "sharpRelink": "https://github.com/tapilot-ai/tapilot/actions/runs/41457297001",
+    "sourceRecovery": "https://github.com/tapilot-ai/tapilot/actions/runs/41456669649",
+    "componentNotices": "https://github.com/tapilot-ai/tapilot/actions/runs/41458357176"
+  },
+  "scope": "Exact rebuilt Sharp package, retained component notices, native source/recipe versions and the 151 checksum-verified materials in sources.lock.json. APK integrity, signing and device acceptance are separate."
+}

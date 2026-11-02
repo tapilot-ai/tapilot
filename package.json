@@ -35,8 +35,8 @@
     "theme:check": "node scripts/generate-brand.mjs --check",
     "baseline:check": "node scripts/visual-baseline.mjs --check",
     "check": "node scripts/check.mjs",
-    "build:release": "pnpm run runtime:bundle && pnpm run runtime:node && ./gradlew assembleRelease --max-workers=2 --no-parallel --no-daemon && node scripts/verify-apk.mjs release",
-    "build:beta:distribution": "pnpm run runtime:bundle && pnpm run runtime:node && ./gradlew assembleBeta --max-workers=2 --no-parallel --no-daemon && node scripts/verify-apk.mjs beta",
+    "build:release": "pnpm run runtime:bundle && pnpm run runtime:node && ./gradlew assembleRelease --max-workers=2 --no-parallel --no-daemon && node scripts/review-distribution-materials.mjs && node scripts/verify-apk.mjs release",
+    "build:beta:distribution": "pnpm run runtime:bundle && pnpm run runtime:node && ./gradlew assembleBeta --max-workers=2 --no-parallel --no-daemon && node scripts/review-distribution-materials.mjs && node scripts/verify-apk.mjs beta",
     "check:quick": "node scripts/check.mjs --quick",
     "check:plugin": "npm --prefix plugins/tapilot run check",
     "check:security": "node scripts/check-security.mjs",
@@ -48,7 +48,8 @@
     "test:e2e:resilience": "npm --prefix tests/midscene run test:resilience",
     "test:e2e:auth-fixture": "npm --prefix tests/midscene run test:auth-fixture",
     "postinstall": "node plugins/tapilot/scripts/patch-midscene-zod.mjs",
-    "check:cli-package": "node scripts/check-cli-package.mjs"
+    "check:cli-package": "node scripts/check-cli-package.mjs",
+    "release:review": "node scripts/review-distribution-materials.mjs"
   },
   "dependencies": {
     "@lobehub/icons-static-svg": "^1.101.0",
