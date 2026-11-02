@@ -5,7 +5,8 @@ on:
     branches: [fix/release-materials-0.1.8]
     paths: [.github/workflows/verify-release-materials.yml, scripts/verify-release-materials.py, third-party/sources.lock.json]
 permissions:
-  contents: read
+  # GitHub requires write access to see draft releases; this workflow only downloads.
+  contents: write
 defaults:
   run:
     shell: bash
