@@ -1,0 +1,57 @@
+name: Relink Sharp against rebuilt WASM libraries
+on:
+  workflow_dispatch:
+    inputs:
+      libvips_run:
+        description: Successful WASM reconstruction run
+        required: true
+        default: '41452931004'
+  push:
+    branches: [fix/release-materials-0.1.8]
+    paths:
+      - .github/workflows/relink-wasm-materials.yml
+      - scripts/relink-sharp-wasm.sh
+permissions:
+  contents: read
+  actions: read
+jobs:
+  relink:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+      LIBVIPS_RUN: ${{ inputs.libvips_run || '41452931004' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Require a successful source rebuild and verify its artifacts
+        run: |
+          gh run view "$LIBVIPS_RUN" --json conclusion,headSha > "$RUNNER_TEMP/upstream-run.json"
+          test "$(jq -r .conclusion "$RUNNER_TEMP/upstream-run.json")" = success
+          source_sha="$(jq -r .headSha "$RUNNER_TEMP/upstream-run.json")"
+          gh run download "$LIBVIPS_RUN" --name "wasm-materials-$source_sha" --dir "$RUNNER_TEMP/vips-inputs"
+          python3 - <<'PY'
+          import hashlib, os
+          from pathlib import Path
+          root=Path(os.environ['RUNNER_TEMP'])/'vips-inputs'
+          for line in (root/'SHA256SUMS.txt').read_text().splitlines():
+              expected, name=line.split(maxsplit=1)
+              file=root/Path(name).name
+              assert hashlib.sha256(file.read_bytes()).hexdigest()==expected, str(file)
+          PY
+      - name: Relink Sharp and test WASM image operations
+        run: bash scripts/relink-sharp-wasm.sh "$RUNNER_TEMP/sharp-relink" "$RUNNER_TEMP/vips-inputs/libvips-wasm-rebuilt.tar.gz" 2>&1 | tee "$RUNNER_TEMP/sharp-relink.log"
+      - name: Preserve relink output and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sharp-wasm-relinked-${{ github.sha }}
+          retention-days: 14
+          compression-level: 0
+          path: |
+            ${{ runner.temp }}/sharp-relink.log
+            ${{ runner.temp }}/upstream-run.json
+            ${{ runner.temp }}/sharp-relink/*.tar.gz
+            ${{ runner.temp }}/sharp-relink/*.json
+            ${{ runner.temp }}/sharp-relink/*.txt
