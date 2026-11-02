@@ -90,5 +90,12 @@
     "url": "https://raw.githubusercontent.com/flatiron/union/b69c2c0eb95d48b49e72182e53c1788efa195cc0/README.md",
     "sha256": "ea8bfd939b567503ce7a075af880d80b53e5f89657bb694c51ac9d4dc6cb637c",
     "license": "MIT"
+  },
+  {
+    "name": "@img/sharp-wasm32",
+    "version": "0.35.5",
+    "path": "third-party/notices/Tapilot-0.1.8-wasm-NOTICES.txt",
+    "sha256": "7a54341972daa611587f8d116c86803d2b78cc3753987b8c6c8e63e74e2c2af2",
+    "url": "https://github.com/tapilot-ai/tapilot/releases/download/v0.1.8/Tapilot-0.1.8-wasm-NOTICES.txt"
   }
 ]

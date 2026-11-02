@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { verifyReviewedSharp } from './install-reviewed-sharp.mjs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -57,9 +58,15 @@ export function collectNpmNotices(modules, output) {
           fs.writeFileSync(path.join(output, id, relative), bytes);
           files.push({ path: relative, sha256: supplement.sha256, source: supplement.url });
         }
+        let verifiedRebuild = false;
+        if (pkg.name === '@img/sharp-wasm32') {
+          const review = JSON.parse(fs.readFileSync(path.join(repositoryRoot, 'third-party/sharp-rebuild.json'), 'utf8'));
+          verifyReviewedSharp(source, review);
+          verifiedRebuild = files.some(file => file.path === 'upstream-Tapilot-0.1.8-wasm-NOTICES.txt');
+        }
         packages.push({ id, name: pkg.name, version: pkg.version, license,
           repository: pkg.repository?.url ?? pkg.repository ?? null, files,
-          reviewRequired: files.length === 0 || license === 'UNKNOWN' || /(?:A?GPL|LGPL|MPL|SEE LICENSE)/i.test(license) });
+          reviewRequired: files.length === 0 || license === 'UNKNOWN' || (/(?:A?GPL|LGPL|MPL|SEE LICENSE)/i.test(license) && !verifiedRebuild) });
       }
       if (fs.existsSync(path.join(source, 'node_modules'))) visit(path.join(source, 'node_modules'));
     }

@@ -1,0 +1,42 @@
+name: Verify complete release source lock
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/release-materials-0.1.8]
+    paths: [.github/workflows/verify-release-materials.yml, scripts/verify-release-materials.py, third-party/sources.lock.json]
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: python3 scripts/verify-release-materials.py
+      - run: node scripts/prepare-distribution-materials.mjs
+      - name: Record verified lock without granting publication approval
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import { createHash } from 'node:crypto';
+          const sha = file => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+          const status = JSON.parse(fs.readFileSync('build/distribution-materials/status.json'));
+          const result = { ...status, sourcesLockSha256: sha('third-party/sources.lock.json'), run: process.env.GITHUB_RUN_ID, commit: process.env.GITHUB_SHA };
+          fs.writeFileSync('build/materials-verification.json', JSON.stringify(result, null, 2)+'\n');
+          console.log(JSON.stringify(result));
+          console.log('Receipt SHA256:', sha('build/materials-verification.json'));
+          JS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: materials-verification
+          path: build/materials-verification.json

@@ -17,7 +17,7 @@ export function sourceFingerprint(directory = root) {
   for (const relative of ['node-runtime/src', 'node-runtime/bundle/package.json',
     'node-runtime/bundle/pnpm-lock.yaml', 'node-runtime/bundle/pnpm-workspace.yaml', 'node-runtime/bundle/patches', 'packages/android-accessibility/src',
     'packages/android-accessibility/package.json', 'packages/android-accessibility/rslib.config.ts',
-    'plugins/tapilot/scripts/patch-midscene-zod.mjs', 'scripts/bundle-node-runtime.mjs', 'scripts/runtime-integrity.mjs', 'scripts/android-runtime-tree.mjs', 'scripts/third-party-notices.mjs', 'third-party/npm-supplements.json','third-party/native-supplements.json', 'third-party/notices', 'LICENSE']) visit(relative);
+    'plugins/tapilot/scripts/patch-midscene-zod.mjs', 'scripts/bundle-node-runtime.mjs', 'scripts/runtime-integrity.mjs', 'scripts/android-runtime-tree.mjs', 'scripts/third-party-notices.mjs', 'scripts/install-reviewed-sharp.mjs', 'third-party/sharp-rebuild.json', 'third-party/npm-supplements.json','third-party/native-supplements.json', 'third-party/notices', 'LICENSE']) visit(relative);
   return hash.digest('hex');
 }
 export function verifyRuntime(directory = root) {

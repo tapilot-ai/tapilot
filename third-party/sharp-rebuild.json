@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "name": "@img/sharp-wasm32",
+  "version": "0.35.5",
+  "relinkRun": "https://github.com/tapilot-ai/tapilot/actions/runs/41457297001",
+  "archive": {
+    "name": "Tapilot-0.1.8-sharp-wasm.tar.gz",
+    "url": "https://github.com/tapilot-ai/tapilot/releases/download/v0.1.8/Tapilot-0.1.8-sharp-wasm.tar.gz",
+    "sha256": "6c60a4c70f9b5939efcc53ca3af29c2cbcd86bb731b92cdb4571c033200deffd"
+  },
+  "files": {
+    "LICENSE": "73ba74dfaa520b49a401b5d21459a8523a146f3b7518a833eea5efa85130bf68",
+    "README.md": "9d7a84ade91e8e50f5dfc303fb53e580e806f6f89bde804e84a01c1b8853fff5",
+    "index.cjs": "0aea23f9c88a59ebcd83b2ec276147ccf6fe60bdd9e9d615e9cb7477e07934da",
+    "lib/sharp-wasm32-0.35.5.node.js": "1904293fc3f6b0d2abfec1fce156e43f2c309ee13f79498d4efdf0a931b52e5f",
+    "lib/sharp-wasm32-0.35.5.node.wasm": "44fc2f02a8a46c4496b580a34315dc51504d6915a78c6a6e0cfba634ffef529a",
+    "package.json": "59d5eeaaac1c43434701f08e9ea78648aa54011159ff2eb192550432608e05c1",
+    "versions.json": "36e4e862aac3ac2dd037ff116627e0106ac67688b368282981962b920d8221d5"
+  }
+}

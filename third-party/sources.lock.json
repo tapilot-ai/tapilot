@@ -1064,6 +1064,150 @@
       "path": ".cache/distribution-sources/upstream/wasm-vips-dca91909178800875b575eb896d1fe4ed0a27931.tar.gz",
       "sha256": "37e18bb8d1a7469587a645d1418bfb7f9b9590516f8e04e629a7ea3ec748cac5",
       "bytes": 7715177
+    },
+    {
+      "component": "nodejs-lts@24.22.2",
+      "kind": "source-archive",
+      "url": "https://nodejs.org/dist/v24.22.2/node-v24.22.2.tar.xz",
+      "path": ".cache/distribution-sources/upstream/node-v24.22.2.tar.xz",
+      "sha256": "8fe2ec1723bb9f8d0b683907c82708debbeda64af21cb2aa214c4241eed0a061",
+      "bytes": 57673000
+    },
+    {
+      "component": "c-ares@1.34.9",
+      "kind": "source-archive",
+      "url": "https://github.com/c-ares/c-ares/archive/refs/tags/v1.34.9.tar.gz",
+      "path": ".cache/distribution-sources/upstream/c-ares-1.34.9.tar.gz",
+      "sha256": "453bab9eb8c2bd4343b527dd97dbd77e1fab6608781dda2dbbfde7e480882c97",
+      "bytes": 657079
+    },
+    {
+      "component": "libsqlite@3.54.1-1",
+      "kind": "source-archive",
+      "url": "https://www.sqlite.org/2026/sqlite-src-3540100.zip",
+      "path": ".cache/distribution-sources/upstream/sqlite-src-3540100.zip",
+      "sha256": "387e7f6cad4797b17848c07d453dc6606917bb356a6cfe5a3abafd38c240c71b",
+      "bytes": 14899528
+    },
+    {
+      "component": "libicu@78.3",
+      "kind": "source-archive",
+      "url": "https://github.com/unicode-org/icu/releases/download/release-78.3/icu4c-78.3-sources.tgz",
+      "path": ".cache/distribution-sources/upstream/icu4c-78.3-sources.tgz",
+      "sha256": "3a2e7a47604ba702f345878308e6fefeca612ee895cf4a5f222e7955fabfe0c0",
+      "bytes": 27977255
+    },
+    {
+      "component": "zlib@1.3.2",
+      "kind": "source-archive",
+      "url": "https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.xz",
+      "path": ".cache/distribution-sources/upstream/zlib-1.3.2.tar.xz",
+      "sha256": "d7a0654783a4da529d1bb793b7ad9c3318020af77667bcae35f95d0e42a792f3",
+      "bytes": 1320064
+    },
+    {
+      "component": "openssl@3.6.5",
+      "kind": "source-archive",
+      "url": "https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz",
+      "path": ".cache/distribution-sources/upstream/openssl-3.6.5.tar.gz",
+      "sha256": "a2157c2830efdec3788939b00c9b0638306d3f0bbb76dc4832ee503bb397df98",
+      "bytes": 55078161
+    },
+    {
+      "component": "termux/nodejs-lts@22bd884a0428cef49cc99230ad94bd76ee5456a6",
+      "kind": "source-archive",
+      "url": "https://codeload.github.com/termux/termux-packages/tar.gz/22bd884a0428cef49cc99230ad94bd76ee5456a6",
+      "path": ".cache/distribution-sources/upstream/termux-22bd884a0428cef49cc99230ad94bd76ee5456a6.tar.gz",
+      "sha256": "3bd9a376e8be0f75caada56c1adf405b4eabb4751a6a31eda5a078d57969d911",
+      "bytes": 9626860
+    },
+    {
+      "component": "termux/c-ares@5d046f57d62da2ba6cc5e4f3eff67ba4acabf0c8",
+      "kind": "source-archive",
+      "url": "https://codeload.github.com/termux/termux-packages/tar.gz/5d046f57d62da2ba6cc5e4f3eff67ba4acabf0c8",
+      "path": ".cache/distribution-sources/upstream/termux-5d046f57d62da2ba6cc5e4f3eff67ba4acabf0c8.tar.gz",
+      "sha256": "f40039cedc43750c743e6165090b63dbb65edb75f8c56fdcccc38e1f5a5fcfa5",
+      "bytes": 10357518
+    },
+    {
+      "component": "termux/libsqlite@4de02e1201055098b4e1b2264fa113d8b6c9ec0b",
+      "kind": "source-archive",
+      "url": "https://codeload.github.com/termux/termux-packages/tar.gz/4de02e1201055098b4e1b2264fa113d8b6c9ec0b",
+      "path": ".cache/distribution-sources/upstream/termux-4de02e1201055098b4e1b2264fa113d8b6c9ec0b.tar.gz",
+      "sha256": "95e04c6d063313730555d584b20f1eeff1dc29a6706adb8065c30b9e96c7d0aa",
+      "bytes": 9626941
+    },
+    {
+      "component": "termux-native-sources",
+      "kind": "release-material",
+      "url": "https://github.com/tapilot-ai/tapilot/releases/download/v0.1.8/Tapilot-0.1.8-native-sources.tar.gz",
+      "path": ".cache/distribution-sources/release/Tapilot-0.1.8-native-sources.tar.gz",
+      "sha256": "7434aefa8ba511654e42cc8db0d0cb0d1e435cb9109aa0fe546522a30dbcd73d",
+      "bytes": 185021063
+    },
+    {
+      "component": "tapilot-wasm-rebuild",
+      "kind": "release-material",
+      "url": "https://github.com/tapilot-ai/tapilot/releases/download/v0.1.8/Tapilot-0.1.8-wasm-sources.tar.gz",
+      "path": ".cache/distribution-sources/release/Tapilot-0.1.8-wasm-sources.tar.gz",
+      "sha256": "d194043c7bbb0f71604b5f73b0bb8b8b2df946388ece740dbb48f3f0c2f5faf8",
+      "bytes": 101809050
+    },
+    {
+      "component": "tapilot-wasm-rebuild",
+      "kind": "release-material",
+      "url": "https://github.com/tapilot-ai/tapilot/releases/download/v0.1.8/Tapilot-0.1.8-libvips-wasm.tar.gz",
+      "path": ".cache/distribution-sources/release/Tapilot-0.1.8-libvips-wasm.tar.gz",
+      "sha256": "36c8a2301efca5b44d43069274250cd1fb1b8517c049eb4e1d01df529c0c30b6",
+      "bytes": 9668868
+    },
+    {
+      "component": "tapilot-wasm-rebuild",
+      "kind": "release-material",
+      "url": "https://github.com/tapilot-ai/tapilot/releases/download/v0.1.8/Tapilot-0.1.8-sharp-sources.tar.gz",
+      "path": ".cache/distribution-sources/release/Tapilot-0.1.8-sharp-sources.tar.gz",
+      "sha256": "d600bcbdd550ea096a384391a474907e6aa8138f97ea472bf5228b07ae75f779",
+      "bytes": 41802569
+    },
+    {
+      "component": "tapilot-wasm-rebuild",
+      "kind": "release-material",
+      "url": "https://github.com/tapilot-ai/tapilot/releases/download/v0.1.8/Tapilot-0.1.8-sharp-wasm.tar.gz",
+      "path": ".cache/distribution-sources/rebuilt/Tapilot-0.1.8-sharp-wasm.tar.gz",
+      "sha256": "6c60a4c70f9b5939efcc53ca3af29c2cbcd86bb731b92cdb4571c033200deffd",
+      "bytes": 3629954
+    },
+    {
+      "component": "tapilot-wasm-rebuild",
+      "kind": "release-material",
+      "url": "https://github.com/tapilot-ai/tapilot/releases/download/v0.1.8/Tapilot-0.1.8-sharp-build-package-lock.json",
+      "path": ".cache/distribution-sources/release/Tapilot-0.1.8-sharp-build-package-lock.json",
+      "sha256": "c86bc56f1714c59802b56dfb091b0fdd06387ce0d77dab668984ca7d05a46e2f",
+      "bytes": 104061
+    },
+    {
+      "component": "termux-native-sources",
+      "kind": "release-material",
+      "url": "https://github.com/tapilot-ai/tapilot/releases/download/v0.1.8/Tapilot-0.1.8-native-sources.json",
+      "path": ".cache/distribution-sources/release/Tapilot-0.1.8-native-sources.json",
+      "sha256": "6c24c01f95e72c3dafb2502aaf7a4d5f52b98651b684f4a8b6d3ae8a67c08d0a",
+      "bytes": 3514
+    },
+    {
+      "component": "tapilot-wasm-rebuild",
+      "kind": "release-material",
+      "url": "https://github.com/tapilot-ai/tapilot/releases/download/v0.1.8/Tapilot-0.1.8-wasm-sources.json",
+      "path": ".cache/distribution-sources/release/Tapilot-0.1.8-wasm-sources.json",
+      "sha256": "93b2028aa447d92c4db85448b5d57514a5f6c44c002c0073b63345b86d4cc0a2",
+      "bytes": 3781
+    },
+    {
+      "component": "tapilot-wasm-rebuild",
+      "kind": "release-material",
+      "url": "https://github.com/tapilot-ai/tapilot/releases/download/v0.1.8/Tapilot-0.1.8-wasm-NOTICES.txt",
+      "path": "third-party/notices/Tapilot-0.1.8-wasm-NOTICES.txt",
+      "sha256": "7a54341972daa611587f8d116c86803d2b78cc3753987b8c6c8e63e74e2c2af2",
+      "bytes": 2048113
     }
   ]
 }

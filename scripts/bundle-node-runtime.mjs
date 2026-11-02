@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { installReviewedSharp } from './install-reviewed-sharp.mjs';
 import { patchMidsceneZod } from '../plugins/tapilot/scripts/patch-midscene-zod.mjs';
 import { sourceFingerprint } from './runtime-integrity.mjs';
 import { pruneAndroidPackages, pruneAndroidSourceMaps } from './android-runtime-tree.mjs';
@@ -172,6 +173,7 @@ run(
   stagingRoot,
 );
 patchMidsceneZod(stagingRoot);
+await installReviewedSharp(path.join(stagingRoot, 'node_modules'));
 verifySharpRuntimeVersions();
 
 const workspacePackages = ['android-accessibility'];
