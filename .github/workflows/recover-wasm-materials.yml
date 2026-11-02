@@ -1,0 +1,34 @@
+name: Verify and recover WASM source packaging
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/release-materials-0.1.8]
+    paths:
+      - .github/workflows/recover-wasm-materials.yml
+      - scripts/recover-wasm-materials.py
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 scripts/recover-wasm-materials.py "$RUNNER_TEMP/recovered-wasm" 2>&1 | tee "$RUNNER_TEMP/recovery.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wasm-materials-${{ github.sha }}
+          retention-days: 14
+          compression-level: 0
+          path: |
+            ${{ runner.temp }}/recovered-wasm/tapilot-wasm-materials
+            ${{ runner.temp }}/recovery.log
