@@ -1,0 +1,27 @@
+name: Stage verified source materials in draft release
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/release-materials-0.1.8]
+    paths: [.github/workflows/stage-release-materials.yml, scripts/stage-release-materials.py]
+permissions:
+  contents: write
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 scripts/stage-release-materials.py "$RUNNER_TEMP/release-materials"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-materials-receipt
+          path: ${{ runner.temp }}/release-materials/receipt.json
