@@ -1,16 +1,14 @@
 name: Rebuild WASM distribution materials
 on:
   workflow_dispatch:
-  push:
-    branches: [fix/release-materials-0.1.8]
-    paths:
-      - .github/workflows/rebuild-wasm-materials.yml
-      - scripts/distribution/**
 permissions:
   contents: read
 concurrency:
   group: tapilot-wasm-materials
   cancel-in-progress: false
+defaults:
+  run:
+    shell: bash
 jobs:
   rebuild:
     runs-on: ubuntu-latest

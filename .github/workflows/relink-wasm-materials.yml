@@ -5,7 +5,7 @@ on:
       libvips_run:
         description: Successful WASM reconstruction run
         required: true
-        default: '41452931004'
+        default: '41456669649'
   push:
     branches: [fix/release-materials-0.1.8]
     paths:
@@ -14,13 +14,16 @@ on:
 permissions:
   contents: read
   actions: read
+defaults:
+  run:
+    shell: bash
 jobs:
   relink:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
       GH_TOKEN: ${{ github.token }}
-      LIBVIPS_RUN: ${{ inputs.libvips_run || '41452931004' }}
+      LIBVIPS_RUN: ${{ inputs.libvips_run || '41456669649' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -34,14 +37,14 @@ jobs:
           python3 - <<'PY'
           import hashlib, os
           from pathlib import Path
-          root=Path(os.environ['RUNNER_TEMP'])/'vips-inputs'/'tapilot-wasm-materials'
+          root=Path(os.environ['RUNNER_TEMP'])/'vips-inputs'/'recovered-wasm'/'tapilot-wasm-materials'
           for line in (root/'SHA256SUMS.txt').read_text().splitlines():
               expected, name=line.split(maxsplit=1)
               file=root/Path(name).name
               assert hashlib.sha256(file.read_bytes()).hexdigest()==expected, str(file)
           PY
       - name: Relink Sharp and test WASM image operations
-        run: bash scripts/relink-sharp-wasm.sh "$RUNNER_TEMP/sharp-relink" "$RUNNER_TEMP/vips-inputs/tapilot-wasm-materials/libvips-wasm-rebuilt.tar.gz" 2>&1 | tee "$RUNNER_TEMP/sharp-relink.log"
+        run: bash scripts/relink-sharp-wasm.sh "$RUNNER_TEMP/sharp-relink" "$RUNNER_TEMP/vips-inputs/recovered-wasm/tapilot-wasm-materials/libvips-wasm-rebuilt.tar.gz" 2>&1 | tee "$RUNNER_TEMP/sharp-relink.log"
       - name: Preserve relink output and evidence
         if: always()
         uses: actions/upload-artifact@v4

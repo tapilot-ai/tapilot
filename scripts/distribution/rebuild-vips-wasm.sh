@@ -35,6 +35,7 @@ done
 /usr/bin/curl --fail --retry 2 "${args[@]}" --output "$file"
 hash="$(sha256sum "$file" | cut -d ' ' -f1)"
 cp "$file" "/downloads/$hash"
+chmod 0644 "/downloads/$hash"
 printf '%s\t%s\n' "$hash" "${args[*]}" >> /downloads/requests.tsv
 cat "$file"
 SH
