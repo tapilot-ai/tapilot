@@ -1,0 +1,32 @@
+name: Collect native source materials
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/release-materials-0.1.8]
+    paths:
+      - .github/workflows/native-source-materials.yml
+      - scripts/collect-native-review-sources.py
+permissions:
+  contents: read
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Fetch exact native sources and recipe snapshots
+        run: python3 scripts/collect-native-review-sources.py "$RUNNER_TEMP/native-sources"
+      - name: Archive source materials
+        if: always()
+        run: tar -czf "$RUNNER_TEMP/native-sources.tar.gz" -C "$RUNNER_TEMP/native-sources" .
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-source-materials-${{ github.sha }}
+          retention-days: 14
+          compression-level: 0
+          path: |
+            ${{ runner.temp }}/native-sources.tar.gz
+            ${{ runner.temp }}/native-sources/results.json
