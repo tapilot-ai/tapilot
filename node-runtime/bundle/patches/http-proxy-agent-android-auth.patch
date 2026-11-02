@@ -1,0 +1,38 @@
+diff --git a/dist/index.js b/dist/index.js
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -4,7 +4,6 @@
+ import { once } from 'events';
+ import { Agent } from 'agent-base';
+ import { URL } from 'url';
+-import { createNegotiateAuth, } from 'proxy-agent-negotiate';
+ const debug = createDebug('http-proxy-agent');
+ /**
+  * The `HttpProxyAgent` implements an HTTP Agent subclass that connects
+@@ -17,7 +16,7 @@
+         this.proxyHeaders = opts?.headers ?? {};
+         debug('Creating new HttpProxyAgent instance: %o', this.proxy.href);
+         if (opts?.negotiate) {
+-            this.onProxyAuth = createNegotiateAuth();
++            throw new Error('Automatic Kerberos proxy authentication is unavailable in the Android runtime; use onProxyAuth for an explicit handler.');
+         }
+         else if (opts?.onProxyAuth) {
+             this.onProxyAuth = opts.onProxyAuth;
+diff --git a/dist/index.d.ts b/dist/index.d.ts
+--- a/dist/index.d.ts
++++ b/dist/index.d.ts
+@@ -4,8 +4,12 @@
+ import { Agent, AgentConnectOpts } from 'agent-base';
+ import { URL } from 'url';
+ import type { OutgoingHttpHeaders } from 'http';
+-import { type OnProxyAuthCallback, type ProxyAuthParams, type ProxyAuthResponse } from 'proxy-agent-negotiate';
+-export type { OnProxyAuthCallback, ProxyAuthParams, ProxyAuthResponse };
++export interface ProxyAuthParams {
++    response: { statusCode: number; statusText: string; headers: http.IncomingHttpHeaders };
++    scheme: string;
++}
++export interface ProxyAuthResponse { headers: http.OutgoingHttpHeaders; }
++export type OnProxyAuthCallback = (params: ProxyAuthParams) => ProxyAuthResponse | Promise<ProxyAuthResponse>;
+ export interface ProxyConnect {
+     socket: net.Socket;
+ }

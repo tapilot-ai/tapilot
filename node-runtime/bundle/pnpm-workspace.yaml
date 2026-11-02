@@ -6,6 +6,8 @@ minimumReleaseAgeExclude:
   - '@midscene/test@1.15.2'
   - qs@6.17.0
 patchedDependencies:
+  'http-proxy-agent@9.1.0': patches/http-proxy-agent-android-auth.patch
+  'https-proxy-agent@9.1.0': patches/https-proxy-agent-android-auth.patch
   'http-server@14.1.1': patches/http-server-native-compare.patch
   '@midscene/core@1.15.2': patches/midscene-core-runtime.patch
   '@midscene/test@1.15.2': patches/midscene-test-unbounded.patch
@@ -20,6 +22,8 @@ supportedArchitectures:
 
 # Security fixes until upstream dependency ranges include these releases.
 overrides:
+  'http-proxy-agent@9.1.0>proxy-agent-negotiate': '-'
+  'https-proxy-agent@9.1.0>proxy-agent-negotiate': '-'
   'http-server@14.1.1>secure-compare': '-'
   sharp: 0.35.5
   js-yaml: 4.3.2

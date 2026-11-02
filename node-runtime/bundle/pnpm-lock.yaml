@@ -163,6 +163,8 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
+  http-proxy-agent@9.1.0>proxy-agent-negotiate: '-'
+  https-proxy-agent@9.1.0>proxy-agent-negotiate: '-'
   http-server@14.1.1>secure-compare: '-'
   sharp: 0.35.5
   js-yaml: 4.3.2
@@ -179,7 +181,9 @@ overrides:
 patchedDependencies:
   '@midscene/core@1.15.2': c5ff38cce759a41df5d7305ba11a23183380d6dcd9a14d3bcc72c5d4121e7374
   '@midscene/test@1.15.2': 30747cfc034769f94e3d277f7e2bfb928557ca22a849b71c4e7b0d88c77b89a3
+  http-proxy-agent@9.1.0: 75caaf92342420e39d798144fda7a55cf42e94bfd195e1e6835084403e4b8584
   http-server@14.1.1: ab08d427875f0960c4d84c29ed8614906981691be74a6e5224d7e3af67cd7019
+  https-proxy-agent@9.1.0: 6702b3df809142a8e2a01bb3769feaacf19c66738df4bbe44df7b00a7cf9af74
 
 importers:
 
@@ -533,89 +537,105 @@ packages:
     resolution: {integrity: sha512-Y3dgX/6lE2QhQb+Gxy0WZxfg9MEm/JBjamZpS2IklP7xIQoKN4hzAm7KcMVGtaVDt3neE9OKBC7vAfonA/Lr1A==}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@img/sharp-libvips-linux-arm@1.3.4':
     resolution: {integrity: sha512-LmRtTsOHuvM2+wlO2Db37dx5MiZhB0FvSunciw48YjdOkZz9KAiRbm8ujeMOA1INqmei5NapFxYEK1D1ZSidmw==}
     cpu: [arm]
     os: [linux]
+    libc: [glibc]
 
   '@img/sharp-libvips-linux-ppc64@1.3.4':
     resolution: {integrity: sha512-Le6boB8Tai0Nis+gIxIpKx68UDVVIqdR8Tin5Yf1z2LJJQLDJvCDRqRu+jC2qCoD+eIomonmOwB4smBRxfVpYQ==}
     cpu: [ppc64]
     os: [linux]
+    libc: [glibc]
 
   '@img/sharp-libvips-linux-riscv64@1.3.4':
     resolution: {integrity: sha512-aHkkIEHPRdQEegJN20MLmGtxYD9R2wQr3Cwpddnu5+YKMt6Uzax7S9h5gpZTo8wyrGuZSlfQ63OevL5mTyOC7Q==}
     cpu: [riscv64]
     os: [linux]
+    libc: [glibc]
 
   '@img/sharp-libvips-linux-s390x@1.3.4':
     resolution: {integrity: sha512-ra/mB6MikESDUO7Yg+Mi95bFBb9GsObURuhnOv3OqknjGe9sZrG8tCe9q0xSIGrtLgvgw0gKnFWcK4blSgQOuQ==}
     cpu: [s390x]
     os: [linux]
+    libc: [glibc]
 
   '@img/sharp-libvips-linux-x64@1.3.4':
     resolution: {integrity: sha512-GJ//SSXbnwSDes02umB3nDJLFcQzw8a18V8fyhqr6tV515tOEMdImjjxj1AoafMRz56F3PHgftnj1QEKSU1zkw==}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@img/sharp-libvips-linuxmusl-arm64@1.3.4':
     resolution: {integrity: sha512-hvulFwtjUcagsis6BBxHwGFwWoNZjgYmULGVrZcyfNbjA8hKILbRxGg15/7w5HDyXHXUos/j6baAWqnCyQ2DWA==}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@img/sharp-libvips-linuxmusl-x64@1.3.4':
     resolution: {integrity: sha512-6zXKeE/p39I1AmA3cJG35eyBGNqNddLnUXjhwBnsGjFPWqf5VKkDBEqaEkPDoTEtkxwi2vv8Tcr2mDyP4So7Fg==}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@img/sharp-linux-arm64@0.35.5':
     resolution: {integrity: sha512-LYVx5JTsOM2CBzmxreh+nl64/3H6Xb09iSLknqH47z2T2DFFxDeFLP5y4dJwe6H7uGQlHPyEEtIqyo3DYsRwdQ==}
     engines: {node: '>=20.9.0'}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@img/sharp-linux-arm@0.35.5':
     resolution: {integrity: sha512-LEaXK2WdXVK5ykcw0buWyPMsmLLL2vpHLD6yrNSW+JGEL3BZPA4tpKN6iaMc4AxTTAoaX/sU1rOL51lcIz48ZQ==}
     engines: {node: '>=20.9.0'}
     cpu: [arm]
     os: [linux]
+    libc: [glibc]
 
   '@img/sharp-linux-ppc64@0.35.5':
     resolution: {integrity: sha512-QVxAAq8evVRI9ia2vqgwrmWucn5Dfv+JdWzj75pD8omHLPSP7f8p20O8jxzjCcuCEQEOtYOZUmX1hkiZ0kdevA==}
     engines: {node: '>=20.9.0'}
     cpu: [ppc64]
     os: [linux]
+    libc: [glibc]
 
   '@img/sharp-linux-riscv64@0.35.5':
     resolution: {integrity: sha512-LtdreXguaavKODPIfzJ4kffx7UNt1omwtK0rch4EBbbSTXPnxWmYSayXdLJw0fJzQ97kHt1gL/yh4tvU+nCyRQ==}
     engines: {node: '>=20.9.0'}
     cpu: [riscv64]
     os: [linux]
+    libc: [glibc]
 
   '@img/sharp-linux-s390x@0.35.5':
     resolution: {integrity: sha512-UZasTOFiYzotTsGOCu42BfUzP6Tu6Do/947iRm1RsLKvlllxwGcn4RN27LibGWceix4Y+Pmw3jsnTcCQIgWjqA==}
     engines: {node: '>=20.9.0'}
     cpu: [s390x]
     os: [linux]
+    libc: [glibc]
 
   '@img/sharp-linux-x64@0.35.5':
     resolution: {integrity: sha512-SxFtLTeJInhAA9Q836kux2vZNeOBQEx658qvbboZScr0wIARym3IcGmW7KpVD5sbVg0Ojy+udFQdayYIZyoNog==}
     engines: {node: '>=20.9.0'}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@img/sharp-linuxmusl-arm64@0.35.5':
     resolution: {integrity: sha512-9HbMclmI1zlNkFRs3z9/eBtDjfD0sGlrX1z6b1qwmiFY5ElDLh4BC0LPBdVp7z1DXFiKlIcznf+ZlsuZzLxQqg==}
     engines: {node: '>=20.9.0'}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@img/sharp-linuxmusl-x64@0.35.5':
     resolution: {integrity: sha512-4KOphqB035HrVdqLZfCgMzzERrQkkzOwRhl4OAkRO1YCldbaFjySXMaK534Mo0V+LndnlJk+sbUyLeU0ULyD1A==}
     engines: {node: '>=20.9.0'}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@img/sharp-wasm32@0.35.5':
     resolution: {integrity: sha512-Ptsga1su4tQx+LLF1ECS9U6nz5kmrXKo6XVbtR48Ke3ZRxxgaWBu7IDtEe1quo8hiupwm6WFqxVlXaSf7IINGQ==}
@@ -785,8 +805,15 @@ packages:
     resolution: {integrity: sha512-XJbT5FDKAOQYD59VJhQoqMH4cDuvQnhIA5GGdwUDhRiGKN3AxVYvxGn1rui5l644NvChDxoSAETmM5uTa9tGAA==}
     engines: {node: '>=18.19.0'}
 
+  '@midscene/core@1.17.4':
+    resolution: {integrity: sha512-G7dlOl7UIi9hrtioHrJwlxdWJJi0zoC9NbiS7V92nRpUFYSZHDq0eXjEpYHw8Et4O6IPto98wdv8UPpHyTbC5g==}
+    engines: {node: '>=18.19.0'}
+
   '@midscene/shared@1.15.2':
     resolution: {integrity: sha512-C6MNeWDLbUejflw1rNg2Z/kXjsuq8FtyKKQSw+792Yr+px6T7OsLZ0ZqCUy+PwKHKtWeuClbcHaZh4Dx+bXdYQ==}
+
+  '@midscene/shared@1.17.4':
+    resolution: {integrity: sha512-+hClFeGexOde7LHxz68ul39CVRg7Q8Cr3MetYBxjjyVlaNFOtN3Cq9KsyMh16QfYWRLP1vid2G5NJfOo0PIwdQ==}
 
   '@midscene/test@1.15.2':
     resolution: {integrity: sha512-muRe/k6zo6FNoTb6uoVq4HmtJz+UjJLu50EYEOzFuoIbuV6F2nJQMkYFlZY89aS+YaU2kZr6R3R+lpmK5p4Whg==}
@@ -1238,6 +1265,9 @@ packages:
   isexe@2.0.0:
     resolution: {integrity: sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==}
 
+  jose@5.9.6:
+    resolution: {integrity: sha512-AMlnetc9+CV9asI19zHmrgS/WYsWUwCn2R7RzlbJWD7F9eWYUTGyBmU9o6PxngtLGOiDGPRu+Uc4fhKzbpteZQ==}
+
   js-sha256@0.11.0:
     resolution: {integrity: sha512-6xNlKayMZvds9h1Y1VWc0fQHQ82BxTXizWPEtEeGvmOUYpBRy4gbWroHLpzowe6xiQhHpelCQiE7HEdznyBL9Q==}
 
@@ -1479,15 +1509,6 @@ packages:
   protobufjs@7.6.6:
     resolution: {integrity: sha512-dYDWdjSl5RNb7SgPxGQcRU+GtvP7s2fpkrY0r432PcOIaZ0/rBcxEZnQN67iJhFuQiVw754JDoPruPCNdGsbjg==}
     engines: {node: '>=12.0.0'}
-
-  proxy-agent-negotiate@1.1.0:
-    resolution: {integrity: sha512-N8IBcM3UgCVzz2L2Lqv8DVntDnnC8/hiV4nEDUPkqq72TPUgYWjQc+bdZlBPZK9LzPAvOY//gAt0S0DApoOXWQ==}
-    engines: {node: '>= 20'}
-    peerDependencies:
-      kerberos: ^2.0.0
-    peerDependenciesMeta:
-      kerberos:
-        optional: true
 
   qs@6.17.0:
     resolution: {integrity: sha512-5LK5BZ2XDHMvcUJaf0CQ5HL3aVgKbpklvByC7qLSxYkfE8COEEbJg5xCHWCTqzqi0Gs4Jn5Mv5v3R38W6edscA==}
@@ -1905,7 +1926,6 @@ snapshots:
       - '@smithy/hash-node'
       - '@smithy/signature-v4'
       - bufferutil
-      - kerberos
       - supports-color
       - undici
       - utf-8-validate
@@ -1919,8 +1939,8 @@ snapshots:
       '@earendil-works/pi-telemetry': 1.1.0
       '@google/genai': 2.21.0(supports-color@7.2.0)
       '@smithy/node-http-handler': 4.12.1
-      http-proxy-agent: 9.1.0(supports-color@7.2.0)
-      https-proxy-agent: 9.1.0(supports-color@7.2.0)
+      http-proxy-agent: 9.1.0(patch_hash=75caaf92342420e39d798144fda7a55cf42e94bfd195e1e6835084403e4b8584)(supports-color@7.2.0)
+      https-proxy-agent: 9.1.0(patch_hash=6702b3df809142a8e2a01bb3769feaacf19c66738df4bbe44df7b00a7cf9af74)(supports-color@7.2.0)
       openai: 7.19.0(@aws-sdk/credential-provider-node@3.972.85)(@smithy/signature-v4@5.7.4)(undici@6.29.1)(ws@8.22.0)(zod@4.6.7)
       partial-json: 0.1.7
       typebox: 1.3.27
@@ -1930,7 +1950,6 @@ snapshots:
       - '@smithy/hash-node'
       - '@smithy/signature-v4'
       - bufferutil
-      - kerberos
       - supports-color
       - undici
       - utf-8-validate
@@ -1944,8 +1963,8 @@ snapshots:
       '@earendil-works/pi-telemetry': 1.4.0
       '@google/genai': 2.21.0(supports-color@7.2.0)
       '@smithy/node-http-handler': 4.12.1
-      http-proxy-agent: 9.1.0(supports-color@7.2.0)
-      https-proxy-agent: 9.1.0(supports-color@7.2.0)
+      http-proxy-agent: 9.1.0(patch_hash=75caaf92342420e39d798144fda7a55cf42e94bfd195e1e6835084403e4b8584)(supports-color@7.2.0)
+      https-proxy-agent: 9.1.0(patch_hash=6702b3df809142a8e2a01bb3769feaacf19c66738df4bbe44df7b00a7cf9af74)(supports-color@7.2.0)
       openai: 7.19.0(@aws-sdk/credential-provider-node@3.972.85)(@smithy/signature-v4@5.7.4)(undici@6.29.1)(ws@8.22.0)(zod@4.6.7)
       partial-json: 0.1.7
       typebox: 1.3.27
@@ -1955,7 +1974,6 @@ snapshots:
       - '@smithy/hash-node'
       - '@smithy/signature-v4'
       - bufferutil
-      - kerberos
       - supports-color
       - undici
       - utf-8-validate
@@ -2311,7 +2329,41 @@ snapshots:
       - supports-color
       - ws
 
+  '@midscene/core@1.17.4(@types/node@26.6.5)(supports-color@7.2.0)(ws@8.22.0)':
+    dependencies:
+      '@midscene/shared': 1.17.4(@types/node@26.6.5)(supports-color@7.2.0)
+      '@ui-tars/action-parser': 1.2.3
+      dayjs: 1.11.23
+      dotenv: 16.6.1
+      fetch-socks: 1.3.3
+      jose: 5.9.6
+      js-yaml: 4.3.2
+      jsonrepair: 3.15.0
+      mdast-util-from-markdown: 2.0.3(supports-color@7.2.0)
+      mdast-util-to-markdown: 2.1.2
+      openai: 6.3.0(ws@8.22.0)(zod@4.6.7)
+      semver: 7.5.2
+      undici: 6.29.1
+      zod: 4.6.7
+    transitivePeerDependencies:
+      - '@types/node'
+      - supports-color
+      - ws
+
   '@midscene/shared@1.15.2(@types/node@26.6.5)(supports-color@7.2.0)':
+    dependencies:
+      '@silvia-odwyer/photon': 0.3.3
+      debug: 4.4.0(supports-color@7.2.0)
+      dotenv: 16.6.1
+      js-sha256: 0.11.0
+      sharp: 0.35.5(@types/node@26.6.5)
+      uuid: 11.1.1
+      zod: 4.6.7
+    transitivePeerDependencies:
+      - '@types/node'
+      - supports-color
+
+  '@midscene/shared@1.17.4(@types/node@26.6.5)(supports-color@7.2.0)':
     dependencies:
       '@silvia-odwyer/photon': 0.3.3
       debug: 4.4.0(supports-color@7.2.0)
@@ -2409,7 +2461,7 @@ snapshots:
 
   '@tapilot/android-accessibility@file:../../packages/android-accessibility(@types/node@26.6.5)(supports-color@7.2.0)(ws@8.22.0)':
     dependencies:
-      '@midscene/core': 1.15.2(patch_hash=c5ff38cce759a41df5d7305ba11a23183380d6dcd9a14d3bcc72c5d4121e7374)(@types/node@26.6.5)(supports-color@7.2.0)(ws@8.22.0)
+      '@midscene/core': 1.17.4(@types/node@26.6.5)(supports-color@7.2.0)(ws@8.22.0)
     transitivePeerDependencies:
       - '@types/node'
       - supports-color
@@ -2722,13 +2774,11 @@ snapshots:
     dependencies:
       whatwg-encoding: 2.0.0
 
-  http-proxy-agent@9.1.0(supports-color@7.2.0):
+  http-proxy-agent@9.1.0(patch_hash=75caaf92342420e39d798144fda7a55cf42e94bfd195e1e6835084403e4b8584)(supports-color@7.2.0):
     dependencies:
       agent-base: 9.0.0
       debug: 4.4.3(supports-color@7.2.0)
-      proxy-agent-negotiate: 1.1.0
     transitivePeerDependencies:
-      - kerberos
       - supports-color
 
   http-proxy@1.18.1(debug@4.4.3(supports-color@7.2.0)):
@@ -2764,13 +2814,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  https-proxy-agent@9.1.0(supports-color@7.2.0):
+  https-proxy-agent@9.1.0(patch_hash=6702b3df809142a8e2a01bb3769feaacf19c66738df4bbe44df7b00a7cf9af74)(supports-color@7.2.0):
     dependencies:
       agent-base: 9.0.0
       debug: 4.4.3(supports-color@7.2.0)
-      proxy-agent-negotiate: 1.1.0
     transitivePeerDependencies:
-      - kerberos
       - supports-color
 
   human-signals@7.0.0: {}
@@ -2794,6 +2842,8 @@ snapshots:
   is-unicode-supported@2.1.0: {}
 
   isexe@2.0.0: {}
+
+  jose@5.9.6: {}
 
   js-sha256@0.11.0: {}
 
@@ -3098,8 +3148,6 @@ snapshots:
       '@protobufjs/utf8': 1.1.2
       '@types/node': 26.6.5
       long: 5.3.2
-
-  proxy-agent-negotiate@1.1.0: {}
 
   qs@6.17.0:
     dependencies:

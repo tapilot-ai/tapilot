@@ -53,9 +53,9 @@ it is not substituted for the remaining native corresponding-source review.
 - The Termux snapshot is a retained recipe reference, not proof that it produced
   every pinned `.deb`. Identify the corresponding recipe revisions and sources,
   and retain the native component notices before distribution.
-- Some npm packages omit full license texts. `proxy-agent-negotiate@1.1.0`
-  remains unresolved. The generated inventory preserves unresolved entries
-  rather than inventing terms.
+- Some npm packages omit full license texts. The Android bundle now removes
+  `proxy-agent-negotiate@1.1.0` as described below; this does not approve its
+  redistribution in other dependency trees.
 - Maven source archives and POMs preserve the attribution evidence used by the
   generated notices. Further bundled third-party components, if discovered, must
   retain their own notices rather than inheriting the parent artifact's license.
@@ -84,6 +84,24 @@ wrong username/password, unequal lengths, empty password and missing credentials
 are rejected. This replacement does not approve redistribution of the removed
 package, nor change the separate desktop dependency trees.
 
-`proxy-agent-negotiate` remains blocked pending an attributable upstream notice
-or a separately validated replacement. No upstream issue was submitted as part
-of this check.
+The Android bundle removes `proxy-agent-negotiate` from the exact 9.1.0 HTTP
+and HTTPS proxy agents with scoped overrides and pinned patches. Automatic
+Kerberos authentication now fails explicitly; it already required the absent
+native `kerberos` package. Basic authentication, CONNECT and explicit
+`onProxyAuth` callbacks remain available. A real loopback proxy regression test
+exercises those paths. Callback types are defined from the licensed proxy-agent
+call sites; no implementation or notice is copied from the removed package.
+Desktop/plugin dependency trees are unchanged. No upstream issue was submitted.
+
+### WASM rebuild evidence
+
+`wasm-provenance.json` separates facts from inference: the upstream release job
+records the sharp-libvips revision and exact Emscripten image digest, but records
+wasm-vips as `HEAD`. The candidate source archive matches the sole latest commit
+before that build. This is not proof of a bit-for-bit match to the shipped binary.
+
+The isolated `rebuild-wasm-materials.yml` workflow rebuilds from this candidate,
+retains the top-level source archive, the actual downloaded dependency archives
+and patches, and vendors the Rust dependencies. It does not set distribution
+approval, replace APK bytes, or publish a release. After a successful run, Sharp
+must still be relinked, tested on Android and packaged with corresponding sources.
