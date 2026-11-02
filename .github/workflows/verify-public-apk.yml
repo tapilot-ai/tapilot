@@ -1,0 +1,24 @@
+name: Verify anonymous release APK download
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/release-materials-0.1.8]
+    paths: [.github/workflows/verify-public-apk.yml]
+permissions: {}
+defaults:
+  run:
+    shell: bash
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download published APK without credentials and verify all bytes
+        run: |
+          curl --fail --location --silent --show-error --retry 2 --max-time 300 \
+            https://github.com/tapilot-ai/tapilot/releases/download/v0.1.8/Tapilot-0.1.8-beta-arm64.apk \
+            -o Tapilot-0.1.8-beta-arm64.apk
+          echo 'ff180348287fce1cf5592650ddbd96dec71f56c6805e6e2984dbb4df2f5e73a6  Tapilot-0.1.8-beta-arm64.apk' | sha256sum --check
+          test "$(stat -c %s Tapilot-0.1.8-beta-arm64.apk)" = 93347055
+          unzip -tq Tapilot-0.1.8-beta-arm64.apk
+          printf '%s\n' 'Anonymous download verified: 93347055 bytes; SHA256 ff180348287fce1cf5592650ddbd96dec71f56c6805e6e2984dbb4df2f5e73a6'
