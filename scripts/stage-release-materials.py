@@ -5,6 +5,8 @@ import pathlib
 import shutil
 import subprocess
 import sys
+import tarfile
+import re
 import zipfile
 
 root = pathlib.Path(sys.argv[1]).resolve()
@@ -44,6 +46,30 @@ selection = {
     'Tapilot-0.1.8-native-sources.json': 'native/native-sources/results.json',
     'Tapilot-0.1.8-wasm-sources.json': 'vips/recovered-wasm/tapilot-wasm-materials/source-downloads.json',
 }
+# Retain full license/copyright texts from the exact source archives and Rust vendor tree.
+notices = []
+pattern = re.compile(r'^(licen[cs]e|copying|copyright|notice|authors)(?:$|[._-])', re.I)
+def collect(archive, label):
+    with tarfile.open(archive) as source:
+        for member in source:
+            if not member.isfile() or not pattern.match(pathlib.PurePosixPath(member.name).name):
+                continue
+            if member.size > 2_000_000:
+                raise RuntimeError('Unexpectedly large license file: ' + member.name)
+            text = source.extractfile(member).read().decode('utf-8', errors='replace')
+            notices.append('\n===== ' + label + ' / ' + member.name + ' =====\n' + text + '\n')
+vips = root / 'vips/recovered-wasm/tapilot-wasm-materials'
+for entry in json.loads((vips / 'source-downloads.json').read_text()):
+    archive = vips / 'downloads' / entry['sha256']
+    if tarfile.is_tarfile(archive):
+        collect(archive, entry['url'] + ' SHA256=' + entry['sha256'])
+collect(vips / 'corresponding-source-inputs.tar.gz', 'Rust vendor and retained build materials')
+# Emscripten's runtime code is linked into the generated glue/WASM as well.
+emscripten_license = gh('api', 'repos/emscripten-core/emscripten/contents/LICENSE?ref=6.0.10', '-H', 'Accept: application/vnd.github.raw+json')
+notices.append('\n===== Emscripten 6.0.10 LICENSE =====\n' + emscripten_license)
+notice_file = root / 'wasm-NOTICES.txt'
+notice_file.write_text('Tapilot rebuilt WASM component notices\n' + ''.join(notices))
+selection['Tapilot-0.1.8-wasm-NOTICES.txt'] = 'wasm-NOTICES.txt'
 receipt = {'schemaVersion': 1, 'public': False, 'artifacts': artifacts, 'assets': []}
 for filename, relative in selection.items():
     source = root / relative
