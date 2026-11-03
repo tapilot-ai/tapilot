@@ -1,8 +1,14 @@
-name: Verify production APK
+name: Build signed deployment APK
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: signed-deployment
+  cancel-in-progress: false
 jobs:
   release:
     environment: release
@@ -10,6 +16,25 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+      - name: Validate signing configuration
+        env:
+          TAPILOT_SIGNING_STORE_BASE64: ${{ secrets.TAPILOT_SIGNING_STORE_BASE64 }}
+          TAPILOT_SIGNING_STORE_PASSWORD: ${{ secrets.TAPILOT_SIGNING_STORE_PASSWORD }}
+          TAPILOT_SIGNING_KEY_ALIAS: ${{ secrets.TAPILOT_SIGNING_KEY_ALIAS }}
+          TAPILOT_SIGNING_KEY_PASSWORD: ${{ secrets.TAPILOT_SIGNING_KEY_PASSWORD }}
+          TAPILOT_SIGNING_CERT_SHA256: ${{ secrets.TAPILOT_SIGNING_CERT_SHA256 }}
+        run: |
+          python3 - <<'PYCODE'
+          import os, re
+          names = ['TAPILOT_SIGNING_STORE_BASE64', 'TAPILOT_SIGNING_STORE_PASSWORD',
+                   'TAPILOT_SIGNING_KEY_ALIAS', 'TAPILOT_SIGNING_KEY_PASSWORD',
+                   'TAPILOT_SIGNING_CERT_SHA256']
+          missing = [name for name in names if not os.environ.get(name)]
+          if missing:
+              raise SystemExit('Missing release environment secrets: ' + ', '.join(missing))
+          if not re.fullmatch(r'[0-9a-fA-F]{64}', os.environ['TAPILOT_SIGNING_CERT_SHA256']):
+              raise SystemExit('TAPILOT_SIGNING_CERT_SHA256 must contain 64 hex characters without colons')
+          PYCODE
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
@@ -27,7 +52,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: npm ci --prefix plugins/tapilot
       - run: npm ci --prefix tests/midscene
+      - name: Apply reviewed Midscene compatibility
+        run: |
+          node plugins/tapilot/scripts/patch-midscene-zod.mjs plugins/tapilot
+          node plugins/tapilot/scripts/patch-midscene-zod.mjs tests/midscene
+      - run: pnpm check:security
       - run: pnpm check
+      - name: Check distribution readiness before accessing signing key
+        run: pnpm check:distribution
       - name: Build and verify signed release
         env:
           TAPILOT_SIGNING_STORE: ${{ runner.temp }}/tapilot-release.jks
@@ -50,13 +82,36 @@ jobs:
           output = pathlib.Path('build/release-evidence')
           output.mkdir(parents=True, exist_ok=True)
           apk = pathlib.Path('app/build/outputs/apk/release/app-release.apk')
+          shutil.copy2(apk, output / apk.name)
           (output / 'SHA256SUMS').write_text(hashlib.sha256(apk.read_bytes()).hexdigest() + '  app-release.apk\n')
+          import json, os
+          (output / 'build.json').write_text(json.dumps({
+              'version': json.loads(pathlib.Path('package.json').read_text())['version'],
+              'commit': os.environ['GITHUB_SHA'],
+              'runId': os.environ['GITHUB_RUN_ID'],
+              'certificateSha256': os.environ['TAPILOT_SIGNING_CERT_SHA256'].lower(),
+          }, indent=2) + '\n')
           for name in ['LICENSE', 'PRIVACY.md', 'PRIVACY.zh.md', 'CREDITS.md']:
               shutil.copy2(name, output / name)
           shutil.copytree('app/src/main/assets/third-party', output / 'third-party', dirs_exist_ok=True)
           shutil.copytree('app/build/generated/third-party-assets/release/third-party/android', output / 'third-party/android', dirs_exist_ok=True)
           PYCODE
+          cd build/release-evidence
+          sha256sum --check SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
-          name: release-verification-evidence
+          name: tapilot-signed-apk-${{ github.sha }}-${{ github.run_attempt }}
+          if-no-files-found: error
+          retention-days: 14
           path: build/release-evidence/
+      - name: Archive diagnostic reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-reports-${{ github.sha }}-${{ github.run_attempt }}
+          if-no-files-found: ignore
+          retention-days: 14
+          path: |
+            app/build/reports/
+            app/build/test-results/
+            build/distribution-readiness.json
