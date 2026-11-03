@@ -1,0 +1,21 @@
+<resources>
+    <string name="virtual_agent_title">让 Agent 试用独立屏幕</string>
+    <string name="virtual_agent_help">实验性：将测试屏截图和“计数增加一次”的指令发送给已配置的模型，报告保存在应用内，模型调用可能产生费用。请先暂停，再操作悬浮屏；继续时会重新截图并保持原目标。关闭悬浮屏或 Shell 断连会停止任务。</string>
+    <string name="virtual_agent_ready">已就绪，尚未开始任务。</string>
+    <string name="virtual_agent_start">开始 Agent 试用</string>
+    <string name="virtual_agent_pause">暂停并接管</string>
+    <string name="virtual_agent_stop">停止并关闭</string>
+    <string name="virtual_agent_resume">重新观察并继续</string>
+    <string name="virtual_agent_steps">具体步骤将在这里显示。</string>
+    <string name="virtual_agent_observe">观察独立屏幕，按照原目标规划操作。</string>
+    <string name="virtual_agent_capture">截取独立屏幕，供模型观察。</string>
+    <string name="virtual_agent_action">在独立屏幕执行模型请求的操作。</string>
+    <string name="virtual_agent_verified">通过：模型已核对画面，实际计数也符合目标。</string>
+    <string name="virtual_agent_failed">尚未验证通过。请检查画面和报告，再明确选择重试。</string>
+    <string name="virtual_agent_timeout">试用已达到三分钟时限。</string>
+    <string name="virtual_agent_running">Agent 正在执行。接管前请先暂停，主屏仍可使用。</string>
+    <string name="virtual_agent_pausing">正在停止模型并等待当前输入结束…</string>
+    <string name="virtual_agent_manual">现在由你操作。准备好后再继续；已达到目标的点击不会重复执行。</string>
+    <string name="virtual_agent_closed">已停止并释放屏幕，重新连接不会继续此任务。</string>
+    <string name="virtual_agent_short_help">使用已配置的模型，仅操作内置测试屏。模型调用可能产生费用。</string>
+</resources>

@@ -22,6 +22,7 @@ internal class FloatingDisplayWindow(
     private val host: Activity,
     private val probe: BackgroundDisplayProbe,
     private val zh: Boolean,
+    private val canInteract: () -> Boolean = { true },
     private val stop: () -> Unit,
 ) : AutoCloseable {
     private val manager = host.getSystemService(WindowManager::class.java)
@@ -34,12 +35,12 @@ internal class FloatingDisplayWindow(
     private fun text(chinese: String, english: String) = if (zh) chinese else english
     private fun dp(value: Int) = (value * host.resources.displayMetrics.density).toInt()
 
-    fun show(atBottom: Boolean = false) {
+    fun show(atBottom: Boolean = false, maxWidthDp: Int = 240) {
         check(probe.active) { "Start the experiment first" }
         check(Settings.canDrawOverlays(host)) { "Allow display over other apps first" }
         if (root != null) return
         val bounds = manager.currentWindowMetrics.bounds
-        val width = minOf(dp(240), bounds.width() * 2 / 3, bounds.height() / 2 * BackgroundDisplayProbe.WIDTH / BackgroundDisplayProbe.HEIGHT)
+        val width = minOf(dp(maxWidthDp), bounds.width() * 2 / 3, bounds.height() / 2 * BackgroundDisplayProbe.WIDTH / BackgroundDisplayProbe.HEIGHT)
         val params = WindowManager.LayoutParams(
             width, WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
@@ -115,7 +116,7 @@ internal class FloatingDisplayWindow(
     }
 
     private fun onPreviewTouch(view: View, event: MotionEvent): Boolean {
-        if (event.actionMasked == MotionEvent.ACTION_CANCEL || event.pointerCount != 1 || !probe.active) {
+        if (!canInteract() || event.actionMasked == MotionEvent.ACTION_CANCEL || event.pointerCount != 1 || !probe.active) {
             path = null
             return true
         }

@@ -2,7 +2,7 @@
     <string name="shell_title">后台屏幕</string>
     <string name="shell_experimental">实验性 · 可选</string>
     <string name="shell_intro">尝试在独立屏幕中操作应用，同时继续使用手机主屏。设置全程在手机上完成，无需电脑。</string>
-    <string name="shell_consent">Shell 辅助可以创建独立屏幕，在其中打开应用和发送操作。授权会保留到你主动撤销；设置完成不会自动执行任务。此实验尚未接入 Agent 后台任务。</string>
+    <string name="shell_consent">Shell 辅助可以创建独立屏幕，在其中打开应用和发送操作。授权会保留到你主动撤销；设置完成不会自动执行任务。另有单独确认的 Agent 试用，仅操作内置测试屏。</string>
     <string name="shell_agree">同意并设置</string>
     <string name="shell_later">稍后设置</string>
     <string name="shell_developer_title">1 · 准备手机</string>

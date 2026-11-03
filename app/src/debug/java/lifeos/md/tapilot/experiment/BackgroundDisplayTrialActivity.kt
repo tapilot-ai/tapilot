@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.view.WindowInsets
+import android.view.WindowInsetsController
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -28,6 +29,7 @@ class BackgroundDisplayTrialActivity : Activity() {
     override fun attachBaseContext(base: Context) { super.attachBaseContext(AppLanguage.wrap(base)) }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         attempted = savedInstanceState?.getBoolean("attempted") ?: false
         passed = savedInstanceState?.getBoolean("passed") ?: false
         val colors = AppTheme.colors(this)
@@ -59,8 +61,10 @@ class BackgroundDisplayTrialActivity : Activity() {
         }
         button(R.string.shell_done) { finish() }
         button(R.string.shell_manage) { startActivity(Intent(this, ShellSetupActivity::class.java)) }
-        val scroll = ScrollView(this).apply { addView(body) }
+        val scroll = ScrollView(this).apply { isFillViewport = true; setBackgroundColor(colors.background); addView(body) }
         scroll.setOnApplyWindowInsetsListener { view, insets ->
+            val lightBars = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+            window.insetsController?.setSystemBarsAppearance(if (AppTheme.isDark(this)) 0 else lightBars, lightBars)
             val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
             view.setPadding(bars.left, bars.top, bars.right, bars.bottom); insets
         }

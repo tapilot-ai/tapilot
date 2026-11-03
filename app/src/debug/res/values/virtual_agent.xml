@@ -1,0 +1,21 @@
+<resources>
+    <string name="virtual_agent_title">Try an Agent on the separate screen</string>
+    <string name="virtual_agent_help">Experimental: your configured model receives only the test-screen capture and an instruction to increase its counter once. Reports stay in app storage. Model usage may incur charges. Pause before touching the floating screen; continuing takes a fresh screenshot and keeps the same goal. Closing the screen or losing shell access stops the task.</string>
+    <string name="virtual_agent_ready">Ready. No task has started.</string>
+    <string name="virtual_agent_start">Start the Agent trial</string>
+    <string name="virtual_agent_pause">Pause and take over</string>
+    <string name="virtual_agent_stop">Stop and close</string>
+    <string name="virtual_agent_resume">Continue with a fresh observation</string>
+    <string name="virtual_agent_steps">Steps will appear here.</string>
+    <string name="virtual_agent_observe">Observe the separate screen and plan toward the unchanged goal.</string>
+    <string name="virtual_agent_capture">Capture the separate screen for the model.</string>
+    <string name="virtual_agent_action">Execute the requested action on the separate screen.</string>
+    <string name="virtual_agent_verified">Passed: the model verified the result and the actual counter matches.</string>
+    <string name="virtual_agent_failed">Not verified. Inspect the screen and report before explicitly retrying.</string>
+    <string name="virtual_agent_timeout">The three-minute trial limit was reached.</string>
+    <string name="virtual_agent_running">Agent running. Pause to take over; the main screen remains available.</string>
+    <string name="virtual_agent_pausing">Stopping the model and waiting for input to finish…</string>
+    <string name="virtual_agent_manual">You are in control. Continue only when ready; completed clicks will not be repeated.</string>
+    <string name="virtual_agent_closed">Stopped. The display was released; reconnection will not resume this task.</string>
+    <string name="virtual_agent_short_help">Uses your configured model to operate only the built-in test screen. Model charges may apply.</string>
+</resources>

@@ -2,7 +2,7 @@
     <string name="shell_title">Background screen</string>
     <string name="shell_experimental">Experimental · optional</string>
     <string name="shell_intro">Try operating an app on a separate screen while keeping your main screen available. Setup happens on this phone; no computer is needed.</string>
-    <string name="shell_consent">Shell assistance can create a separate display, open apps and send input on that display. Your choice stays enabled until you revoke it. Setup does not start a task. This experiment does not yet run Agent tasks in the background.</string>
+    <string name="shell_consent">Shell assistance can create a separate display, open apps and send input on that display. Your choice stays enabled until you revoke it. Setup does not start a task. A separate opt-in Agent trial can operate the built-in test screen only.</string>
     <string name="shell_agree">Agree and set up</string>
     <string name="shell_later">Not now</string>
     <string name="shell_developer_title">1 · Prepare your phone</string>

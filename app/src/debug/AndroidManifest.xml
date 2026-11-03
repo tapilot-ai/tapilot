@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <application android:name=".shell.ShellDebugApplication" tools:replace="android:name">
+        <activity android:name=".experiment.VirtualAgentTrialActivity" android:exported="false" />
         <activity android:name=".experiment.BackgroundDisplayTrialActivity" android:exported="false" />
         <activity android:name=".shell.ShellSetupActivity" android:exported="false" />
         <service android:name=".shell.ShellSetupService" android:exported="false" android:foregroundServiceType="specialUse">

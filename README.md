@@ -199,14 +199,14 @@ Debug builds offer **Settings → Developer experiments → Background screen (E
 It requires [explicit shell-helper authorization and connection](docs/experiments/shell-assisted-display.md),
 offers guided notification pairing, automatic local connection and optional restart recovery without a computer,
 is off by default, and checks isolated rendering, captured frames, targeted
-gestures and test-app launches. It does not run agent tasks in the background.
+gestures and test-app launches. A separate opt-in Agent trial can increment and verify the built-in test counter using the configured model; arbitrary background tasks are not supported.
 See the [experiment protocol and limits](docs/experiments/background-display.md).
 Beta and Release builds do not include the probe.
 
 ## Floating virtual-screen preview (Experimental)
 
 **Experimental · Debug only · off by default.** The probe offers a movable
-preview over other apps. Background Agent execution is not supported.
+preview over other apps. The bounded Agent trial supports pause, manual takeover and explicit continuation with a fresh screenshot; normal conversation tasks still use the primary screen.
 Tap and swipe requests target only the virtual display; Android may reject them.
 See [setup, permissions and limitations](docs/experiments/floating-virtual-display.md).
 

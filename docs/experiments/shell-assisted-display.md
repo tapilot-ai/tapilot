@@ -1,6 +1,6 @@
 # Shell-assisted background screen (Experimental)
 
-Debug builds only; off by default. This experiment checks a separate display and floating input. It does not yet execute Agent tasks in the background. Beta and Release builds contain neither this setup flow nor its recovery permissions.
+Debug builds only; off by default. This experiment checks a separate display and floating input. An additional opt-in Agent trial can operate the built-in test screen; arbitrary background tasks are not supported. Beta and Release builds contain neither this setup flow nor its recovery permissions.
 
 ## Set up on your phone
 
@@ -53,3 +53,13 @@ Durable user consent is separate from a five-minute, single-use bootstrap token.
 LibADB Android BC 3.5.1 and Bouncy Castle provide the ADB protocol and cryptography; their notices are packaged in the APK. Pairing has a 30-second socket deadline, startup has a 35-second deadline, and retry intervals grow to 60 seconds. All setup code and wording are independently written; no Mika source or copy is included.
 
 See [guided-flow verification](../../tests/verification/guided-shell-2026-11-03.md) and [the Chinese setup guide](shell-assisted-display.zh.md). Earlier [manual phone-pairing evidence](../../tests/verification/local-adb-2026-11-03.md) describes the preceding implementation, not validation of this guided flow.
+
+## Real Agent trial
+
+After connecting shell assistance and allowing the floating preview, select **Try an Agent on the separate screen**. This separate opt-in sends the built-in test-screen image and its counter goal to the model already configured in Tapilot. Model usage may incur charges; generated reports use the existing private report store. It does not change model settings or send a main-screen screenshot.
+
+The goal is one increment. The on-device Midscene runner uses `aiAct`, then `aiAssert`; success additionally requires the actual native counter to match. The device adapter is bound to one nonzero display and one run generation. Only taps and swipes are supported; text, launch and system-navigation actions fail explicitly without falling back to the main screen.
+
+Select **Pause and take over** before touching the preview. Tapilot invalidates the old run immediately and waits for runtime shutdown and any bounded in-flight gesture before enabling manual input. **Continue with a fresh observation** starts a new model observation with the same target count. If manual input already met the goal, the model must verify it without clicking again. Closing the window, destroying the trial activity, shell revocation, disconnect or the three-minute deadline for each model attempt stops the trial. Reconnection never recreates it. Rotation creates an idle page; it never replays a task.
+
+This is not general background Agent execution. It remains Debug-only pending the acceptance matrix in [the Agent trial verification record](../../tests/verification/virtual-agent-2026-11-03.md). OEM restrictions, screen-off behavior and arbitrary app compatibility remain outside the supported scope.

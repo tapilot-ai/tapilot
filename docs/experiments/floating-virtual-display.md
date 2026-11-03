@@ -2,7 +2,7 @@
 
 **Status: Experimental. Debug only, off by default. Not supported for production background automation.**
 
-The optional secondary-display probe can show its actual captured screen in a movable window over other apps. The window is not a mirrored primary screen and is not a background Agent implementation.
+The optional secondary-display probe can show its actual captured screen in a movable window over other apps. The window shows a separate display, not a mirrored primary screen. A separately confirmed [Agent trial](shell-assisted-display.md#real-agent-trial) can operate the built-in fixture with pause and takeover controls.
 
 1. Open **Settings → Developer experiments → Background screen (Experimental)** in a Debug build.
 2. [Authorize and connect the optional shell helper](shell-assisted-display.md), then select **Try the background screen**.
@@ -10,9 +10,9 @@ The optional secondary-display probe can show its actual captured screen in a mo
 4. Drag the small handle at the top of the borderless preview to move it. Press Home to use the primary screen outside the floating window.
 5. Tap or swipe inside the preview to request a gesture on the virtual display. Coordinates follow the preview's aspect ratio; letterbox touches, cancelled gestures, and multi-touch sequences are discarded. The window does not capture the keyboard or primary-screen focus.
 6. Inspect the reported gesture result and the actual fixture tap counter. Dispatch acceptance does not prove the target received input. A system cancellation appears as a brief message; detailed status remains on the experiment page; input never falls back to the primary display.
-7. Close the window with **×** to release the virtual display, capture buffers and device-control lease. Leaving the trial also removes the window. The overlay is not restored after restart.
+7. Close the window with **×** to release the virtual display, capture buffers and device-control lease. Destroying the trial activity also removes the window. The overlay is not restored after restart.
 
-The preview consumes actual ImageReader frames at up to 10 frames per second, including the last frame of a static scene. Only a single in-flight gesture is allowed. No screenshots are sent to a model or written to storage by this experiment. The observations below describe the earlier accessibility-only probe, before the optional shell helper was introduced: the existing OPPO Android 14 and Redmi Android 12 probes rejected secondary-display gestures and Calculator launch. A floating preview does not grant input-injection or cross-app launch privileges. An Android 15 Pixel 7 emulator recheck with a bound accessibility service also cancelled taps/swipes and denied Clock launch; rendering, dragging, primary input and cleanup passed. See the [verification record](../../tests/verification/floating-display-2026-11-03.md). Text entry, system navigation and arbitrary third-party app control on the virtual display are not implemented.
+The preview consumes actual ImageReader frames at up to 10 frames per second, including the last frame of a static scene. Only a single in-flight gesture is allowed. Manual preview sends no screenshots to a model and writes none to storage. The separate Agent trial sends fixture captures to the configured model and stores private reports. The observations below describe the earlier accessibility-only probe, before the optional shell helper was introduced: the existing OPPO Android 14 and Redmi Android 12 probes rejected secondary-display gestures and Calculator launch. A floating preview does not grant input-injection or cross-app launch privileges. An Android 15 Pixel 7 emulator recheck with a bound accessibility service also cancelled taps/swipes and denied Clock launch; rendering, dragging, primary input and cleanup passed. See the [verification record](../../tests/verification/floating-display-2026-11-03.md). Text entry, system navigation and arbitrary third-party app control on the virtual display are not implemented.
 
 See [the base experiment](background-display.md) for display isolation, launch checks and the adoption criteria.
 
@@ -20,7 +20,7 @@ See [the base experiment](background-display.md) for display isolation, launch c
 
 **实验性功能，仅 Debug 可用，默认关闭，不支持正式后台自动化。**
 
-此功能把虚拟屏的真实截图显示为可拖动的悬浮窗，不是主屏镜像，也尚未接入后台 Agent。
+此功能把虚拟屏的真实截图显示为可拖动的悬浮窗，不是主屏镜像。单独确认的 [Agent 试用](shell-assisted-display.zh.md#让-agent-完成测试页任务)支持操作内置测试页、暂停和接管。
 
 1. 在 Debug 设置中完成 Shell 辅助向导，再点击“试用后台屏幕”。
 2. 如系统要求，给测试应用开启“显示在其他应用上层”，返回试用页面后会自动显示悬浮屏。此权限仅在 Debug 中声明。

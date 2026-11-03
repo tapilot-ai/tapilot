@@ -42,7 +42,7 @@ internal class BackgroundDisplayProbe(private val host: Activity, private val ch
     val active get() = display != null
     var livePreview = false
     private var lastSnapshotAt = 0L
-    private var gesturePending = false
+    var gesturePending = false; private set
     private var snapshotRequested = true
 
     fun start() {
@@ -103,9 +103,11 @@ internal class BackgroundDisplayProbe(private val host: Activity, private val ch
             setBackgroundColor(Color.rgb(224, 245, 255))
         }
         layout.addView(TextView(panel.context).apply {
-            text = lifeos.md.tapilot.AppLanguage.wrap(host).getString(lifeos.md.tapilot.R.string.shell_fixture_title); textSize = 22f; gravity = Gravity.CENTER
+            text = lifeos.md.tapilot.AppLanguage.wrap(host).getString(lifeos.md.tapilot.R.string.shell_fixture_title); textSize = 22f; gravity = Gravity.CENTER; setTextColor(Color.BLACK)
         })
         target = Button(panel.context).apply {
+            setTextColor(Color.BLACK)
+            backgroundTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
             text = lifeos.md.tapilot.AppLanguage.wrap(host).getString(lifeos.md.tapilot.R.string.shell_fixture_count, 0)
             setOnClickListener { taps++; text = lifeos.md.tapilot.AppLanguage.wrap(host).getString(lifeos.md.tapilot.R.string.shell_fixture_count, taps); snapshotRequested = true; changed() }
         }
@@ -123,7 +125,8 @@ internal class BackgroundDisplayProbe(private val host: Activity, private val ch
         dispatchPath(path, 80)
     }
 
-    fun dispatchPath(path: Path, duration: Long) {
+    fun dispatchPath(path: Path, duration: Long, allowed: () -> Boolean = { true }, complete: (Result<Unit>) -> Unit = {}) {
+        check(allowed()) { "Input owner changed" }
         val id = checkNotNull(displayId) { "Start the experiment first" }
         check(id != Display.DEFAULT_DISPLAY)
         check(!gesturePending) { "Wait for the previous gesture result" }
@@ -143,14 +146,18 @@ internal class BackgroundDisplayProbe(private val host: Activity, private val ch
         gesturePending = true
         status = "Waiting for shell input result"; changed()
         inputWorker.execute {
-            val result = runCatching { check(helper.gesture(id, points, duration.coerceIn(1, 5000))) }
+            val result = runCatching {
+                check(allowed()) { "Input owner changed" }
+                check(helper.gesture(id, points, duration.coerceIn(1, 5000)))
+            }
             handler.post {
                 if (run == generation) {
                     gesturePending = false; snapshotRequested = true
                     status = if (result.isSuccess) "Shell input completed on display $id; fixture taps observed: $taps"
                         else "Secondary-display input failed; no primary-screen fallback"
                     changed()
-                }
+                    complete(result)
+                } else complete(Result.failure(IllegalStateException("Display was released")))
             }
         }
     }

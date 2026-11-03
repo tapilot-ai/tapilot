@@ -73,3 +73,7 @@ These controls cannot undo actions already performed or retract transmitted data
 Report implementation/privacy defects through repository issues without including
 personal data. For a credential leak or security vulnerability, follow
 [SECURITY.md](SECURITY.md); do not attach raw reports or pairing links publicly.
+
+## Experimental separate-screen Agent trial
+
+Debug builds can optionally send captures of the built-in separate test screen and its counter instruction to the model configured in Tapilot. This requires a separate Start action after shell consent. The run uses private report storage and the existing retention policy. Manual preview alone does not call a model. Pause stops new model input before handing control to the user; Stop, display closure and shell revocation terminate the trial. These actions cannot retract data already sent or undo completed input.

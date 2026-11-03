@@ -12,6 +12,7 @@ import android.provider.Settings
 import android.text.InputType
 import android.view.View
 import android.view.WindowInsets
+import android.view.WindowInsetsController
 import android.widget.*
 import lifeos.md.tapilot.AppTheme
 import lifeos.md.tapilot.AppLanguage
@@ -33,8 +34,10 @@ class ShellSetupActivity : Activity() {
         advanced = savedInstanceState?.getBoolean("advanced") ?: false
         manualDeveloper = savedInstanceState?.getBoolean("developer") ?: false
         content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(palette.background); setPadding(dp(24), dp(24), dp(24), dp(32)) }
-        scroll = ScrollView(this).apply { isFillViewport = true; addView(content) }
+        scroll = ScrollView(this).apply { isFillViewport = true; setBackgroundColor(palette.background); addView(content) }
         scroll.setOnApplyWindowInsetsListener { view, insets ->
+            val lightBars = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+            window.insetsController?.setSystemBarsAppearance(if (AppTheme.isDark(this)) 0 else lightBars, lightBars)
             val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
             view.setPadding(bars.left, bars.top, bars.right, bars.bottom); insets
         }
@@ -70,7 +73,7 @@ class ShellSetupActivity : Activity() {
         label(R.string.shell_title, true)
         if (!preferences.authorized) {
             label(R.string.shell_intro); label(R.string.shell_consent)
-            val recovery = CheckBox(this).apply { setText(R.string.shell_recovery); setTextColor(palette.text); minHeight = dp(48); content.addView(this) }
+            val recovery = CheckBox(this).apply { setText(R.string.shell_recovery); setTextColor(palette.text); buttonTintList = android.content.res.ColorStateList.valueOf(palette.text); minHeight = dp(48); content.addView(this) }
             label(R.string.shell_recovery_help)
             button(R.string.shell_agree) {
                 preferences.authorized = true; preferences.recovery = recovery.isChecked
@@ -84,6 +87,9 @@ class ShellSetupActivity : Activity() {
             label(R.string.shell_trial_help)
             button(R.string.shell_trial) {
                 startActivity(Intent(this, BackgroundDisplayTrialActivity::class.java))
+            }
+            button(R.string.virtual_agent_title) {
+                startActivity(Intent(this, lifeos.md.tapilot.experiment.VirtualAgentTrialActivity::class.java))
             }
             recoveryControl()
         } else {
@@ -114,7 +120,7 @@ class ShellSetupActivity : Activity() {
         button(R.string.shell_done) { finish() }
     }
     private fun recoveryControl() {
-        val check = CheckBox(this).apply { setText(R.string.shell_recovery); setTextColor(palette.text); isChecked = preferences.recovery; minHeight = dp(48) }
+        val check = CheckBox(this).apply { setText(R.string.shell_recovery); setTextColor(palette.text); buttonTintList = android.content.res.ColorStateList.valueOf(palette.text); isChecked = preferences.recovery; minHeight = dp(48) }
         content.addView(check)
         if (preferences.recovery) label(if (ShellRecovery.available(this)) R.string.shell_recovery_enabled else if (ShellSession.ready) R.string.shell_recovery_denied else R.string.shell_recovery_unavailable)
         check.setOnCheckedChangeListener { _, enabled ->
