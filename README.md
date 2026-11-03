@@ -159,13 +159,26 @@ for the native UI, and the [Model Context Protocol](https://github.com/modelcont
 for the computer plugin. See [CREDITS.md](CREDITS.md) for more upstream projects,
 license identifiers and redistribution work still required before release.
 
-## Optional background-display experiment
+## Optional virtual-display experiment
 
-Debug builds offer **Settings → Developer experiments → Secondary display probe**.
-It is off by default and checks isolated rendering, captured frames, targeted
-gestures and test-app launches. It does not run agent tasks in the background.
-See the [experiment protocol and limits](docs/experiments/background-display.md).
-Beta and Release builds do not include the probe.
+**This is a debug-only capability probe, not background task execution.** Normal
+Tapilot tasks still operate the visible primary screen.
+
+Open **Settings → Developer experiments → Secondary display probe**, then start
+it explicitly. The probe creates a private virtual display and checks rendering,
+capture, display-targeted gestures and a selected test app. It never retries a
+rejected secondary-display action on the primary screen. Stop, leaving the
+activity, or the two-minute timeout releases the experiment resources. Beta and
+Release builds do not include it.
+
+Tests on Redmi K30 Ultra (Android 12) and OPPO PEUM00 (Android 14) captured the
+fixture successfully, but secondary-display taps were cancelled and Calculator
+launches were denied. These results do **not** establish usable background
+automation or concurrent phone use. Allowing background activity for SIWC login
+is a separate setting; it does not enable virtual-display execution.
+
+See the [setup, verification steps and limitations](docs/experiments/virtual-display.en.md)
+and [device evidence](tests/verification/background-display-2026-11-03.md).
 
 ## License
 
