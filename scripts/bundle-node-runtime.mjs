@@ -173,6 +173,8 @@ run(
   stagingRoot,
 );
 patchMidsceneZod(stagingRoot);
+// The adapter can resolve a newer nested SDK than the runtime itself.
+patchMidsceneZod(path.join(stagingRoot, 'node_modules/@tapilot/android-accessibility'));
 await installReviewedSharp(path.join(stagingRoot, 'node_modules'));
 verifySharpRuntimeVersions();
 

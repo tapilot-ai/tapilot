@@ -118,5 +118,12 @@
     "path": "third-party/notices/npm/@earendil-works_pi-telemetry-1.4.0-LICENSE.txt",
     "url": "https://raw.githubusercontent.com/earendil-works/pi/4a080252f06caf63a525d7873c5d94d3c23887e0/LICENSE",
     "sha256": "0457f5bcec3b3b211605dfb5d1a49042fd638f3686a410fe099c24a25af13c48"
+  },
+  {
+    "name": "@midscene/shared",
+    "version": "1.17.4",
+    "path": "third-party/notices/npm/@midscene_shared-1.17.4-LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/web-infra-dev/midscene/1527e33dac3a289309c3cbc5a1e6745ee05bbf98/LICENSE",
+    "sha256": "9d26ef3ec511840e10eeaaf1e1b211e196c838823baf6bf9033761f27ab349ce"
   }
 ]
