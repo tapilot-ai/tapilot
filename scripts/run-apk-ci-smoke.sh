@@ -21,9 +21,7 @@ capture_evidence() {
   adb -s "$serial" exec-out screencap -p > build/apk-midscene/final.png
   # Export ONLY native HTML reports and their screenshot assets. Never archive
   # files/node-runs wholesale: project configuration can contain credentials.
-  adb -s "$serial" exec-out run-as lifeos.md.tapilot.e2everify sh -c \
-    'find files/node-runs -type d -path "*/midscene_run/report" -exec tar -cf - {} \;' \
-    > build/apk-midscene/native-reports.tar || true
+  node scripts/capture-apk-ci-reports.mjs || true
 }
 trap capture_evidence EXIT
 node scripts/setup-apk-ci-model.mjs
