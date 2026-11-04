@@ -22,7 +22,7 @@ jobs:
     name: Midscene Terra 6.1 live API
     # main pushes include merged PRs; manual runs can validate a trusted branch.
     # No secrets or paid inference for pull_request runs, including forks.
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && vars.TAPILOT_CI_AUTH_MODE != 'siwc' }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:

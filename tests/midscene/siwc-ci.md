@@ -28,7 +28,8 @@ Configure these repository secrets:
 
 Set repository variable `TAPILOT_CI_AUTH_MODE=siwc` only after both are configured.
 Leave it unset to keep API-key checks. Do not enable SIWC on untrusted PR runs.
-The separate plugin live API probe remains an API-key test.
+The separate plugin live API-key probe is skipped in SIWC mode; the APK lanes
+provide the live provider acceptance for that mode.
 
 The owner uses Midscene's exported `refreshSiwcCredentials`, preserving its
 OAuth response validation. It keeps a token with at least 30 minutes remaining,
