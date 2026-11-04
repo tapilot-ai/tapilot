@@ -33,6 +33,10 @@ The isolated Beta upgraded the existing verification installation without cleari
 
 Private local screenshots are retained under `artifacts/release-0.1.9-20261104/`, including `oppo-fresh-task-progress2.png`, `oppo-fresh-task-result.png`, `oppo-fresh-task-complete.png`, `redmi-settings-final.png` and `redmi-authorization-required.png`. Account/network settings screenshots are not release assets.
 
+## Final candidate takeover and failure handling
+
+After reinstalling the exact isolated candidate hash above, a new `8 + 6` task accepted takeover, stopped execution, and retained the floating Calculator. A manual tap on equals produced `14`. Explicit Continue preserved the screen and requested a fresh, read-only observation instead of repeating input. That observation encountered intermittent model TCP connection timeouts; the app reported the result as unverified, marked the task incomplete, and released the preview. Thus takeover, manual input, observe-before-resume and safe failure cleanup passed; successful post-takeover model verification is not claimed for this attempt. Screenshots: `oppo-takeover-paused.png`, `oppo-manual-result.png`, `oppo-takeover-resumed.png`, `oppo-resume-outcome.png`.
+
 ## Limits
 
 OPPO refuses the secure-settings grant needed for automatic Wireless debugging restoration. Manual restoration remains available; reconnecting never resumes interrupted tasks. Primary-screen Accessibility was disconnected after the isolated upgrade and is not claimed as verified by the background-screen test. Compatibility with arbitrary apps, protected screens and screen-off operation is not guaranteed. Earlier takeover, stop and density checks are recorded in [background chat acceptance](background-chat-2026-11-04.md).
