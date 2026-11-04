@@ -1,6 +1,6 @@
 # Shell-assisted background screen (Experimental)
 
-Debug builds only; off by default. Enabling **Use for chat tasks** routes normal conversation phone operations to an isolated display with a floating preview. Compatibility is app- and device-dependent. Beta and Release builds contain neither this setup flow nor its recovery permissions.
+Available starting with 0.1.9; experimental and off by default. Enabling **Use for chat tasks** routes normal conversation phone operations to an isolated display with a floating preview. Compatibility is app- and device-dependent. Signed, non-debuggable builds include the same consent and recovery controls.
 
 ## Set up on your phone
 
@@ -30,7 +30,7 @@ Your authorization and pairing identity remain until revoked or cleared. Closing
 
 The foreground service keeps a visible management notification and retries failed connections with bounded backoff. If Wireless debugging is still enabled, it attempts to reconnect using local discovery and the remembered port. An app process death terminates its helper through Binder death; a permitted service restart creates a fresh authenticated connection.
 
-With **Restore the connection automatically** enabled, the paired shell requests Android’s `WRITE_SECURE_SETTINGS` development permission for this Debug app. The setup page checks the actual grant; opting in alone does not mean recovery is available. Tapilot uses that permission only to request `adb_wifi_enabled=1`, while authorization, recovery consent, Wi-Fi and USB debugging are present. Boot and app-update broadcasts can restart the authorized service. Android still controls network trust prompts; a new network may require you to approve Wireless debugging in Settings. Manufacturer battery restrictions, force-stop and denied permissions can require reopening Tapilot or repairing settings manually. Opening the app restores an authorized service; it never opens a display.
+With **Restore the connection automatically** enabled, the paired shell requests Android’s `WRITE_SECURE_SETTINGS` development permission for Tapilot. The setup page checks the actual grant; opting in alone does not mean recovery is available. Tapilot uses that permission only to request `adb_wifi_enabled=1`, while authorization, recovery consent, Wi-Fi and USB debugging are present. Boot and app-update broadcasts can restart the authorized service. Android still controls network trust prompts; a new network may require you to approve Wireless debugging in Settings. Manufacturer battery restrictions, force-stop and denied permissions can require reopening Tapilot or repairing settings manually. Opening the app restores an authorized service; it never opens a display.
 
 Recovery does not change Wi-Fi networks, enable accessibility or continue an interrupted task. Turning recovery off stops system-setting restoration but allows reconnecting to already-enabled Wireless debugging. The platform permission may remain granted until removed by Android or uninstall; the app's persisted consent gate disables its use immediately.
 

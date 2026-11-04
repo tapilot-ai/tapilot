@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
@@ -12,6 +12,12 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Optional development permission granted by the paired shell after recovery consent. -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
@@ -23,7 +29,7 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
-        android:name=".TapilotApplication"
+        android:name=".shell.ShellApplication"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="false"
@@ -33,6 +39,22 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Tapilot"
         android:usesCleartextTraffic="true">
+        <activity android:name=".experiment.VirtualAgentTrialActivity" android:exported="false" />
+        <activity android:name=".experiment.BackgroundDisplayTrialActivity" android:exported="false" />
+        <activity android:name=".shell.ShellSetupActivity" android:exported="false" />
+        <service android:name=".shell.ShellSetupService" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User-authorized local ADB pairing and shell-assisted experimental display connection" />
+        </service>
+        <receiver android:name=".shell.ShellRestoreReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+        <provider android:name=".shell.ShellHandoffProvider"
+            android:authorities="${applicationId}.shell-handoff"
+            android:exported="true" android:permission="android.permission.DUMP" />
         <service android:name=".chatgpt.ChatGptLoginService" android:exported="false" android:foregroundServiceType="dataSync" />
         <activity
             android:name=".MainActivity"

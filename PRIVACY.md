@@ -76,6 +76,6 @@ personal data. For a credential leak or security vulnerability, follow
 
 ## Experimental background-screen tasks
 
-In Debug builds, enabling **Use for chat tasks** after shell authorization routes conversation phone operations to an isolated screen. Its app screenshots, requested instructions and results are sent to the model configured in Tapilot and retained in normal private task reports. The setting does not copy the primary screen into the background task. App content may contain personal data. Manual preview does not call a model. Optional compatibility trials remain under Advanced.
+Starting with 0.1.9, enabling **Use for chat tasks** after shell authorization routes conversation phone operations to an isolated screen. Its app screenshots, requested instructions and results are sent to the model configured in Tapilot and retained in normal private task reports. The setting does not copy the primary screen into the background task. App content may contain personal data. Manual preview does not call a model. Optional compatibility trials remain under Advanced.
 
 Take over stops model input before manual control; explicit continuation observes again. Closing the preview, disabling background tasks or revoking shell authorization stops execution and releases the display. Connection restoration never automatically resumes a task. Turning background tasks off preserves pairing and makes newly submitted tasks use the main screen. These controls cannot retract transmitted data or undo completed operations.

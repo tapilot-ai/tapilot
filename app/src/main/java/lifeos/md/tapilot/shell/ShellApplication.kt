@@ -5,13 +5,13 @@ import android.app.Application
 import android.os.Bundle
 import lifeos.md.tapilot.TapilotApplication
 
-/** Debug-only foreground recovery after Android stopped the service. Never starts a display. */
-class ShellDebugApplication : TapilotApplication() {
+/** Authorized foreground recovery after Android stopped the service. Never starts a display. */
+class ShellApplication : TapilotApplication() {
     override fun onCreate() {
         super.onCreate()
         registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
             override fun onActivityResumed(activity: Activity) {
-                if (ShellPreferences(this@ShellDebugApplication).authorized && ShellSetupService.instance == null) {
+                if (ShellPreferences(this@ShellApplication).authorized && ShellSetupService.instance == null) {
                     runCatching { ShellSetupService.start(activity) }
                 }
             }

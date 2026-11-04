@@ -109,8 +109,8 @@ android {
         // An older local build exercises the available-update UI against the real published feed.
         // This verification package is never distributed as a release.
         val updateVerification = providers.gradleProperty("updateVerification").isPresent
-        versionCode = if (updateVerification) 1 else 9
-        versionName = if (updateVerification) "0.1.0-update-test" else "0.1.8"
+        versionCode = if (updateVerification) 1 else 10
+        versionName = if (updateVerification) "0.1.0-update-test" else "0.1.9"
     }
 
     val releaseStore = providers.environmentVariable("TAPILOT_SIGNING_STORE")
@@ -164,8 +164,8 @@ android {
 }
 
 dependencies {
-    debugImplementation("com.github.osservatorionessuno:libadb-android-bc:3.5.1")
-    debugImplementation("org.bouncycastle:bcpkix-jdk15to18:1.84")
+    implementation("com.github.osservatorionessuno:libadb-android-bc:3.5.1")
+    implementation("org.bouncycastle:bcpkix-jdk15to18:1.84")
     implementation("androidx.activity:activity-ktx:1.9.3")
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation(platform("androidx.compose:compose-bom:2025.03.01"))

@@ -26,6 +26,16 @@ if(embedded.sourceFingerprint!==sourceFingerprint() || embedded.bundleSha256!==c
   throw new Error('APK embedded Node runtime is stale or corrupt');
 const badging=execFileSync(path.join(bin,'aapt'),['dump','badging',apk],{encoding:'utf8'});
 if(badging.includes('application-debuggable')) throw new Error('Public APK must not be debuggable');
+const manifestTree=execFileSync(path.join(bin,'aapt'),['dump','xmltree',apk,'AndroidManifest.xml'],{encoding:'utf8'});
+for (const component of ['ShellApplication', 'ShellSetupActivity', 'ShellSetupService', 'ShellHandoffProvider']) {
+  if (!manifestTree.includes(`lifeos.md.tapilot.shell.${component}`)) throw new Error(`Public APK missing background-screen component: ${component}`);
+}
+for (const component of ['PerformanceExperimentReceiver', 'BackgroundDisplayActivity']) {
+  if (manifestTree.includes(component)) throw new Error(`Public APK exposes a debug-only component: ${component}`);
+}
+const handoff=manifestTree.split(/\n\s*E: /).find(node=>node.includes('lifeos.md.tapilot.shell.ShellHandoffProvider'));
+if (!handoff?.includes('android.permission.DUMP')) throw new Error('Shell handoff must remain protected by DUMP');
+
 const version=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')).version;
 if(!badging.includes("name='lifeos.md.tapilot'") || !badging.includes(`versionName='${version}'`)) throw new Error('APK package/version mismatch');
 const signed=execFileSync(path.join(bin,'apksigner'),['verify','--print-certs',apk],{encoding:'utf8'});

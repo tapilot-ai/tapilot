@@ -4,7 +4,7 @@ import android.content.Context
 import android.os.Looper
 import android.os.Process
 
-/** Debug helper entry point. Started by an explicitly authorized ADB shell, never by the app UID. */
+/** Shell helper entry point. Started by an explicitly authorized ADB shell, never by the app UID. */
 object DisplayHelperMain {
     @JvmStatic fun main(args: Array<String>) {
         check(Process.myUid() == 2000) { "This helper requires shell UID 2000" }
