@@ -57,7 +57,7 @@ jobs:
           packages: platform-tools
       - name: Restore the versioned Android system image
         id: image
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: ${{ env.ANDROID_HOME }}/system-images/android-35/google_apis/x86_64
           key: ${{ env.TAPILOT_CI_ANDROID_IMAGE_KEY }}
@@ -72,7 +72,7 @@ jobs:
           grep -Fx 'SystemImage.TagId=google_apis' "$properties"
       - name: Save the image before admitting the test runners
         if: steps.image.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: ${{ env.ANDROID_HOME }}/system-images/android-35/google_apis/x86_64
           key: ${{ env.TAPILOT_CI_ANDROID_IMAGE_KEY }}
@@ -110,7 +110,7 @@ jobs:
           # Trusted manual runs can warm the branch cache before merging.
           cache-read-only: ${{ github.event_name == 'pull_request' }}
       - name: Cache verified native runtime downloads
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .cache/termux/debs
           key: ${{ runner.os }}-termux-${{ hashFiles('scripts/fetch-*.sh', 'scripts/termux-package-cache.sh') }}
@@ -171,7 +171,7 @@ jobs:
         with:
           packages: platform-tools
       - name: Restore the shared Android system image
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: ${{ env.ANDROID_HOME }}/system-images/android-35/google_apis/x86_64
           key: ${{ env.TAPILOT_CI_ANDROID_IMAGE_KEY }}
@@ -465,7 +465,7 @@ jobs:
           # Trusted manual runs can warm the branch cache before merging.
           cache-read-only: ${{ github.event_name == 'pull_request' }}
       - name: Cache verified native runtime downloads
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .cache/termux/debs
           key: ${{ runner.os }}-termux-${{ hashFiles('scripts/fetch-*.sh', 'scripts/termux-package-cache.sh') }}
