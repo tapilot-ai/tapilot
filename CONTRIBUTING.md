@@ -86,11 +86,11 @@ model-free. A local pass does not establish a Linux-hosted CI pass, a production
 signing check, or physical-device E2E acceptance.
 
 Pull requests run `.github/workflows/check.yml` with development signing only.
-The APK is built and verified but is not uploaded while third-party binary
-redistribution review remains incomplete. The manually dispatched
-`release-check.yml` uses the `release` environment; configure that environment's
-reviewers and secrets before enabling production builds. It verifies an APK and
-uploads verification/license evidence; it does not upload the APK or publish a release.
+PR checks build and verify a local APK without publishing it. The tag-triggered or
+manually dispatched `release-check.yml` uses the `release` environment; configure
+its reviewers and secrets before production builds. It validates source-review
+receipts and distribution readiness, then uploads the signed APK and evidence as
+an Actions artifact. It does not publish a public release; see [deployment](docs/deployment.md).
 
 Production builds require:
 

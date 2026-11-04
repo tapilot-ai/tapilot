@@ -58,6 +58,8 @@ jobs:
           node plugins/tapilot/scripts/patch-midscene-zod.mjs tests/midscene
       - run: pnpm check:security
       - run: pnpm check
+      - name: Verify pinned source review receipts
+        run: pnpm release:review
       - name: Check distribution readiness before accessing signing key
         run: pnpm check:distribution
       - name: Build and verify signed release

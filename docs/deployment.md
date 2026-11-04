@@ -56,16 +56,18 @@ the failed run will not be present.
 
 ## Current delivery prerequisites
 
-Third-party redistribution review is incomplete; see the
-[distribution materials guide](../third-party/README.md). After the full checks,
-the workflow runs `pnpm check:distribution`. It is currently expected to fail
-there and retain `distribution-readiness.json`, preventing signed artifact delivery.
+The workflow runs `pnpm release:review` after the full checks. This validates the
+retained review receipt against the exact source lock and rebuilt Sharp manifest,
+then `pnpm check:distribution` checks the generated dependency inventories before
+accessing the signing key. Missing notices, changed source locks or mismatched
+rebuilt binaries still fail closed; see the [materials guide](../third-party/README.md).
 
-`pnpm release:materials` collects evidence but still writes
-`redistributionApproved: false`. Once the review is complete, reviewed materials
-and approval evidence must be made available to a clean CI runner before rerunning
-the workflow. Do not set this value to `true` merely to pass CI. The final
-`pnpm build:release` also checks the inventories inside the actual APK.
+`pnpm release:materials` only collects evidence and writes an unapproved status.
+Run `pnpm release:review` afterwards to validate the existing review bindings;
+do not manually edit generated approval fields. A dependency or source change
+outside those bindings needs new evidence. Final `pnpm build:release` also checks
+the inventories embedded in the actual APK. Signing configuration and physical
+device acceptance remain separate requirements.
 
 This workflow delivers to GitHub Actions artifacts. It does not create a GitHub
 Release, update Feishu files, or submit to an app store. Public publication requires
