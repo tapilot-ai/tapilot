@@ -62,7 +62,7 @@ Tasks stopped by opening the floating conversation panel also show the handoff c
 ## Try it
 
 Requires an **arm64 Android 11+** phone and a supported vision model. Download the [Beta APK](https://www.feishu.cn/file/Ig0KbUKlJoADozxRbOocm5iqnXf)
-or use the [GitHub release fallback](https://github.com/tapilot-ai/tapilot/releases/latest).
+or use the [GitHub release fallback](https://github.com/tapilot-ai/tapilot/releases).
 
 1. Install the APK, open Tapilot and enable **Tapilot device control** in Android
    Accessibility settings.
