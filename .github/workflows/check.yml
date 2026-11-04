@@ -158,12 +158,32 @@ jobs:
     # build/image are ready so queued builds do not consume the access lifetime.
     needs: [apk-build, android-image]
     if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && vars.TAPILOT_CI_AUTH_MODE == 'siwc' }}
-    uses: ./.github/workflows/siwc-credentials.yml
-    with:
-      force-refresh: ${{ github.event_name == 'workflow_dispatch' && inputs.siwc_refresh }}
-    secrets:
-      SIWC_SECRET_WRITE_TOKEN: ${{ secrets.SIWC_SECRET_WRITE_TOKEN }}
-      SIWC_TRANSPORT_KEY: ${{ secrets.SIWC_TRANSPORT_KEY }}
+    environment: tapilot-siwc
+    concurrency:
+      group: tapilot-siwc-refresh-owner
+      cancel-in-progress: false
+      queue: max
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      ticket: ${{ steps.access.outputs.ticket }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: tests/midscene/package-lock.json
+      - run: npm ci --prefix tests/midscene
+      - name: Refresh if needed, persist, then issue access-only lease
+        id: access
+        env:
+          TAPILOT_SIWC_ENVIRONMENT: tapilot-siwc
+          TAPILOT_SIWC_FORCE_REFRESH: ${{ github.event_name == 'workflow_dispatch' && inputs.siwc_refresh }}
+          SIWC_CREDENTIALS: ${{ secrets.SIWC_CREDENTIALS }}
+          GH_TOKEN: ${{ secrets.SIWC_SECRET_WRITE_TOKEN }}
+          SIWC_TRANSPORT_KEY: ${{ secrets.SIWC_TRANSPORT_KEY }}
+        run: node scripts/ci-siwc/prepare.mjs
 
   apk-midscene:
     name: APK core flows (${{ matrix.lane }}/4)

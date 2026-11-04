@@ -101,7 +101,7 @@ To lint all other syntax without removing the required queue behavior:
 
 ```sh
 actionlint -ignore 'unexpected key "queue" for "concurrency" section' \
-  .github/workflows/check.yml .github/workflows/siwc-credentials.yml
+  .github/workflows/check.yml
 ```
 
 References: [GitHub secret read timing](https://docs.github.com/en/actions/reference/security/secrets#when-github-actions-reads-secrets),

@@ -135,7 +135,7 @@ test('four real child processes have isolated homes, no refresh/write secrets an
 });
 
 test('the owner alone uses fresh environment credentials and an extended exclusive queue', () => {
-  const workflow = readFileSync('.github/workflows/siwc-credentials.yml', 'utf8');
+  const workflow = readFileSync('.github/workflows/check.yml', 'utf8').split('  siwc-credentials:')[1].split('  apk-midscene:')[0];
   assert.match(workflow, /environment: tapilot-siwc/);
   assert.match(workflow, /cancel-in-progress: false\s+queue: max/);
   const consumers = readFileSync('.github/workflows/check.yml', 'utf8').split('  apk-midscene:')[1].split('  apk-report:')[0];
