@@ -34,6 +34,8 @@ Closing the final candidate preview during a 125 × 8 task stopped the task and 
 
 During an explicit retry, the model hit network-request failures and had reached an observation operation; this is not a successful calculation. Terminating only the isolated package's shell helper then stopped the still-active task, removed the preview and left the primary screen in chat. Automatic helper reconnection succeeded, but the task did not resume; owned displays and Node workers remained zero. Evidence: `chat-disconnect-preview.png`, `chat-disconnect-result.png`.
 
+The settings switch changed to Off while preserving the connected helper and pairing. The next explicitly submitted primary-screen Calculator task opened full-screen Calculator with zero owned background displays. Repeated model HTTP errors prevented full calculation acceptance; the host stopped that test. Only route selection is counted as passed. Evidence: `chat-bg-final-on.png`, `chat-bg-final-off.png`, `chat-off-return.png`, `chat-primary-running.png`; filtered performance events recorded the network errors without credentials.
+
 ## Automated validation
 
 - `pnpm check`: passed plugin, E2E definitions, adapter, Node, scripts, Kotlin, Android lint, Beta build and APK verification. Run before the final two Debug-only input/geometry corrections.
