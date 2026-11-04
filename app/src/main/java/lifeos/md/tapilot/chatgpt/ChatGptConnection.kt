@@ -27,6 +27,7 @@ class ChatGptConnection(private val context: Context, private val changed: () ->
     var status by mutableStateOf(""); private set
     val ready: Boolean get() = accounts.any { it.id == activeId && it.signedIn } && model.isNotBlank()
     private fun refreshState() { accounts = store.accounts(); activeId = store.activeId(); model = store.selectedModel(); changed() }
+    internal fun reloadCiAccessLease() { refreshState() }
     private fun run(action: () -> String) {
         if (busy || closed) return
         busy = true; status = ""

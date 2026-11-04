@@ -28,7 +28,7 @@ test('native merge retains all cases and failed verdicts and refuses mixed APK e
       prepareShard(plan, lane.id, { apk, root: directory, sourceSha: identity.sourceSha, runId: identity.runId,
         evidenceDirectory: join(directory, 'midscene_run/ci') });
       writeFileSync(join(directory, 'config.mjs'), `import {defineNode,z} from ${JSON.stringify(sdk)};
-export default {projects:[{name:'android-${lane.id}',files:{include:['.ci-cases/lane-${lane.id}/*.yaml']},retry:0}],nodes:[defineNode({name:'probe',inputSchema:z.strictObject({fail:z.boolean()}),execute({input}){if(input.fail)throw new Error('deliberate fixture failure');return {summary:'fixture evidence'};}})]};`);
+export default {output:{reportFormat:'html-and-external-assets'},projects:[{name:'android-${lane.id}',files:{include:['.ci-cases/lane-${lane.id}/*.yaml']},retry:0}],nodes:[defineNode({name:'probe',inputSchema:z.strictObject({fail:z.boolean()}),execute({input}){if(input.fail)throw new Error('deliberate fixture failure');return {summary:'fixture evidence'};}})]};`);
       await runTestProject({ cwd: directory, projectRoot: directory, configPath: join(directory, 'config.mjs') });
     }
     const runMerge = () => spawnSync(process.execPath, [merger], { cwd: root, encoding: 'utf8', env: {
@@ -37,7 +37,7 @@ export default {projects:[{name:'android-${lane.id}',files:{include:['.ci-cases/
     const result = runMerge();
     assert.equal(result.status, 1, result.stderr);
     assert.match(result.stdout, /9\/11 passed/);
-    const html = readFileSync(join(root, 'midscene_run/report/midscene-e2e-complete.html'), 'utf8');
+    const html = readFileSync(join(root, 'midscene_run/report/midscene-e2e-complete/index.html'), 'utf8');
     const match = html.match(/<script[^>]*type="midscene_test_run_dump"[^>]*>([\s\S]*?)<\/script>/);
     assert.ok(match, 'Must use the native Midscene test report');
     const dump = JSON.parse(match[1]);

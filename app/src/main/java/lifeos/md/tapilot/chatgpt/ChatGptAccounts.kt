@@ -14,6 +14,8 @@ import java.util.concurrent.TimeUnit
 
 /** Renewable credentials stay in Keystore-encrypted storage, separate from model API keys. */
 class ChatGptAccounts private constructor(context: Context) {
+    private val ciVerification = context.packageName == "lifeos.md.tapilot.e2everify" &&
+        context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0
     companion object {
         @Volatile private var instance: ChatGptAccounts? = null
         fun get(context: Context): ChatGptAccounts = instance ?: synchronized(this) {
@@ -40,6 +42,19 @@ class ChatGptAccounts private constructor(context: Context) {
     fun ready(id: String = activeId()): Boolean = accounts().any { it.id == id && it.signedIn }
     fun select(id: String) = change { require(it.getJSONObject("accounts").has(id)); it.put("active", id) }
     private fun record(id: String): JSONObject = state { JSONObject(it.getJSONObject("accounts").getJSONObject(id).toString()) }
+
+    /** Debug CI imports only a short access lease; this account can never rotate credentials. */
+    internal fun installCiAccessLease(access: String, expiresAt: Long) {
+        check(ciVerification)
+        require(access.isNotBlank() && expiresAt - System.currentTimeMillis() >= TimeUnit.MINUTES.toMillis(20))
+        val id = "ci-access-only"
+        change { value ->
+            value.getJSONObject("accounts").put(id, JSONObject().put("access_token", access)
+                .put("expires_at", expiresAt).put("ci_access_only", true)
+                .put("email", "CI access lease").put("model", "gpt-6.1-terra"))
+            value.put("active", id)
+        }
+    }
 
     inner class Login internal constructor(private val pending: ChatGptPendingLogin, private val listener: ChatGptCallback, private val previous: JSONObject?) : AutoCloseable {
         val attempt get() = pending.attempt
@@ -115,6 +130,7 @@ class ChatGptAccounts private constructor(context: Context) {
         val saved = record(id)
         check(saved.optString("access_token").isNotBlank()) { appText("请先登录 ChatGPT", "Sign in to ChatGPT first") }
         if (!forceRefresh && saved.optLong("expires_at") > System.currentTimeMillis() + 60_000) return@synchronized saved.getString("access_token")
+        check(!saved.optBoolean("ci_access_only")) { "CI SIWC lease expired or rejected; shards cannot refresh credentials" }
         val tokens = post("${ChatGptOAuth.ISSUER}/api/accounts/oauth/token", mapOf("grant_type" to "refresh_token", "client_id" to id,
             "refresh_token" to saved.getString("refresh_token"), "resource" to ChatGptOAuth.RESOURCE))
         if (tokens.optString("id_token").isNotBlank()) {

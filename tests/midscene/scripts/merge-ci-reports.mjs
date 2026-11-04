@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { globSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { globSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 import { caseId, planDigest } from './ci-shards.ts';
 import { ReportMergingTool } from '@midscene/core/report';
@@ -44,8 +44,16 @@ for (const plannedLane of plan.lanes) {
   cases.push(...summary.projects[0].cases);
   failed ||= summary.exitCode !== 0 || summary.status !== 'success';
 }
-const report = merger.mergeReports('midscene-e2e-complete', { outputDir: 'midscene_run/report' });
+let report = merger.mergeReports('midscene-e2e-complete', { outputDir: 'midscene_run/report' });
 assert.ok(report, 'Native report was not generated');
+// Newer SDKs can emit a single HTML when no lane captured screenshots. Publish
+// those exact SDK bytes at the same Pages entry, without generating a wrapper.
+if (basename(report) !== 'index.html') {
+  const entry = resolve('midscene_run/report/midscene-e2e-complete/index.html');
+  mkdirSync(dirname(entry), { recursive: true });
+  renameSync(report, entry);
+  report = entry;
+}
 const expected = plan.cases.map(item => item.id);
 assert.deepEqual(cases.map(caseId).sort(), expected.sort(), 'Every planned case must run exactly once');
 assert.ok(cases.every(item => item.attempts.length === 1), 'Retries or missing attempts are not accepted');

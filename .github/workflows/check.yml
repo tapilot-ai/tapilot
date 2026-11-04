@@ -149,9 +149,21 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  siwc-credentials:
+    # Opt in after provisioning the dedicated owner environment. Mint after the
+    # build/image are ready so queued builds do not consume the access lifetime.
+    needs: [apk-build, android-image]
+    if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && vars.TAPILOT_CI_AUTH_MODE == 'siwc' }}
+    uses: ./.github/workflows/siwc-credentials.yml
+    secrets:
+      SIWC_SECRET_WRITE_TOKEN: ${{ secrets.SIWC_SECRET_WRITE_TOKEN }}
+      SIWC_TRANSPORT_KEY: ${{ secrets.SIWC_TRANSPORT_KEY }}
+
   apk-midscene:
     name: APK core flows (${{ matrix.lane }}/4)
-    needs: [apk-build, android-image]
+    needs: [apk-build, android-image, siwc-credentials]
+    # A skipped optional owner must not skip the existing API-key lanes.
+    if: ${{ !cancelled() && needs.apk-build.result == 'success' && needs.android-image.result == 'success' && (needs.siwc-credentials.result == 'success' || needs.siwc-credentials.result == 'skipped') }}
     strategy:
       fail-fast: false
       matrix:
@@ -199,8 +211,16 @@ jobs:
         id: apk-test
         # Shards only produce evidence. The final job owns the native action,
         # Summary and published entry so this workflow has one report entrance.
-        run: bash scripts/run-apk-ci-emulator.sh
+        run: |
+          if [ "$TAPILOT_CI_AUTH_MODE" = siwc ]; then
+            node scripts/ci-siwc/run.mjs bash scripts/run-apk-ci-emulator.sh
+          else
+            bash scripts/run-apk-ci-emulator.sh
+          fi
         env:
+          TAPILOT_CI_AUTH_MODE: ${{ vars.TAPILOT_CI_AUTH_MODE }}
+          SIWC_TICKET: ${{ needs.siwc-credentials.outputs.ticket }}
+          SIWC_TRANSPORT_KEY: ${{ secrets.SIWC_TRANSPORT_KEY }}
           MIDSCENE_MODEL_API_KEY: ${{ secrets.TAPILOT_OPENAI_API_KEY }}
           MIDSCENE_MODEL_BASE_URL: https://api.openai.com/v1
           MIDSCENE_MODEL_NAME: gpt-6.1-terra

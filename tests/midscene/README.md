@@ -3,7 +3,7 @@
 Android product-flow tests using the same standalone package, YAML case discovery,
 tag selection and native reports as [Rome PR #974](https://github.com/rome-os/rome/pull/974),
 reviewed at `d1b3183a0bbb92c1335d7bd3749d1aa4f2b299a1`.
-The suite uses `@midscene/test` and `@midscene/android` 1.15.3. YAML in `cases/`
+The suite uses `@midscene/test` and `@midscene/android` 1.17.4. YAML in `cases/`
 is the single source of truth. UI actions and visible checks use `aiAct`, split
 at product-stage boundaries.
 
@@ -63,6 +63,8 @@ the selected local file take precedence over inherited model variables; set
 `.env`, reports and dependencies are gitignored.
 
 ## GitHub Actions device runs
+
+For hosted APK shards, see [SIWC credential ownership and fan-out](siwc-ci.md).
 
 The `Checks` workflow exposes a manual `device_e2e` boolean. Its `Midscene Android
 E2E` job uses [`web-infra-dev/midscene-action`](https://github.com/web-infra-dev/midscene-action)

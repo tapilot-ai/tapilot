@@ -89,7 +89,9 @@ if (ciLane && (!/^[1-4]$/.test(ciLane) || process.env.CI !== 'true' || packageNa
 }
 
 export default defineTestProject<Context>({
-  test: { maxConcurrency: 1, testTimeout: (ciLane ? 6 : 30) * 60_000 },
+  // Keep the hosted Pages entry and screenshot assets stable across SDK upgrades.
+  output: { reportFormat: 'html-and-external-assets' },
+  test: { maxConcurrentFiles: 1, maxConcurrentProjects: 1, testTimeout: (ciLane ? 6 : 30) * 60_000 },
   projects: [{
     name: ciLane ? `android-${ciLane}` : 'android', setup, retry: 0,
     files: { include: ciLane ? [`.ci-cases/lane-${ciLane}/*.yaml`] : ['cases/**/*.yaml'] },
