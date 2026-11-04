@@ -5,7 +5,7 @@
   "dependencies": {
     "@img/sharp-wasm32": "0.35.5",
     "@midscene/core": "1.15.2",
-    "@midscene/shared": "1.15.2",
+    "@midscene/shared": "1.17.4",
     "@midscene/test": "1.15.2",
     "@tapilot/android-accessibility": "file:../../packages/android-accessibility",
     "esbuild": "0.28.2",

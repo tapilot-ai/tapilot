@@ -202,8 +202,8 @@ importers:
         specifier: 1.15.2
         version: 1.15.2(patch_hash=c5ff38cce759a41df5d7305ba11a23183380d6dcd9a14d3bcc72c5d4121e7374)(@types/node@26.6.5)(supports-color@7.2.0)(ws@8.22.0)
       '@midscene/shared':
-        specifier: 1.15.2
-        version: 1.15.2(@types/node@26.6.5)(supports-color@7.2.0)
+        specifier: 1.17.4
+        version: 1.17.4(@types/node@26.6.5)(supports-color@7.2.0)
       '@midscene/test':
         specifier: 1.15.2
         version: 1.15.2(patch_hash=30747cfc034769f94e3d277f7e2bfb928557ca22a849b71c4e7b0d88c77b89a3)(@types/node@26.6.5)(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)(ws@8.22.0)
