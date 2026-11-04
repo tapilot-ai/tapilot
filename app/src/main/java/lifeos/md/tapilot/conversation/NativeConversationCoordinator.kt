@@ -92,7 +92,7 @@ class NativeConversationCoordinator(
         if (visible == chatVisible) return
         chatVisible = visible
         if (running && !cancellation.get()) {
-            if (visible && phoneInteractionStarted) inputControl.pause()
+            if (visible && phoneInteractionStarted && !inputControl.background) inputControl.pause()
             else if (!visible) inputControl.resume()
             publish()
         }
@@ -185,7 +185,7 @@ class NativeConversationCoordinator(
         runCatching {
             val action = value.getString("action")
             when (action) {
-                "inputFocus" -> if (running && !cancellation.get()) inputControl.pause()
+                "inputFocus" -> if (running && !cancellation.get() && !inputControl.background) inputControl.pause()
                 "send" -> {
                     val preservedDraft = if (value.optBoolean("preserveDraft")) data.optString("draft") else null
                     submit(value.optString("text", data.optString("draft")))
@@ -419,6 +419,8 @@ class NativeConversationCoordinator(
         }.onFailure { fail(it); return }
         error = ""; preview = null; settingsOpen = false; advancedOpen = false
         val id = UUID.randomUUID().toString()
+        inputControl.beginTask(runSession, continueOf != null || retryOf != null)
+        val backgroundScreen = inputControl.background
         val stopped = execution.begin(id, runSession)
         phoneInteractionStarted = kind == "yaml"
         val startedAt = System.currentTimeMillis()
@@ -463,7 +465,7 @@ class NativeConversationCoordinator(
                             val title = when (event.stage) {
                                 TaskStage.UNDERSTANDING -> local("正在理解任务", "Understanding task")
                                 TaskStage.PREPARING_PHONE -> local("准备操作手机", "Preparing phone operation")
-                                TaskStage.OPERATING_PHONE -> local("正在操作手机", "Operating phone")
+                                TaskStage.OPERATING_PHONE -> if (backgroundScreen) local("正在操作后台屏幕", "Operating background screen") else local("正在操作手机", "Operating phone")
                                 TaskStage.PREPARING_REPLY -> local("正在整理结果", "Preparing reply")
                             }
                             progress = progress?.let { it.copy(title = title, detail = event.detail, operation = "",
@@ -487,7 +489,7 @@ class NativeConversationCoordinator(
             )
             val result = runner.run(ConversationTaskInput(source, text.trim(), kind, taskHistory, continueOf != null,
                 entry.getString("goal"), limits, AppLanguage.resolved(activity), file, global, handoff != null,
-                handoff?.phoneStarted ?: false, environment)) { stopped.get() || closed }
+                handoff?.phoneStarted ?: false, environment, backgroundScreen)) { stopped.get() || closed }
             val (outcome, finalPhase, phoneStarted, reports, completedOperations) = result
             // A stop can arrive while completion is waiting for the main thread. If it
             // does, wait for that cancellation barrier before publishing the final state.
@@ -527,6 +529,9 @@ class NativeConversationCoordinator(
                     }
                     val feedback = find(id)?.let { TaskFeedback.response(it, chinese) } ?: message
                     val nextHandoff = TaskHandoff(progress?.startedAt ?: startedAt, phoneStarted)
+                    if (stopAcknowledged) inputControl.endTask(runSession,
+                        find(id)?.optString("stopReason") == "user_handoff" || finalPhase == "waiting_user")
+                    else inputControl.closeScreen()
                     execution.finish(runSession); progress = null; confirmation = null; confirmationText = null
                     if (stopAcknowledged) inputControl.resume()
                     ActiveTaskStopRegistry.unregister(stopRegistration); stopRegistration = null
@@ -552,7 +557,7 @@ class NativeConversationCoordinator(
                     if (!running) {
                         services.call("task.status", JSONObject().put("status", status).put("detail", message), runSession) {}
                         if (global) services.call("app.showGlobalResult", JSONObject().put("message", feedback), runSession) {}
-                        else if (phoneStarted && !stopped.get() && !backgroundReplies) services.call("app.bringToFront", sessionId = runSession) {}
+                        else if (phoneStarted && !stopped.get() && !backgroundReplies && !backgroundScreen) services.call("app.bringToFront", sessionId = runSession) {}
                         publish()
                     }
                     settled = true
@@ -681,5 +686,5 @@ class NativeConversationCoordinator(
         services.call("app.pruneAttachments", JSONObject().put("ids", JSONArray())) {}
     }
     fun executeYaml(source: String) { advancedOpen = false; start(source, file = null, kind = "yaml") }
-    override fun close() { stop(reason = "app"); ActiveTaskStopRegistry.unregister(stopRegistration); stopRegistration = null; if (ready) persistence.saveDraft(data.optString("draft")); chatGpt.close(); pi.close(); closed = true; worker.shutdownNow(); persistence.close(); handler.removeCallbacksAndMessages(null) }
+    override fun close() { stop(reason = "app"); inputControl.closeScreen(); ActiveTaskStopRegistry.unregister(stopRegistration); stopRegistration = null; if (ready) persistence.saveDraft(data.optString("draft")); chatGpt.close(); pi.close(); closed = true; worker.shutdownNow(); persistence.close(); handler.removeCallbacksAndMessages(null) }
 }

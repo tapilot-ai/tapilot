@@ -263,7 +263,7 @@ class AppServices(
             }
             "app.goHome" -> {
                 respondSuccess(requestId, JSONObject.NULL)
-                navigateAfter(GO_HOME_RESPONSE_DELAY_MILLIS) {
+                if ((device as? lifeos.md.tapilot.conversation.ConversationDeviceControl)?.background != true) navigateAfter(GO_HOME_RESPONSE_DELAY_MILLIS) {
                     open(
                         Intent(Intent.ACTION_MAIN)
                             .addCategory(Intent.CATEGORY_HOME)
@@ -273,7 +273,7 @@ class AppServices(
             }
             "app.returnToPreviousApp" -> {
                 respondSuccess(requestId, JSONObject.NULL)
-                navigateAfter(GO_HOME_RESPONSE_DELAY_MILLIS) { host.get()?.moveTaskToBack(true) }
+                if ((device as? lifeos.md.tapilot.conversation.ConversationDeviceControl)?.background != true) navigateAfter(GO_HOME_RESPONSE_DELAY_MILLIS) { host.get()?.moveTaskToBack(true) }
             }
             "app.showGlobalResult" -> {
                 service?.showGlobalResult(params.getString("message"))

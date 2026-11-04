@@ -6,6 +6,10 @@ import java.util.concurrent.CompletableFuture
 
 /** Main-thread device boundary: returning to chat gives the user control until send or leave. */
 class ConversationDeviceControl(private val device: DeviceService) : DeviceService {
+    val background get() = (device as? ConversationScreenDevice)?.background == true
+    fun beginTask(id: String, continuing: Boolean) { (device as? ConversationScreenDevice)?.beginTask(id, continuing) }
+    fun endTask(id: String, retainForTakeover: Boolean) { (device as? ConversationScreenDevice)?.endTask(id, retainForTakeover) }
+    fun closeScreen() { (device as? ConversationScreenDevice)?.closeScreen() }
     private var epoch = 0
     private val sessionEpochs = mutableMapOf<String, Int>()
     @Volatile var ready: CompletableFuture<Unit> = CompletableFuture.completedFuture(Unit)

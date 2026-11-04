@@ -19,6 +19,7 @@ internal data class ConversationTaskInput(
     val handoff: Boolean,
     val phoneStarted: Boolean,
     val environment: JSONObject,
+    val backgroundScreen: Boolean = false,
 )
 
 internal enum class TaskStage { UNDERSTANDING, PREPARING_PHONE, OPERATING_PHONE, PREPARING_REPLY }
@@ -68,7 +69,7 @@ internal class ConversationTaskRunner(
                 emit(TaskRunEvent.Attachment(reference))
             }
             if (input.kind == "yaml") {
-                services.navigate(TaskNavigation.HOME)
+                if (!input.backgroundScreen) services.navigate(TaskNavigation.HOME)
                 services.status(TaskExecutionStatus.RUNNING)
                 val run = services.run(input.source, JSONObject(input.environment.toString()))
                 rememberReports(run)
@@ -86,7 +87,9 @@ internal class ConversationTaskRunner(
                     ?.let { "\n\nAttachment content:\n${it.take(30_000)}" }.orEmpty() +
                     if (saved?.optString("name")?.let { it.contains("屏幕") || it == "Current screen" } == true)
                         "\nThe attached image was saved before this message and is reference material only. This notice does not apply to fresh screenshots subsequently captured by operate_phone. Inspect current state through the tool." else ""
-                val messages = NativeConversationAgent.messages(input.history.prior, modelSource, input.language == "zh", attachments,
+                val screenHint = if (input.backgroundScreen)
+                    "\nPhone operations use an isolated background screen, not the primary screen. Use find_apps and an exact app target before the first operation. Observe the background screen after explicit continuation; never assume the primary screen is visible. Screen isolation is enforced by the host; do not require an app to display a background-screen badge as a success condition. Unsupported background operations must be reported, never switched to the primary screen." else ""
+                val messages = NativeConversationAgent.messages(input.history.prior, modelSource + screenHint, input.language == "zh", attachments,
                     saved?.optJSONArray("images")?.strings().orEmpty())
                 var prepared = false
                 val reply = agent.run(AgentInput(messages,
@@ -106,11 +109,11 @@ internal class ConversationTaskRunner(
                         checkActive()
                         val capabilities = services.capabilities()
                         check(capabilities.optBoolean("canCapture") && capabilities.optBoolean("canPerformGestures")) {
-                            appText("请在无障碍设置中开启设备控制", "Enable device control in Accessibility settings")
+                            if (capabilities.optBoolean("backgroundScreen")) appText("请到后台屏幕设置恢复 Shell 连接和悬浮窗权限", "Restore the shell connection and overlay permission in Background screen settings") else appText("请在无障碍设置中开启设备控制", "Enable device control in Accessibility settings")
                         }
                         val component = PhoneOperationRoute.resolveApp(capabilities.optJSONArray("apps") ?: JSONArray(), operation.app)
                         if (!phoneStarted) {
-                            if (component.isBlank()) services.navigate(if (input.global || operation.mode == PhoneMode.OBSERVE) TaskNavigation.PREVIOUS_APP else TaskNavigation.HOME)
+                            if (component.isBlank() && !capabilities.optBoolean("backgroundScreen")) services.navigate(if (input.global || operation.mode == PhoneMode.OBSERVE) TaskNavigation.PREVIOUS_APP else TaskNavigation.HOME)
                             phoneStarted = true
                         }
                         emit(TaskRunEvent.Progress(TaskStage.OPERATING_PHONE, revised))
@@ -120,7 +123,7 @@ internal class ConversationTaskRunner(
                         }
                         checkActive()
                         val run = services.run(NativeConversationAgent.verifiedTask(revised, operation.successCondition,
-                            operation.mode.wireValue, component, operation.effort.wireValue), environment)
+                            operation.mode.wireValue, component, operation.effort.wireValue, input.backgroundScreen), environment)
                         rememberReports(run, revised)
                         checkActive()
                         PhoneResult.fromRun(run).also { result ->

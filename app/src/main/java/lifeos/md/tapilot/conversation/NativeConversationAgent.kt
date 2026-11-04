@@ -56,9 +56,10 @@ object NativeConversationAgent {
         }
         return list.put(user(source, images))
     }
-    fun verifiedTask(instruction: String, condition: String, mode: String = "act", component: String = "", effort: String = "fast"): String {
+    fun verifiedTask(instruction: String, condition: String, mode: String = "act", component: String = "", effort: String = "fast", backgroundScreen: Boolean = false): String {
         require(effort in setOf("fast", "balance", "deepThink")) { "Unsupported planning effort" }
         require(mode == "act" || mode == "observe") { "Unsupported phone operation mode" }
+        val screenContext = if (backgroundScreen) "Host execution context: every screenshot and input in this operation is bound to an owned nonzero background display. The primary display is inaccessible through this device adapter. Screen isolation is enforced by the host, not a visible app label. Operate and verify the app content shown; do not demand a background-screen badge or refuse because the app looks foregrounded within its own display." else ""
         val steps = JSONArray()
         if (component.isNotBlank()) steps.put(JSONObject().put("launch", JSONObject().put("uri", component)))
         if (mode == "act") {
@@ -70,6 +71,7 @@ object NativeConversationAgent {
                 Only opening the app has been performed by the preceding step. Perform the explicitly requested interactions in this run even if the current screen already resembles the desired result; do not stop just because those interactions have not happened yet.
             """.trimIndent()
             val actionInstruction = """
+                $screenContext
                 $launchContext
                 Requested instruction: ${JSONObject.quote(instruction)}
                 Required final visible result / verification contract: ${JSONObject.quote(condition)}
@@ -84,7 +86,7 @@ object NativeConversationAgent {
             """.trimIndent()
             steps.put(JSONObject().put("aiAct", JSONObject().put("prompt", actionInstruction).put("options", JSONObject().put("effort", effort))))
         }
-        steps.put(JSONObject().put("verifyPhone", JSONObject().put("instruction", instruction).put("condition", condition)))
+        steps.put(JSONObject().put("verifyPhone", JSONObject().put("instruction", if (backgroundScreen) "$screenContext\nRequested instruction: $instruction" else instruction).put("condition", condition)))
         val testCase = JSONObject().put("name", "Tapilot verified phone operation").put("steps", steps)
         return JSONObject().put("cases", JSONArray().put(testCase)).toString()
     }

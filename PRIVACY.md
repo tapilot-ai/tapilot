@@ -74,6 +74,8 @@ Report implementation/privacy defects through repository issues without includin
 personal data. For a credential leak or security vulnerability, follow
 [SECURITY.md](SECURITY.md); do not attach raw reports or pairing links publicly.
 
-## Experimental separate-screen Agent trial
+## Experimental background-screen tasks
 
-Debug builds can optionally send captures of the built-in separate test screen and its counter instruction to the model configured in Tapilot. This requires a separate Start action after shell consent. The run uses private report storage and the existing retention policy. Manual preview alone does not call a model. Pause stops new model input before handing control to the user; Stop, display closure and shell revocation terminate the trial. These actions cannot retract data already sent or undo completed input.
+In Debug builds, enabling **Use for chat tasks** after shell authorization routes conversation phone operations to an isolated screen. Its app screenshots, requested instructions and results are sent to the model configured in Tapilot and retained in normal private task reports. The setting does not copy the primary screen into the background task. App content may contain personal data. Manual preview does not call a model. Optional compatibility trials remain under Advanced.
+
+Take over stops model input before manual control; explicit continuation observes again. Closing the preview, disabling background tasks or revoking shell authorization stops execution and releases the display. Connection restoration never automatically resumes a task. Turning background tasks off preserves pairing and makes newly submitted tasks use the main screen. These controls cannot retract transmitted data or undo completed operations.

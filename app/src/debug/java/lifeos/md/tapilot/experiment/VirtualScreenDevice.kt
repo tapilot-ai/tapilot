@@ -27,7 +27,7 @@ internal class VirtualScreenDevice(
             when (command) {
                 DeviceCommand.Capabilities -> complete(Result.success(JSONObject().put("protocolVersion", 1)
                     .put("canCapture", true).put("canPerformGestures", true).put("canInputText", false)))
-                DeviceCommand.Size -> complete(Result.success(JSONObject().put("width", BackgroundDisplayProbe.WIDTH).put("height", BackgroundDisplayProbe.HEIGHT)))
+                DeviceCommand.Size -> complete(Result.success(JSONObject().put("width", probe.width).put("height", probe.height)))
                 is DeviceCommand.Capture -> {
                     val bitmap = checkNotNull(probe.bitmap) { "Waiting for the virtual screen frame" }
                     frame = UUID.randomUUID().toString()
@@ -63,6 +63,6 @@ internal class VirtualScreenDevice(
         }.onFailure { complete(Result.failure(it)) }
     }
     private fun point(x: Float, y: Float) {
-        require(x.isFinite() && y.isFinite() && x >= 0 && y >= 0 && x < BackgroundDisplayProbe.WIDTH && y < BackgroundDisplayProbe.HEIGHT)
+        require(x.isFinite() && y.isFinite() && x >= 0 && y >= 0 && x < probe.width && y < probe.height)
     }
 }

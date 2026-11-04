@@ -19,7 +19,7 @@ import android.widget.TextView
 /** A real captured display preview. All input is explicitly addressed to the secondary display. */
 @SuppressLint("ClickableViewAccessibility")
 internal class FloatingDisplayWindow(
-    private val host: Activity,
+    private val host: android.content.Context,
     private val probe: BackgroundDisplayProbe,
     private val zh: Boolean,
     private val canInteract: () -> Boolean = { true },
@@ -40,7 +40,7 @@ internal class FloatingDisplayWindow(
         check(Settings.canDrawOverlays(host)) { "Allow display over other apps first" }
         if (root != null) return
         val bounds = manager.currentWindowMetrics.bounds
-        val width = minOf(dp(maxWidthDp), bounds.width() * 2 / 3, bounds.height() / 2 * BackgroundDisplayProbe.WIDTH / BackgroundDisplayProbe.HEIGHT)
+        val width = minOf(dp(maxWidthDp), bounds.width() * 2 / 3, bounds.height() / 2 * probe.width / probe.height)
         val params = WindowManager.LayoutParams(
             width, WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
@@ -60,7 +60,7 @@ internal class FloatingDisplayWindow(
             contentDescription = text("虚拟屏实时画面，可点击或滑动", "Live virtual display; tap or swipe")
             setOnTouchListener { view, event -> onPreviewTouch(view, event) }
         }
-        val previewHeight = width * BackgroundDisplayProbe.HEIGHT / BackgroundDisplayProbe.WIDTH
+        val previewHeight = width * probe.height / probe.width
         if (atBottom) {
             params.x = (bounds.width() - width - dp(12)).coerceAtLeast(0)
             params.y = (bounds.height() - previewHeight - dp(80)).coerceAtLeast(0)
@@ -121,7 +121,7 @@ internal class FloatingDisplayWindow(
             return true
         }
         val point = PreviewCoordinates.map(event.x, event.y, view.width, view.height,
-            BackgroundDisplayProbe.WIDTH, BackgroundDisplayProbe.HEIGHT)
+            probe.width, probe.height)
         if (point == null) { path = null; return true }
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {

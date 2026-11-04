@@ -55,7 +55,7 @@ class AssistantRuntime(context: Context) {
     private val config = VoiceOutputSettings(context)
     var speechMuted by androidx.compose.runtime.mutableStateOf(config.muted); private set
     val device = lifeos.md.tapilot.device.AndroidDeviceService(context)
-    private val conversationDevice = ConversationDeviceControl(device)
+    private val conversationDevice = ConversationDeviceControl(conversationScreenDevice(context, device))
     val bridge = lifeos.md.tapilot.services.AppServices(context = context, device = conversationDevice,
         onProgress = { coordinator.phoneProgress(it) },
         onStep = { session, step -> coordinator.phoneStep(session, step) },

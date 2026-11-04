@@ -2,7 +2,7 @@
     <string name="shell_title">Background screen</string>
     <string name="shell_experimental">Experimental · optional</string>
     <string name="shell_intro">Try operating an app on a separate screen while keeping your main screen available. Setup happens on this phone; no computer is needed.</string>
-    <string name="shell_consent">Shell assistance can create a separate display, open apps and send input on that display. Your choice stays enabled until you revoke it. Setup does not start a task. A separate opt-in Agent trial can operate the built-in test screen only.</string>
+    <string name="shell_consent">Shell assistance can open apps and send input on a separate screen. When enabled, phone tasks from chat send that screen to your configured model and save normal task reports. Authorization lasts until you revoke it. Setup does not run a task.</string>
     <string name="shell_agree">Agree and set up</string>
     <string name="shell_later">Not now</string>
     <string name="shell_developer_title">1 · Prepare your phone</string>
@@ -20,7 +20,7 @@
     <string name="shell_searching">Looking for this phone. Open Wireless debugging to pair or reconnect.</string>
     <string name="shell_pairing">Pairing this phone… Keep the system dialog open.</string>
     <string name="shell_connecting">Connecting shell assistance…</string>
-    <string name="shell_connected">Shell assistance connected. Try the screen to check compatibility.</string>
+    <string name="shell_connected">Shell assistance connected.</string>
     <string name="shell_repair">Connection needs attention. Check Wi-Fi, USB debugging and Wireless debugging, then retry. Existing pairing is kept.</string>
     <string name="shell_pair_failed">Pairing failed or the code expired. Reopen the system pairing dialog and enter its new code in the notification.</string>
     <string name="shell_off">Shell assistance is off. Your main-screen tasks are unaffected.</string>
@@ -60,4 +60,10 @@
     <string name="shell_computer">Prepare computer fallback</string>
     <string name="shell_computer_help">A five-minute request is ready. On an already authorized computer, run this command from the Tapilot repository. This is optional; normal setup needs no computer.</string>
     <string name="shell_recovery_denied">This phone has not granted automatic recovery permission. Open Wireless debugging manually when it turns off. Pairing and the background screen remain available.</string>
+    <string name="shell_chat_enabled">Use for chat tasks</string>
+    <string name="shell_chat_help">Phone operations requested in chat run on a separate screen with a floating preview. You can keep using the main screen. App compatibility varies; connection failures stop the task.</string>
+    <string name="shell_chat_off">Off. New phone tasks use the main screen. Your pairing is kept.</string>
+    <string name="shell_chat_ready">Ready for chat tasks. Send a request naming the app to use. Take over from the task controls before touching the floating screen.</string>
+    <string name="shell_advanced">Advanced: connection and compatibility tests</string>
+    <string name="shell_advanced_hide">Hide advanced options</string>
 </resources>

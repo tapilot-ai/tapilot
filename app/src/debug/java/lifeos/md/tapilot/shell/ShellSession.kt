@@ -18,7 +18,8 @@ internal object ShellSession {
     private var tokenFile: File? = null
     var changed: (() -> Unit)? = null
     var connectionChanged: (() -> Unit)? = null
-    private fun notifyChanged() { connectionChanged?.invoke(); changed?.invoke() }
+    var conversationChanged: (() -> Unit)? = null
+    private fun notifyChanged() { conversationChanged?.invoke(); connectionChanged?.invoke(); changed?.invoke() }
     val ready: Boolean get() = helper?.asBinder()?.isBinderAlive == true
     fun requireHelper(): IDisplayHelper = checkNotNull(helper?.takeIf { ready }) {
         "Authorize and connect the optional shell helper first"

@@ -55,9 +55,9 @@ internal class ShellDisplayService(context: Context, private val appUid: Int) : 
         }
     }
     @SuppressLint("WrongConstant") // AOSP hidden display flags, used only by the shell process.
-    override fun create(surface: Surface, width: Int, height: Int): Int {
+    override fun create(surface: Surface, width: Int, height: Int, density: Int): Int {
         authenticate()
-        require(width in 240..1080 && height in 240..1920 && surface.isValid)
+        require(width in 240..2560 && height in 240..2560 && width.toLong() * height <= 4_194_304 && density in 80..800 && surface.isValid)
         return onMain {
             check(client?.isBinderAlive == true && display == null)
             // AOSP DisplayManager hidden flags: touch (6), destroy content (8), trusted (10),
@@ -67,7 +67,7 @@ internal class ShellDisplayService(context: Context, private val appUid: Int) : 
             if (Build.VERSION.SDK_INT >= 33) flags = flags or (1 shl 10)
             if (Build.VERSION.SDK_INT >= 34) flags = flags or (1 shl 14) or (1 shl 16)
             try {
-                val created = checkNotNull(displays.createVirtualDisplay("Tapilot authorized shell display", width, height, 160, surface, flags))
+                val created = checkNotNull(displays.createVirtualDisplay("Tapilot authorized shell display", width, height, density, surface, flags))
                 check(created.display.displayId > 0)
                 display = created; this.width = width; this.height = height
                 created.display.displayId
@@ -108,6 +108,34 @@ internal class ShellDisplayService(context: Context, private val appUid: Int) : 
                 pressed = false
                 true
             } finally { if (pressed) runCatching { send(MotionEvent.ACTION_CANCEL, points.size - 2) } }
+        }
+    }
+    private fun sendKeys(displayId: Int, events: Array<android.view.KeyEvent>) {
+        owned(displayId)
+        val manager = Class.forName("android.hardware.input.InputManager").getMethod("getInstance").invoke(null)
+        val inject = manager.javaClass.getMethod("injectInputEvent", InputEvent::class.java, Int::class.javaPrimitiveType)
+        val setDisplay = InputEvent::class.java.getMethod("setDisplayId", Int::class.javaPrimitiveType)
+        for (event in events) {
+            setDisplay.invoke(event, displayId)
+            check(inject.invoke(manager, event, 2) as Boolean) { "Secondary-display key injection failed" }
+        }
+    }
+    override fun key(displayId: Int, keyCode: Int) {
+        authenticate()
+        require(keyCode in setOf(4, 19, 20, 21, 22, 23, 61, 66, 67, 111, 112, 122, 123))
+        onMain {
+            val now = SystemClock.uptimeMillis()
+            sendKeys(displayId, arrayOf(android.view.KeyEvent(now, now, 0, keyCode, 0), android.view.KeyEvent(now, now, 1, keyCode, 0)))
+        }
+    }
+    override fun text(displayId: Int, value: String) {
+        authenticate()
+        require(value.length <= 2000)
+        onMain {
+            owned(displayId)
+            val events = android.view.KeyCharacterMap.load(android.view.KeyCharacterMap.VIRTUAL_KEYBOARD).getEvents(value.toCharArray())
+            checkNotNull(events) { "This text needs display-scoped accessibility input" }
+            sendKeys(displayId, events)
         }
     }
     override fun launch(displayId: Int, component: String) {

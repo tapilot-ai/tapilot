@@ -20,6 +20,7 @@ class ConversationTaskRunnerTest {
         val sources = mutableListOf<JSONObject>()
         val environments = mutableListOf<JSONObject>()
         var afterRun: () -> Unit = {}
+        var background = false
         var success = true
         var discardError: Throwable? = null
         override fun status(status: TaskExecutionStatus) { actions += status.name }
@@ -27,7 +28,7 @@ class ConversationTaskRunnerTest {
         override fun readAttachment(id: String) = JSONObject().put("id", id)
         override fun capabilities(): JSONObject {
             actions += "capabilities"
-            return JSONObject().put("canCapture", true).put("canPerformGestures", true).put("apps", JSONArray())
+            return JSONObject().put("backgroundScreen", background).put("canCapture", true).put("canPerformGestures", true).put("apps", JSONArray())
         }
         override fun navigate(destination: TaskNavigation) { actions += destination.name }
         override fun prepare(environment: JSONObject) { actions += "prepare" }
@@ -125,6 +126,21 @@ class ConversationTaskRunnerTest {
             terminal("waiting_user")
         }, Services()).run(input(TaskHistorySnapshot(null, listOf(prior), pending))) { false }
         assertTrue(result.outcome.isSuccess)
+    }
+
+    @Test fun backgroundTaskKeepsMainScreenAndTellsAgentWhichScreenItControls() {
+        val services = Services().apply { background = true }
+        val result = runner(Agent { request, callbacks ->
+            assertTrue(request.messages.toString().contains("isolated background screen"))
+            terminal("completed", callbacks.phone(PhoneOperation("Read", "Visible")))
+        }, services).run(input().copy(backgroundScreen = true)) { false }
+        assertTrue(result.outcome.isSuccess)
+        assertFalse(services.actions.contains("HOME"))
+        assertFalse(services.actions.contains("PREVIOUS_APP"))
+        assertTrue(services.actions.contains("run"))
+        val steps = services.sources.single().getJSONArray("cases").getJSONObject(0).getJSONArray("steps")
+        assertTrue(steps.getJSONObject(0).getJSONObject("aiAct").getString("prompt").contains("owned nonzero background display"))
+        assertTrue(steps.getJSONObject(1).getJSONObject("verifyPhone").getString("instruction").contains("owned nonzero background display"))
     }
 
     @Test fun generalAnswerDoesNotRequirePhoneCapabilities() {

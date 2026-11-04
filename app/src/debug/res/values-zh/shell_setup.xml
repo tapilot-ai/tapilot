@@ -2,7 +2,7 @@
     <string name="shell_title">后台屏幕</string>
     <string name="shell_experimental">实验性 · 可选</string>
     <string name="shell_intro">尝试在独立屏幕中操作应用，同时继续使用手机主屏。设置全程在手机上完成，无需电脑。</string>
-    <string name="shell_consent">Shell 辅助可以创建独立屏幕，在其中打开应用和发送操作。授权会保留到你主动撤销；设置完成不会自动执行任务。另有单独确认的 Agent 试用，仅操作内置测试屏。</string>
+    <string name="shell_consent">Shell 辅助可以在独立屏幕打开应用和发送操作。开启后，聊天中的手机任务会将该屏幕画面发送给你配置的模型，并保存任务报告。授权保留到你主动撤销；设置本身不会执行任务。</string>
     <string name="shell_agree">同意并设置</string>
     <string name="shell_later">稍后设置</string>
     <string name="shell_developer_title">1 · 准备手机</string>
@@ -20,7 +20,7 @@
     <string name="shell_searching">正在查找本机，请打开无线调试进行配对或恢复连接。</string>
     <string name="shell_pairing">正在配对本机…请保持系统弹窗打开。</string>
     <string name="shell_connecting">正在连接 Shell 辅助…</string>
-    <string name="shell_connected">Shell 辅助已连接，试用屏幕以检查兼容性。</string>
+    <string name="shell_connected">Shell 辅助已连接。</string>
     <string name="shell_repair">连接需要恢复。检查 Wi-Fi、USB 调试和无线调试后重试，已有配对会保留。</string>
     <string name="shell_pair_failed">配对失败或验证码已过期。请重新打开系统配对弹窗，在通知中输入新验证码。</string>
     <string name="shell_off">Shell 辅助未开启，不影响主屏任务。</string>
@@ -60,4 +60,10 @@
     <string name="shell_computer">准备电脑备用连接</string>
     <string name="shell_computer_help">已准备五分钟有效的连接请求。在已经授权的电脑上，从 Tapilot 仓库运行以下命令。这只是备用方式，正常设置无需电脑。</string>
     <string name="shell_recovery_denied">此设备未授予自动恢复权限。无线调试关闭后，请手动打开；配对和后台屏幕仍然可用。</string>
+    <string name="shell_chat_enabled">用于聊天任务</string>
+    <string name="shell_chat_help">聊天中请求的手机操作将在独立屏幕执行，可通过悬浮窗查看，主屏仍可正常使用。不同应用的兼容性可能不同；连接异常时任务会停止。</string>
+    <string name="shell_chat_off">已关闭。新的手机任务使用主屏，已有配对会保留。</string>
+    <string name="shell_chat_ready">已可用于聊天任务。发送消息时说明要使用的应用；如需手动操作悬浮屏，请先在任务中点击“我来处理”。</string>
+    <string name="shell_advanced">高级选项：连接与兼容性测试</string>
+    <string name="shell_advanced_hide">收起高级选项</string>
 </resources>

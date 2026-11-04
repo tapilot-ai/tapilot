@@ -1,6 +1,6 @@
 package lifeos.md.tapilot.experiment
 
-import android.app.Activity
+import lifeos.md.tapilot.accessibility.deviceDisplayMetrics
 import android.app.Presentation
 import android.content.ComponentName
 import android.graphics.Bitmap
@@ -25,7 +25,10 @@ import lifeos.md.tapilot.TaskExecutionTracker
 import lifeos.md.tapilot.wireless.DeviceControlLease
 
 /** Debug-only experiment. Never routes production device commands or falls back to display 0. */
-internal class BackgroundDisplayProbe(private val host: Activity, private val changed: () -> Unit) : AutoCloseable {
+internal class BackgroundDisplayProbe(private val host: android.content.Context, private val changed: () -> Unit) : AutoCloseable {
+    var width = WIDTH; private set
+    var height = HEIGHT; private set
+    private var density = 160
     private val handler = Handler(Looper.getMainLooper())
     private var display: Display? = null
     private val inputWorker = Executors.newSingleThreadExecutor()
@@ -45,17 +48,24 @@ internal class BackgroundDisplayProbe(private val host: Activity, private val ch
     var gesturePending = false; private set
     private var snapshotRequested = true
 
-    fun start() {
+    fun start(conversation: Boolean = false) {
         ShellSession.requireHelper()
         check(!active)
-        check(!TaskExecutionTracker.isActive) { "Stop the current task before starting this experiment" }
-        DeviceControlLease.acquire(OWNER)
-        leased = true
+        if (!conversation) {
+            check(!TaskExecutionTracker.isActive) { "Stop the current task before starting this experiment" }
+            DeviceControlLease.acquire(OWNER)
+            leased = true
+        }
         try {
             generation++
             val run = generation
             frames = 0; taps = 0; snapshotRequested = true
-            val images = ImageReader.newInstance(WIDTH, HEIGHT, PixelFormat.RGBA_8888, 2)
+            if (conversation) {
+                val metrics = host.deviceDisplayMetrics()
+                val geometry = lifeos.md.tapilot.shell.BackgroundScreenGeometry.match(metrics.widthPixels, metrics.heightPixels, metrics.densityDpi)
+                width = geometry.width; height = geometry.height; density = geometry.density
+            } else { width = WIDTH; height = HEIGHT; density = 160 }
+            val images = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
             reader = images
             val capture = Runnable {
                 if (run == generation) images.acquireLatestImage()?.use { image ->
@@ -63,9 +73,9 @@ internal class BackgroundDisplayProbe(private val host: Activity, private val ch
                     if (snapshotRequested || livePreview) {
                         val plane = image.planes[0]
                         val paddedWidth = plane.rowStride / plane.pixelStride
-                        val padded = Bitmap.createBitmap(paddedWidth, HEIGHT, Bitmap.Config.ARGB_8888)
+                        val padded = Bitmap.createBitmap(paddedWidth, height, Bitmap.Config.ARGB_8888)
                         padded.copyPixelsFromBuffer(plane.buffer)
-                        val next = Bitmap.createBitmap(padded, 0, 0, WIDTH, HEIGHT)
+                        val next = Bitmap.createBitmap(padded, 0, 0, width, height)
                         if (next !== padded) padded.recycle()
                         // The activity replaces its ImageView reference before the old bitmap is recycled.
                         val old = bitmap
@@ -82,14 +92,14 @@ internal class BackgroundDisplayProbe(private val host: Activity, private val ch
                     handler.postDelayed(capture, delay)
                 }
             }, handler)
-            val id = ShellSession.requireHelper().create(images.surface, WIDTH, HEIGHT)
+            val id = ShellSession.requireHelper().create(images.surface, width, height, density)
             check(id > 0) { "Refusing to target the primary display" }
             display = host.getSystemService(DisplayManager::class.java).getDisplay(id)
             if (display == null) {
                 ShellSession.requireHelper().release(id)
                 error("Shell display did not become available")
             }
-            showFixture()
+            if (!conversation) showFixture()
             status = "Display $displayId created; waiting for rendered pixels"
             changed()
         } catch (failure: Exception) { close(); throw failure }
@@ -169,6 +179,10 @@ internal class BackgroundDisplayProbe(private val host: Activity, private val ch
         snapshotRequested = true
         status = "Shell launch requested on display $id. Inspect the actual screen to verify."
         changed()
+    }
+
+    fun clearFrame() {
+        val previous = bitmap; bitmap = null; changed(); previous?.recycle(); snapshotRequested = true
     }
 
     fun refresh() {

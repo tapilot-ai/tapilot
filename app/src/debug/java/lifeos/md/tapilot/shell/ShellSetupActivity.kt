@@ -71,27 +71,40 @@ class ShellSetupActivity : Activity() {
         content.removeAllViews()
         label(R.string.shell_experimental)
         label(R.string.shell_title, true)
+        val enabled = Switch(this).apply {
+            setText(R.string.shell_chat_enabled); setTextColor(palette.text); textSize = 17f
+            minHeight = dp(56); isChecked = preferences.backgroundEnabled
+            content.addView(this, LinearLayout.LayoutParams(-1, -2))
+        }
+        label(R.string.shell_chat_help)
+        enabled.setOnCheckedChangeListener { _, value ->
+            if (!value) {
+                preferences.backgroundEnabled = false
+                BackgroundConversationDevice.current?.closeScreen()
+                render()
+            } else if (!preferences.authorized) {
+                AlertDialog.Builder(this).setTitle(R.string.shell_title).setMessage(R.string.shell_consent)
+                    .setPositiveButton(R.string.shell_agree) { _, _ ->
+                        preferences.authorized = true; preferences.backgroundEnabled = true
+                        ShellSetupService.start(this); render()
+                    }.setNegativeButton(android.R.string.cancel) { _, _ -> render() }
+                    .setOnCancelListener { render() }.show()
+            } else { preferences.backgroundEnabled = true; ShellSetupService.start(this); render() }
+        }
         if (!preferences.authorized) {
-            label(R.string.shell_intro); label(R.string.shell_consent)
-            val recovery = CheckBox(this).apply { setText(R.string.shell_recovery); setTextColor(palette.text); buttonTintList = android.content.res.ColorStateList.valueOf(palette.text); minHeight = dp(48); content.addView(this) }
-            label(R.string.shell_recovery_help)
-            button(R.string.shell_agree) {
-                preferences.authorized = true; preferences.recovery = recovery.isChecked
-                ShellSetupService.start(this); render()
-            }
-            button(R.string.shell_later) { finish() }
+            label(R.string.shell_chat_off)
+            button(R.string.shell_done) { finish() }
             return
         }
         label(ShellSetupService.message(ShellSetupService.state)).apply { accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE }
+        if (!Settings.canDrawOverlays(this)) {
+            label(R.string.shell_overlay_help)
+            button(R.string.shell_overlay_permission) {
+                startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:$packageName")))
+            }
+        }
         if (ShellSession.ready) {
-            label(R.string.shell_trial_help)
-            button(R.string.shell_trial) {
-                startActivity(Intent(this, BackgroundDisplayTrialActivity::class.java))
-            }
-            button(R.string.virtual_agent_title) {
-                startActivity(Intent(this, lifeos.md.tapilot.experiment.VirtualAgentTrialActivity::class.java))
-            }
-            recoveryControl()
+            label(if (preferences.backgroundEnabled) R.string.shell_chat_ready else R.string.shell_chat_off)
         } else {
             val developer = Settings.Global.getInt(contentResolver, Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) == 1
             if (!developer && !manualDeveloper) {
@@ -107,15 +120,21 @@ class ShellSetupActivity : Activity() {
                     ShellSetupService.instance?.retryNow() ?: ShellSetupService.start(this)
                 }
             }
-            button(R.string.shell_manual) { advanced = !advanced; render() }
-            if (advanced) manual()
-            recoveryControl()
         }
-        button(R.string.shell_revoke) { revoke(false) }
-        button(R.string.shell_forget) {
-            AlertDialog.Builder(this).setMessage(R.string.shell_forgotten)
-                .setPositiveButton(R.string.shell_forget) { _, _ -> revoke(true) }
-                .setNegativeButton(android.R.string.cancel, null).show()
+        recoveryControl()
+        button(if (advanced) R.string.shell_advanced_hide else R.string.shell_advanced) { advanced = !advanced; render() }
+        if (advanced) {
+            if (ShellSession.ready) {
+                label(R.string.shell_trial_help)
+                button(R.string.shell_trial) { startActivity(Intent(this, BackgroundDisplayTrialActivity::class.java)) }
+                button(R.string.virtual_agent_title) { startActivity(Intent(this, lifeos.md.tapilot.experiment.VirtualAgentTrialActivity::class.java)) }
+            } else manual()
+            button(R.string.shell_revoke) { revoke(false) }
+            button(R.string.shell_forget) {
+                AlertDialog.Builder(this).setMessage(R.string.shell_forgotten)
+                    .setPositiveButton(R.string.shell_forget) { _, _ -> revoke(true) }
+                    .setNegativeButton(android.R.string.cancel, null).show()
+            }
         }
         button(R.string.shell_done) { finish() }
     }

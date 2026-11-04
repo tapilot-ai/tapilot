@@ -54,6 +54,15 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
     var clearHistory by remember { mutableStateOf(false) }
     var floating by remember { mutableStateOf(FloatingBallPreferences.isEnabled(activity)) }
     var edge by remember { mutableStateOf(EdgeEffectPreferences.get(activity)) }
+    val backgroundPreferences = remember { activity.getSharedPreferences("shell-assistance", android.content.Context.MODE_PRIVATE) }
+    var backgroundEnabled by remember { mutableStateOf(backgroundPreferences.getBoolean("background-enabled", false)) }
+    DisposableEffect(backgroundPreferences) {
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { prefs, _ ->
+            backgroundEnabled = prefs.getBoolean("background-enabled", false)
+        }
+        backgroundPreferences.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { backgroundPreferences.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
     val busy = coordinator.settingsBusy
     TapilotTheme(dark, paletteId) {
         ThemeBackdrop(dark) {
@@ -158,8 +167,8 @@ fun NativeSettingsScreen(coordinator: NativeConversationCoordinator, activity: A
                     SettingRow(label("检查执行引擎", "Check execution engine"), "") { coordinator.settingsCall("runtime.doctor") }
                 }
                 if (activity.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) {
-                    Group(label("开发实验", "Developer experiments")) {
-                        SettingRow(label("后台屏幕（实验性）", "Background screen (Experimental)"), label("默认关闭", "Off by default")) {
+                    Group(label("后台屏幕", "Background screen")) {
+                        SettingRow(label("后台屏幕（实验性）", "Background screen (Experimental)"), if (backgroundEnabled) label("已开启", "On") else label("已关闭", "Off")) {
                             activity.startActivity(android.content.Intent().setClassName(activity,
                                 "lifeos.md.tapilot.shell.ShellSetupActivity"))
                         }
