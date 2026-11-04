@@ -31,6 +31,12 @@ Leave it unset to keep API-key checks. Do not enable SIWC on untrusted PR runs.
 The separate plugin live API-key probe is skipped in SIWC mode; the APK lanes
 provide the live provider acceptance for that mode.
 
+For first live acceptance, manually dispatch `Checks` with `siwc_refresh=true`.
+This performs one real OpenAI refresh and GitHub writeback under the same owner
+lock before launching APK lanes, even if the original access token is still
+valid. It does not modify expiration metadata or prove expiry-triggered refresh.
+Normal main pushes keep this option false and reuse a sufficiently fresh token.
+
 The owner uses Midscene's exported `refreshSiwcCredentials`, preserving its
 OAuth response validation. It keeps a token with at least 30 minutes remaining,
 or attempts one refresh and immediately persists the replacement before emitting

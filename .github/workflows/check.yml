@@ -5,6 +5,10 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
+      siwc_refresh:
+        description: Force one real SIWC token refresh and secret writeback before APK acceptance
+        type: boolean
+        default: false
       device_e2e:
         description: Build and install the verification APK on the dedicated Android phone, then run Midscene smoke cases
         type: boolean
@@ -155,6 +159,8 @@ jobs:
     needs: [apk-build, android-image]
     if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && vars.TAPILOT_CI_AUTH_MODE == 'siwc' }}
     uses: ./.github/workflows/siwc-credentials.yml
+    with:
+      force-refresh: ${{ github.event_name == 'workflow_dispatch' && inputs.siwc_refresh }}
     secrets:
       SIWC_SECRET_WRITE_TOKEN: ${{ secrets.SIWC_SECRET_WRITE_TOKEN }}
       SIWC_TRANSPORT_KEY: ${{ secrets.SIWC_TRANSPORT_KEY }}

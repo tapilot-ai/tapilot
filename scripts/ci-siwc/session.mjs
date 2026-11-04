@@ -47,12 +47,12 @@ export function unseal(ticket, key, context, now = Date.now()) {
 }
 
 /** Caller must hold the workflow's exclusive environment/concurrency slot. */
-export async function prepare(record, { refresh, persist, key, context, now = Date.now }) {
+export async function prepare(record, { refresh, persist, key, context, now = Date.now, forceRefresh = false }) {
   // Validate handoff configuration BEFORE any token rotation.
   keyBytes(key);
   if (!record?.credentials || !context) throw new Error('Invalid Midscene SIWC credential record');
   let saved = record;
-  if (!Number.isSafeInteger(saved.credentials.expires_at) ||
+  if (forceRefresh || !Number.isSafeInteger(saved.credentials.expires_at) ||
       saved.credentials.expires_at - now() < PREPARE_VALIDITY_MS) {
     const credentials = await refresh(saved.credentials);
     saved = { ...saved, updated_at: new Date(now()).toISOString(), credentials };

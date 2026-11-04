@@ -22,10 +22,12 @@ try {
   const ticket = await prepare(record, {
     key: env.SIWC_TRANSPORT_KEY,
     context: binding(env),
+    forceRefresh: env.TAPILOT_SIWC_FORCE_REFRESH === 'true',
     refresh: async credentials => {
       stage = 'OpenAI refresh';
       const updated = await refreshSiwcCredentials(credentials, AbortSignal.timeout(30_000));
       mask(updated);
+      console.log('OpenAI SIWC refresh succeeded; persisting the replacement before admitting shards');
       return updated;
     },
     persist: async updated => {
@@ -38,6 +40,7 @@ try {
             input: JSON.stringify(updated), stdio: ['pipe', 'ignore', 'pipe'], timeout: 20_000,
           });
           stage = 'access-only handoff';
+          console.log('SIWC replacement persisted to the owner environment secret');
           return;
         } catch {
           if (attempt === 2) throw new Error('Credential writeback failed');

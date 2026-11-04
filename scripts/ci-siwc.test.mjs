@@ -55,6 +55,19 @@ test('failed writeback never publishes a lease or retries the rotating grant', a
   assert.equal(refreshes, 1);
 });
 
+test('manual acceptance can force a real refresh without falsifying the token expiration', async () => {
+  let refreshes = 0;
+  let stored;
+  const ticket = await prepare({ credentials }, { key, context, now: () => now, forceRefresh: true,
+    refresh: async saved => { refreshes++; assert.equal(saved.expires_at, credentials.expires_at);
+      return { ...saved, access_token: 'manually-refreshed', refresh_token: 'replacement' }; },
+    persist: async saved => { stored = saved; },
+  });
+  assert.equal(refreshes, 1);
+  assert.equal(stored.credentials.refresh_token, 'replacement');
+  assert.equal(unseal(ticket, key, context, now).access_token, 'manually-refreshed');
+});
+
 test('invalid transport configuration cannot consume the refresh token', async () => {
   let refreshed = false;
   await assert.rejects(prepare({ credentials: { ...credentials, expires_at: now - 1 } }, {
