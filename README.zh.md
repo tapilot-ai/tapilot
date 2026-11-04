@@ -53,7 +53,8 @@ Powered by [Midscene](https://github.com/web-infra-dev/midscene)。
 ## 开始使用
 
 需要 **arm64 架构、Android 11 或更高版本**的手机，以及支持的视觉模型。
-目前尚无验证完成的公开发布流程，可按下方步骤构建开发 APK。
+可从[飞书固定地址](https://www.feishu.cn/file/Ig0KbUKlJoADozxRbOocm5iqnXf)下载 Beta APK，
+或使用 [GitHub Release 备用下载](https://github.com/tapilot-ai/tapilot/releases/latest)。
 
 1. 安装 APK，打开 Tapilot，在 Android 无障碍设置中启用 **Tapilot 设备控制**。
 2. 在 Tapilot 设置中配置 HTTP 或 HTTPS 视觉模型 API，或在可用时选择现有的 ChatGPT（SIWC）

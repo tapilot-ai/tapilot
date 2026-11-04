@@ -14,7 +14,9 @@ export function siwcFetch(fetch, accessToken) {
       request.signal.throwIfAborted();
       const headers = new Headers(request.headers);
       headers.set('Authorization', `Bearer ${token}`);
-      return fetch(new Request(request.clone(), { headers }));
+      // Request does not retain Undici's dispatcher; keep the SDK-selected proxy.
+      return fetch(new Request(request.clone(), { headers }),
+        init?.dispatcher ? { dispatcher: init.dispatcher } : undefined);
     };
     let response = await attempt(false);
     if (response.status === 401) {

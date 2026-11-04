@@ -92,7 +92,7 @@ class NodeTestRunCoordinator(
 
     private fun executionEnvironment(environment: Map<String, String>) = mapOf(
         "MIDSCENE_MODEL_TIMEOUT" to "45000", "MIDSCENE_MODEL_RETRY_COUNT" to "1",
-    ) + environment + ("MIDSCENE_ANDROID_ASSISTANT_LANGUAGE" to AppLanguage.resolved(appContext)) + screenshotExperimentEnvironment()
+    ) + environment + modelProxyEnvironment(environment) + ("MIDSCENE_ANDROID_ASSISTANT_LANGUAGE" to AppLanguage.resolved(appContext)) + screenshotExperimentEnvironment()
 
     private fun request(runtime: InstalledNodeRuntime, root: File, environment: Map<String, String>) = NodeTestRunRequest(
         projectRoot = root, resultDirectory = File(root, "results"),

@@ -104,3 +104,16 @@ test('real fetch diagnostics measure upload and response boundaries without reta
     assert.equal(records.length, 1);
   } finally { stop(); server.close(); server.closeAllConnections(); }
 });
+
+test('SIWC credential refresh preserves the SDK proxy dispatcher for both attempts', async () => {
+  const dispatcher = { dispatch() {} };
+  const observed = [];
+  const fetch = siwcFetch(async (request, init) => {
+    observed.push(init?.dispatcher);
+    return new Response(null, { status: observed.length === 1 ? 401 : 200 });
+  }, async () => 'fixture-token');
+  assert.equal((await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST', body: '{}', dispatcher,
+  })).status, 200);
+  assert.deepEqual(observed, [dispatcher, dispatcher]);
+});
