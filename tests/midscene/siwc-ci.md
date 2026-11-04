@@ -45,9 +45,15 @@ secret, refresh, writeback, and encrypted handoff. Only this short phase seriali
 builds and APK lanes can overlap across runs. Once writeback finishes, the next
 owner reads the replacement while earlier lanes use their existing access lease.
 
-GitHub documents token rotation and environment-secret behavior separately; the
-combined queued-run behavior still needs acceptance on GitHub with the configured
-owner environment. A forcibly terminated runner between OAuth rotation and
+The combined queue/environment-secret behavior was verified on GitHub using a
+temporary environment and synthetic generations: [first run](https://github.com/tapilot-ai/tapilot/actions/runs/41812026422)
+read generation one; [second run](https://github.com/tapilot-ai/tapilot/actions/runs/41812079120)
+and [third run](https://github.com/tapilot-ai/tapilot/actions/runs/41812084738)
+were both pending before the secret changed, then both read generation two when
+their jobs started. All three completed successfully; neither pending run was
+canceled. This verifies GitHub queue behavior, not live OAuth refresh.
+
+A forcibly terminated runner between OAuth rotation and
 writeback can lose the replacement. Reauthorize if that occurs. Writing the new
 secret is retried three times; the refresh exchange is never retried by our code.
 
@@ -80,7 +86,8 @@ npm --prefix tests/midscene run check
 The credential tests use synthetic tokens. They exercise four actual parallel
 child processes, replacement persistence before release, write failure, wrong
 run/repository/attempt/key, tampered ciphertext, insufficient lifetime, and cleanup.
-They do not claim real ChatGPT login, refresh, or GitHub queue acceptance.
+They do not claim real ChatGPT login or refresh. The separate GitHub runs above
+cover queue acceptance without sending model requests.
 
 Current actionlint 1.7.12 does not recognize GitHub's documented `queue` field.
 To lint all other syntax without removing the required queue behavior:

@@ -3,6 +3,7 @@ import { appendFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { binding, prepare } from './session.mjs';
 
+let stage = 'configuration';
 try {
   const env = process.env;
   if (env.TAPILOT_SIWC_ENVIRONMENT !== 'tapilot-siwc' || !env.GH_TOKEN || !env.GITHUB_OUTPUT) {
@@ -22,11 +23,13 @@ try {
     key: env.SIWC_TRANSPORT_KEY,
     context: binding(env),
     refresh: async credentials => {
+      stage = 'OpenAI refresh';
       const updated = await refreshSiwcCredentials(credentials, AbortSignal.timeout(30_000));
       mask(updated);
       return updated;
     },
     persist: async updated => {
+      stage = 'environment-secret writeback';
       // Retry only GitHub persistence, never replay the OAuth refresh request.
       for (let attempt = 0; ; attempt++) {
         try {
@@ -34,6 +37,7 @@ try {
             '--env', 'tapilot-siwc'], {
             input: JSON.stringify(updated), stdio: ['pipe', 'ignore', 'pipe'], timeout: 20_000,
           });
+          stage = 'access-only handoff';
           return;
         } catch {
           if (attempt === 2) throw new Error('Credential writeback failed');
@@ -46,6 +50,6 @@ try {
   console.log('SIWC access-only handoff ready; renewable credentials remain in the owner environment');
 } catch {
   // OAuth and gh error bodies can contain credential material. Fail without echoing them.
-  console.error('SIWC credential preparation failed; no shard ticket was issued. Check authorization and environment-secret write access.');
+  console.error(`SIWC credential preparation failed during ${stage}; no shard ticket was issued. Check authorization and environment-secret write access.`);
   process.exitCode = 1;
 }
