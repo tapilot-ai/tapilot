@@ -11,7 +11,7 @@
     "esbuild": "0.28.2",
     "tsx": "4.23.15",
     "@earendil-works/pi-agent-core": "1.4.0",
-    "@earendil-works/pi-ai": "1.1.0"
+    "@earendil-works/pi-ai": "1.4.0"
   },
   "license": "MIT",
   "packageManager": "pnpm@12.4.1"
