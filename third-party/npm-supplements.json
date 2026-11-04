@@ -97,5 +97,26 @@
     "path": "third-party/notices/Tapilot-0.1.8-wasm-NOTICES.txt",
     "sha256": "7a54341972daa611587f8d116c86803d2b78cc3753987b8c6c8e63e74e2c2af2",
     "url": "https://github.com/tapilot-ai/tapilot/releases/download/v0.1.8/Tapilot-0.1.8-wasm-NOTICES.txt"
+  },
+  {
+    "name": "@earendil-works/pi-agent-core",
+    "version": "1.4.0",
+    "path": "third-party/notices/npm/@earendil-works_pi-agent-core-1.4.0-LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/earendil-works/pi/4a080252f06caf63a525d7873c5d94d3c23887e0/LICENSE",
+    "sha256": "0457f5bcec3b3b211605dfb5d1a49042fd638f3686a410fe099c24a25af13c48"
+  },
+  {
+    "name": "@earendil-works/pi-ai",
+    "version": "1.4.0",
+    "path": "third-party/notices/npm/@earendil-works_pi-ai-1.4.0-LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/earendil-works/pi/4a080252f06caf63a525d7873c5d94d3c23887e0/LICENSE",
+    "sha256": "0457f5bcec3b3b211605dfb5d1a49042fd638f3686a410fe099c24a25af13c48"
+  },
+  {
+    "name": "@earendil-works/pi-telemetry",
+    "version": "1.4.0",
+    "path": "third-party/notices/npm/@earendil-works_pi-telemetry-1.4.0-LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/earendil-works/pi/4a080252f06caf63a525d7873c5d94d3c23887e0/LICENSE",
+    "sha256": "0457f5bcec3b3b211605dfb5d1a49042fd638f3686a410fe099c24a25af13c48"
   }
 ]

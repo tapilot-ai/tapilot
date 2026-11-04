@@ -109,3 +109,12 @@ and patches, and vendors the Rust dependencies. It does not set distribution
 approval, replace APK bytes, or publish a release. The successful Sharp relink and source verification are recorded above.
 The original packaging failure and its hash-verified recovery remain documented
 in `REBUILD.zh.md`; do not interpret the original green run as full success.
+
+## Current mainline dependency notices
+
+The Pi 1.4.0 supplements retain the root MIT license from release tag `v1.4.0`,
+commit `4a080252f06caf63a525d7873c5d94d3c23887e0`. The `packages/agent`,
+`packages/ai` and `packages/telemetry` manifests at that revision each declare
+version 1.4.0 and MIT. Each exact package/version has its own checksum-bound
+notice entry; the existing 1.1.0 entries remain for the separately pinned direct
+AI dependency. The runtime versions are not downgraded to the 0.1.8 baseline.
