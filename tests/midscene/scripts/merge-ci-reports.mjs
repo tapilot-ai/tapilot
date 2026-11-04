@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import { globSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 import { caseId, planDigest } from './ci-shards.ts';
-import { ReportMergingTool } from '@midscene/core/report';
+import { patchReportPlanIds } from './patch-report-plan-ids.mjs';
+import { createRequire } from 'node:module';
+patchReportPlanIds();
+const { ReportMergingTool } = createRequire(import.meta.url)('@midscene/core/report');
 
 // Use Midscene's own merger: it preserves case status, steps, agent executions,
 // screenshot assets and evidence references. Never manufacture a report landing page.

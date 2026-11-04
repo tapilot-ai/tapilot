@@ -45,6 +45,21 @@ export default {output:{reportFormat:'html-and-external-assets'},projects:[{name
     assert.equal(dump.summary.failed, 2);
     assert.match(readFileSync(join(root, 'midscene_run/ci-badge.md'), 'utf8'), /pass=9&fail=2/);
     assert.equal(dump.projects.length, 4);
+    for (const project of dump.projects) {
+      for (const plan of project.plans ?? []) {
+        const document = project.documents.find((item: { documentId: string }) => item.documentId === plan.documentId);
+        assert.ok(document, 'Every planned document must match its real execution instead of creating an unrun duplicate');
+        for (const plannedCase of plan.cases) {
+          const executed = document.cases.find((item: { caseId: string }) => item.caseId === plannedCase.caseId);
+          assert.ok(executed, 'Every selected case plan must match its executed case');
+          assert.equal(executed.name, plannedCase.name);
+          const plannedSteps = new Set([...plannedCase.beforeEach, ...plannedCase.steps, ...plannedCase.afterEach].map(item => item.id));
+          for (const attempt of executed.attempts) for (const step of [...attempt.beforeEach, ...attempt.steps, ...attempt.afterEach]) {
+            if (step.planStepId) assert.ok(plannedSteps.has(step.planStepId), 'Execution step must resolve to its original plan');
+          }
+        }
+      }
+    }
     assert.deepEqual(readdirSync(join(root, '.midscene/test-results')), ['complete']);
     const summary = readFileSync(join(root, '.midscene/test-results/complete/result.md'), 'utf8');
     assert.equal(summary.match(/^# Midscene Test$/gm)?.length, 1);
