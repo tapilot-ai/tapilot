@@ -16,7 +16,16 @@ adb -s "$serial" shell dumpsys package lifeos.md.tapilot.e2everify > build/apk-m
 adb -s "$serial" shell svc power stayon true
 adb -s "$serial" shell input keyevent KEYCODE_WAKEUP
 adb -s "$serial" shell wm dismiss-keyguard
-trap 'adb -s "$serial" logcat -d > build/apk-midscene/logcat.txt; adb -s "$serial" exec-out screencap -p > build/apk-midscene/final.png' EXIT
+capture_evidence() {
+  adb -s "$serial" logcat -d > build/apk-midscene/logcat.txt
+  adb -s "$serial" exec-out screencap -p > build/apk-midscene/final.png
+  # Export ONLY native HTML reports and their screenshot assets. Never archive
+  # files/node-runs wholesale: project configuration can contain credentials.
+  adb -s "$serial" exec-out run-as lifeos.md.tapilot.e2everify sh -c \
+    'find files/node-runs -type d -path "*/midscene_run/report" -exec tar -cf - {} \;' \
+    > build/apk-midscene/native-reports.tar || true
+}
+trap capture_evidence EXIT
 node scripts/setup-apk-ci-model.mjs
 npm --prefix tests/midscene run check:model
 npm --prefix tests/midscene run test:resilience

@@ -91,7 +91,13 @@ const server = createServer(async (req, res) => {
     if (req.url === "/stop") {
       stopping = true;
       await Promise.allSettled([...pending]);
-      reply(res, 200, { stopped: true });
+      // Flush the stop acknowledgement before shutdown destroys HTTP sockets.
+      // Otherwise a fast restart races an unread response and reports UND_ERR_SOCKET.
+      await new Promise(resolve => {
+        res.once('finish', resolve);
+        res.once('close', resolve);
+        reply(res, 200, { stopped: true });
+      });
       return shutdown();
     }
     reply(res, 404, { error: "Unknown endpoint" });
