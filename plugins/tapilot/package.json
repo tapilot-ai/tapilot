@@ -1,6 +1,6 @@
 {
   "name": "tapilot",
-  "version": "0.6.15",
+  "version": "0.6.19",
   "type": "module",
   "engines": {
     "node": ">=22.19.0"
@@ -12,26 +12,30 @@
     "build:ui": "node ui/build.mjs",
     "check:ui": "node ui/build.mjs --check",
     "check": "npm run check:ui && npm test",
+    "check:panels": "node scripts/check-panels.mjs",
+    "check:dsh-panel": "node scripts/check-dsh-panel.mjs",
     "cli": "node server/cli.mjs",
     "prepack": "node scripts/check-pack-policy.mjs && npm run build:ui && node scripts/patch-midscene-zod.mjs",
     "postinstall": "node scripts/patch-midscene-zod.mjs"
   },
   "dependencies": {
+    "@img/sharp-wasm32": "0.35.5",
     "@midscene/core": "1.17.6",
     "@modelcontextprotocol/ext-apps": "1.7.5",
     "@modelcontextprotocol/sdk": "1.32.1",
     "bonjour-service": "1.4.4",
     "jose": "6.1.3",
+    "jsonc-parser": "3.3.1",
     "openai": "6.3.0",
     "proper-lockfile": "4.1.2",
     "qrcode": "1.5.4",
     "selfsigned": "5.5.0",
-    "zod": "4.6.7",
     "sharp": "0.35.5",
-    "@img/sharp-wasm32": "0.35.5"
+    "zod": "4.6.7"
   },
   "devDependencies": {
-    "esbuild": "0.25.11"
+    "esbuild": "0.25.11",
+    "playwright-core": "1.64.1"
   },
   "overrides": {
     "sharp": "0.35.5",
@@ -55,8 +59,11 @@
     "server/",
     "ui/",
     "assets/",
+    "integrations/",
     "skills/",
     "README.md",
+    "CLIENTS.md",
+    "NATIVE-ACCEPTANCE.md",
     "LICENSE",
     "plugin.json",
     "mcp.json",

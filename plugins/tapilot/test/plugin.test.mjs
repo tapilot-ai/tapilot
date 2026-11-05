@@ -1,3 +1,5 @@
+import { assertPrivatePath } from '../server/private-path.mjs';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import tls from 'node:tls';
@@ -41,11 +43,13 @@ async function fixture(t, handler, { automaticAuthentication = true } = {}) {
   });
   server.on('tlsClientError', () => {});
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  const previousState=process.env.TAPILOT_STATE_DIR, previousConfig=process.env.TAPILOT_CONFIG;
+  const previousState=process.env.TAPILOT_STATE_DIR, previousConfig=process.env.TAPILOT_CONFIG, previousInstallations=process.env.TAPILOT_INSTALLATIONS_DIR;
   process.env.TAPILOT_STATE_DIR=join(dir,'state'); process.env.TAPILOT_CONFIG=join(dir,'config.json');
+  process.env.TAPILOT_INSTALLATIONS_DIR=join(dir,'isolated-installations');
   t.after(async () => { await runtimeRequest('/stop',{}, {start:false});
     if(previousState===undefined) delete process.env.TAPILOT_STATE_DIR; else process.env.TAPILOT_STATE_DIR=previousState;
     if(previousConfig===undefined) delete process.env.TAPILOT_CONFIG; else process.env.TAPILOT_CONFIG=previousConfig;
+    if(previousInstallations===undefined) delete process.env.TAPILOT_INSTALLATIONS_DIR; else process.env.TAPILOT_INSTALLATIONS_DIR=previousInstallations;
     for (const socket of connections) socket.destroy(); await new Promise(resolve => server.close(resolve)); await rm(dir, { recursive: true, force: true }); });
   return { dir, requests, connections, config: { version: 1, host: '127.0.0.1', port: server.address().port, fingerprint: createHash('sha256').update(der).digest('hex'), token } };
 }
@@ -110,8 +114,8 @@ test('real MCP stdio handshake, image content, schema and disconnect', async t =
     else reply({ canCapture: true });
   });
   const path = join(dir, 'config.json'); await saveConfig(config, path);
-  assert.equal((await stat(path)).mode & 0o777, 0o600);
-  const transport = new StdioClientTransport({ command: process.execPath, args: [new URL('../server/index.mjs', import.meta.url).pathname], env: { ...process.env, TAPILOT_CONFIG: path, TAPILOT_STATE_DIR: join(dir,'state') }, stderr: 'pipe' });
+  await assertPrivatePath(path);
+  const transport = new StdioClientTransport({ command: process.execPath, args: [fileURLToPath(new URL('../server/index.mjs', import.meta.url))], env: { ...process.env, TAPILOT_CONFIG: path, TAPILOT_STATE_DIR: join(dir,'state') }, stderr: 'pipe' });
   const client = new Client({ name: 'acceptance', version: '1' });
   t.after(() => client.close());
   await client.connect(transport);
@@ -237,7 +241,7 @@ test('MCP pause interrupts Midscene while a phone action is pending; live frames
   const path=join(dir,'config.json');await saveConfig(config,path);
   const client=new Client({name:'midscene-pause-test',version:'1'});
   t.after(()=>client.close());
-  await client.connect(new StdioClientTransport({command:process.execPath,args:[new URL('../server/index.mjs',import.meta.url).pathname],env:{...process.env,TAPILOT_CONFIG:path,TAPILOT_STATE_DIR:join(dir,'state')},stderr:'pipe'}));
+  await client.connect(new StdioClientTransport({command:process.execPath,args:[fileURLToPath(new URL('../server/index.mjs',import.meta.url))],env:{...process.env,TAPILOT_CONFIG:path,TAPILOT_STATE_DIR:join(dir,'state')},stderr:'pipe'}));
   withRuntime(client);
   await client.callTool({name:'tapilot_status',arguments:{}});
   const action=client.callTool({name:'tapilot_midscene',arguments:{action:'home'}});
@@ -285,7 +289,7 @@ test('existing panel automatically recovers after first pairing and external cre
   const path=join(dir,'config.json');
   const client=new Client({name:'pair-recovery',version:'1'});
   t.after(()=>client.close());
-  await client.connect(new StdioClientTransport({command:process.execPath,args:[new URL('../server/index.mjs',import.meta.url).pathname],env:{...process.env,TAPILOT_CONFIG:path,TAPILOT_STATE_DIR:join(dir,'state')},stderr:'pipe'}));
+  await client.connect(new StdioClientTransport({command:process.execPath,args:[fileURLToPath(new URL('../server/index.mjs',import.meta.url))],env:{...process.env,TAPILOT_CONFIG:path,TAPILOT_STATE_DIR:join(dir,'state')},stderr:'pipe'}));
   const call = name => client.callTool({name,arguments:{}});
   assert.equal((await call('tapilot_preview_open')).structuredContent.state,'connecting');
   assert.equal((await call('tapilot_preview_frame')).structuredContent.state,'setup_required');
@@ -325,32 +329,52 @@ test('CLI processes share frames with the MCP panel, generate reports, and rejec
   const exec=promisify(execFile);
   const sharp=(await import('sharp')).default;
   const png=(await sharp({create:{width:16,height:16,channels:3,background:'#ffaa00'}}).png().toBuffer()).toString('base64');
-  let frame=0;
-  const {dir,config,requests}=await fixture(t,(request,reply)=>{
+  let frame=0, rejectNextAction=false;
+  const {dir,config,requests}=await fixture(t,(request,reply,socket)=>{
     if(request.method==='device.capture') reply({dataUrl:`data:image/png;base64,${png}`,geometry:{frameId:`f${++frame}`,imageWidth:16,imageHeight:16,logicalWidth:16,logicalHeight:16}});
     else if(request.method==='device.preview') reply({dataUrl:`data:image/png;base64,${png}`,capturedAt:Date.now()});
+    else if(request.method==='device.execute' && rejectNextAction) {
+      rejectNextAction=false;
+      socket.write(JSON.stringify({id:request.id,ok:false,error:'Stale frame. Capture a new screen.'})+'\n');
+    }
     else reply({canCapture:true});
   });
   await saveConfig(config,join(dir,'config.json'));
   const cli=async (...args)=>{
-    try { const {stdout}=await exec(process.execPath,[new URL('../server/cli.mjs',import.meta.url).pathname,...args],{env:{...process.env}}); return JSON.parse(stdout); }
+    try { const {stdout}=await exec(process.execPath,[fileURLToPath(new URL('../server/cli.mjs',import.meta.url)),...args],{env:{...process.env}}); return JSON.parse(stdout); }
     catch(error) { if(error.stdout) return JSON.parse(error.stdout); throw error; }
   };
   await Promise.all([cli('status'),cli('status'),cli('status')]);
-  const image=await cli('screenshot');
+  const imageDirectory=join(dir,'workspace','screenshots');
+  const image=await cli('screenshot','--image-dir',imageDirectory);
   assert.ok(!image.isError,JSON.stringify(image));
-  assert.ok(image.images[0].path); assert.equal((await stat(image.images[0].path)).mode&0o777,0o600);
+  assert.ok(image.images[0].path.startsWith(imageDirectory+(process.platform === 'win32' ? '\\' : '/')),'sandboxed clients can keep image files in their workspace');
+  assert.ok(image.images[0].path); await assertPrivatePath(image.images[0].path);
   const {url}=await cli('preview'); const previewURL=new URL(url);
   const headers={Authorization:`Bearer ${previewURL.hash.slice(1)}`,'Content-Type':'application/json',Origin:previewURL.origin};
   const panel=async request=>(await fetch(`${previewURL.origin}/panel`,{method:'POST',headers,body:JSON.stringify(request)})).json();
   assert.equal((await panel({name:'tapilot_preview_frame',arguments:{}})).structuredContent.state,'live');
   await panel({name:'tapilot_preview',arguments:{action:'suspend'}});
   const args=['--x','0','--y','0','--frame-id',image.geometry.frameId,'--report-id',image.report_id];
-  const tapped=await cli('tap',...args);
+  const tapped=await cli('tap',...args,'--image-dir',imageDirectory);
   assert.ok(!tapped.isError,JSON.stringify(tapped));
+  assert.ok(tapped.images[0].path.startsWith(imageDirectory+(process.platform === 'win32' ? '\\' : '/')));
   assert.equal(requests.filter(r=>r.method==='authenticate').length,1,'one shared connection across CLI processes and preview');
   const stale=await cli('tap',...args); assert.equal(stale.isError,true);
+  assert.equal(stale.code,'stale_frame',JSON.stringify(stale));
+  assert.equal(stale.next_action,'inspect_returned_image');
+  assert.ok(stale.images?.[0].path,'a stale action returns a fresh observation without replay');
+  assert.notEqual(stale.geometry.frameId,image.geometry.frameId);
+  assert.equal(stale.report_id,image.report_id,'recovery stays in the original task report');
   assert.equal(requests.filter(r=>r.method==='device.execute').length,1,'stale action is not sent');
+  rejectNextAction=true;
+  const expired=await cli('tap','--x','0','--y','0','--frame-id',stale.geometry.frameId,'--report-id',image.report_id);
+  assert.equal(expired.code,'stale_frame',JSON.stringify(expired));
+  assert.equal(expired.action_executed,false);
+  assert.equal(expired.next_action,'inspect_returned_image');
+  assert.ok(expired.images?.[0].path);
+  assert.notEqual(expired.geometry.frameId,stale.geometry.frameId);
+  assert.equal(requests.filter(r=>r.method==='device.execute').length,2,'phone rejection is observed, never replayed');
   await panel({name:'tapilot_preview',arguments:{action:'pause'}});
   assert.equal((await cli('home')).isError,true);
   const report=await cli('resume'); assert.ok(!report.isError);
@@ -377,7 +401,7 @@ test('explicit disconnect persists across runtime restart and blocks every autom
   const {promisify} = await import('node:util');
   const {execFile} = await import('node:child_process');
   const cli = async (...args) => JSON.parse((await promisify(execFile)(process.execPath,
-    [new URL('../server/cli.mjs',import.meta.url).pathname,...args],{env:process.env})).stdout);
+    [fileURLToPath(new URL('../server/cli.mjs',import.meta.url)),...args],{env:process.env})).stdout);
   assert.equal((await cli('devices')).devices[0].id,config.fingerprint);
   await cli('disconnect');
   const count=requests.length;
@@ -450,7 +474,7 @@ test('panel opener returns the shell without initializing runtime or loading pai
   const client = new Client({name:'panel-shell',version:'1'});
   t.after(() => client.close());
   await client.connect(new StdioClientTransport({command:process.execPath,
-    args:[new URL('../server/index.mjs',import.meta.url).pathname],
+    args:[fileURLToPath(new URL('../server/index.mjs',import.meta.url))],
     env:{...process.env,TAPILOT_STATE_DIR:state,TAPILOT_CONFIG:config},stderr:'pipe'}));
   const result = await client.callTool({name:'tapilot_preview_open',arguments:{}});
   assert.equal(result.isError,undefined);

@@ -1,0 +1,97 @@
+{
+  "date": "2026-11-05",
+  "all_acceptance_complete": false,
+  "phone": "Test Android emulator API 35; English; Android 15",
+  "screenshots_edited": false,
+  "cases": [
+    {
+      "client": "豆包工作",
+      "lang": "中文",
+      "file": "doubao-0618-recovered.png",
+      "status": "partial",
+      "route": "MCP App",
+      "note": "新版面板恢复现场；稳定性及完整中文案例待验收。含账号水印。",
+      "sha256": "d6b3ef3f2df7149f3364337e9ea1e7e59a83d57964aa732c7bca55519eeaaf7f",
+      "captured_at": "2026-11-05T11:32:19+08:00"
+    },
+    {
+      "client": "豆包工作",
+      "lang": "English",
+      "file": "doubao-en-native-browser-live.png",
+      "status": "observed",
+      "route": "原生浏览器侧栏 / Native browser sidebar",
+      "note": "真实英文会话与手机画面。含账号水印，当前为审核原图。",
+      "sha256": "1d9094c5082f2344394bc2ad685ef4017b9a20d699846a03916a9b37122c9121",
+      "captured_at": "2026-11-05T11:50:18+08:00"
+    },
+    {
+      "client": "WorkBuddy",
+      "lang": "中文",
+      "file": "workbuddy-zh-live.png",
+      "status": "observed",
+      "route": "原生浏览器侧栏 / Native browser sidebar",
+      "note": "真实中文会话与手机画面。包含连接详情和通知浮层，当前为审核原图。",
+      "sha256": "f429aceeb27323d9ebc481af860a802099a726c24a81a97a618d5605a84befe4",
+      "captured_at": "2026-11-05T11:47:30+08:00"
+    },
+    {
+      "client": "WorkBuddy",
+      "lang": "English",
+      "file": "workbuddy-en-showcase.jpg",
+      "status": "observed",
+      "route": "原生浏览器侧栏 / Native browser sidebar",
+      "note": "真实英文会话与英文 Android 15 模拟器；右侧内置浏览器实际显示实时画面。宿主界面及任务标题仍为中文。",
+      "sha256": "b503952cde8853ce87905955e8d78fad4dea05599689016621fbb9cf1f12a227",
+      "captured_at": "2026-11-05T14:25:58+08:00",
+      "local_report_filename": "tapilot-f813b67e-0936-4b94-ab22-7b764554bd92.html"
+    },
+    {
+      "client": "DSH Web",
+      "lang": "中文",
+      "file": "dsh-zh-showcase.png",
+      "status": "observed",
+      "route": "DSH 原生插件侧栏 / Native plugin sidebar",
+      "note": "已登录后的真实会话，保留 Workspace Write 沙箱；使用工作区截图目录。",
+      "sha256": "35fc1e9215d348278cb25b94f52db2e97dc2099eed34ef838047ea5f3042d0e9",
+      "captured_at": "2026-11-05T12:35:17+08:00"
+    },
+    {
+      "client": "DSH Web",
+      "lang": "English",
+      "file": "dsh-en-showcase.png",
+      "status": "observed",
+      "route": "DSH 原生插件侧栏 / Native plugin sidebar",
+      "note": "真实英文会话、英文模拟器与原生插件侧栏。",
+      "sha256": "a964630962e4ef9adc393929323cd5c2a06a20b706720af771eca7a1af447bde",
+      "captured_at": "2026-11-05T12:37:59+08:00"
+    },
+    {
+      "client": "Cherry Studio",
+      "lang": "中文",
+      "file": "cherry-zh-showcase.jpg",
+      "status": "observed",
+      "route": "Work Agent 内置浏览器侧栏 / Native browser pane",
+      "note": "原生 2.1.10；DeepSeek-V4.1-Flash 真实会话，Skill + CLI 读图确认 Android 15；未注册 MCP。浏览器面板由操作者展开，Agent 导航到预览。",
+      "sha256": "69620e8f7cb4da8054f8f56294cfab7e9f8753c5d0db43f75cecb0786eb0a8f6",
+      "captured_at": "2026-11-05T16:44:27+08:00",
+      "local_report_filename": "tapilot-c693aff9-d1b0-42ab-a28a-637928c882f6.html"
+    },
+    {
+      "client": "Cherry Studio",
+      "lang": "English",
+      "file": "cherry-en-showcase.jpg",
+      "status": "observed",
+      "route": "Work Agent 内置浏览器侧栏 / Native browser pane",
+      "note": "原生 2.1.10；DeepSeek-V4.1-Flash 真实会话，Skill + CLI 读图确认 Android 15；未注册 MCP。Agent 自行打开并导航会话内浏览器。宿主界面和标题仍为中文。",
+      "sha256": "db8fdbd6fdf32ff39ad5395b64eaeb3724a52585128efaa94b55d13628750844",
+      "captured_at": "2026-11-05T16:49:33+08:00",
+      "local_report_filename": "tapilot-63504a0c-69c2-4607-84ac-97ee2b25a568.html"
+    }
+  ],
+  "limits": [
+    "DSH means DSH Web; DSH Go remains unaccepted.",
+    "WorkBuddy browser sidebar does not verify its MCP profile.",
+    "Cursor excluded by user.",
+    "Raw review assets; no website publication."
+  ]
+}

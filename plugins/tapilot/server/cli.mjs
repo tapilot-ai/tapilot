@@ -1,9 +1,11 @@
 #!/usr/bin/env node
+import { protectPrivatePath } from './private-path.mjs';
 import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { runtimeRequest, runtimePaths } from "./runtime-client.mjs";
+import { clientCommand } from './clients/index.mjs';
 
 const commands = new Set([
   "setup",
@@ -34,6 +36,9 @@ const [command, ...argv] = process.argv.slice(2);
 const help = `Tapilot CLI (Android over Wi-Fi; no ADB)
 Usage: tapilot <command> [--field value] [--json '{...}']
 Commands: ${[...commands].join(", ")}
+  onboard | config | install | uninstall | doctor --client CLIENT [--skills-dir PATH]
+                           Clients: codex, doubao, workbuddy, cursor, vscode, standard, dsh, cherry, skill
+  detect [--client CLIENT]  Read-only host recommendation; explicit target wins
   capabilities             Connect and list installed launchable apps
   preview [--open]          Return/open the local live preview URL
   pause | resume           Pause private capture/control; explicitly resume
@@ -44,6 +49,7 @@ Commands: ${[...commands].join(", ")}
   runtime-stop             Stop this local runtime (not other hosts)
 Fields: --report-id, --frame-id, --x, --y, --end-x, --end-y,
         --text, --passed true|false, --mode steps|ai|off, --timeout-ms
+        --image-dir PATH    Save returned images here (for sandboxed workspaces)
 Screenshot responses contain images[].path; read the image before acting.
 Reuse report_id for one task and geometry.frameId for coordinate actions.
 Failed/uncertain actions are never replayed automatically.
@@ -98,16 +104,18 @@ async function serialize(result) {
     }
     if (!["image/png", "image/jpeg"].includes(item.mimeType))
       throw new Error("Unsupported screenshot type");
-    const dir = join(runtimePaths().root, "cli-screenshots");
+    const dir = imageDirectory ?? join(runtimePaths().root, "cli-screenshots");
     await mkdir(dir, { recursive: true, mode: 0o700 });
     const path = join(
       dir,
       `${randomUUID()}.${item.mimeType === "image/png" ? "png" : "jpg"}`,
     );
-    await writeFile(path, Buffer.from(item.data, "base64"), {
+    await writeFile(path, "", {
       mode: 0o600,
       flag: "wx",
     });
+    await protectPrivatePath(path);
+    await writeFile(path, Buffer.from(item.data, "base64"));
     images.push({ path, mimeType: item.mimeType });
   }
   let data = result.structuredContent;
@@ -131,12 +139,36 @@ async function serialize(result) {
     ...(images.length ? { images } : {}),
   };
 }
+let taskArgs, imageDirectory;
+async function recoverStaleFrame(result) {
+  const message = result.error ?? (result.messages?.length === 1 ? result.messages[0] : undefined);
+  if (!result.isError || !['tap', 'swipe', 'input'].includes(command) ||
+      !['Stale frame; call Midscene screenshot again', 'Stale frame. Capture a new screen.'].includes(message)) return result;
+  const failure = { ...result, error: message, code: 'stale_frame', action_executed: false,
+    next_action: 'screenshot',
+    advice: 'The stale action was rejected. Inspect a fresh image and decide the next action. Stop and report the problem after two consecutive stale-frame failures. Never replay the action automatically.' };
+  try {
+    // Observation only: do not refresh a frame and silently reuse old coordinates.
+    // The runtime still enforces privacy pauses and explicit disconnections.
+    const observation = await serialize(await runtimeRequest('/call', {
+      name: 'tapilot_midscene', arguments: { action: 'screenshot', ...(taskArgs?.report_id ? { report_id: taskArgs.report_id } : {}) },
+    }));
+    if (observation.isError) return { ...failure, next_action: 'stop', recovery_error: observation.error ?? 'Fresh observation unavailable' };
+    return { ...failure, ...observation, isError: true, ok: false,
+      error: message, code: 'stale_frame', action_executed: false,
+      advice: failure.advice, next_action: 'inspect_returned_image' };
+  } catch (error) {
+    return { ...failure, next_action: 'stop', recovery_error: error.message };
+  }
+}
 try {
   if (!command || ["help", "--help", "-h"].includes(command)) {
     process.stdout.write(help);
   } else {
     let result;
-    if (command === "runtime-stop") {
+    if (['onboard', 'config', 'install', 'uninstall', 'doctor', 'detect'].includes(command)) {
+      result = await clientCommand(command, parseArgs(argv));
+    } else if (command === "runtime-stop") {
       if (argv.length) throw new Error("No options expected");
       result = await runtimeRequest("/stop", {}, { start: false });
     } else if (command === "preview") {
@@ -145,7 +177,12 @@ try {
       result = await runtimeRequest("/preview");
       if (argv[0] === "--open") await openBrowser(result.url);
     } else {
-      const args = parseArgs(argv);
+      const args = taskArgs = parseArgs(argv);
+      if (Object.hasOwn(args, 'image_dir')) {
+        if (typeof args.image_dir !== 'string' || !args.image_dir.trim()) throw new Error('Expected a nonempty --image-dir path');
+        imageDirectory = resolve(args.image_dir);
+        delete args.image_dir; // Local output setting, never part of a phone action.
+      }
       let request;
       const special = {
         capabilities: "tapilot_status",
@@ -177,17 +214,18 @@ try {
         result.host_instruction =
           "Open this local URL. Scan the computer QR using Tapilot, then confirm the phone in that page. Never paste pairing tokens into chat.";
     }
+    result = await recoverStaleFrame(result);
     process.stdout.write(JSON.stringify(result) + "\n");
     if (result.isError) process.exitCode = 1;
   }
 } catch (error) {
   process.stdout.write(
-    JSON.stringify({
+    JSON.stringify(await recoverStaleFrame({
       isError: true,
       error: error.message,
       advice:
         "If a phone action was dispatched, inspect a fresh screenshot before another action. Do not replay it automatically.",
-    }) + "\n",
+    })) + "\n",
   );
   process.exitCode = 1;
 }

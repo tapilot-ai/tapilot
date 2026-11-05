@@ -1,3 +1,4 @@
+import { protectPrivatePath } from '../server/private-path.mjs';
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -190,6 +191,8 @@ test("real AI SDK uses Responses fixture and wireless adapter for act/assert/wai
     }),
     { mode: 0o600 },
   );
+  await protectPrivatePath(join(c.root, "chatgpt"), true);
+  await protectPrivatePath(join(c.root, "chatgpt", "account.json"));
   const preload = join(c.root, "fixture.mjs");
   await writeFile(
     preload,
@@ -202,16 +205,16 @@ test("real AI SDK uses Responses fixture and wireless adapter for act/assert/wai
         [],
         {
           cwd: c.root,
-          execArgv: ["--import", preload],
+          execArgv: ["--import", pathToFileURL(preload).href],
           env: { ...process.env, FIXTURE_MODE: mode },
           stdio: ["ignore", "ignore", "pipe", "ipc"],
         },
       );
-      let stderr = "";
+      let stderr = "", received, failure;
       child.stderr.on("data", (v) => (stderr += v));
       const timer = setTimeout(() => {
+        failure = Error("worker timeout " + stderr);
         child.kill();
-        reject(Error("worker timeout " + stderr));
       }, 20000);
       child.on("message", async (m) => {
         if (m.type === "request")
@@ -221,14 +224,17 @@ test("real AI SDK uses Responses fixture and wireless adapter for act/assert/wai
             value: await phone.request(m.method, m.params),
           });
         else if (m.type === "result") {
-          clearTimeout(timer);
-          resolve({ ...m.result, diagnostic: stderr });
+          received = m.result;
         }
       });
-      child.on("error", reject);
-      child.on("exit", (code) => {
+      child.on("error", error => { failure = error; });
+      // On Windows the child retains its cwd until close; do not delete the
+      // fixture or start the next worker as soon as the result IPC arrives.
+      child.on("close", (code) => {
         clearTimeout(timer);
-        if (code && !stderr.includes("Assertion")) reject(Error(stderr));
+        if (failure) reject(failure);
+        else if (!received || code !== (received.ok ? 0 : 1)) reject(Error(stderr || "worker exited without result"));
+        else resolve({ ...received, diagnostic: stderr });
       });
       child.send({
         type: "run",
@@ -310,7 +316,7 @@ test("installation guidance includes both APK sources and needs no phone", async
   assert.match(result.structuredContent.download_links, /\[Download Tapilot APK from Feishu/);
   assert.match(result.structuredContent.compatibility, /wireless control/);
   assert.equal(result.structuredContent.pairing.command, 'node');
-  assert.match(result.structuredContent.pairing.script, /server\/cli\.mjs$/);
+  assert.match(result.structuredContent.pairing.script, /server[\\/]cli\.mjs$/);
   assert.deepEqual(result.structuredContent.pairing.args, ["pair"]);
   assert.equal(calls.length, 0);
 });

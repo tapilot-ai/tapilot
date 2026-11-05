@@ -1,0 +1,50 @@
+{
+  "archive": "tapilot-setup-darwin-arm64-0.6.18.tar.gz",
+  "sha256": "083134df6b117bd3a665b686ab6d2f2b090dfec4864e2c4a5833c3abb4a3d1e9",
+  "results": [
+    {
+      "client": "doubao",
+      "interactiveFirstInstall": "passed",
+      "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+      "firstInstall": "passed",
+      "update": "passed",
+      "stableHostPaths": "passed",
+      "restartAfterSourceRemoval": "passed"
+    },
+    {
+      "client": "workbuddy",
+      "interactiveFirstInstall": "passed",
+      "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+      "firstInstall": "passed",
+      "update": "passed",
+      "stableHostPaths": "passed",
+      "restartAfterSourceRemoval": "passed"
+    },
+    {
+      "client": "dsh",
+      "interactiveFirstInstall": "passed",
+      "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+      "firstInstall": "passed",
+      "update": "passed",
+      "stableHostPaths": "passed",
+      "restartAfterSourceRemoval": "passed"
+    },
+    {
+      "client": "cherry",
+      "interactiveFirstInstall": "passed",
+      "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+      "firstInstall": "passed",
+      "update": "passed",
+      "stableHostPaths": "passed",
+      "restartAfterSourceRemoval": "passed"
+    }
+  ],
+  "osUserSession": "not_tested_isolated_home_only",
+  "nativeHostRendering": "not_tested",
+  "phone": "not_tested",
+  "sourceCommit": "df68163dfe60df1587df6b08a780182b6f9fbe2c",
+  "node": "26.8.2",
+  "publicDownload": "https://github.com/tapilot-ai/tapilot/releases/download/client-setup-v0.6.18/tapilot-setup-darwin-arm64-0.6.18.tar.gz",
+  "anonymousDownloadVerified": true,
+  "bytes": 72203572
+}

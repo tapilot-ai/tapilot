@@ -1,3 +1,4 @@
+import { assertPrivatePath, protectPrivatePath } from '../private-path.mjs';
 import { t } from '../../ui/i18n.mjs';
 // Public-client OAuth for ChatGPT plan usage. No Codex credentials or API keys.
 import {
@@ -62,19 +63,21 @@ export class ChatGPTAuth {
     this.verify = verify;
   }
   async init() {
-    await mkdir(this.root, { recursive: true, mode: 0o700 });
-    const stat = await lstat(this.root);
-    if (!stat.isDirectory() || stat.isSymbolicLink() || stat.mode & 0o077)
-      throw new AuthError("unsafe_credential_directory");
+    const created = await mkdir(this.root, { recursive: true, mode: 0o700 });
+    if (created) await protectPrivatePath(this.root, true);
+    try { await assertPrivatePath(this.root, true); }
+    catch { throw new AuthError("unsafe_credential_directory"); }
   }
+
   async read(name) {
     try {
       const file = await open(join(this.root, name), "r");
       try {
         const stat = await file.stat();
         const link = await lstat(join(this.root, name));
-        if (!stat.isFile() || link.isSymbolicLink() || stat.mode & 0o077)
+        if (!stat.isFile() || link.isSymbolicLink())
           throw new AuthError("unsafe_credential_file");
+        await assertPrivatePath(join(this.root, name));
         return JSON.parse(await file.readFile("utf8"));
       } finally {
         await file.close();
@@ -89,6 +92,7 @@ export class ChatGPTAuth {
     const temp = `${path}.${random()}.tmp`;
     const file = await open(temp, "wx", 0o600);
     try {
+      await protectPrivatePath(temp);
       await file.writeFile(JSON.stringify(value));
       await file.sync();
     } finally {

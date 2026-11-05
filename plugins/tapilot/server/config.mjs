@@ -1,3 +1,4 @@
+import { protectPrivatePath } from './private-path.mjs';
 import { installationGuide } from './installation.mjs';
 import { homedir } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -62,7 +63,9 @@ async function changeDevices(path, change) {
     const registry = await loadDevices(path);
     change(registry);
     const temporary = `${path}.${randomUUID()}.tmp`;
-    await writeFile(temporary, JSON.stringify(registry), {mode:0o600,flag:'wx'});
+    await writeFile(temporary, '', {mode:0o600,flag:'wx'});
+    await protectPrivatePath(temporary);
+    await writeFile(temporary, JSON.stringify(registry));
     await rename(temporary, path);
     await chmod(path,0o600);
     return registry;

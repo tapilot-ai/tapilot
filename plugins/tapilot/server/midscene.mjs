@@ -341,6 +341,7 @@ export class MidsceneController {
       execArgv: [],
       stdio: ["ignore", "ignore", "pipe", "ipc"],
     });
+    const workerClosed = new Promise(resolve => child.once("close", resolve));
     let workerFailure = "";
     child.stderr.on("data", chunk => {
       const diagnostic = chunk.toString();
@@ -485,7 +486,8 @@ export class MidsceneController {
       await Promise.allSettled([...inFlight]);
       this.active = false;
       this.abort = undefined;
-      if (child.connected) child.kill();
+      if (child.exitCode === null && child.signalCode === null) child.kill();
+      await workerClosed;
     }
   }
 }

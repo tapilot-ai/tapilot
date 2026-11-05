@@ -49,7 +49,9 @@
     "test:e2e:auth-fixture": "npm --prefix tests/midscene run test:auth-fixture",
     "postinstall": "node plugins/tapilot/scripts/patch-midscene-zod.mjs",
     "check:cli-package": "node scripts/check-cli-package.mjs",
-    "release:review": "node scripts/review-distribution-materials.mjs"
+    "release:review": "node scripts/review-distribution-materials.mjs",
+    "build:clients": "node scripts/build-client-distribution.mjs",
+    "check:client-setup": "node scripts/check-client-setup.mjs"
   },
   "dependencies": {
     "@lobehub/icons-static-svg": "^1.101.0",

@@ -11,7 +11,13 @@ const work = fs.mkdtempSync(path.join(output, 'run-'));
 const source = path.join(work, 'source');
 const consumer = path.join(work, 'consumer');
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-const run = (command, args, cwd) => execFileSync(command, args, { cwd, stdio: 'inherit' });
+const run = (command, args, cwd) => {
+  if (command === 'npm.cmd') {
+    args = [path.join(path.dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js'), ...args];
+    command = process.execPath;
+  }
+  return execFileSync(command, args, { cwd, stdio: 'inherit' });
+};
 fs.cpSync(path.join(root, 'plugins/tapilot'), source, {
   recursive: true, filter: file => !file.split(path.sep).includes('node_modules'),
 });
@@ -34,7 +40,7 @@ run(npm, ['audit', '--audit-level=low'], consumer);
 const installed = path.join(consumer, 'node_modules/tapilot');
 run(process.execPath, ['server/cli.mjs', '--help'], installed);
 fs.cpSync(path.join(root, 'plugins/tapilot/test'), path.join(installed, 'test'), { recursive: true });
-run(process.execPath, ['--test', ...fs.readdirSync(path.join(installed, 'test')).filter(f => f.endsWith('.test.mjs')).map(f => `test/${f}`)], installed);
+run(process.execPath, ['--test', '--test-reporter=tap', '--test-timeout=300000', '--test-concurrency=2', ...fs.readdirSync(path.join(installed, 'test')).filter(f => f.endsWith('.test.mjs')).map(f => `test/${f}`)], installed);
 // Force the portable path rather than accidentally testing the Mac's native addon.
 const img = path.join(installed, 'node_modules/@img');
 for (const name of fs.readdirSync(img)) {

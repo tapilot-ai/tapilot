@@ -1,12 +1,34 @@
 import { readFile, mkdir } from "node:fs/promises";
+import { existsSync } from 'node:fs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { createHash } from "node:crypto";
 import { fork } from "node:child_process";
 import lockfile from "proper-lockfile";
 import { stateRoot } from "./state-paths.mjs";
 
-export const runtimeVersion = "0.6.15";
+export const runtimeVersion = "0.6.18";
+export async function runtimeLaunch({ root = fileURLToPath(new URL('../', import.meta.url)), installations = process.env.TAPILOT_INSTALLATIONS_DIR || join(homedir(), '.local/share/tapilot/clients') } = {}) {
+  const binary = process.platform === 'win32' ? 'node.exe' : 'node';
+  const localNode = join(root, 'bin', binary);
+  if (existsSync(localNode)) return { entry: pathToFileURL(join(root, 'server/runtime-server.mjs')), execPath: localNode, managed: true };
+  // Native plugins have their own package lifecycle. Reuse an installed copy of
+  // this exact runtime version when another client has already staged one.
+  for (const client of ['codex', 'doubao', 'workbuddy', 'vscode', 'dsh', 'cherry', 'standard', 'skill', 'cursor']) {
+    try {
+      const record = JSON.parse(await readFile(join(installations, client, 'installation.json'), 'utf8'));
+      if (!record || typeof record.root !== 'string') continue;
+      const installedRoot = resolve(record.root);
+      const node = join(installedRoot, 'bin', binary);
+      const entry = join(installedRoot, 'server/runtime-server.mjs');
+      if (record.runtime?.version === runtimeVersion && record.runtime.root === installedRoot && record.runtime.node === node &&
+          installedRoot.startsWith(resolve(installations, client, 'releases') + sep) && existsSync(node) && existsSync(entry))
+        return { entry: pathToFileURL(entry), execPath: node, managed: true };
+    } catch { /* Optional installations must not break a native plugin fallback. */ }
+  }
+  return { entry: pathToFileURL(join(root, 'server/runtime-server.mjs')), execPath: process.execPath, managed: false };
+}
 export function runtimePaths() {
   const root = stateRoot();
   const config = resolve(
@@ -45,24 +67,33 @@ export function compatibleRuntime(version) {
   return Number(running[3]) >= Number(current[3]);
 }
 export async function ensureRuntime() {
+  const launch = await runtimeLaunch();
+  // Any managed copy of this patch can serve all clients. Do not bounce between
+  // their individual installation paths, or downgrade a newer compatible patch.
+  const reusable = current => compatibleRuntime(current.version) &&
+    (current.version !== runtimeVersion || !launch.managed || current.managed === true);
   const existing = await readRuntime();
-  if (existing && compatibleRuntime(existing.version)) return existing;
+  if (existing && reusable(existing)) return existing;
   const { dir } = runtimePaths();
   await mkdir(dir, { recursive: true, mode: 0o700 });
   const release = await lockfile.lock(dir, {
     retries: { retries: 40, minTimeout: 100, maxTimeout: 250 },
     stale: 10000,
   });
+  let privacyPaused = false;
   try {
     const current = await readRuntime();
     if (current) {
-      if (compatibleRuntime(current.version)) return current;
+      if (reusable(current)) return current;
       const response = await fetch(`http://127.0.0.1:${current.port}/stop`, {
         method: 'POST',
         headers: {Authorization: `Bearer ${current.token}`, 'Content-Type': 'application/json'},
         body: '{}', signal: AbortSignal.timeout(360000),
       });
       if (!response.ok) throw new Error('Tapilot background upgrade could not stop the previous runtime');
+      // Legacy daemons cannot export their privacy state. Keep capture paused
+      // until an explicit resume rather than silently clearing a private pause.
+      privacyPaused = (await response.json()).privacyPaused !== false;
       // Shutdown removes metadata and releases ownership before the replacement starts.
       for (let attempt = 0; attempt < 100; attempt++) {
         if (!await readRuntime()) break;
@@ -71,7 +102,9 @@ export async function ensureRuntime() {
       if (await readRuntime()) throw new Error('Tapilot background upgrade is still waiting for shutdown');
     }
     await new Promise((resolve, reject) => {
-      const child = fork(new URL("./runtime-server.mjs", import.meta.url), [], {
+      const child = fork(launch.entry, [], {
+        execPath: launch.execPath,
+        env: { ...process.env, TAPILOT_PREVIEW_PAUSED: privacyPaused ? '1' : '0' },
         detached: true,
         stdio: ["ignore", "ignore", "ignore", "ipc"],
         execArgv: [],

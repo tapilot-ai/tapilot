@@ -1,18 +1,37 @@
 import { t, setLanguage, localize, connectionErrorMessage } from './i18n.mjs';
-import { BrowserApp } from './browser-app.mjs';
-import { App, applyDocumentTheme, applyHostStyleVariables } from '@modelcontextprotocol/ext-apps';
+import { createPanelBridge } from './panel-bridge.mjs';
+import { applyDocumentTheme, applyHostStyleVariables } from '@modelcontextprotocol/ext-apps';
 import { imagePoint } from './geometry.mjs';
 import { PreviewActivity } from './preview-activity.mjs';
-const app = globalThis.__TAPILOT_BROWSER__ ? new BrowserApp() : new App({ name: 'Tapilot', version: '0.6.15' }, {});
+import { panelRequest } from './panel-request.mjs';
+const app = createPanelBridge({ browser: !!globalThis.__TAPILOT_BROWSER__, dsh: !!globalThis.__TAPILOT_DSH__, host: globalThis.__TAPILOT_PANEL__ });
+const interactive = app.capabilities.interactive;
 const viewerId = crypto.randomUUID();
 const callServerTool = app.callServerTool.bind(app);
 app.callServerTool = request => {
   const scoped = ['tapilot_preview_frame', 'tapilot_preview_control', 'tapilot_preview', 'tapilot_preview_resume'].includes(request.name);
-  return callServerTool(scoped ? {...request, arguments:{...request.arguments, viewer_id:viewerId}} : request);
+  return panelRequest(callServerTool, scoped ? {...request, arguments:{...request.arguments, viewer_id:viewerId}} : request);
 };
 const image = document.querySelector('img');
 const status = document.querySelector('[role=status]');
 const resume = document.querySelector('#resume');
+const expandPanel = document.querySelector('#expand-panel');
+let displayContext = {};
+function syncDisplayMode(context = {}) {
+  displayContext = {...displayContext, ...context};
+  expandPanel.hidden = globalThis.__TAPILOT_PANEL__?.name !== 'doubao' || displayContext.displayMode === 'fullscreen' || !displayContext.availableDisplayModes?.includes('fullscreen');
+  expandPanel.textContent = t('在侧栏打开');
+}
+async function expand() {
+  expandPanel.disabled = true;
+  try {
+    const result = await app.requestDisplayMode({mode:'fullscreen'}, {timeout:5000});
+    syncDisplayMode({displayMode:result.mode});
+    if (result.mode !== 'fullscreen') throw new Error('Expansion rejected');
+  } catch { notice.textContent = t('无法打开侧栏，请重试。'); notice.hidden = false; }
+  finally { expandPanel.disabled = false; }
+}
+expandPanel.onclick = expand;
 const pause = document.querySelector('#pause');
 const disconnect = document.querySelector('#disconnect');
 const notice = document.querySelector('[role=alert]');
@@ -62,7 +81,7 @@ function renderDevicePicker() {
     row.setAttribute('aria-busy', String(device.id === connectingDeviceId));
     row.append(name); row.append(status);
     row.onclick = async () => {
-      if (busy || loadingDevices || pairingActive) return;
+      if (!interactive || busy || loadingDevices || pairingActive) return;
       const alreadyConnected = device.state === 'connected';
       selectedDeviceId = device.id; deviceForgetConfirm.hidden = true;
       renderDevicePicker(); syncControls();
@@ -147,6 +166,7 @@ let hostLocale, lastData;
 function applyLocale(data) {
   const locale = hostLocale || app.getHostContext?.()?.locale || data?.language || globalThis.navigator?.language || 'en';
   setLanguage(/^zh(?:[-_]|$)/i.test(locale) ? 'zh' : 'en'); localize();
+  if (!interactive) document.querySelector('#host-notice').textContent = t('当前客户端支持实时预览。配对、切换设备和操作手机请交给助手完成。');
 }
 let pairingExpiresAt = 0, pairingActive = false, pairingGeneration = 0, pairingExpired = false, pairingStarting = false;
 function clearPairingQr() { if (pairingStarting) { pairingStarting = false; busy = false; } pairingExpired = false; pairRefresh.hidden = true; pairingActive = false; ++pairingGeneration; pairCancel.hidden = true; pairingQr.hidden = true; pairingQr.removeAttribute('src'); pairConfirm.hidden = true; pairingStatus.hidden = true; syncPairingControls(); }
@@ -170,7 +190,7 @@ const labels = () => ({
   accessibility_required: t("手机的设备控制服务未连接"),
   host_reload_required: t("请重载电脑上的 Tapilot 插件"),
   setup_required: t("尚未配对手机"),
-  live: t("已连接 · 点击或拖动屏幕操作"), disconnected: t("已断开，点击重新连接"),
+  live: interactive ? t("已连接 · 点击或拖动屏幕操作") : t('已连接 · 实时预览'), disconnected: t("已断开，点击重新连接"),
   manual: t("已暂停，请在手机上完成私密操作"), device_locked: t("请在手机上解锁，画面会自动恢复"),
   occupied: t("手机正被另一个控制端使用，请先结束那边的控制"),
   pairing_required: t("配对已失效，请在手机的无线控制设置中重新配对"),
@@ -188,7 +208,7 @@ function syncPairingControls() {
 }
 function syncControls() {
   syncPairingControls();
-  for (const el of controls) el.disabled = busy || !!pointer || state !== 'live' || !displayedFrame;
+  for (const el of controls) el.disabled = !interactive || busy || !!pointer || state !== 'live' || !displayedFrame;
   resume.disabled = pause.disabled = disconnect.disabled = busy || pairingActive;
   pair.disabled = busy;
   document.querySelector('#device-pair').disabled = busy;
@@ -203,7 +223,11 @@ function syncControls() {
   document.querySelector('#device-disconnect').hidden = pairingActive || !selected || selected.state !== 'connected';
   for (const id of ['#device-connect', '#device-disconnect', '#device-forget', '#device-forget-confirm', '#device-address-save', '#device-address'])
     document.querySelector(id).disabled = busy || loadingDevices || !selectedDeviceId;
-  image.setAttribute('aria-disabled', String(busy || !!pointer || state !== 'live' || !displayedFrame));
+  image.setAttribute('aria-disabled', String(!interactive || busy || !!pointer || state !== 'live' || !displayedFrame));
+  if (!interactive) {
+    for (const selector of ['.navigation', '.text-entry', '.device-actions', '#pair', '#device-pair', '#reconnect-pair', '#pair-confirm', '#pair-refresh', '#pair-cancel']) document.querySelector(selector).hidden = true;
+    for (const row of devicesList.children) row.disabled = true;
+  }
 }
 function clear() { if (state === 'live') status.textContent = t('正在获取手机画面…'); frame = displayedFrame = undefined; image.onload = image.onerror = null; image.removeAttribute('src'); image.hidden = true; }
 function render(data) {
@@ -241,7 +265,7 @@ function render(data) {
     setup_required: t("在手机 Tapilot 设置中开启无线控制，再点击下方按钮，用手机扫描电脑二维码。无需 USB。"),
     pairing_required: t("在手机上重新扫描电脑二维码，并在电脑窗口确认。完成后点击重新连接。"),
     waiting_frame: t('尚未收到手机画面，正在检查连接。长时间没有画面时可重试。'),
-    unavailable: t("请确认电脑和手机已连接同一局域网 Wi-Fi、手机屏幕已点亮并解锁，且 Tapilot 无线控制已开启。恢复后会自动连接；不会重放之前的操作。"),
+    unavailable: t("请确认手机已解锁、无线控制已开启且 Wi-Fi 可以互通。若切到后台后断线，请打开手机 Tapilot，检查后台运行和联网限制。恢复后会自动连接，不会重放操作。"),
     occupied: t("请先在另一控制端结束任务或释放手机，然后重新连接。"),
     device_locked: t("请点亮手机屏幕并解锁，预览会自动恢复，无需刷新连接。"),
     manual: t("画面已隐藏。完成手机上的私密操作后，点击已完成继续。"),
@@ -305,7 +329,11 @@ async function action(name, args = {}) {
     }
     if (r.isError) {
       render(r.structuredContent ?? { state: 'unavailable' });
-      if (name === 'tapilot_preview_control') {
+      if (name === 'tapilot_preview_resume' && r.content?.some(item => item.type === 'text' && item.text)) {
+        connectionErrorActive = true;
+        notice.textContent = connectionErrorMessage(r.content?.find(item => item.type === 'text')?.text || '无法读取手机画面');
+        notice.hidden = false;
+      } else if (name === 'tapilot_preview_control') {
         notice.textContent = t("操作失败或结果未知，未自动重试。请查看新画面后再操作。"); notice.hidden = false;
       } else if (name === 'tapilot_devices') {
         connectionErrorActive = args.action === 'connect';
@@ -322,7 +350,7 @@ async function action(name, args = {}) {
   finally { busy = false; syncControls(); schedule(frame ? 250 : 0); }
 }
 function manual(args, snapshot = displayedFrame) {
-  if (busy || !snapshot || state !== 'live' || stopped) return Promise.resolve(false);
+  if (!interactive || busy || !snapshot || state !== 'live' || stopped) return Promise.resolve(false);
   // Never apply coordinates selected on an older image to a later frame.
   return action('tapilot_preview_control', { ...args, frame_id: snapshot.id });
 }
@@ -330,7 +358,7 @@ function point(event, snapshot = displayedFrame, clamp = false) {
   return snapshot && imagePoint(image.getBoundingClientRect(), snapshot.width, snapshot.height, event.clientX, event.clientY, clamp);
 }
 image.addEventListener('pointerdown', event => {
-  if (busy) return;
+  if (!interactive || busy) return;
   if (event.button !== 0 || pointer || state !== 'live') return;
   const start = point(event); if (!start) return;
   event.preventDefault(); clearTimeout(timer); ++epoch;
@@ -481,6 +509,7 @@ function applyTheme(context) {
   if (context?.styles?.variables) applyHostStyleVariables(context.styles.variables);
 }
 app.onhostcontextchanged = context => {
+  syncDisplayMode(context);
   applyTheme(context);
   if (context.locale) hostLocale = context.locale;
   applyLocale(lastData);
@@ -502,12 +531,23 @@ window.addEventListener('focus', () => { windowFocused = true; updateActivity();
 window.addEventListener('pagehide', () => { stopped = true; ++epoch; clearTimeout(timer); clear(); clearPairingQr(); text.value = ''; });
 window.addEventListener('pageshow', () => { stopped = false; windowFocused = true; render({state:'connecting'}); updateActivity(); schedule(0); });
 localize();
+const hostNotice = document.querySelector('#host-notice');
+hostNotice.hidden = interactive;
+if (!interactive) {
+  hostNotice.textContent = t('当前客户端支持实时预览。配对、切换设备和操作手机请交给助手完成。');
+  image.style.cursor = 'default';
+}
 syncControls();
 try {
   await app.connect();
   applyTheme(app.getHostContext?.());
   applyLocale(lastData);
   if (lastData) render(lastData);
+  // Doubao initially embeds apps in the message. Request its expanded surface
+  // once per mounted view; polling and subsequent results must not reopen it.
+  const context = app.getHostContext?.();
+  syncDisplayMode(context);
+  if (!expandPanel.hidden) await expand();
   // The sole open tool requests the panel. Repeated frame/tool results must not
   // request another fullscreen host tab.
   updateActivity(); schedule(0);
