@@ -68,5 +68,20 @@ cases:
           Stop interacting after submission.
       - task.waitForIdle: {}
       - aiAssert: >-
-          The new reply is CANCEL-RECOVERY-OK with completed status and zero phone operations.
-          The old Settings task remains stopped/cancelled and was not replayed or marked completed.
+          The newest Tapilot reply is CANCEL-RECOVERY-OK with completed status and zero
+          phone operations. For this newest reply, a visible operation counter must be 0;
+          a plain completed answer may instead omit the progress row and Activity entry
+          entirely. A nonzero counter or an Activity entry on this newest reply fails.
+          Do not use the earlier Settings task's counter or failed operation record as
+          evidence for this reply. Check only this newest reply in this assertion.
+      - aiAct: >-
+          Scroll within this same conversation to the earlier long Settings request and
+          its stopped reply. Leave the words "Stopped at your request" (or their Chinese
+          equivalent) visibly open for the next independent assertion. Do not tap Retry,
+          Continue task, Return to app or any execution control. Do not submit anything,
+          create a conversation, or perform any Settings operation.
+      - aiAssert: >-
+          The earlier long Settings request still has a reply explicitly saying
+          "Stopped at your request" (or its Chinese equivalent). It is not marked completed
+          and no task is running. A historical operation may show interruption or failed
+          verification, and its saved progress does not change the task's stopped status.
