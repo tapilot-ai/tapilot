@@ -183,15 +183,16 @@ jobs:
           cache: npm
           cache-dependency-path: tests/midscene/package-lock.json
       - run: npm ci --prefix tests/midscene
-      - name: Refresh if needed, persist, then issue access-only lease
+      - name: Prepare serialized SIWC session
         id: access
-        env:
-          TAPILOT_SIWC_ENVIRONMENT: tapilot-siwc
-          TAPILOT_SIWC_FORCE_REFRESH: ${{ github.event_name == 'workflow_dispatch' && inputs.siwc_refresh }}
-          SIWC_CREDENTIALS: ${{ secrets.SIWC_CREDENTIALS }}
-          GH_TOKEN: ${{ secrets.SIWC_SECRET_WRITE_TOKEN }}
-          SIWC_TRANSPORT_KEY: ${{ secrets.SIWC_TRANSPORT_KEY }}
-        run: node scripts/ci-siwc/prepare.mjs
+        uses: quanru/midscene-action/siwc/prepare@6e9bb5e21ac8f5a65573bb9e07c5b6ab7624235c
+        with:
+          working-directory: tests/midscene
+          environment: tapilot-siwc
+          credentials: ${{ secrets.SIWC_CREDENTIALS }}
+          secret-write-token: ${{ secrets.SIWC_SECRET_WRITE_TOKEN }}
+          transport-key: ${{ secrets.SIWC_TRANSPORT_KEY }}
+          force-refresh: ${{ github.event_name == 'workflow_dispatch' && inputs.siwc_refresh }}
 
   apk-midscene:
     name: APK core flows (${{ matrix.lane }}/4)
@@ -245,20 +246,32 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: Install APK and run real screen core flows with Terra
-        id: apk-test
-        # Shards only produce evidence. The final job owns the native action,
-        # Summary and published entry so this workflow has one report entrance.
-        run: |
-          if [ "$TAPILOT_CI_AUTH_MODE" = siwc ]; then
-            node scripts/ci-siwc/run.mjs bash scripts/run-apk-ci-emulator.sh
-          else
-            bash scripts/run-apk-ci-emulator.sh
-          fi
+        if: ${{ vars.TAPILOT_CI_AUTH_MODE == 'siwc' }}
+        uses: quanru/midscene-action/siwc/run@6e9bb5e21ac8f5a65573bb9e07c5b6ab7624235c
+        with:
+          working-directory: .
+          command: bash scripts/run-apk-ci-emulator.sh
+          ticket: ${{ needs.siwc-credentials.outputs.ticket }}
+          transport-key: ${{ secrets.SIWC_TRANSPORT_KEY }}
         env:
           TAPILOT_CI_AUTH_MODE: ${{ vars.TAPILOT_CI_AUTH_MODE }}
-          SIWC_TICKET: ${{ needs.siwc-credentials.outputs.ticket }}
-          SIWC_TRANSPORT_KEY: ${{ secrets.SIWC_TRANSPORT_KEY }}
+          MIDSCENE_MODEL_BASE_URL: https://api.openai.com/v1
+          MIDSCENE_MODEL_NAME: gpt-6.1-terra
+          MIDSCENE_MODEL_FAMILY: gpt-6
+          MIDSCENE_MODEL_PROTOCOL: openai-responses
+          MIDSCENE_INCLUDE_TAGS: smoke,draft-restart,share-draft,ci-core
+          MIDSCENE_EXCLUDE_TAGS: ''
+          TAPILOT_E2E_CI_LANE: ${{ matrix.lane }}
+          TAPILOT_E2E_DEVICE_ID: emulator-5554
+          TAPILOT_E2E_PACKAGE: lifeos.md.tapilot.e2everify
+          TAPILOT_E2E_SCREEN_INFO: wm
+          MIDSCENE_REPORT_QUIET: 'true'
+      - name: Install APK and run core flows with API key
+        if: ${{ vars.TAPILOT_CI_AUTH_MODE != 'siwc' }}
+        run: bash scripts/run-apk-ci-emulator.sh
+        env:
           MIDSCENE_MODEL_API_KEY: ${{ secrets.TAPILOT_OPENAI_API_KEY }}
+          TAPILOT_CI_AUTH_MODE: ${{ vars.TAPILOT_CI_AUTH_MODE }}
           MIDSCENE_MODEL_BASE_URL: https://api.openai.com/v1
           MIDSCENE_MODEL_NAME: gpt-6.1-terra
           MIDSCENE_MODEL_FAMILY: gpt-6
@@ -313,60 +326,21 @@ jobs:
         with:
           pattern: midscene-apk-shard-*
           path: tests/midscene/shard-results
-      - name: Merge all native Midscene reports and check coverage
+      - name: Merge and publish one native Midscene report
         id: apk-test
         env:
           TAPILOT_CI_PLAN: ${{ needs.apk-build.outputs.plan }}
-        uses: web-infra-dev/midscene-action@5ef922b20a69d69a0f34639c4c867ba2049f6ede # v1
+        uses: quanru/midscene-action@6e9bb5e21ac8f5a65573bb9e07c5b6ab7624235c
         with:
           working-directory: tests/midscene
           command: node scripts/merge-ci-reports.mjs
           artifact-name: midscene-apk-complete-${{ github.run_id }}-${{ github.run_attempt }}
           retention-days: '7'
-          publish-pages: 'false'
-      - name: Locate APK smoke HTML report
-        id: apk-report
-        if: ${{ always() && (steps.apk-test.outcome == 'success' || steps.apk-test.outcome == 'failure') }}
-        shell: bash
-        run: |
-          shopt -s nullglob
-          reports=(tests/midscene/midscene_run/report/midscene-e2e-*/index.html)
-          if [ "${#reports[@]}" -ne 1 ]; then
-            echo '::error::Expected exactly one APK smoke HTML report'
-            exit 1
-          fi
-          echo "directory=${reports[0]%/index.html}" >> "$GITHUB_OUTPUT"
-      - name: Prepare isolated Wrangler directory
-        if: ${{ always() && steps.apk-report.outcome == 'success' }}
-        run: |
-          mkdir -p .cloudflare-deploy
-          echo '{"private":true}' > .cloudflare-deploy/package.json
-      - name: Publish APK smoke report
-        id: apk-pages
-        if: ${{ always() && steps.apk-report.outcome == 'success' }}
-        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: '4.151.1'
-          packageManager: npm
-          workingDirectory: .cloudflare-deploy
-          command: pages deploy "../${{ steps.apk-report.outputs.directory }}" --project-name=tapilot-apk-reports --branch=run-${{ github.run_id }}-${{ github.run_attempt }} --commit-hash=${{ github.sha }}
-      - name: Link APK report
-        if: ${{ always() && steps.apk-pages.outcome == 'success' }}
-        env:
-          REPORT_URL: ${{ steps.apk-pages.outputs.deployment-url }}
-        run: |
-          set -euo pipefail
-          if [[ ! "$REPORT_URL" =~ ^https://[a-z0-9.-]+\.tapilot-apk-reports\.pages\.dev/?$ ]]; then
-            echo '::error::Cloudflare did not return the expected report URL'
-            exit 1
-          fi
-          curl --fail --silent --show-error --retry 3 --max-time 30 "$REPORT_URL" -o /tmp/published-report.html
-          grep -q 'midscene_test_run_dump' /tmp/published-report.html
-          badge=$(cat tests/midscene/midscene_run/ci-badge.md)
-          printf '[%s](%s)\n\n[Open all APK cases in Midscene Test ↗](%s)\n\nCloudflare: <%s>\n\nSource: %s\n' \
-            "$badge" "$REPORT_URL" "$REPORT_URL" "$REPORT_URL" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          publish-pages: 'true'
+          cloudflare-target: pages
+          cloudflare-pages-project: tapilot-apk-reports
+          cloudflare-api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          cloudflare-account-id: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
 
   device-e2e-config:
     if: github.event_name == 'workflow_dispatch' && inputs.device_e2e

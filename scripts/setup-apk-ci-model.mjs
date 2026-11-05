@@ -9,8 +9,8 @@ const adb = (...args) => execFileSync('adb', ['-s', serial, ...args], { encoding
 if (adb('shell', 'getprop', 'ro.kernel.qemu') !== '1') throw new Error('Refusing to provision a physical device');
 const key = process.env.MIDSCENE_MODEL_API_KEY?.trim();
 const siwc = process.env.MIDSCENE_MODEL_AUTH_MODE === 'siwc';
-const access = process.env.TAPILOT_CI_SIWC_ACCESS_TOKEN;
-const expiresAt = Number(process.env.TAPILOT_CI_SIWC_EXPIRES_AT);
+const access = process.env.MIDSCENE_SIWC_ACCESS_TOKEN;
+const expiresAt = Number(process.env.MIDSCENE_SIWC_EXPIRES_AT);
 if (siwc && (!access || !Number.isSafeInteger(expiresAt) || expiresAt - Date.now() < 20 * 60_000)) {
   throw new Error('Missing or expiring CI SIWC access-only lease');
 }

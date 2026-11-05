@@ -15,6 +15,8 @@ if (process.env.GITHUB_SHA) assert.equal(plan.sourceSha, process.env.GITHUB_SHA)
 if (process.env.GITHUB_RUN_ID) assert.equal(plan.runId, process.env.GITHUB_RUN_ID);
 const merger = new ReportMergingTool();
 const cases = [];
+const projects = [];
+let durationMs = 0;
 let failed = false;
 for (const plannedLane of plan.lanes) {
   const lane = plannedLane.id;
@@ -35,6 +37,8 @@ for (const plannedLane of plan.lanes) {
   assert.equal(summary.schemaVersion, 3, 'Review merger when upgrading Midscene');
   assert.equal(summary.projects.length, 1);
   assert.equal(summary.projects[0].name, `android-${lane}`);
+  projects.push(...summary.projects);
+  durationMs = Math.max(durationMs, summary.durationMs);
   const report = resolve(dirname(summaryPath), summary.report);
   assert.ok(report.startsWith(`${resolve(root)}/`), 'Report must belong to its lane artifact');
   merger.append({ reportFilePath: report, reportAttributes: {
@@ -64,10 +68,16 @@ const passed = cases.filter(item => item.status === 'success').length;
 const failedOrNotRun = cases.length - passed;
 const resultDirectory = '.midscene/test-results/complete';
 mkdirSync(resultDirectory, { recursive: true });
+// The report Action consumes this native result contract for publication.
+writeFileSync(`${resultDirectory}/summary.json`, JSON.stringify({
+  schemaVersion: 3, status: failed ? 'failed' : 'success', exitCode: failed ? 1 : 0,
+  durationMs, projects, report: '../../../midscene_run/report/midscene-e2e-complete/index.html',
+}));
 const escapeCell = value => String(value).replaceAll('|', '\\|').replaceAll('\n', ' ');
 writeFileSync(`${resultDirectory}/result.md`, [
   '# Midscene Test', '',
   `${passed}/${cases.length} passed · ${failedOrNotRun} failed or not run · zero retries`, '',
+  `![Midscene Test](https://badge.midscenejs.com/e2e?pass=${passed}&fail=${failedOrNotRun}&style=large)`, '',
   '| Case | Result |', '| --- | --- |',
   ...cases.map(item => `| ${escapeCell(item.name)} | ${escapeCell(item.status)} |`), '',
 ].join('\n'));

@@ -67,6 +67,10 @@ export default {output:{reportFormat:'html-and-external-assets'},projects:[{name
     assert.equal(summary.match(/^# Midscene Test$/gm)?.length, 1);
     for (const id of ids) assert.match(summary, new RegExp(`\\| ${id} \\|`));
     assert.match(summary, /9\/11 passed/);
+    const publication = JSON.parse(readFileSync(join(root, '.midscene/test-results/complete/summary.json'), 'utf8'));
+    assert.equal(publication.exitCode, 1, 'Publication must preserve the failed test verdict');
+    assert.equal(publication.projects.flatMap((project: { cases: unknown[] }) => project.cases).length, 11);
+    assert.equal(readFileSync(join(root, '.midscene/test-results/complete', publication.report), 'utf8'), html);
     const provenance = join(root, 'shard-results/midscene-apk-shard-1-1/midscene_run/ci/provenance.json');
     const data = JSON.parse(readFileSync(provenance, 'utf8'));
     writeFileSync(provenance, JSON.stringify({ ...data, apkSha256: 'b'.repeat(64) }));
