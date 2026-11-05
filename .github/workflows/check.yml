@@ -250,7 +250,7 @@ jobs:
         uses: quanru/midscene-action/siwc/run@6e9bb5e21ac8f5a65573bb9e07c5b6ab7624235c
         with:
           working-directory: .
-          command: bash scripts/run-apk-ci-emulator.sh
+          command: GITHUB_STEP_SUMMARY=/dev/null bash scripts/run-apk-ci-emulator.sh
           ticket: ${{ needs.siwc-credentials.outputs.ticket }}
           transport-key: ${{ secrets.SIWC_TRANSPORT_KEY }}
         env:
@@ -268,7 +268,7 @@ jobs:
           MIDSCENE_REPORT_QUIET: 'true'
       - name: Install APK and run core flows with API key
         if: ${{ vars.TAPILOT_CI_AUTH_MODE != 'siwc' }}
-        run: bash scripts/run-apk-ci-emulator.sh
+        run: GITHUB_STEP_SUMMARY=/dev/null bash scripts/run-apk-ci-emulator.sh
         env:
           MIDSCENE_MODEL_API_KEY: ${{ secrets.TAPILOT_OPENAI_API_KEY }}
           TAPILOT_CI_AUTH_MODE: ${{ vars.TAPILOT_CI_AUTH_MODE }}
