@@ -35,6 +35,12 @@ test('APK handoff rejects changed bytes, checkout, run and definitions; generate
     const generated = yaml.load(readFileSync(join(root, '.ci-cases/lane-1/cases.yaml'), 'utf8')) as typeof document;
     assert.deepEqual(generated.afterEach, document.afterEach);
     assert.deepEqual(generated.cases, document.cases.filter(item => plan.lanes[0].caseIds.includes(item.name.split(' ')[0])));
+    const focused = { ...createPlan(collectCases(root).slice(0, 2), {}, identity, 2), selectedCaseIds: ['CASE-0', 'CASE-1'] };
+    prepareShard(focused, 1, options);
+    const focusedYaml = yaml.load(readFileSync(join(root, '.ci-cases/lane-1/cases.yaml'), 'utf8')) as typeof document;
+    assert.deepEqual(focusedYaml.cases, [document.cases[0]], 'Focused lanes retain original case assertions without selecting unrelated cases');
+    assert.deepEqual(focusedYaml.afterEach, document.afterEach);
+    assert.throws(() => prepareShard({ ...focused, selectedCaseIds: ['CASE-0'] }, 1, options), /selection must match/);
     assert.throws(() => prepareShard(plan, 1, { ...options, sourceSha: 'b'.repeat(40) }), /source revision/);
     assert.throws(() => prepareShard(plan, 1, { ...options, runId: '43' }), /workflow run/);
     writeFileSync(apk, 'tampered bytes');

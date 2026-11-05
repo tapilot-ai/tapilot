@@ -36,6 +36,21 @@ test('bundled query and runner preserve positive and negative structured verific
 
 import { verifyPhone, verificationCriteria } from './phone-verification.mjs';
 
+test('screen readings are verified before the conversation delivers them, while device delivery still needs evidence', async () => {
+  const condition = JSON.stringify({ scope: 'entire_user_goal', userRequirements: ['Open Settings and tell me the first two categories. Do not modify settings.'] });
+  let checks = 0;
+  const result = await verifyPhone(async context => {
+    checks++;
+    const prompt = context.input.prompt.success;
+    assert.match(prompt, /conversation runtime delivers the answer after this check/);
+    assert.match(prompt, /does not waive requested device-side delivery actions/);
+    assert.match(prompt, /Missing or incorrect screen facts still mean false/);
+    return { data: { success: true, observation: 'Settings shows Network & internet, then Connected devices.' } };
+  }, { signal: new AbortController().signal }, { condition });
+  assert.equal(checks, 1);
+  assert.equal(result.data.success, true);
+});
+
 test('prior reply resolves references without overriding requirements or negative screenshot evidence', async () => {
   const condition = JSON.stringify({ scope: 'entire_user_goal',
     userRequirements: ['Calculate the number you just answered times two'],

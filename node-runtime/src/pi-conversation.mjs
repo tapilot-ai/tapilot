@@ -170,11 +170,11 @@ export function createConversation({ messages, goal = '', userInput = '', resume
         final = args;
         return { content: [{ type: 'text', text: args.summary }], terminate: true };
       } },
-    { name: 'answer_question', description: 'Successfully fulfill any request that needs only a text response, including replying with exact user-specified text, writing, translation, summarization and general questions. The request need not be phrased as a question. This tool terminates the turn and marks the text request completed; no phone screenshot or action is needed. Never claim a phone action was performed, a screen was read, or a device task completed. For missing task information use finish_task(outcome=waiting_user).',
-      parameters: Type.Object({ answer: Type.String({ minLength: 1 }) }),
+    { name: 'answer_question', description: 'Return a text-only answer or clarification without phone actions. Choose outcome=waiting_user whenever this reply asks the user for information or pauses for their next message, including when explicitly instructed to ask first and calculate later. A clarification is not task completion. Choose outcome=completed only when the requested answer, writing, translation or other text result is fully delivered. This tool terminates this turn; no phone screenshot is needed. Never claim a phone action was performed, a screen was read, or a device task completed.',
+      parameters: Type.Object({ answer: Type.String({ minLength: 1 }), outcome: Type.Union([Type.Literal('completed'), Type.Literal('waiting_user')], { description: 'waiting_user for a clarification or an explicit wait for the next user message; completed only for the final requested text result.' }) }),
       execute: async (_id, args) => {
         if (operations > 0 || planned || resumedPhoneTask) throw new Error('任务已有手机执行或计划，不能改为普通知识问答。请用 finish_task 结束。');
-        final = { outcome: 'completed', summary: args.answer, kind: 'answer' };
+        final = { outcome: args.outcome, summary: args.answer, kind: 'answer' };
         return { content: [{ type: 'text', text: args.answer }], terminate: true };
       } },
   ];

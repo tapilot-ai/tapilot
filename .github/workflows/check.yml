@@ -5,6 +5,10 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
+      case_ids:
+        description: Optional comma-separated hosted case IDs for focused regression; empty runs all core flows
+        type: string
+        default: ''
       siwc_refresh:
         description: Force one real SIWC token refresh and secret writeback before APK acceptance
         type: boolean
@@ -94,6 +98,7 @@ jobs:
     outputs:
       artifact-name: ${{ steps.handoff.outputs.artifact-name }}
       plan: ${{ steps.handoff.outputs.plan }}
+      lane-count: ${{ steps.handoff.outputs.lane-count }}
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -143,6 +148,8 @@ jobs:
       - name: Record shared APK identity and generate balanced case lanes
         id: handoff
         shell: bash
+        env:
+          TAPILOT_CI_CASE_IDS: ${{ github.event_name == 'workflow_dispatch' && inputs.case_ids || '' }}
         run: |
           mkdir -p build/ci-apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify app/build/outputs/apk/debug/app-debug.apk
@@ -150,8 +157,11 @@ jobs:
           grep -F "name='lifeos.md.tapilot.e2everify'" build/ci-apk/package.txt
           cp app/build/outputs/apk/debug/app-debug.apk build/ci-apk/
           node tests/midscene/scripts/ci-shards.ts plan
-          echo "artifact-name=ci-verification-apk-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
-          echo "plan=$(cat build/ci-apk/ci-plan.json)" >> "$GITHUB_OUTPUT"
+          {
+            echo "artifact-name=ci-verification-apk-${{ github.run_id }}-${{ github.run_attempt }}"
+            echo "plan=$(cat build/ci-apk/ci-plan.json)"
+            echo "lane-count=$(node -p 'JSON.parse(require("node:fs").readFileSync("build/ci-apk/ci-plan.json")).lanes.length')"
+          } >> "$GITHUB_OUTPUT"
       # Explicitly authorized CI job handoff only; no release APK is published.
       - uses: actions/upload-artifact@v4
         with:
@@ -195,14 +205,14 @@ jobs:
           force-refresh: ${{ github.event_name == 'workflow_dispatch' && inputs.siwc_refresh }}
 
   apk-midscene:
-    name: APK core flows (${{ matrix.lane }}/4)
+    name: APK core flows (${{ matrix.lane }}/${{ needs.apk-build.outputs.lane-count }})
     needs: [apk-build, android-image, siwc-credentials]
     # A skipped optional owner must not skip the existing API-key lanes.
     if: ${{ !cancelled() && needs.apk-build.result == 'success' && needs.android-image.result == 'success' && (needs.siwc-credentials.result == 'success' || needs.siwc-credentials.result == 'skipped') }}
     strategy:
       fail-fast: false
       matrix:
-        lane: [1, 2, 3, 4]
+        lane: ${{ fromJSON(needs.apk-build.outputs.plan).lanes.*.id }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

@@ -13,6 +13,7 @@ interface CollectedCase extends CaseDefinition { document: CaseDocument }
 interface PlanIdentity { sourceSha: string; runId: string; apkSha256: string }
 interface ShardPlan extends PlanIdentity {
   schemaVersion: 1;
+  selectedCaseIds?: string[];
   cases: (Omit<CaseDefinition, 'document'> & { estimatedMs: number })[];
   lanes: { id: number; estimatedMs: number; caseIds: string[] }[];
 }
@@ -62,7 +63,10 @@ export function prepareShard(plan: ShardPlan, laneId: number, { apk, root = proj
   assert.equal(digest(readFileSync(apk)), plan.apkSha256, 'Shared APK digest mismatch');
   const lane = plan.lanes.find(item => item.id === laneId);
   assert.ok(lane && lane.caseIds.length > 0, 'Unknown or empty lane');
-  const selected = collectCases(root);
+  const allCases = collectCases(root);
+  const selectedCaseIds = plan.selectedCaseIds;
+  if (selectedCaseIds) assert.deepEqual([...selectedCaseIds].sort(), plan.cases.map(item => item.id).sort(), 'Focused selection must match every planned case');
+  const selected = selectedCaseIds ? allCases.filter(item => selectedCaseIds.includes(item.id)) : allCases;
   const actual = selected.map(({ document, ...item }) => item);
   assert.deepEqual(actual, plan.cases.map(({ estimatedMs, ...item }) => item), 'Case definitions changed after planning');
   const directory = join(root, '.ci-cases', `lane-${laneId}`);
@@ -89,7 +93,15 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const planPath = join(dirname(apk), 'ci-plan.json');
   if (process.argv[2] === 'plan') {
     const timings = JSON.parse(readFileSync(join(projectRoot, 'ci-timings.json'), 'utf8')).durationMs;
-    const plan = createPlan(collectCases(), timings, { sourceSha, runId, apkSha256: digest(readFileSync(apk)) });
+    const requested = process.env.TAPILOT_CI_CASE_IDS?.split(',').map(id => id.trim()).filter(Boolean);
+    const allCases = collectCases();
+    if (requested?.length) {
+      assert.equal(new Set(requested).size, requested.length, 'Duplicate focused case ID');
+      for (const id of requested) assert.ok(allCases.some(item => item.id === id), `Unknown hosted case ID: ${id}`);
+    }
+    const selected = requested?.length ? allCases.filter(item => requested.includes(item.id)) : allCases;
+    const plan = createPlan(selected, timings, { sourceSha, runId, apkSha256: digest(readFileSync(apk)) }, Math.min(4, selected.length));
+    if (requested?.length) plan.selectedCaseIds = selected.map(item => item.id);
     writeFileSync(planPath, JSON.stringify(plan));
     for (const lane of plan.lanes) console.log(`Lane ${lane.id}: ${lane.caseIds.join(', ')}; estimated ${Math.ceil(lane.estimatedMs / 1000)}s`);
   } else if (process.argv[2] === 'prepare') {

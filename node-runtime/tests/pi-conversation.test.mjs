@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createConversation, checkpointMessages, resumableTranscript } from './pi-conversation.mjs';
 const input = text => [{ role: 'system', content: 'Tapilot' }, { role: 'user', content: text }];
 const answer = content => ({ choices: [{ message: { content } }] });
-const tool = (name, args) => ({ choices: [{ message: { tool_calls: [{ id: `call-${name}`, function: { name, arguments: JSON.stringify(name === 'operate_phone' ? { mode: 'act', app: '', finishWhenVerified: false, ...args } : args) } }] } }] });
+const tool = (name, args) => ({ choices: [{ message: { tool_calls: [{ id: `call-${name}`, function: { name, arguments: JSON.stringify(name === 'operate_phone' ? { mode: 'act', app: '', finishWhenVerified: false, ...args } : name === 'answer_question' ? { outcome: 'completed', ...args } : args) } }] } }] });
 
 test('cross-turn verification receives the exact prior reply, not an invented step target', async () => {
   for (const reply of ['70', 'x'.repeat(4097), '']) {
@@ -553,7 +553,11 @@ test('a general question can finish after clarification without being stuck wait
   const question = 'Which multiplication did you mean?';
   const first = createConversation({messages:input('Explain that calculation'),
     emit:event => { if (event.type === 'checkpoint') checkpoint = event.messages; },
-    rpc:async () => tool('finish_task', {outcome:'waiting_user', summary:question})});
+    rpc:async (_method, params) => {
+      const schema = params.tools.find(t => t.function.name === 'answer_question').function.parameters;
+      assert.ok(schema.required.includes('outcome'), 'Text replies must explicitly select completion or waiting');
+      return tool('answer_question', {outcome:'waiting_user', answer:question});
+    }});
   assert.equal((await first.run()).phase, 'waiting_user');
   let calls = 0;
   const next = createConversation({messages:input('50 times 2'), resume:checkpoint, emit:() => {},
