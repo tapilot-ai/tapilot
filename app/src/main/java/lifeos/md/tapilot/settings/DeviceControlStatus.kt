@@ -37,3 +37,20 @@ internal fun rememberDeviceControlStatus(context: Context): DeviceControlStatus 
     }
     return status
 }
+
+// Refresh when returning from Settings; OEM-specific limits still need inspection.
+@Composable
+internal fun rememberBackgroundAllowance(context: Context): Boolean {
+    fun allowed() = context.getSystemService(android.os.PowerManager::class.java)
+        .isIgnoringBatteryOptimizations(context.packageName)
+    var unrestricted by remember(context) { mutableStateOf(allowed()) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(context, lifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) unrestricted = allowed()
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
+    return unrestricted
+}

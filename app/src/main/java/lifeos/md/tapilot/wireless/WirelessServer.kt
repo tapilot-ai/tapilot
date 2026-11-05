@@ -32,6 +32,8 @@ internal class WirelessServer(
         }
     }, "tapilot-wireless-accept")
 
+    val isRunning: Boolean get() = !listener.isClosed && acceptor.isAlive
+
     fun start() = acceptor.start()
 
     private fun serve(socket: SSLSocket) {

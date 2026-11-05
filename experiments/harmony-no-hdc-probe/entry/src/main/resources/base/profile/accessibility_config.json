@@ -1,0 +1,16 @@
+{
+  "accessibilityCapabilities": [
+    "retrieve",
+    "gesture"
+  ],
+  "accessibilityEvents": [
+    "click",
+    "pageStateUpdate"
+  ],
+  "accessibilityTargetBundleNames": [],
+  "description": "$string:app_name",
+  "accessibilityAbilityTypes": [
+    "generic"
+  ],
+  "accessibilityNeedHide": false
+}

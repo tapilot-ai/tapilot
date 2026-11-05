@@ -1,0 +1,16 @@
+Physical device preflight, 2026-11-03
+Transport: USB, connected
+Product: HUAWEI Mate 60
+Model: BRA-AL00
+Software: BRA-AL00 7.0.0.109(SP6C00E105R4P3)
+const.ohos.fullname: OpenHarmony-7.0.0.105
+API: 26
+Device type: phone
+
+Attempted install of entry-default-unsigned.hap:
+error: failed to install bundle. code:9568320 error: no signature file.
+
+No probe code executed on this phone.
+No system permissions were granted or modified.
+The API 24 emulator result is not an API 26 physical-device result.
+A matching device-bound development signing profile is needed next.

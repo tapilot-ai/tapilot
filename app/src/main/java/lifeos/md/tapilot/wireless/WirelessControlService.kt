@@ -75,6 +75,18 @@ class WirelessControlService : Service() {
         }
     }
 
+    // Runs again after an OEM unfreezes this process. It cannot defeat a system freeze.
+    private val listenerHealth = object : Runnable {
+        override fun run() {
+            if (stopping || !WirelessState.enabled) return
+            if (listeners.listener?.isRunning == false) {
+                listeners.change(null)
+                reconcileNetwork()
+            }
+            handler.postDelayed(this, 15_000)
+        }
+    }
+
     private fun reconcileNetwork() {
         if (stopping || !WirelessState.enabled) return
         val previous = listeners.target
@@ -166,6 +178,8 @@ class WirelessControlService : Service() {
         if (intent != null && intent.action != RESTORE) preferences.edit().putBoolean("enabled", true).apply()
         if (!preferences.getBoolean("enabled", false)) { stopSelf(); return START_NOT_STICKY }
         WirelessState.enabled = true
+        handler.removeCallbacks(listenerHealth)
+        handler.postDelayed(listenerHealth, 15_000)
         if (!registered) {
             val connectivity = getSystemService(ConnectivityManager::class.java)
             connectivity.registerNetworkCallback(NetworkRequest.Builder()
@@ -227,6 +241,7 @@ class WirelessControlService : Service() {
 
     override fun onDestroy() {
         stopping = true
+        handler.removeCallbacks(listenerHealth)
         discovery?.close(); discovery = null
         listeners.close()
         worker.shutdownNow()

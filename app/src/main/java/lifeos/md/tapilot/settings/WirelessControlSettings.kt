@@ -28,6 +28,7 @@ internal fun WirelessControlSettings(context: Context, zh: Boolean) {
     var status by rememberSaveable { mutableStateOf("") }
     var pairingDialog by rememberSaveable { mutableStateOf(false) }
     val deviceControl = rememberDeviceControlStatus(context)
+    val unrestricted = rememberBackgroundAllowance(context)
     val detailInset = Modifier.padding(horizontal = 12.dp)
     val stage = WirelessState.pairingStage
     val pairingBusy = stage == PairingStage.SENDING || stage == PairingStage.WAITING
@@ -86,6 +87,17 @@ internal fun WirelessControlSettings(context: Context, zh: Boolean) {
             android.widget.Toast.makeText(context, if (deviceControl == DeviceControlStatus.NEEDS_RECONNECT) label("将 Tapilot 设备控制关闭再开启，然后返回 Tapilot", "Turn Tapilot device control off and on, then return to Tapilot") else label("找到 Tapilot 设备控制，打开开关并确认，再返回 Tapilot", "Enable Tapilot device control, confirm, then return to Tapilot"), android.widget.Toast.LENGTH_LONG).show()
             context.startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }) { Text(label("打开系统辅助功能", "Open Accessibility settings")) }
+        Text(label("后台运行：", "Background operation: ") + if (unrestricted)
+            label("系统电池优化已豁免", "Exempt from system battery optimization")
+            else label("可能受系统电池优化限制", "May be restricted by system battery optimization"),
+            modifier = detailInset, fontSize = 12.sp)
+        Text(label("若切到其他应用后断线，请在 Tapilot 应用信息 → 电量与优化中允许后台运行，并取消后台断网。部分手机还需设置自启动；系统电池优化豁免不代表厂商限制已全部解除。无需重新配对。",
+            "If the connection drops after switching apps, allow background operation and background network access in Tapilot app info → Battery. Some phones also require auto-start. A battery optimization exemption does not cover every manufacturer restriction. Keep the existing pairing."),
+            modifier = detailInset, fontSize = 12.sp)
+        TextButton(onClick = {
+            context.startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                android.net.Uri.parse("package:${context.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }) { Text(label("检查后台运行设置", "Check background settings")) }
         Text(label("无线控制：", "Wireless control: ") + (if (WirelessState.connected) label("已连接电脑", "Computer connected")
             else if (WirelessState.address.isNotEmpty()) (if (WirelessState.paired) label("已配对 · 等待电脑连接", "Paired · Waiting for computer") else label("未配对 · 请扫描电脑二维码", "Not paired · Scan computer QR")) + " · ${WirelessState.address}"
             else if (WirelessState.waitingForWifi) label("等待 Wi-Fi · 已有配对保留", "Waiting for Wi-Fi · Pairing kept")

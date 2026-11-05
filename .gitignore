@@ -14,6 +14,7 @@ local.properties
 midscene_run/
 node_modules/
 .kotlin/
+.DS_Store
 
 # Private signing identities and local provider configuration
 *.jks
