@@ -30,6 +30,8 @@ jobs:
           architecture: ${{ matrix.arch }}
       - name: Verify native runner identity
         run: node -e "const a=require('node:assert/strict'); a.equal(process.platform,process.env.EXPECTED_PLATFORM); a.equal(process.arch,process.env.EXPECTED_ARCH); console.log({platform:process.platform,arch:process.arch,node:process.version});"
+      - name: Verify private file permissions before packaging
+        run: node scripts/check-private-path.mjs
       - name: Build and independently verify the runtime package
         run: node scripts/check-cli-package.mjs
       - name: Build the offline setup archive

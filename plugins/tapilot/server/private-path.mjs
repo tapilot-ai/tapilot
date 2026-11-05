@@ -39,7 +39,7 @@ if (-not $mine) { throw 'missing owner access' }
     await exec(join(process.env.SystemRoot || 'C:\\Windows', 'System32/WindowsPowerShell/v1.0/powershell.exe'),
       ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')],
       { env: { ...process.env, TAPILOT_PRIVATE_PATH: path, TAPILOT_PRIVATE_PROTECT: protect ? '1' : '0' }, timeout: 15000, windowsHide: true });
-  } catch { throw new Error('unsafe_private_path'); }
+  } catch (cause) { throw new Error('unsafe_private_path', { cause }); }
 }
 export async function assertPrivatePath(path, directory = false) {
   const stat = await lstat(path);

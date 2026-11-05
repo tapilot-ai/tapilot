@@ -3,7 +3,7 @@ import { dirname, join, resolve, isAbsolute } from 'node:path';
 import { homedir } from 'node:os';
 import { createHash, randomUUID } from 'node:crypto';
 import lockfile from 'proper-lockfile';
-import { publishEntries, sameLink, entryMatches } from './entries.mjs';
+import { publishEntries, entryMatches } from './entries.mjs';
 import { parse, modify, applyEdits } from 'jsonc-parser';
 import { clientConfiguration, packageRoot } from './catalog.mjs';
 import { clientSkill, skillLauncher, connectorLauncher } from './skills.mjs';
