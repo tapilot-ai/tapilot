@@ -233,7 +233,7 @@ test("real AI SDK uses Responses fixture and wireless adapter for act/assert/wai
       child.on("close", (code) => {
         clearTimeout(timer);
         if (failure) reject(failure);
-        else if (!received || code && !stderr.includes("Assertion")) reject(Error(stderr || "worker exited without result"));
+        else if (!received || code !== (received.ok ? 0 : 1)) reject(Error(stderr || "worker exited without result"));
         else resolve({ ...received, diagnostic: stderr });
       });
       child.send({
