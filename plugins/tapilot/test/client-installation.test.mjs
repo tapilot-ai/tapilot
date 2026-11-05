@@ -35,7 +35,7 @@ test('real managed install survives removed source and Node, updates old launche
   for (const name of ['server', 'ui', 'assets', 'integrations', 'skills', 'scripts', 'package.json', 'LICENSE'])
     await cp(join(packageRoot, name), join(source, name), { recursive: true });
   await symlink(join(packageRoot, 'node_modules'), join(source, 'node_modules'), 'dir');
-  const originalNode = join(home, 'temporary-node');
+  const originalNode = join(home, process.platform === 'win32' ? 'temporary-node.exe' : 'temporary-node');
   await cp(process.execPath, originalNode);
   const options = { home, root: source, node: originalNode, skillsRoot: join(home, 'canonical skills') };
   const result = await installClient('doubao', options);

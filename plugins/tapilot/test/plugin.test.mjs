@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import tls from 'node:tls';
@@ -113,7 +114,7 @@ test('real MCP stdio handshake, image content, schema and disconnect', async t =
   });
   const path = join(dir, 'config.json'); await saveConfig(config, path);
   assert.equal((await stat(path)).mode & 0o777, 0o600);
-  const transport = new StdioClientTransport({ command: process.execPath, args: [new URL('../server/index.mjs', import.meta.url).pathname], env: { ...process.env, TAPILOT_CONFIG: path, TAPILOT_STATE_DIR: join(dir,'state') }, stderr: 'pipe' });
+  const transport = new StdioClientTransport({ command: process.execPath, args: [fileURLToPath(new URL('../server/index.mjs', import.meta.url))], env: { ...process.env, TAPILOT_CONFIG: path, TAPILOT_STATE_DIR: join(dir,'state') }, stderr: 'pipe' });
   const client = new Client({ name: 'acceptance', version: '1' });
   t.after(() => client.close());
   await client.connect(transport);
@@ -239,7 +240,7 @@ test('MCP pause interrupts Midscene while a phone action is pending; live frames
   const path=join(dir,'config.json');await saveConfig(config,path);
   const client=new Client({name:'midscene-pause-test',version:'1'});
   t.after(()=>client.close());
-  await client.connect(new StdioClientTransport({command:process.execPath,args:[new URL('../server/index.mjs',import.meta.url).pathname],env:{...process.env,TAPILOT_CONFIG:path,TAPILOT_STATE_DIR:join(dir,'state')},stderr:'pipe'}));
+  await client.connect(new StdioClientTransport({command:process.execPath,args:[fileURLToPath(new URL('../server/index.mjs',import.meta.url))],env:{...process.env,TAPILOT_CONFIG:path,TAPILOT_STATE_DIR:join(dir,'state')},stderr:'pipe'}));
   withRuntime(client);
   await client.callTool({name:'tapilot_status',arguments:{}});
   const action=client.callTool({name:'tapilot_midscene',arguments:{action:'home'}});
@@ -287,7 +288,7 @@ test('existing panel automatically recovers after first pairing and external cre
   const path=join(dir,'config.json');
   const client=new Client({name:'pair-recovery',version:'1'});
   t.after(()=>client.close());
-  await client.connect(new StdioClientTransport({command:process.execPath,args:[new URL('../server/index.mjs',import.meta.url).pathname],env:{...process.env,TAPILOT_CONFIG:path,TAPILOT_STATE_DIR:join(dir,'state')},stderr:'pipe'}));
+  await client.connect(new StdioClientTransport({command:process.execPath,args:[fileURLToPath(new URL('../server/index.mjs',import.meta.url))],env:{...process.env,TAPILOT_CONFIG:path,TAPILOT_STATE_DIR:join(dir,'state')},stderr:'pipe'}));
   const call = name => client.callTool({name,arguments:{}});
   assert.equal((await call('tapilot_preview_open')).structuredContent.state,'connecting');
   assert.equal((await call('tapilot_preview_frame')).structuredContent.state,'setup_required');
@@ -339,7 +340,7 @@ test('CLI processes share frames with the MCP panel, generate reports, and rejec
   });
   await saveConfig(config,join(dir,'config.json'));
   const cli=async (...args)=>{
-    try { const {stdout}=await exec(process.execPath,[new URL('../server/cli.mjs',import.meta.url).pathname,...args],{env:{...process.env}}); return JSON.parse(stdout); }
+    try { const {stdout}=await exec(process.execPath,[fileURLToPath(new URL('../server/cli.mjs',import.meta.url)),...args],{env:{...process.env}}); return JSON.parse(stdout); }
     catch(error) { if(error.stdout) return JSON.parse(error.stdout); throw error; }
   };
   await Promise.all([cli('status'),cli('status'),cli('status')]);
@@ -399,7 +400,7 @@ test('explicit disconnect persists across runtime restart and blocks every autom
   const {promisify} = await import('node:util');
   const {execFile} = await import('node:child_process');
   const cli = async (...args) => JSON.parse((await promisify(execFile)(process.execPath,
-    [new URL('../server/cli.mjs',import.meta.url).pathname,...args],{env:process.env})).stdout);
+    [fileURLToPath(new URL('../server/cli.mjs',import.meta.url)),...args],{env:process.env})).stdout);
   assert.equal((await cli('devices')).devices[0].id,config.fingerprint);
   await cli('disconnect');
   const count=requests.length;
@@ -472,7 +473,7 @@ test('panel opener returns the shell without initializing runtime or loading pai
   const client = new Client({name:'panel-shell',version:'1'});
   t.after(() => client.close());
   await client.connect(new StdioClientTransport({command:process.execPath,
-    args:[new URL('../server/index.mjs',import.meta.url).pathname],
+    args:[fileURLToPath(new URL('../server/index.mjs',import.meta.url))],
     env:{...process.env,TAPILOT_STATE_DIR:state,TAPILOT_CONFIG:config},stderr:'pipe'}));
   const result = await client.callTool({name:'tapilot_preview_open',arguments:{}});
   assert.equal(result.isError,undefined);
