@@ -20,7 +20,15 @@ test('zero disables step deadlines while explicit positive deadlines still fail 
         };
       `);
       await writeFile(join(project, 'task.yaml'), JSON.stringify({ cases: [{ name: 'slow node', steps: [{ slow: {} }] }] }));
-      const result = await runTestProject({ cwd: project, projectRoot: project, resultDir: join(project, 'results') });
+      const result = await runTestProject({ cwd: project, projectRoot: project, resultDir: join(project, 'results') }).catch(error => {
+        // SDK 1.17.6 rejects when a timed-out node still owns resources. Keep
+        // asserting the native failed result instead of treating rejection as success.
+        assert.equal(timeout, 10);
+        assert.equal(error.code, 'WORKFLOW_EXECUTION_FAILURE');
+        assert.equal(error.result?.status, 'failed');
+        assert.equal(error.result?.summary.failed, 1);
+        return error.result;
+      });
       assert.equal(result.exitCode, timeout === 0 ? 0 : 1);
     }
   } finally { // Timed-out nodes may still flush their report after the runner returns.

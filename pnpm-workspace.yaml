@@ -6,9 +6,9 @@ allowBuilds:
   sharp: true
 
 minimumReleaseAgeExclude:
-  - '@midscene/core@1.12.9 || 1.15.2'
-  - '@midscene/shared@1.12.9 || 1.15.2'
-  - '@midscene/test@1.12.9 || 1.15.2'
+  - '@midscene/core@1.17.6'
+  - '@midscene/shared@1.17.6'
+  - '@midscene/test@1.17.6'
 
 # Security fixes until upstream dependency ranges include these releases.
 overrides:

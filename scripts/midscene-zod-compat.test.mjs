@@ -5,7 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { patchMidsceneZod } from '../plugins/tapilot/scripts/patch-midscene-zod.mjs';
 
-for (const version of ['1.15.2', '1.15.2-beta-20261012093542.0', '1.15.3', '1.17.4']) {
+for (const version of ['1.15.2', '1.15.2-beta-20261012093542.0', '1.15.3', '1.17.4', '1.17.6']) {
 test(`Zod compatibility patches reviewed Midscene ${version} imports and is idempotent`, () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tapilot-zod-'));
   try {

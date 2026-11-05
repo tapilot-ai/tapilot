@@ -168,7 +168,7 @@ const verificationNode = defineNode({
 });
 
 export default defineTestProject({
-  test: { maxConcurrency: 1, testTimeout: 0 },
+  test: { maxConcurrentProjects: 1, maxConcurrentFiles: 1, testTimeout: 0 },
   projects: [
     {
       name: 'android-accessibility',

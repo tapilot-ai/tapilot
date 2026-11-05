@@ -89,7 +89,7 @@ if (ciLane && (!/^[1-4]$/.test(ciLane) || process.env.CI !== 'true' || packageNa
 }
 
 export default defineTestProject<Context>({
-  // Keep the hosted Pages entry and screenshot assets stable across SDK upgrades.
+  // Keep the native report entry and screenshot assets stable across SDK upgrades.
   output: { reportFormat: 'html-and-external-assets' },
   test: { maxConcurrentFiles: 1, maxConcurrentProjects: 1, testTimeout: (ciLane ? 6 : 30) * 60_000 },
   projects: [{

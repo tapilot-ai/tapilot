@@ -2,10 +2,23 @@ import { createRequire } from 'node:module';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-// Midscene 1.17.4 namespaces executions but leaves plans unchanged. Preserve
+// Midscene 1.17.6 namespaces executions but leaves plans unchanged. Preserve
 // every plan and align its IDs with the same source namespace as its execution.
 export function patchReportPlanIds() {
   const require = createRequire(import.meta.url);
+  const reportFile = require.resolve('@midscene/core/report');
+  let reportSource = readFileSync(reportFile, 'utf8');
+  if (!reportSource.includes('/* tapilot-zero-agent-native-report */')) {
+    const fallback = ': (0, html_utils_js_namespaceObject.extractLastDumpScriptSync)(info.reportFilePath) ?? serialized;';
+    if (reportSource.split(fallback).length !== 2) {
+      throw new Error('Review Midscene empty agent report compatibility before merging reports');
+    }
+    // A native test report may have no agent dump. The legacy raw HTML scanner
+    // can otherwise mistake a bundled JS template literal for a dump script.
+    reportSource = reportSource.replace(fallback,
+      ': runnerDumps[index] ? serialized /* tapilot-zero-agent-native-report */ ' + fallback);
+    writeFileSync(reportFile, reportSource);
+  }
   const file = join(dirname(require.resolve('@midscene/core/report')), 'test-runner/reporting/merge-report.js');
   let source = readFileSync(file, 'utf8');
   if (source.includes('// tapilot-plan-id-remap-v3')) return;

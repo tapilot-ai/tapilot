@@ -1,6 +1,6 @@
 # Deployment patches
 
-`midscene-test-unbounded.patch` applies only to `@midscene/test@1.15.2`.
+`midscene-test-unbounded.patch` applies only to `@midscene/test@1.17.6`.
 It accepts `testTimeout: 0` and translates it to the runner's unbounded timeout,
 so Tapilot's explicit task cancellation and budgets govern long-running tasks.
 Both ESM and CommonJS entrypoints are patched.
@@ -15,7 +15,7 @@ fingerprint includes patch content and configuration. Remove the patch and its
 lockfile entry together once an upstream version supports this behavior, then run
 the deployment tests, YAML smoke projects and device cancellation acceptance.
 
-`midscene-core-runtime.patch` applies to `@midscene/core@1.15.2` (ESM and
+`midscene-core-runtime.patch` applies to `@midscene/core@1.17.6` (ESM and
 CommonJS). Pixel bounding boxes may use the image width/height as exclusive far
 edges, with at most one further pixel of edge rounding tolerated. The existing
 pixel mapper clips those edges to the last pixel. Origins,

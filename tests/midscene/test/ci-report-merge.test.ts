@@ -36,7 +36,7 @@ export default {output:{reportFormat:'html-and-external-assets'},projects:[{name
     } });
     const result = runMerge();
     assert.equal(result.status, 1, result.stderr);
-    assert.match(result.stdout, /9\/11 passed/);
+    assert.match(result.stdout, /9\/11 passed/, result.stderr);
     const html = readFileSync(join(root, 'midscene_run/report/midscene-e2e-complete/index.html'), 'utf8');
     const match = html.match(/<script[^>]*type="midscene_test_run_dump"[^>]*>([\s\S]*?)<\/script>/);
     assert.ok(match, 'Must use the native Midscene test report');

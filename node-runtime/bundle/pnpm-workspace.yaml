@@ -1,16 +1,16 @@
 packages:
   - .
 minimumReleaseAgeExclude:
-  - '@midscene/core@1.15.2'
-  - '@midscene/shared@1.15.2'
-  - '@midscene/test@1.15.2'
+  - '@midscene/core@1.17.6'
+  - '@midscene/shared@1.17.6'
+  - '@midscene/test@1.17.6'
   - qs@6.17.0
 patchedDependencies:
   'http-proxy-agent@9.1.0': patches/http-proxy-agent-android-auth.patch
   'https-proxy-agent@9.1.0': patches/https-proxy-agent-android-auth.patch
   'http-server@14.1.1': patches/http-server-native-compare.patch
-  '@midscene/core@1.15.2': patches/midscene-core-runtime.patch
-  '@midscene/test@1.15.2': patches/midscene-test-unbounded.patch
+  '@midscene/core@1.17.6': patches/midscene-core-runtime.patch
+  '@midscene/test@1.17.6': patches/midscene-test-unbounded.patch
 supportedArchitectures:
   cpu:
     - current

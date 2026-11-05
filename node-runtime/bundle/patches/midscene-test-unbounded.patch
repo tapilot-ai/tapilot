@@ -1,36 +1,69 @@
 diff --git a/dist/es/cli/index.mjs b/dist/es/cli/index.mjs
+index 91041c3..3a36bd4 100644
 --- a/dist/es/cli/index.mjs
 +++ b/dist/es/cli/index.mjs
-@@ -204,7 +204,7 @@
-     return Object.freeze({
-         maxConcurrency: validatePositiveInteger(candidate.maxConcurrency, 1, 'test.maxConcurrency'),
+@@ -1,6 +1,5 @@
+ import { dirname, isAbsolute, join, relative, resolve as external_node_path_resolve, sep } from "node:path";
+ import { pathToFileURL } from "node:url";
+-import { require as api_require } from "tsx/cjs/api";
+ import { NodeRegistry, WorkflowError, WorkflowExecutionFailure, WorkflowParseError, WorkflowPublicationError, asExecutionError, buildTestRunReportDump, buildTestRunReportPlan, classifyWorkflowDocumentFormat, collectTestRunReportSources, createProjectRuntime, decideRetry, getPendingScopeOperations, getResourceCleanupCompletion, isFatalDeviceError, isReportSecretKey, isResourceRecoveryError, normalizeSteps, observeResourceOperations, runDocumentAttempts, runWorkflowDocument, sanitizeReportError, sanitizeReportText, sumTestRunReportMetrics as test_runner_sumTestRunReportMetrics, trackResourceOperation, waitForScopeOperations } from "@midscene/core/internal/test-runner";
+ import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+ import { globSync } from "tinyglobby";
+@@ -246,7 +245,7 @@ const validateTestOptions = (value, hasExplicitProjects)=>{
+         setupTimeout: validatePositiveInteger(candidate.setupTimeout, 120000, 'test.setupTimeout'),
+         teardownTimeout: validatePositiveInteger(candidate.teardownTimeout, 30000, 'test.teardownTimeout'),
          bail: validateNonNegativeInteger(candidate.bail, 0, 'test.bail'),
 -        testTimeout: validatePositiveInteger(candidate.testTimeout, 120000, 'test.testTimeout')
 +        testTimeout: validateNonNegativeInteger(candidate.testTimeout, 120000, 'test.testTimeout')
      });
  };
  const validateOutputPath = (value, fallback, label)=>{
-@@ -837,6 +837,7 @@
+@@ -325,6 +324,7 @@ async function loadTestProject(configPath) {
+     } catch (error) {
+         try {
+             if ('.mjs' === extension || !canRetryWithCjsLoader(error)) throw error;
++            const { require: api_require } = await import("tsx/cjs/api");
+             loaded = api_require(absolutePath, pathToFileURL(absolutePath));
+         } catch (fallbackError) {
+             const message = fallbackError instanceof Error ? `: ${fallbackError.message}` : '';
+@@ -934,6 +934,7 @@ const selectProjects = (projects, names)=>{
      return projects.filter((project)=>requested.has(project.name));
  };
  async function prepareProject(project, projectRoot, runDir, defaultTimeoutMs, options = {}) {
 +    if (defaultTimeoutMs === 0) defaultTimeoutMs = undefined;
      const platform = options.platform?.trim();
      const fileSelection = project.files ?? DEFAULT_TEST_FILE_SELECTION;
-     const prerequisiteFile = options.prerequisiteFile ? resolve(options.prerequisiteFile) : void 0;
+     const prerequisiteFile = options.prerequisiteFile ? external_node_path_resolve(options.prerequisiteFile) : void 0;
 diff --git a/dist/es/test-cli.mjs b/dist/es/test-cli.mjs
+index df1bc94..148cdc9 100644
 --- a/dist/es/test-cli.mjs
 +++ b/dist/es/test-cli.mjs
-@@ -426,7 +426,7 @@
-     return Object.freeze({
-         maxConcurrency: validatePositiveInteger(candidate.maxConcurrency, 1, 'test.maxConcurrency'),
+@@ -8,7 +8,6 @@ import { fileURLToPath, pathToFileURL } from "node:url";
+ import { NodeRegistry, WorkflowError, WorkflowExecutionFailure, WorkflowParseError, WorkflowPublicationError, asExecutionError, buildTestRunReportDump, buildTestRunReportPlan, classifyWorkflowDocumentFormat, collectTestRunReportSources, createProjectRuntime, decideRetry, getPendingScopeOperations, getResourceCleanupCompletion, isFatalDeviceError, isReportSecretKey, isResourceRecoveryError, normalizeSteps, observeResourceOperations, runDocumentAttempts, runWorkflowDocument, sanitizeReportError, sanitizeReportText, sanitizeReportValue, sumTestRunReportMetrics, trackResourceOperation, waitForScopeOperations } from "@midscene/core/internal/test-runner";
+ import { getDebug, runWithConsoleLogHandler, runWithConsoleLogScope } from "@midscene/shared/logger";
+ import { z } from "zod/v4";
+-import { require as api_require } from "tsx/cjs/api";
+ import { globSync } from "tinyglobby";
+ import { createHash, randomUUID } from "node:crypto";
+ import { JSON_SCHEMA, load } from "js-yaml";
+@@ -1516,7 +1515,7 @@ const validateTestOptions = (value, hasExplicitProjects)=>{
+         setupTimeout: validatePositiveInteger(candidate.setupTimeout, 120000, 'test.setupTimeout'),
+         teardownTimeout: validatePositiveInteger(candidate.teardownTimeout, 30000, 'test.teardownTimeout'),
          bail: validateNonNegativeInteger(candidate.bail, 0, 'test.bail'),
 -        testTimeout: validatePositiveInteger(candidate.testTimeout, 120000, 'test.testTimeout')
 +        testTimeout: validateNonNegativeInteger(candidate.testTimeout, 120000, 'test.testTimeout')
      });
  };
  const validateOutputPath = (value, fallback, label)=>{
-@@ -1054,6 +1054,7 @@
+@@ -1595,6 +1594,7 @@ async function loadTestProject(configPath) {
+     } catch (error) {
+         try {
+             if ('.mjs' === extension || !canRetryWithCjsLoader(error)) throw error;
++            const { require: api_require } = await import("tsx/cjs/api");
+             loaded = api_require(absolutePath, pathToFileURL(absolutePath));
+         } catch (fallbackError) {
+             const message = fallbackError instanceof Error ? `: ${fallbackError.message}` : '';
+@@ -2199,6 +2199,7 @@ const selectProjects = (projects, names)=>{
      return projects.filter((project)=>requested.has(project.name));
  };
  async function prepareProject(project, projectRoot, runDir, defaultTimeoutMs, options = {}) {
@@ -39,94 +72,28 @@ diff --git a/dist/es/test-cli.mjs b/dist/es/test-cli.mjs
      const fileSelection = project.files ?? DEFAULT_TEST_FILE_SELECTION;
      const prerequisiteFile = options.prerequisiteFile ? (0, external_node_path_.resolve)(options.prerequisiteFile) : void 0;
 diff --git a/dist/lib/cli/index.js b/dist/lib/cli/index.js
+index 5bcc818..b4ac08e 100644
 --- a/dist/lib/cli/index.js
 +++ b/dist/lib/cli/index.js
-@@ -232,7 +232,7 @@
-     return Object.freeze({
-         maxConcurrency: validatePositiveInteger(candidate.maxConcurrency, 1, 'test.maxConcurrency'),
+@@ -37,7 +37,7 @@ __webpack_require__.d(__webpack_exports__, {
+ });
+ const external_node_path_namespaceObject = require("node:path");
+ const external_node_url_namespaceObject = require("node:url");
+-const api_namespaceObject = require("tsx/cjs/api");
++// Load the TypeScript CJS fallback only if native loading needs it.
+ const test_runner_namespaceObject = require("@midscene/core/internal/test-runner");
+ const NodeRegistry = test_runner_namespaceObject.NodeRegistry;
+ const projectIdFromIndex = (index)=>`project-${index}`;
+@@ -273,7 +273,7 @@ const validateTestOptions = (value, hasExplicitProjects)=>{
+         setupTimeout: validatePositiveInteger(candidate.setupTimeout, 120000, 'test.setupTimeout'),
+         teardownTimeout: validatePositiveInteger(candidate.teardownTimeout, 30000, 'test.teardownTimeout'),
          bail: validateNonNegativeInteger(candidate.bail, 0, 'test.bail'),
 -        testTimeout: validatePositiveInteger(candidate.testTimeout, 120000, 'test.testTimeout')
 +        testTimeout: validateNonNegativeInteger(candidate.testTimeout, 120000, 'test.testTimeout')
      });
  };
  const validateOutputPath = (value, fallback, label)=>{
-@@ -870,6 +870,7 @@
-     return projects.filter((project)=>requested.has(project.name));
- };
- async function prepareProject(project, projectRoot, runDir, defaultTimeoutMs, options = {}) {
-+    if (defaultTimeoutMs === 0) defaultTimeoutMs = undefined;
-     const platform = options.platform?.trim();
-     const fileSelection = project.files ?? DEFAULT_TEST_FILE_SELECTION;
-     const prerequisiteFile = options.prerequisiteFile ? (0, external_node_path_namespaceObject.resolve)(options.prerequisiteFile) : void 0;
-diff --git a/dist/lib/test-cli.js b/dist/lib/test-cli.js
---- a/dist/lib/test-cli.js
-+++ b/dist/lib/test-cli.js
-@@ -427,7 +427,7 @@
-         return Object.freeze({
-             maxConcurrency: validatePositiveInteger(candidate.maxConcurrency, 1, 'test.maxConcurrency'),
-             bail: validateNonNegativeInteger(candidate.bail, 0, 'test.bail'),
--            testTimeout: validatePositiveInteger(candidate.testTimeout, 120000, 'test.testTimeout')
-+            testTimeout: validateNonNegativeInteger(candidate.testTimeout, 120000, 'test.testTimeout')
-         });
-     };
-     const validateOutputPath = (value, fallback, label)=>{
-@@ -1059,6 +1059,7 @@
-         return projects.filter((project)=>requested.has(project.name));
-     };
-     async function prepareProject(project, projectRoot, runDir, defaultTimeoutMs, options = {}) {
-+    if (defaultTimeoutMs === 0) defaultTimeoutMs = undefined;
-         const platform = options.platform?.trim();
-         const fileSelection = project.files ?? DEFAULT_TEST_FILE_SELECTION;
-         const prerequisiteFile = options.prerequisiteFile ? (0, external_node_path_.resolve)(options.prerequisiteFile) : void 0;
-diff --git a/dist/es/cli/index.mjs b/dist/es/cli/index.mjs
---- a/dist/es/cli/index.mjs
-+++ b/dist/es/cli/index.mjs
-@@ -1,6 +1,5 @@
- import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
- import { pathToFileURL } from "node:url";
--import { require as api_require } from "tsx/cjs/api";
- import { NodeRegistry, WorkflowError, WorkflowExecutionFailure, WorkflowParseError, WorkflowPublicationError, asExecutionError, buildTestRunReportDump, buildTestRunReportPlan, classifyWorkflowDocumentFormat, collectTestRunReportSources, createProjectRuntime, decideRetry, isFatalDeviceError, isReportSecretKey, isResourceRecoveryError, normalizeSteps, observeResourceOperations, runConcurrentJobs, runDocumentAttempts, runWorkflowDocument, sanitizeReportError, sanitizeReportText } from "@midscene/core/internal/test-runner";
- import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
- import { globSync } from "tinyglobby";
-@@ -278,6 +277,7 @@
-     } catch (error) {
-         try {
-             if ('.mjs' === extension || !canRetryWithCjsLoader(error)) throw error;
-+            const { require: api_require } = await import("tsx/cjs/api");
-             loaded = api_require(absolutePath, pathToFileURL(absolutePath));
-         } catch (fallbackError) {
-             const message = fallbackError instanceof Error ? `: ${fallbackError.message}` : '';
-diff --git a/dist/es/test-cli.mjs b/dist/es/test-cli.mjs
---- a/dist/es/test-cli.mjs
-+++ b/dist/es/test-cli.mjs
-@@ -4,7 +4,6 @@
- import { inspect } from "node:util";
- import { z } from "zod/v4";
- import { pathToFileURL } from "node:url";
--import { require as api_require } from "tsx/cjs/api";
- import { globSync } from "tinyglobby";
- import { createHash, randomUUID } from "node:crypto";
- import { JSON_SCHEMA, load } from "js-yaml";
-@@ -500,6 +499,7 @@
-     } catch (error) {
-         try {
-             if ('.mjs' === extension || !canRetryWithCjsLoader(error)) throw error;
-+            const { require: api_require } = await import("tsx/cjs/api");
-             loaded = api_require(absolutePath, pathToFileURL(absolutePath));
-         } catch (fallbackError) {
-             const message = fallbackError instanceof Error ? `: ${fallbackError.message}` : '';
-diff --git a/dist/lib/cli/index.js b/dist/lib/cli/index.js
---- a/dist/lib/cli/index.js
-+++ b/dist/lib/cli/index.js
-@@ -36,7 +36,6 @@
- });
- const external_node_path_namespaceObject = require("node:path");
- const external_node_url_namespaceObject = require("node:url");
--const api_namespaceObject = require("tsx/cjs/api");
- const test_runner_namespaceObject = require("@midscene/core/internal/test-runner");
- const NodeRegistry = test_runner_namespaceObject.NodeRegistry;
- const projectIdFromIndex = (index)=>`project-${index}`;
-@@ -306,7 +305,7 @@
+@@ -352,7 +352,7 @@ async function loadTestProject(configPath) {
      } catch (error) {
          try {
              if ('.mjs' === extension || !canRetryWithCjsLoader(error)) throw error;
@@ -135,19 +102,37 @@ diff --git a/dist/lib/cli/index.js b/dist/lib/cli/index.js
          } catch (fallbackError) {
              const message = fallbackError instanceof Error ? `: ${fallbackError.message}` : '';
              throw new Error(`Failed to load Midscene config "${absolutePath}"${message}`, {
+@@ -966,6 +966,7 @@ const selectProjects = (projects, names)=>{
+     return projects.filter((project)=>requested.has(project.name));
+ };
+ async function prepareProject(project, projectRoot, runDir, defaultTimeoutMs, options = {}) {
++    if (defaultTimeoutMs === 0) defaultTimeoutMs = undefined;
+     const platform = options.platform?.trim();
+     const fileSelection = project.files ?? DEFAULT_TEST_FILE_SELECTION;
+     const prerequisiteFile = options.prerequisiteFile ? (0, external_node_path_namespaceObject.resolve)(options.prerequisiteFile) : void 0;
 diff --git a/dist/lib/test-cli.js b/dist/lib/test-cli.js
+index 80c9ce9..ccdc774 100644
 --- a/dist/lib/test-cli.js
 +++ b/dist/lib/test-cli.js
-@@ -234,8 +234,7 @@
+@@ -1280,7 +1280,7 @@ Each Node's returned \`data\` is saved on that Step's result. Results are not na
+             for (const cleanup of cleanups)cleanup();
          };
-     };
-     const external_node_url_namespaceObject = require("node:url");
+     }
 -    const api_namespaceObject = require("tsx/cjs/api");
++    // Load the TypeScript CJS fallback only if native loading needs it.
      const NodeRegistry = test_runner_namespaceObject.NodeRegistry;
      const projectIdFromIndex = (index)=>`project-${index}`;
      const getDefaultExport = (loaded, absolutePath)=>{
-         if ('object' == typeof loaded && null !== loaded && 'default' in loaded) {
-@@ -501,7 +500,7 @@
+@@ -1512,7 +1512,7 @@ Each Node's returned \`data\` is saved on that Step's result. Results are not na
+             setupTimeout: validatePositiveInteger(candidate.setupTimeout, 120000, 'test.setupTimeout'),
+             teardownTimeout: validatePositiveInteger(candidate.teardownTimeout, 30000, 'test.teardownTimeout'),
+             bail: validateNonNegativeInteger(candidate.bail, 0, 'test.bail'),
+-            testTimeout: validatePositiveInteger(candidate.testTimeout, 120000, 'test.testTimeout')
++            testTimeout: validateNonNegativeInteger(candidate.testTimeout, 120000, 'test.testTimeout')
+         });
+     };
+     const validateOutputPath = (value, fallback, label)=>{
+@@ -1591,7 +1591,7 @@ Each Node's returned \`data\` is saved on that Step's result. Results are not na
          } catch (error) {
              try {
                  if ('.mjs' === extension || !canRetryWithCjsLoader(error)) throw error;
@@ -156,3 +141,11 @@ diff --git a/dist/lib/test-cli.js b/dist/lib/test-cli.js
              } catch (fallbackError) {
                  const message = fallbackError instanceof Error ? `: ${fallbackError.message}` : '';
                  throw new Error(`Failed to load Midscene config "${absolutePath}"${message}`, {
+@@ -2199,6 +2199,7 @@ Each Node's returned \`data\` is saved on that Step's result. Results are not na
+         return projects.filter((project)=>requested.has(project.name));
+     };
+     async function prepareProject(project, projectRoot, runDir, defaultTimeoutMs, options = {}) {
++    if (defaultTimeoutMs === 0) defaultTimeoutMs = undefined;
+         const platform = options.platform?.trim();
+         const fileSelection = project.files ?? DEFAULT_TEST_FILE_SELECTION;
+         const prerequisiteFile = options.prerequisiteFile ? (0, external_node_path_.resolve)(options.prerequisiteFile) : void 0;

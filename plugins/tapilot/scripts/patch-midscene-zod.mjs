@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
-// Midscene 1.15 and 1.17.4 use Zod 3 schema internals. The patched Zod 4 distribution
+// Reviewed Midscene 1.15, 1.17.4 and 1.17.6 builds use Zod 3 schema internals. The patched Zod 4 distribution
 // retains that API at zod/v3; changing the default export to Zod 4 silently
 // removes actions. Keep the supported compatibility entrypoint explicit.
 export function patchMidsceneZod(root) {
@@ -22,7 +22,7 @@ export function patchMidsceneZod(root) {
     }
     catch (error) { if (error.code === 'MODULE_NOT_FOUND') continue; throw error; }
     const pkg = JSON.parse(fs.readFileSync(manifest, 'utf8'));
-    if (!/^(?:1\.15\.(2(?:-beta-20261012093542\.0)?|3)|1\.17\.4)$/.test(pkg.version)) {
+    if (!/^(?:1\.15\.(2(?:-beta-20261012093542\.0)?|3)|1\.17\.(?:4|6))$/.test(pkg.version)) {
       throw new Error(`Review Zod compatibility before upgrading ${pkg.name}@${pkg.version}`);
     }
     function visit(dir) {

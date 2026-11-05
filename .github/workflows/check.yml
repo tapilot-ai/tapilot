@@ -195,7 +195,7 @@ jobs:
       - run: npm ci --prefix tests/midscene
       - name: Prepare serialized SIWC session
         id: access
-        uses: quanru/midscene-action/siwc/prepare@6e9bb5e21ac8f5a65573bb9e07c5b6ab7624235c
+        uses: quanru/midscene-action/siwc/prepare@b1ba55da51c8768df637bad5d30f78754f3716c2
         with:
           working-directory: tests/midscene
           environment: tapilot-siwc
@@ -257,7 +257,7 @@ jobs:
           sudo udevadm trigger --name-match=kvm
       - name: Install APK and run real screen core flows with Terra
         if: ${{ vars.TAPILOT_CI_AUTH_MODE == 'siwc' }}
-        uses: quanru/midscene-action/siwc/run@6e9bb5e21ac8f5a65573bb9e07c5b6ab7624235c
+        uses: quanru/midscene-action/siwc/run@b1ba55da51c8768df637bad5d30f78754f3716c2
         with:
           working-directory: .
           command: GITHUB_STEP_SUMMARY=/dev/null bash scripts/run-apk-ci-emulator.sh
@@ -340,15 +340,14 @@ jobs:
         id: apk-test
         env:
           TAPILOT_CI_PLAN: ${{ needs.apk-build.outputs.plan }}
-        uses: quanru/midscene-action@6e9bb5e21ac8f5a65573bb9e07c5b6ab7624235c
+        uses: quanru/midscene-action@b1ba55da51c8768df637bad5d30f78754f3716c2
         with:
           working-directory: tests/midscene
           command: node scripts/merge-ci-reports.mjs
           artifact-name: midscene-apk-complete-${{ github.run_id }}-${{ github.run_attempt }}
           retention-days: '7'
           publish-pages: 'true'
-          cloudflare-target: pages
-          cloudflare-pages-project: tapilot-apk-reports
+          cloudflare-worker-name: tapilot-midscene-reports
           cloudflare-api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           cloudflare-account-id: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
 
@@ -447,7 +446,7 @@ jobs:
           git rev-parse HEAD > tests/midscene/midscene_run/ci/source.txt
           sha256sum app/build/outputs/apk/debug/app-debug.apk > tests/midscene/midscene_run/ci/SHA256SUMS
       - name: Run Android smoke cases and collect native Midscene reports
-        uses: web-infra-dev/midscene-action@5ef922b20a69d69a0f34639c4c867ba2049f6ede # v1; same revision as Midscene main
+        uses: quanru/midscene-action@b1ba55da51c8768df637bad5d30f78754f3716c2 # reviewed SIWC revision; upstream PR #4
         env:
           MIDSCENE_MODEL_API_KEY: ${{ secrets.MIDSCENE_MODEL_API_KEY }}
           MIDSCENE_INCLUDE_TAGS: smoke
