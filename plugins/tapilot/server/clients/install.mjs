@@ -36,7 +36,7 @@ async function atomic(path, text) {
 function locations(client, options) {
   const home = options.home ?? homedir();
   const directory = join(options.dataRoot ?? join(home, '.local/share/tapilot/clients'), client);
-  const skillsRoot = options.skillsRoot ?? process.env.TAPILOT_SKILLS_DIR ?? join(home, 'Library/Mobile Documents/com~apple~CloudDocs/Agents/skills');
+  const skillsRoot = options.skillsRoot ?? process.env.TAPILOT_SKILLS_DIR ?? join(home, process.platform === 'darwin' ? 'Library/Mobile Documents/com~apple~CloudDocs/Agents/skills' : '.local/share/tapilot/skills');
   if (!isAbsolute(skillsRoot)) throw new Error('Skill directory must be an absolute path');
   return { directory, record: join(directory, 'installation.json'), skill: join(skillsRoot, 'tapilot-clients', client, 'tapilot'), launcher: join(directory, 'mcp.mjs') };
 }
@@ -78,7 +78,7 @@ async function installPreparedClient(client, options) {
   const probe = !plan.connector && !plan.pluginDirectory ? { protocol: 'not_applicable', hostRendering: client === 'cherry' ? 'not_tested' : 'not_applicable', phone: 'not_tested' }
     : await (options.probe ?? (plan.connector ? probeConnector : probeDshPlugin))(plan.connector ?? plan.pluginDirectory);
   const entryRoot = join(plan.directory, 'current');
-  const entryNode = join(plan.directory, 'node');
+  const entryNode = join(plan.directory, process.platform === 'win32' ? 'node.exe' : 'node');
   if (client === 'dsh') {
     plan.pluginDirectory = join(entryRoot, 'integrations/dsh');
     plan.instructions = plan.instructions.map(text => text.replaceAll(root, entryRoot));

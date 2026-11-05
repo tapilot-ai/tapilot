@@ -4,28 +4,53 @@ on:
 permissions:
   contents: read
 jobs:
-  macos:
-    runs-on: macos-14
+  setup:
+    name: Setup (${{ matrix.platform }}-${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: macos-14, platform: darwin, arch: arm64 }
+          - { runner: macos-15-intel, platform: darwin, arch: x64 }
+          - { runner: ubuntu-24.04, platform: linux, arch: x64 }
+          - { runner: ubuntu-24.04-arm, platform: linux, arch: arm64 }
+          - { runner: windows-2025, platform: win32, arch: x64 }
+          - { runner: windows-11-arm, platform: win32, arch: arm64 }
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     env:
       npm_config_registry: https://registry.npmjs.org
+      EXPECTED_PLATFORM: ${{ matrix.platform }}
+      EXPECTED_ARCH: ${{ matrix.arch }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
+          architecture: ${{ matrix.arch }}
+      - name: Verify native runner identity
+        run: node -e "const a=require('node:assert/strict'); a.equal(process.platform,process.env.EXPECTED_PLATFORM); a.equal(process.arch,process.env.EXPECTED_ARCH); console.log({platform:process.platform,arch:process.arch,node:process.version});"
       - name: Build and independently verify the runtime package
         run: node scripts/check-cli-package.mjs
       - name: Build the offline setup archive
-        run: node scripts/build-client-distribution.mjs > "$RUNNER_TEMP/tapilot-distribution.txt"
+        run: node scripts/build-client-distribution.mjs
       - name: Verify first install, update and restart without installer source
-        run: node scripts/check-client-setup.mjs "$(cat "$RUNNER_TEMP/tapilot-distribution.txt")"
+        run: node scripts/check-client-setup.mjs
       - name: Collect downloadable archives
-        run: |
-          mkdir -p build/client-downloads
-          distribution="$(cat "$RUNNER_TEMP/tapilot-distribution.txt")"
-          cp "$distribution"/*.tar.gz "$distribution"/*.tgz "$distribution"/*.zip "$distribution"/SHA256SUMS "$distribution"/INSTALL.zh.md build/client-downloads/
+        run: node scripts/collect-client-distribution.mjs
       - uses: actions/upload-artifact@v4
         with:
-          name: tapilot-macos-client-setup
+          name: tapilot-client-setup-${{ matrix.platform }}-${{ matrix.arch }}
           path: build/client-downloads/
+      - name: Retain verification evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tapilot-client-evidence-${{ matrix.platform }}-${{ matrix.arch }}
+          if-no-files-found: ignore
+          path: |
+            build/setup-validation-*/results.json
+            build/setup-validation-*/**/FIRST-INSTALL.txt
+            build/setup-validation-*/**/INSTALLATION.md
+            build/cli-package-validation/latest.json
+            build/client-distribution-*/status.json

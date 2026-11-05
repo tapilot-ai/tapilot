@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 
 // Stable host paths; releases remain immutable for already-running sessions.
 export async function publishEntries(directory, runtime, previous) {
-  const targets = { current: runtime.root, node: runtime.node };
+  const targets = { current: runtime.root, [process.platform === 'win32' ? 'node.exe' : 'node']: runtime.node };
   const old = {};
   for (const name of Object.keys(targets)) {
     const file = join(directory, name);

@@ -11,7 +11,13 @@ const work = fs.mkdtempSync(path.join(output, 'run-'));
 const source = path.join(work, 'source');
 const consumer = path.join(work, 'consumer');
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-const run = (command, args, cwd) => execFileSync(command, args, { cwd, stdio: 'inherit' });
+const run = (command, args, cwd) => {
+  if (command === 'npm.cmd') {
+    args = [path.join(path.dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js'), ...args];
+    command = process.execPath;
+  }
+  return execFileSync(command, args, { cwd, stdio: 'inherit' });
+};
 fs.cpSync(path.join(root, 'plugins/tapilot'), source, {
   recursive: true, filter: file => !file.split(path.sep).includes('node_modules'),
 });
