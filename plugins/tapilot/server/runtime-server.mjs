@@ -91,30 +91,33 @@ const server = createServer(async (req, res) => {
     if (req.url === "/stop") {
       stopping = true;
       await Promise.allSettled([...pending]);
-      // Flush the stop acknowledgement before shutdown destroys HTTP sockets.
-      // Otherwise a fast restart races an unread response and reports UND_ERR_SOCKET.
-      await new Promise(resolve => {
-        res.once('finish', resolve);
-        res.once('close', resolve);
-        reply(res, 200, { stopped: true });
-      });
-      return shutdown();
+      return shutdown(res);
     }
     reply(res, 404, { error: "Unknown endpoint" });
   } catch (error) {
     reply(res, 400, { error: error.message });
   }
 });
-async function shutdown() {
+async function shutdown(response) {
   runtime.close();
   await unlink(metadata).catch(() => {});
   await releaseOwner();
+  // A successful stop must make the old endpoint undiscoverable before callers
+  // can start a replacement. Flush the response before closing its socket too.
+  if (response) {
+    response.setHeader('Connection', 'close');
+    await new Promise(resolve => {
+      response.once('finish', resolve);
+      response.once('close', resolve);
+      reply(response, 200, { stopped: true });
+    });
+  }
   server.close();
   server.closeAllConnections();
   process.exit(0);
 }
-process.on("SIGTERM", shutdown);
-process.on("SIGINT", shutdown);
+process.on("SIGTERM", () => shutdown());
+process.on("SIGINT", () => shutdown());
 server.requestTimeout = 370000;
 server.listen(0, "127.0.0.1", async () => {
   origin = `http://127.0.0.1:${server.address().port}`;

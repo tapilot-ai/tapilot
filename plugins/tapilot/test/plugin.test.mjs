@@ -14,7 +14,7 @@ import { PhoneConnection } from '../server/transport.mjs';
 import { parsePairingLink, saveConfig, selectDevice } from '../server/config.mjs';
 import { callTool } from '../server/tools.mjs';
 
-import { runtimeRequest } from '../server/runtime-client.mjs';
+import { runtimeRequest, runtimePaths } from '../server/runtime-client.mjs';
 
 const token = 'a'.repeat(43);
 async function fixture(t, handler, { automaticAuthentication = true } = {}) {
@@ -382,6 +382,8 @@ test('explicit disconnect persists across runtime restart and blocks every autom
   await cli('disconnect');
   const count=requests.length;
   await runtimeRequest('/stop');
+  await assert.rejects(stat(runtimePaths().metadata), { code: 'ENOENT' },
+    'The stop acknowledgement must not expose a stale endpoint to the next request');
   for (const [name,args] of [
     ['tapilot_preview_open',{}],['tapilot_preview_frame',{}],['tapilot_status',{}],
     ['tapilot_midscene',{action:'screenshot'}],['tapilot_midscene',{action:'home'}],
