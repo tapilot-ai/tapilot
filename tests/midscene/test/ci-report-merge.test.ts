@@ -38,9 +38,16 @@ export default {output:{reportFormat:'html-and-external-assets'},projects:[{name
     assert.equal(result.status, 1, result.stderr);
     assert.match(result.stdout, /9\/11 passed/, result.stderr);
     const html = readFileSync(join(root, 'midscene_run/report/midscene-e2e-complete/index.html'), 'utf8');
-    const match = html.match(/<script[^>]*type="midscene_test_run_dump"[^>]*>([\s\S]*?)<\/script>/);
-    assert.ok(match, 'Must use the native Midscene test report');
-    const dump = JSON.parse(match[1]);
+    const reportDirectory = join(root, 'midscene_run/report/midscene-e2e-complete');
+    const manifest = JSON.parse(readFileSync(join(reportDirectory, 'report.json'), 'utf8'));
+    assert.equal(manifest.kind, 'test', 'Must use the native Midscene test report');
+    assert.equal(manifest.entry, 'index.html');
+    assert.equal(manifest.status, 'complete');
+    const dump = JSON.parse(readFileSync(join(reportDirectory, manifest.runner), 'utf8'));
+    for (const file of readdirSync(reportDirectory, { recursive: true, withFileTypes: true })) {
+      if (file.isFile()) assert.ok(readFileSync(join(file.parentPath, file.name)).length <= 25 * 1024 * 1024,
+        'Every native report asset must fit the Workers per-file limit');
+    }
     assert.equal(dump.summary.total, 11);
     assert.equal(dump.summary.failed, 2);
     assert.match(readFileSync(join(root, 'midscene_run/ci-badge.md'), 'utf8'), /pass=9&fail=2/);

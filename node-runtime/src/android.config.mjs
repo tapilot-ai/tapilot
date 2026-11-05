@@ -168,6 +168,8 @@ const verificationNode = defineNode({
 });
 
 export default defineTestProject({
+  // Android app sandboxes cannot publish single-file reports with hard links.
+  output: { reportFormat: 'html-and-external-assets' },
   test: { maxConcurrentProjects: 1, maxConcurrentFiles: 1, testTimeout: 0 },
   projects: [
     {
