@@ -40,7 +40,7 @@ run(npm, ['audit', '--audit-level=low'], consumer);
 const installed = path.join(consumer, 'node_modules/tapilot');
 run(process.execPath, ['server/cli.mjs', '--help'], installed);
 fs.cpSync(path.join(root, 'plugins/tapilot/test'), path.join(installed, 'test'), { recursive: true });
-run(process.execPath, ['--test', ...fs.readdirSync(path.join(installed, 'test')).filter(f => f.endsWith('.test.mjs')).map(f => `test/${f}`)], installed);
+run(process.execPath, ['--test', '--test-concurrency=2', ...fs.readdirSync(path.join(installed, 'test')).filter(f => f.endsWith('.test.mjs')).map(f => `test/${f}`)], installed);
 // Force the portable path rather than accidentally testing the Mac's native addon.
 const img = path.join(installed, 'node_modules/@img');
 for (const name of fs.readdirSync(img)) {

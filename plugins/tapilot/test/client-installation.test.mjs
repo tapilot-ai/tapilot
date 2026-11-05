@@ -27,7 +27,7 @@ test('explicit target overrides inherited host evidence; missing target never in
   assert.deepEqual(await readdir(home), []);
 });
 
-test('real managed install survives removed source and Node, updates old launcher, and preserves prior install on failed update', { timeout: 120000 }, async t => {
+test('real managed install survives removed source and Node, updates old launcher, and preserves prior install on failed update', { timeout: 300000 }, async t => {
   const home = await mkdtemp(join(tmpdir(), 'tapilot-stable-'));
   t.after(() => rm(home, { recursive: true, force: true }));
   const source = join(home, 'temporary checkout');
@@ -38,7 +38,9 @@ test('real managed install survives removed source and Node, updates old launche
   const originalNode = join(home, process.platform === 'win32' ? 'temporary-node.exe' : 'temporary-node');
   await cp(process.execPath, originalNode);
   const options = { home, root: source, node: originalNode, skillsRoot: join(home, 'canonical skills') };
+  const startedAt = Date.now();
   const result = await installClient('doubao', options);
+  t.diagnostic(`Managed first install: ${Date.now() - startedAt}ms`);
   assert.equal(result.probe.protocol, 'passed');
   assert.equal(result.probe.hostRendering, 'not_tested');
   assert.ok(!result.runtime.node.includes('temporary-node'));
@@ -73,6 +75,7 @@ test('real managed install survives removed source and Node, updates old launche
   } finally {
     await exec(process.execPath, [cli, 'runtime-stop'], { env: daemonEnv, timeout: 15000 });
   }
+  t.diagnostic(`Daemon handoff complete: ${Date.now() - startedAt}ms`);
   const doctor = await clientCommand('doctor', { client: 'doubao' }, { home, skillsRoot: options.skillsRoot });
   assert.equal(doctor.skillLauncher, 'passed');
   assert.equal(doctor.protocol, 'passed');
@@ -87,6 +90,7 @@ test('real managed install survives removed source and Node, updates old launche
   assert.equal(await readFile(result.record, 'utf8'), before);
   assert.equal((await readdir(join(result.directory, 'releases'))).length, 1);
   const updated = await installClient('doubao', { ...options, root: result.runtime.root, node: result.runtime.node });
+  t.diagnostic(`Rollback and update complete: ${Date.now() - startedAt}ms`);
   assert.notEqual(updated.runtime.root, result.runtime.root);
   assert.deepEqual(updated.launcher, result.launcher, 'the whole saved GUI command remains stable');
   assert.equal(await realpath(updated.launcher.command), await realpath(updated.runtime.node));
