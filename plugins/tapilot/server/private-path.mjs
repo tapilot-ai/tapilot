@@ -21,9 +21,9 @@ if ($env:TAPILOT_PRIVATE_PROTECT -eq '1') {
     $rule = New-Object Security.AccessControl.FileSystemAccessRule($sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
   } else { $rule = New-Object Security.AccessControl.FileSystemAccessRule($sid, 'FullControl', 'Allow') }
   $acl.AddAccessRule($rule)
-  Set-Acl -LiteralPath $p -AclObject $acl
+  $item.SetAccessControl($acl)
 }
-$acl = Get-Acl -LiteralPath $p
+$acl = $item.GetAccessControl()
 if ($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $sid.Value) { throw 'foreign owner' }
 $allowed = @($sid.Value, 'S-1-5-18', 'S-1-5-32-544')
 $mine = $false
