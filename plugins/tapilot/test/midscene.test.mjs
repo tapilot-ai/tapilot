@@ -1,3 +1,4 @@
+import { protectPrivatePath } from '../server/private-path.mjs';
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -190,6 +191,8 @@ test("real AI SDK uses Responses fixture and wireless adapter for act/assert/wai
     }),
     { mode: 0o600 },
   );
+  await protectPrivatePath(join(c.root, "chatgpt"), true);
+  await protectPrivatePath(join(c.root, "chatgpt", "account.json"));
   const preload = join(c.root, "fixture.mjs");
   await writeFile(
     preload,
@@ -202,7 +205,7 @@ test("real AI SDK uses Responses fixture and wireless adapter for act/assert/wai
         [],
         {
           cwd: c.root,
-          execArgv: ["--import", preload],
+          execArgv: ["--import", pathToFileURL(preload).href],
           env: { ...process.env, FIXTURE_MODE: mode },
           stdio: ["ignore", "ignore", "pipe", "ipc"],
         },
@@ -310,7 +313,7 @@ test("installation guidance includes both APK sources and needs no phone", async
   assert.match(result.structuredContent.download_links, /\[Download Tapilot APK from Feishu/);
   assert.match(result.structuredContent.compatibility, /wireless control/);
   assert.equal(result.structuredContent.pairing.command, 'node');
-  assert.match(result.structuredContent.pairing.script, /server\/cli\.mjs$/);
+  assert.match(result.structuredContent.pairing.script, /server[\\/]cli\.mjs$/);
   assert.deepEqual(result.structuredContent.pairing.args, ["pair"]);
   assert.equal(calls.length, 0);
 });

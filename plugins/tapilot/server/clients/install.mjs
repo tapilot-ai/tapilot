@@ -3,7 +3,7 @@ import { dirname, join, resolve, isAbsolute } from 'node:path';
 import { homedir } from 'node:os';
 import { createHash, randomUUID } from 'node:crypto';
 import lockfile from 'proper-lockfile';
-import { publishEntries } from './entries.mjs';
+import { publishEntries, sameLink } from './entries.mjs';
 import { parse, modify, applyEdits } from 'jsonc-parser';
 import { clientConfiguration, packageRoot } from './catalog.mjs';
 import { clientSkill, skillLauncher, connectorLauncher } from './skills.mjs';
@@ -196,7 +196,7 @@ export async function uninstallClient(client, options = {}) {
     await rm(plan.record);
     for (const [name, target] of Object.entries(record.entries ?? {})) {
       const file = join(plan.directory, name);
-      if ((await info(file))?.isSymbolicLink() && await readlink(file) === target) await rm(file);
+      if ((await info(file))?.isSymbolicLink() && sameLink(await readlink(file), target)) await rm(file);
     }
     // A shared phone daemon may have been started by this client and still serve
     // another client. DSH may also have this package loaded under its own Node.

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { protectPrivatePath } from './private-path.mjs';
 import { mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -109,10 +110,12 @@ async function serialize(result) {
       dir,
       `${randomUUID()}.${item.mimeType === "image/png" ? "png" : "jpg"}`,
     );
-    await writeFile(path, Buffer.from(item.data, "base64"), {
+    await writeFile(path, "", {
       mode: 0o600,
       flag: "wx",
     });
+    await protectPrivatePath(path);
+    await writeFile(path, Buffer.from(item.data, "base64"));
     images.push({ path, mimeType: item.mimeType });
   }
   let data = result.structuredContent;

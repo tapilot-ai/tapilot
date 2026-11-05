@@ -1,3 +1,4 @@
+import { assertPrivatePath } from '../server/private-path.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtemp,writeFile,readFile,stat,rm} from 'node:fs/promises';
@@ -14,7 +15,7 @@ test('legacy pairing migrates without losing credentials; additional phones reta
  const registry=await loadDevices(path);
  assert.equal(registry.activeDeviceId,b.fingerprint);assert.equal(registry.devices.length,2);
  assert.equal(registry.devices[0].token,a.token);
- assert.equal((await stat(path)).mode & 0o777,0o600);
+ await assertPrivatePath(path);
  await selectDevice('connect',a.fingerprint,path);
  assert.equal((await loadDevices(path)).activeDeviceId,a.fingerprint);
 });

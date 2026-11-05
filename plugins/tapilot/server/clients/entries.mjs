@@ -1,6 +1,8 @@
 import { lstat, readlink, symlink, rename, rm } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, normalize } from 'node:path';
 import { randomUUID } from 'node:crypto';
+
+export const sameLink = (a, b) => typeof b === 'string' && normalize(a).replace(/[\\/]$/, '') === normalize(b).replace(/[\\/]$/, '');
 
 // Stable host paths; releases remain immutable for already-running sessions.
 export async function publishEntries(directory, runtime, previous) {
@@ -10,7 +12,7 @@ export async function publishEntries(directory, runtime, previous) {
     const file = join(directory, name);
     try {
       const stat = await lstat(file);
-      if (!stat.isSymbolicLink() || !previous || await readlink(file) !== previous[name])
+      if (!stat.isSymbolicLink() || !previous || !sameLink(await readlink(file), previous[name]))
         throw new Error(`Stable entry was edited or is unmanaged: ${file}`);
       old[name] = await readlink(file);
     } catch (error) { if (error.code !== 'ENOENT') throw error; }
@@ -18,7 +20,15 @@ export async function publishEntries(directory, runtime, previous) {
   const changed = [];
   const replace = async (name, target) => {
     const file = join(directory, name), stage = `${file}.${randomUUID()}.tmp`;
-    try { await symlink(target, stage, name === 'current' ? 'dir' : 'file'); await rename(stage, file); }
+    const backup = `${file}.${randomUUID()}.old`;
+    let saved = false;
+    try {
+      await symlink(target, stage, name === 'current' ? (process.platform === 'win32' ? 'junction' : 'dir') : 'file');
+      if (process.platform === 'win32' && old[name]) { await rename(file, backup); saved = true; }
+      try { await rename(stage, file); }
+      catch (error) { if (saved) await rename(backup, file); throw error; }
+      if (saved) await rm(backup, { force: true });
+    }
     finally { await rm(stage, { force: true }); }
   };
   const rollback = async () => {

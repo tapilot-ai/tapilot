@@ -96,7 +96,7 @@ test('a standalone imported Skill finds a Cherry-only installation without a che
   await mkdir(loose, {recursive:true});
   await cp(join(packageRoot,'skills/tapilot/scripts/tapilot.mjs'),join(loose,'tapilot.mjs'));
   const {stdout} = await promisify(execFile)(process.execPath,[join(loose,'tapilot.mjs'),'--help'],{
-    env:{HOME:options.home,PATH:'/usr/bin:/bin'},timeout:15000,
+    env:{...process.env,HOME:options.home,USERPROFILE:options.home,TAPILOT_ROOT:'',ANDROID_USE_ROOT:''},timeout:15000,
   });
   assert.ok(stdout.includes('Tapilot CLI'));
   assert.equal(installed.diagnostics.protocol,'not_applicable');
