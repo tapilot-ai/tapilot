@@ -29,3 +29,4 @@ test('private paths reject broad access rather than silently repairing existing 
   await protectPrivatePath(empty);
   await assertPrivatePath(empty);
 });
+

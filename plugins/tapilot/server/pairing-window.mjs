@@ -16,8 +16,8 @@ export async function pairPhone(config) {
   try { const {token} = await phone.open(true); await saveConfig({...config, token}); }
   finally { phone.close(); }
 }
-export function pairingAddress() {
-  const entries = Object.entries(networkInterfaces()).filter(([name]) => /^(en\d+|eth\d+|wlan\d+|wlp\w+)$/.test(name));
+export function pairingAddress(interfaces = networkInterfaces()) {
+  const entries = Object.entries(interfaces).filter(([name]) => !/^(lo|docker|veth|br-|utun|tun|tap|vEthernet)/i.test(name));
   entries.sort(([a], [b]) => (a === 'en0' ? -1 : b === 'en0' ? 1 : a.localeCompare(b)));
   const address = entries.flatMap(([,list]) => list ?? []).find(a => a.family === 'IPv4' && !a.internal)?.address;
   if (!address) throw Error('Connect the computer to the same Wi-Fi as the phone before pairing.');
