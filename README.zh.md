@@ -43,6 +43,9 @@ Powered by [Midscene](https://github.com/web-infra-dev/midscene)。
 - **用语音交互。** 可选火山引擎或 Deepgram 转写与播报，分别配置服务凭据，支持自动朗读回答。
 - **通过 Wi-Fi 控制手机。** 本地 [Tapilot 插件](plugins/tapilot/README.md)
   通过固定证书的 TLS 连接已配对手机。无线控制要求手机解锁并独占控制权，不需要 ADB 或 USB。
+  Codex 插件、豆包工作、WorkBuddy、Cherry Studio、VS Code 和 DSH Web 的使用步骤见
+  [客户端接入用户指南](docs/client-setup.zh.md)；适配细节与验证状态见
+  [开发者接入说明](plugins/tapilot/CLIENTS.md)。其他 Agent 可通过 CLI 和 Skill 使用。
 
 ### 手动接管任务
 

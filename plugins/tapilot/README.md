@@ -1,5 +1,10 @@
 # Tapilot — wireless Android control
 
+Embedded client integrations and installation commands: [Client guide](CLIENTS.md).
+Codex keeps its native plugin. Additional adapters cover standard MCP Apps hosts,
+WorkBuddy resource-only preview, and a native DSH Web sidebar panel. Native-host
+and hardware validation status is documented separately from protocol tests.
+
 The npm package and primary command are `tapilot`; `android-use` remains a compatibility alias.
 
 ```sh
@@ -600,3 +605,14 @@ report entry in CI belongs to the actual APK suite and opens the complete native
 Midscene Test report directly, with no custom HTML index. See the
 [APK CI guide](../../tests/midscene/README.md#automatic-apk-smoke-on-hosted-ci)
 for Cloudflare Pages configuration and UI coverage.
+
+
+### Unified client setup
+
+On macOS, extract the verified `tapilot-setup-darwin-ARCH-VERSION.tar.gz` archive
+and double-click `Install Tapilot.command`. Select a client and follow the
+remaining host steps. The archive includes Node and the audited runtime; Codex
+continues through its native plugin installation. Agents with an existing runtime
+can run `tapilot onboard --client CLIENT` to install/update and check a target.
+See [client setup](CLIENTS.md#unified-macos-setup) and
+[distribution verification](DISTRIBUTION.md#verify-the-setup-archive).

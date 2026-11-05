@@ -1,0 +1,36 @@
+{
+  "archive": "tapilot-setup-darwin-arm64-0.6.18.tar.gz",
+  "sha256": "73b8e0e9ce14dc0d6f3b51dc195a71565c2dc59047b318ed6f3f705f874c7843",
+  "osUserSession": "not_tested_isolated_home_only",
+  "nativeHostRendering": "not_tested",
+  "phone": "not_tested",
+  "results": [
+    {
+      "client": "doubao",
+      "interactiveFirstInstall": "passed",
+      "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+      "firstInstall": "passed",
+      "update": "passed",
+      "stableHostPaths": "passed",
+      "restartAfterSourceRemoval": "passed"
+    },
+    {
+      "client": "workbuddy",
+      "interactiveFirstInstall": "passed",
+      "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+      "firstInstall": "passed",
+      "update": "passed",
+      "stableHostPaths": "passed",
+      "restartAfterSourceRemoval": "passed"
+    },
+    {
+      "client": "dsh",
+      "interactiveFirstInstall": "passed",
+      "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+      "firstInstall": "passed",
+      "update": "passed",
+      "stableHostPaths": "passed",
+      "restartAfterSourceRemoval": "passed"
+    }
+  ]
+}

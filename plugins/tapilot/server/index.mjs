@@ -8,14 +8,18 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { SCREEN_URI, SCREEN_META, PANEL_META } from "./preview.mjs";
-import { panelTools, panelRequest } from "./panel-tools.mjs";
+import { SCREEN_URI, LEGACY_SCREEN_URIS, PANEL_META } from "./preview.mjs";
+import { panelRequest } from "./panel-tools.mjs";
 import { runtimeRequest } from "./runtime-client.mjs";
+import { hostProfile, hostTools, hostResourceMeta, hostResultMeta, hostHtml, resourceRequest } from './hosts.mjs';
 
 let panelSessionId = PANEL_META["openai/widgetSessionId"];
+const host = hostProfile(process.env.TAPILOT_HOST || 'codex');
+const tools = hostTools(host);
+const resourceMeta = hostResourceMeta(host);
 
 const server = new Server(
-  { name: "tapilot", version: "0.6.15" },
+  { name: "tapilot", version: "0.6.18" },
   {
     capabilities: { tools: {}, resources: {} },
     instructions:
@@ -23,7 +27,7 @@ const server = new Server(
   },
 );
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: panelTools,
+  tools,
 }));
 server.setRequestHandler(ListResourcesRequestSchema, async () => ({
   resources: [
@@ -31,22 +35,26 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => ({
       uri: SCREEN_URI,
       name: "Tapilot Screen",
       mimeType: "text/html;profile=mcp-app",
-      _meta: SCREEN_META,
+      _meta: resourceMeta,
     },
   ],
 }));
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-  if (request.params.uri !== SCREEN_URI) throw new Error("Unknown UI resource");
+  if (request.params.uri !== SCREEN_URI && !LEGACY_SCREEN_URIS.includes(request.params.uri)) {
+    const params = resourceRequest(request.params.uri, host);
+    const result = await runtimeRequest('/panel', params);
+    return { contents: [{ uri: request.params.uri, mimeType: 'application/json', text: JSON.stringify(result) }] };
+  }
   return {
     contents: [
       {
-        uri: SCREEN_URI,
+        uri: request.params.uri,
         mimeType: "text/html;profile=mcp-app",
-        text: await readFile(
+        text: hostHtml(await readFile(
           new URL("../assets/screen.html", import.meta.url),
           "utf8",
-        ),
-        _meta: SCREEN_META,
+        ), host),
+        _meta: resourceMeta,
       },
     ],
   };
@@ -54,6 +62,7 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     panelRequest(request.params);
+    if (!tools.some(tool => tool.name === request.params.name)) throw new Error('Unsupported panel request for this host');
     // Return the shell before starting the runtime or waiting for its phone queue.
     // The mounted panel fetches devices and frames through its normal polling.
     if (request.params.name === 'tapilot_preview_open') {
@@ -63,7 +72,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return {
         content: [{type:'text',text:'Tapilot screen panel'}],
         structuredContent: {state:'connecting'},
-        _meta: {...PANEL_META, "openai/widgetSessionId": panelSessionId},
+        _meta: hostResultMeta(host, panelSessionId),
       };
     }
     return await runtimeRequest("/panel", request.params);

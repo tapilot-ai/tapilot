@@ -4,15 +4,17 @@ import { readFile } from 'node:fs/promises';
 import { imagePoint } from '../ui/geometry.mjs';
 import { t, setLanguage, connectionErrorMessage } from '../ui/i18n.mjs';
 import { PreviewActivity } from '../ui/preview-activity.mjs';
+import { panelRequest } from '../ui/panel-request.mjs';
+import { createPanelBridge } from '../ui/panel-bridge.mjs';
 
 const source = (await readFile(new URL('../ui/screen.mjs', import.meta.url), 'utf8')).replace(/^import .*;\n/gm, '');
 const live = {state:'live',dataUrl:'data:image/png;base64,AA==',frame_id:'frame-1',width:100,height:200,capturedAt:0};
-async function fixture(locale, {autoLoad = true} = {}) {
+async function fixture(locale, {autoLoad = true, host = {}, context = {}, displayError} = {}) {
   setLanguage('en');
   const elements = new Map();
   const element = key => {
     if (!elements.has(key)) {
-      const value = {hidden:false,value:'',checked:true,dataset:{},handlers:{},children:[],attributes:{},
+      const value = {hidden:false,value:'',checked:true,dataset:{},handlers:{},children:[],attributes:{},style:{},
         querySelector(selector){return element(key+' '+selector);},replaceChildren(){this.children=[];},append(child){this.children.push(child);},focus(){doc.activeElement=this;},contains(target){return this===target || this.children.includes(target);},
         setAttribute(name,value){this.attributes[name]=value;},removeAttribute(name){delete this.attributes[name];},addEventListener(name, fn){this.handlers[name]=fn;}};
       if (key === 'img') Object.defineProperty(value, 'src', {
@@ -25,19 +27,61 @@ async function fixture(locale, {autoLoad = true} = {}) {
   };
   const back = element('back'); back.dataset.action='back';
   let created = 0;
-  const doc = {hidden:false, handlers:{},querySelector:element,createElement:tag=>element(`${tag}-${++created}`),
+  const doc = {hidden:false, body:element('body'), handlers:{},querySelector:element,createElement:tag=>element(`${tag}-${++created}`),
     querySelectorAll:selector=>selector==='[data-control]'?[back,element('submit')]:[back],
     addEventListener(name,fn){this.handlers[name]=fn;}};
   const win = {handlers:{},addEventListener(name,fn){this.handlers[name]=fn;}};
   let client;
   const timers=[];
-  class App {constructor(){client=this;this.calls=[];} async connect(){} getHostContext(){return {locale};} async callServerTool(request){this.calls.push(request);return this.respond(request);} }
-  await new (Object.getPrototypeOf(async function(){}).constructor)('App','imagePoint','PreviewActivity','document','window','setTimeout','clearTimeout','t','setLanguage','localize','connectionErrorMessage',source)(App,imagePoint,PreviewActivity,doc,win,(fn,delay)=>{timers.push({fn,delay});return timers.length;},()=>{},t,setLanguage,()=>{},connectionErrorMessage);
+  class App {constructor(){client=this;this.calls=[];this.displayRequests=[];this.sizes=[];} async connect(){} getHostContext(){return {locale,...context};} async requestDisplayMode(request){this.displayRequests.push(request);if(displayError)throw displayError;return {mode:context.resultMode ?? request.mode};} async sendSizeChanged(size){this.sizes.push(size);} async callServerTool(request){this.calls.push(request);return this.respond(request);} }
+  await new (Object.getPrototypeOf(async function(){}).constructor)('panelRequest','createPanelBridge','imagePoint','PreviewActivity','document','window','setTimeout','clearTimeout','t','setLanguage','localize','connectionErrorMessage','globalThis',source)((call,request)=>panelRequest(call,request,{setTimer:(fn,delay)=>{const timer={fn,delay};timers.push(timer);return timer;},clearTimer:timer=>{const index=timers.indexOf(timer);if(index>=0)timers.splice(index,1);}}),options=>createPanelBridge({...options,host,AppClass:App}),imagePoint,PreviewActivity,doc,win,(fn,delay)=>{timers.push({fn,delay});return timers.length;},()=>{},t,setLanguage,()=>{},connectionErrorMessage,{__TAPILOT_PANEL__:host});
   client.ontoolresult({structuredContent:live});
   await Promise.resolve();
   return {client,element,doc,back,win,timers};
 }
 const deferred = () => {let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
+
+test('Doubao requests its expanded surface once, without reopening it on frame updates', async () => {
+  const f = await fixture('en', {host:{name:'doubao'},context:{displayMode:'inline',availableDisplayModes:['inline','fullscreen']}});
+  assert.deepEqual(f.client.displayRequests,[{mode:'fullscreen'}]);
+  f.client.ontoolresult({structuredContent:live});
+  f.client.onhostcontextchanged({displayMode:'inline'});
+  assert.equal(f.client.displayRequests.length,1);
+});
+
+test('expansion rejection preserves polling and other hosts keep their existing display policy', async () => {
+  const f = await fixture('en', {host:{name:'doubao'},context:{availableDisplayModes:['fullscreen']},displayError:new Error('Host rejected expansion')});
+  assert.ok(f.timers.length);
+  assert.deepEqual(f.client.sizes,[]);
+  const inline = await fixture('en', {host:{name:'doubao'},context:{availableDisplayModes:['fullscreen'],resultMode:'inline'}});
+  assert.deepEqual(inline.client.sizes,[]);
+  for (const host of ['codex','workbuddy','cursor','vscode']) {
+    const other = await fixture('en', {host:{name:host},context:{availableDisplayModes:['fullscreen']}});
+    assert.equal(other.client.displayRequests.length,0);
+  }
+});
+
+test('a closed Doubao sidebar has an explicit expansion action without reopening on context changes', async () => {
+  const f = await fixture('en', {host:{name:'doubao'},context:{displayMode:'inline',availableDisplayModes:['inline','fullscreen']}});
+  assert.equal(f.element('#expand-panel').hidden,true);
+  f.client.onhostcontextchanged({displayMode:'inline'});
+  assert.equal(f.element('#expand-panel').hidden,false);
+  assert.equal(f.client.displayRequests.length,1);
+  await f.element('#expand-panel').onclick();
+  assert.equal(f.client.displayRequests.length,2);
+  assert.equal(f.element('#expand-panel').hidden,true);
+});
+
+test('failed privacy resume exposes the connection error while preserving the pause', async () => {
+  const f = await fixture('en');
+  f.client.ontoolresult({structuredContent:{state:'manual'}});
+  f.client.respond = async () => ({isError:true,structuredContent:{state:'manual'},content:[{type:'text',text:'Phone connection timed out'}]});
+  await f.element('#resume').onclick();
+  assert.equal(f.element('img').hidden,true);
+  assert.equal(f.element('[role=alert]').hidden,false);
+  assert.match(f.element('[role=alert]').textContent,/timed out|Wi-Fi/);
+  assert.equal(f.element('#resume').hidden,false);
+});
 
 test('phone controls wait until the displayed image has loaded the matching frame', async () => {
   const f = await fixture('en', {autoLoad:false});
@@ -715,4 +759,56 @@ test('QR image decoding failure offers refresh and ignores errors from an old QR
  oldError();
  assert.equal(f.element('#pairing-qr').hidden,false);
  assert.equal(f.element('#pair-refresh').hidden,true);
+});
+
+
+test('read-only host keeps preview but hides manual, pairing and device mutations', async () => {
+  const f = await fixture('en', {host:{interactive:false,transport:'resources'}});
+  assert.equal(f.element('img').hidden, false);
+  assert.equal(f.back.disabled, true);
+  assert.equal(f.element('.navigation').hidden, true);
+  assert.equal(f.element('.text-entry').hidden, true);
+  assert.equal(f.element('#device-pair').hidden, true);
+  assert.equal(f.element('#host-notice').hidden, false);
+  assert.match(f.element('#host-notice').textContent, /Live preview/);
+  assert.match(f.element('[role=status]').textContent, /Connected.*Live preview/);
+  await f.back.onclick();
+  assert.equal(f.client.calls.length, 0);
+  f.client.ontoolresult({structuredContent:{state:'setup_required'}});
+  assert.equal(f.element('#pair').hidden, true);
+});
+
+
+test('stalled reconnect releases busy controls and ignores the late frame', async () => {
+  const f = await fixture('en');
+  const pending = deferred();
+  f.client.respond = () => pending.promise;
+  const work = f.element('#resume').onclick();
+  await Promise.resolve();
+  assert.equal(f.element('#resume').disabled, true);
+  f.timers.filter(timer => timer.delay === 45000).at(-1).fn();
+  await work;
+  assert.equal(f.element('#resume').disabled, false);
+  assert.equal(f.element('img').hidden, true);
+  pending.resolve({ structuredContent: live });
+  await Promise.resolve();
+  assert.equal(f.element('img').hidden, true, 'late reply must not revive a consumed frame');
+});
+
+
+test('a stalled preview deadline schedules another observation and never accepts its late frame', async () => {
+  const f = await fixture('en');
+  await loadPicker(f);
+  const pending = deferred();
+  f.client.respond = request => request.name === 'tapilot_preview_frame' ? pending.promise : Promise.resolve({structuredContent:{devices:[]}});
+  const work = f.timers.find(timer => timer.delay === 0).fn();
+  for (let step=0; step<12 && !f.client.calls.some(request=>request.name === "tapilot_preview_frame"); step++) await Promise.resolve();
+  assert.equal(f.client.calls.some(request=>request.name === "tapilot_preview_frame"),true);
+  f.timers.filter(timer => timer.delay === 45000).at(-1).fn();
+  await work;
+  assert.equal(f.element('img').hidden, true);
+  assert.equal(f.timers.at(-1).delay, 4000);
+  pending.resolve({structuredContent:live});
+  await Promise.resolve();
+  assert.equal(f.element('img').hidden, true);
 });

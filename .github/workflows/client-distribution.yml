@@ -1,0 +1,31 @@
+name: Verify desktop client setup
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  macos:
+    runs-on: macos-14
+    timeout-minutes: 30
+    env:
+      npm_config_registry: https://registry.npmjs.org
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Build and independently verify the runtime package
+        run: node scripts/check-cli-package.mjs
+      - name: Build the offline setup archive
+        run: node scripts/build-client-distribution.mjs > "$RUNNER_TEMP/tapilot-distribution.txt"
+      - name: Verify first install, update and restart without installer source
+        run: node scripts/check-client-setup.mjs "$(cat "$RUNNER_TEMP/tapilot-distribution.txt")"
+      - name: Collect downloadable archives
+        run: |
+          mkdir -p build/client-downloads
+          distribution="$(cat "$RUNNER_TEMP/tapilot-distribution.txt")"
+          cp "$distribution"/*.tar.gz "$distribution"/*.tgz "$distribution"/*.zip "$distribution"/SHA256SUMS "$distribution"/INSTALL.zh.md build/client-downloads/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tapilot-macos-client-setup
+          path: build/client-downloads/

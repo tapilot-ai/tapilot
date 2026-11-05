@@ -12,14 +12,40 @@ import {
 import { callTool } from "./tools.mjs";
 import { MidsceneController } from "./midscene.mjs";
 
-export function createRuntime() {
+export function createRuntime({ privacyPaused = false } = {}) {
   let phone;
   let pairRevision = 0;
   const preview = new Preview();
+  if (privacyPaused) preview.pause('manual');
   const midscene = new MidsceneController();
   let queue = Promise.resolve();
   let pairingQueue = Promise.resolve();
+  async function syncRegistry() {
+    const registry = await loadDevices();
+    const selected = registry.devices.find(d => d.fingerprint === registry.activeDeviceId);
+    // Another host can change pairing or selection. Reconciliation never opens
+    // a connection, and releases the old lease even on read-only list requests.
+    if (phone && (!selected || !selected.autoConnect ||
+        ['host', 'port', 'token', 'fingerprint'].some(key => phone.config[key] !== selected[key]))) {
+      phone.close(); phone = undefined;
+      preview.reconnect();
+      midscene.invalidate();
+    }
+    return registry;
+  }
+  function deviceList(registry) {
+    return { content: [], structuredContent: {
+      language: phone?.config?.language ?? 'en', device_host: phone?.config?.host,
+      state: phone?.connected ? (preview.reason ?? 'live') : 'disconnected',
+      devices: registry.devices.map(device => ({ id: device.fingerprint,
+        name: device.name ?? `Android · ${device.host}`, host: device.host,
+        selected: device.fingerprint === registry.activeDeviceId,
+        state: phone?.connected && phone.config.fingerprint === device.fingerprint ? 'connected'
+          : device.autoConnect ? 'not_connected' : 'disconnected' })),
+    } };
+  }
   return {
+    get privacyPaused() { return preview.reason === 'manual'; },
     close() {
       midscene.cancel();
       phone?.close();
@@ -27,6 +53,15 @@ export function createRuntime() {
     },
     async call(request) {
       const { name, arguments: args = {} } = request.params;
+      // Device pickers must remain usable while a preview is waiting for an
+      // unreachable phone. Lists read saved state and cannot join that queue.
+      if (name === 'tapilot_devices' && args.action === 'list') {
+        try {
+          if (Object.keys(args).some(key => !['action', 'device_id'].includes(key)) ||
+              (args.device_id !== undefined && !/^[a-f0-9]{64}$/.test(args.device_id))) throw Error('Invalid device request');
+          return deviceList(await syncRegistry());
+        } catch (error) { return { isError: true, content: [{ type: 'text', text: error.message }] }; }
+      }
       // QR setup/status never wait for an unreachable phone or an active task.
       // Confirmation stays on the device queue because it replaces credentials.
       if (name === "tapilot_midscene" && ['pair','pair_status','pair_cancel'].includes(args.action)) {
@@ -109,16 +144,8 @@ export function createRuntime() {
           if (explicitResume && Object.keys(args).some(key =>
               !(name === 'tapilot_preview' ? ['action', 'viewer_id'] : ['viewer_id']).includes(key)))
             throw new Error('Invalid preview arguments');
-          const registry = await loadDevices();
+          const registry = await syncRegistry();
           let selected = registry.devices.find(d => d.fingerprint === registry.activeDeviceId);
-          // Another host can change pairing or selection without using this runtime.
-          // Release the old lease even for read-only device lists or missing config.
-          if (phone && (!selected || !selected.autoConnect ||
-              ["host", "port", "token", "fingerprint"].some(key => phone.config[key] !== selected[key]))) {
-            phone.close(); phone = undefined;
-            preview.reconnect();
-            midscene.invalidate();
-          }
           if (name === 'tapilot_devices' || name === 'tapilot_disconnect') {
             const action = name === 'tapilot_disconnect' ? 'disconnect' : args.action;
             if (!['list','connect','disconnect','forget','update_address'].includes(action) ||
@@ -144,13 +171,7 @@ export function createRuntime() {
                 await phone.open();
               }
             }
-            const registry = await loadDevices();
-            return {content:[], structuredContent:{state:phone?.connected ? (preview.reason ?? 'live') : 'disconnected',
-              devices:registry.devices.map(device => ({id:device.fingerprint,
-                name:device.name ?? `Android · ${device.host}`, host:device.host,
-                selected:device.fingerprint === registry.activeDeviceId,
-                state:phone?.connected && phone.config.fingerprint === device.fingerprint ? 'connected'
-                  : device.autoConnect ? 'not_connected' : 'disconnected'}))}};
+            return deviceList(await loadDevices());
           }
           if (selected && explicitResume && !selected.autoConnect) {
             await selectDevice('connect', selected.fingerprint);

@@ -1,4 +1,9 @@
 const messages = {
+  "请确认手机已解锁、无线控制已开启且 Wi-Fi 可以互通。若切到后台后断线，请打开手机 Tapilot，检查后台运行和联网限制。恢复后会自动连接，不会重放操作。": "Unlock the phone, enable wireless control, and check Wi-Fi connectivity. If it disconnects in the background, open Tapilot on the phone and check background and network restrictions. Reconnection never replays actions.",
+  "在侧栏打开": "Open in sidebar",
+  "无法打开侧栏，请重试。": "Could not open the sidebar. Please try again.",
+  "已连接 · 实时预览": "Connected · Live preview",
+  "当前客户端支持实时预览。配对、切换设备和操作手机请交给助手完成。": "Live preview is available here. Ask the assistant to pair, switch devices, or control the phone.",
   "二维码无法显示，请刷新或打开配对窗口。": "Cannot display the QR code. Refresh it or open the pairing window.",
   "请打开配对窗口，用手机扫描二维码。": "Open the pairing window and scan its QR code with your phone.",
   "正在确认连接…": "Confirming connection…",

@@ -1,6 +1,6 @@
 {
   "name": "tapilot",
-  "version": "0.6.15",
+  "version": "0.6.18",
   "description": "Control a paired Android phone over Wi-Fi with a cross-agent CLI and skill; MCP supplies the embedded preview panel.",
   "author": {
     "name": "quanru"

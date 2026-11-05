@@ -1,7 +1,8 @@
 import { t, connectionErrorMessage } from '../ui/i18n.mjs';
 import { randomUUID } from 'node:crypto';
 import { control, imageSize } from './panel-controls.mjs';
-export const SCREEN_URI = 'ui://tapilot/screen-0.6.15.html';
+export const SCREEN_URI = 'ui://tapilot/screen-0.6.18.html';
+export const LEGACY_SCREEN_URIS = ['ui://tapilot/screen-0.6.17.html', 'ui://tapilot/screen-0.6.16-sidebar.html', 'ui://tapilot/screen-0.6.16.html'];
 export const SCREEN_META = { ui: { csp: { connectDomains: [], resourceDomains: [] }, prefersBorder: false }, 'openai/ui': { availableDisplayModes: ['fullscreen'], preferredDisplayMode: 'fullscreen' } };
 export const PANEL_META = { 'openai/widgetSessionId': 'tapilot-screen' };
 export const isLocked = error => /^(Unlock the phone first|Phone is locked\. Unlock it on the device\.)$/.test(error.message);

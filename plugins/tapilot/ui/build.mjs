@@ -15,3 +15,9 @@ const browserOutput = new URL('../assets/browser.html', import.meta.url);
 if (process.argv.includes('--check')) {
   if (await readFile(browserOutput, 'utf8') !== browserHtml) throw new Error('Stale browser UI');
 } else await writeFile(browserOutput, browserHtml);
+
+const dshHtml = html.replace('<head>', '<head><script>globalThis.__TAPILOT_DSH__=true;</script>');
+const dshOutput = new URL('../assets/dsh.html', import.meta.url);
+if (process.argv.includes('--check')) {
+  if (await readFile(dshOutput, 'utf8') !== dshHtml) throw new Error('Stale DSH UI');
+} else await writeFile(dshOutput, dshHtml);

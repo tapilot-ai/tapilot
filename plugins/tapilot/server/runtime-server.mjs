@@ -3,11 +3,12 @@ import { randomBytes } from "node:crypto";
 import { readFile, writeFile, chmod, unlink } from "node:fs/promises";
 import lockfile from "proper-lockfile";
 import { join } from "node:path";
+import { fileURLToPath } from 'node:url';
 import { createRuntime } from "./runtime.mjs";
 import { runtimePaths, runtimeVersion } from "./runtime-client.mjs";
 import { panelRequest } from "./panel-tools.mjs";
 
-const runtime = createRuntime();
+const runtime = createRuntime({ privacyPaused: process.env.TAPILOT_PREVIEW_PAUSED === '1' });
 const { metadata, dir } = runtimePaths();
 let releaseOwner;
 try {
@@ -73,7 +74,7 @@ const server = createServer(async (req, res) => {
     if (!admin && !panel)
       return reply(res, 401, { error: "Authorization required" });
     if (req.method === "GET" && req.url === "/health" && admin)
-      return reply(res, 200, { version: runtimeVersion });
+      return reply(res, 200, { version: runtimeVersion, privacyPaused: runtime.privacyPaused });
     if (req.method !== "POST")
       return reply(res, 405, { error: "POST required" });
     const body = await readBody(req);
@@ -91,7 +92,7 @@ const server = createServer(async (req, res) => {
     if (req.url === "/stop") {
       stopping = true;
       await Promise.allSettled([...pending]);
-      reply(res, 200, { stopped: true });
+      reply(res, 200, { stopped: true, privacyPaused: runtime.privacyPaused });
       return shutdown();
     }
     reply(res, 404, { error: "Unknown endpoint" });
@@ -118,6 +119,8 @@ server.listen(0, "127.0.0.1", async () => {
       port: server.address().port,
       token,
       pid: process.pid,
+      execPath: process.execPath,
+      managed: process.execPath === fileURLToPath(new URL(process.platform === 'win32' ? '../bin/node.exe' : '../bin/node', import.meta.url)),
       version: runtimeVersion,
     }),
     { mode: 0o600 },
