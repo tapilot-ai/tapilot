@@ -19,9 +19,10 @@ internal class ShellNotifications(private val context: Context) {
         manager.createNotificationChannel(NotificationChannel(PAIR_CHANNEL, text(R.string.shell_pair_channel), NotificationManager.IMPORTANCE_HIGH))
     }
     private fun open() = PendingIntent.getActivity(context, 40, Intent(context, ShellSetupActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-    fun ongoing(message: Int): Notification = NotificationCompat.Builder(context, CHANNEL)
+    fun ongoing(message: Int): Notification = ongoingText(text(message))
+    private fun ongoingText(message: String): Notification = NotificationCompat.Builder(context, CHANNEL)
         .setSmallIcon(android.R.drawable.stat_notify_sync_noanim)
-        .setContentTitle(text(R.string.shell_title)).setContentText(text(message))
+        .setContentTitle(text(R.string.shell_title)).setContentText(message).setStyle(NotificationCompat.BigTextStyle().bigText(message))
         .setContentIntent(open()).setOngoing(true).setOnlyAlertOnce(true)
         .addAction(0, text(R.string.shell_revoke), PendingIntent.getService(context, 41,
             Intent(context, ShellSetupService::class.java).setAction(ShellSetupService.REVOKE),
@@ -47,6 +48,7 @@ internal class ShellNotifications(private val context: Context) {
     }
     fun cancelPair() { manager.cancel(PAIR_ID) }
     fun update(message: Int) { manager.notify(ID, ongoing(message)) }
+    fun setupProgress(message: String) { manager.notify(ID, ongoingText(message)) }
     fun pairAllowed(): Boolean = manager.areNotificationsEnabled() && manager.getNotificationChannel(PAIR_CHANNEL)?.importance != NotificationManager.IMPORTANCE_NONE
     companion object {
         const val ID = 7201

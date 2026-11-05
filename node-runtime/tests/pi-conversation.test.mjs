@@ -775,3 +775,136 @@ test('a second precomputed phone operation waits for a new model decision', asyn
   assert.deepEqual(performed, ['盘点', '根据结果继续']);
   assert.equal(result.operations, 2);
 });
+
+test('background setup terminates with the native result without claiming a screenshot verification', async () => {
+  for (const phase of ['completed', 'waiting_user', 'failed']) {
+    const methods = [];
+    const reply = phase === 'completed' ? 'Shell connected; overlay allowed' : 'Setup needs attention';
+    const conversation = createConversation({ allowBackgroundSetup: true, messages: input('帮我开启后台屏幕'), emit: () => {}, rpc: async (method) => {
+      methods.push(method);
+      if (method === 'phone.setupBackgroundScreen') return { phase, reply };
+      assert.equal(method, 'model.complete');
+      return tool('setup_background_screen', {});
+    } });
+    const result = await conversation.run();
+    assert.equal(result.phase, phase);
+    assert.equal(result.reply, reply);
+    assert.equal(result.completionKind, 'setup');
+    assert.equal(result.lastPhoneResult, null);
+    assert.deepEqual(methods, ['model.complete', 'phone.setupBackgroundScreen']);
+  }
+});
+
+test('background setup cannot switch screen after a resumed ordinary phone operation', async () => {
+  let turns = 0, setups = 0;
+  const resume = [{ role: 'assistant', content: [{ type: 'toolCall', id: 'prior', name: 'operate_phone', arguments: {} }] }];
+  const conversation = createConversation({ allowBackgroundSetup: true, resume, messages: input('Read then configure'), emit: () => {}, rpc: async method => {
+    if (method === 'phone.setupBackgroundScreen') { setups++; return { phase: 'completed', reply: 'Ready' }; }
+    return [tool('setup_background_screen', {}), tool('finish_task', { outcome: 'waiting_user', summary: 'Send setup as a separate task' })][turns++];
+  } });
+  assert.equal((await conversation.run()).phase, 'waiting_user');
+  assert.equal(setups, 0);
+});
+
+test('cancellation while waiting for native setup cannot publish success', async () => {
+  let conversation;
+  conversation = createConversation({ allowBackgroundSetup: true, messages: input('Enable background screen'), emit: () => {}, rpc: async method => {
+    if (method === 'phone.setupBackgroundScreen') {
+      conversation.abort();
+      return { phase: 'completed', reply: 'Must not publish this result' };
+    }
+    return tool('setup_background_screen', {});
+  } });
+  await assert.rejects(conversation.run());
+});
+
+test('a failed setup RPC cannot be relabeled as a successful text answer', async () => {
+  let turns = 0;
+  const conversation = createConversation({ allowBackgroundSetup: true, messages: input('Enable background screen'), emit: () => {}, rpc: async method => {
+    if (method === 'phone.setupBackgroundScreen') throw new Error('Setup unavailable');
+    return [tool('setup_background_screen', {}), tool('answer_question', { answer: 'Enabled' }),
+      tool('finish_task', { outcome: 'failed', summary: 'Setup could not run' })][turns++];
+  } });
+  const result = await conversation.run();
+  assert.equal(result.phase, 'failed');
+  assert.equal(result.operations, 1);
+  assert.equal(result.reply, 'Setup could not run');
+});
+
+test('ordinary background work has no setup tool and executes its actual app task', async () => {
+  let models = 0;
+  const conversation = createConversation({ messages: input('Open Settings on the background screen'), emit: () => {}, rpc: async (method, args) => {
+    if (method === 'phone.execute') return { success: true, result: 'Apps page is visible' };
+    assert.equal(method, 'model.complete');
+    assert.ok(!args.tools.some(t => t.function.name === 'setup_background_screen'));
+    return models++ === 0 ? tool('operate_phone', { instruction: 'Open Settings and Apps', success_condition: 'Apps page visible' })
+      : tool('finish_task', { outcome: 'completed', summary: 'Apps page is visible' });
+  } });
+  const result = await conversation.run();
+  assert.equal(result.completionKind, 'phone');
+  assert.equal(result.reply, 'Apps page is visible');
+});
+
+async function pausedSetupTranscript(withPlan = false) {
+  let transcript, turns = 0;
+  const conversation = createConversation({ allowBackgroundSetup: true, messages: input('Enable background screen'),
+    emit: e => { if (e.type === 'checkpoint') transcript = e.messages; },
+    rpc: async method => method === 'phone.setupBackgroundScreen'
+      ? { phase: 'waiting_user', reply: 'Overlay permission needed' }
+      : withPlan && turns++ === 0 ? tool('set_plan', { steps: ['Configure background screen'], currentStep: 0 }) : tool('setup_background_screen', {}) });
+  assert.equal((await conversation.run()).phase, 'waiting_user');
+  return transcript;
+}
+
+test('a resumed setup cannot claim completion through a text-only answer', async () => {
+  const resume = await pausedSetupTranscript();
+  let turns = 0;
+  const conversation = createConversation({ messages: input('Continue'), resume, emit: () => {}, rpc: async method => {
+    assert.equal(method, 'model.complete');
+    return turns++ === 0 ? tool('answer_question', { answer: 'Setup complete' })
+      : tool('finish_task', { outcome: 'waiting_user', summary: 'Resume setup with native verification' });
+  } });
+  assert.equal((await conversation.run()).phase, 'waiting_user');
+});
+
+test('resumed setup keeps its tool and still requires actual native readiness', async () => {
+  const resume = await pausedSetupTranscript();
+  let turns = 0, setups = 0;
+  const conversation = createConversation({ messages: input('Continue'), allowBackgroundSetup: true, resume,
+    emit: () => {}, rpc: async method => {
+      if (method === 'phone.setupBackgroundScreen') { setups++; return { phase: 'completed', reply: 'Native ready' }; }
+      return turns++ === 0 ? tool('answer_question', { answer: 'Invented ready' }) : tool('setup_background_screen', {});
+    } });
+  const result = await conversation.run();
+  assert.equal(setups, 1);
+  assert.equal(result.completionKind, 'setup');
+  assert.equal(result.reply, 'Native ready');
+});
+
+test('a fresh setup request cannot complete as an answer or ordinary phone work', async () => {
+  for (const invalid of [tool('answer_question', { answer: 'Ready' }),
+    tool('operate_phone', { instruction: 'Configure', success_condition: 'Ready' })]) {
+    let turns = 0, setups = 0;
+    const conversation = createConversation({ messages: input('Enable background screen'), allowBackgroundSetup: true,
+      emit: () => {}, rpc: async method => {
+        if (method === 'phone.setupBackgroundScreen') { setups++; return { phase: 'completed', reply: 'Native ready' }; }
+        if (method === 'phone.execute') throw new Error('Setup must not use ordinary phone operations');
+        return turns++ === 0 ? invalid : tool('setup_background_screen', {});
+      } });
+    assert.equal((await conversation.run()).completionKind, 'setup');
+    assert.equal(setups, 1);
+  }
+});
+
+
+test('a plan saved before setup does not prevent resuming setup itself', async () => {
+  const resume = await pausedSetupTranscript(true);
+  let setups = 0;
+  const conversation = createConversation({ messages: input('Continue'), allowBackgroundSetup: true, resume,
+    emit: () => {}, rpc: async method => {
+      if (method === 'phone.setupBackgroundScreen') { setups++; return { phase: 'completed', reply: 'Native ready' }; }
+      return tool('setup_background_screen', {});
+    } });
+  assert.equal((await conversation.run()).completionKind, 'setup');
+  assert.equal(setups, 1);
+});

@@ -1,4 +1,9 @@
 <resources>
+    <string name="shell_auto_wireless_busy">手机正由电脑控制，请先在电脑端断开连接，再开始自动设置。</string>
+    <string name="shell_auto_busy">请先结束当前任务，再开始自动设置。</string>
+    <string name="shell_auto_not_started">未能开始自动设置，请返回对话页查看提示。</string>
+    <string name="shell_auto_setup">自动帮我设置</string>
+    <string name="shell_auto_stop">停止自动设置</string>
     <string name="shell_title">后台屏幕</string>
     <string name="shell_experimental">实验性 · 可选</string>
     <string name="shell_intro">尝试在独立屏幕中操作应用，同时继续使用手机主屏。设置全程在手机上完成，无需电脑。</string>

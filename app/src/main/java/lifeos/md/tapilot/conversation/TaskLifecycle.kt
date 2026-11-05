@@ -97,11 +97,12 @@ object TaskLifecycle {
         "^(修改要求|更改要求|调整要求|补充要求|change (the )?requirements?|update (the )?requirements?)([：:，,。.!\\s]|$)",
         RegexOption.IGNORE_CASE,
     ).containsMatchIn(text.trim())
+    fun isContinuation(text: String): Boolean = text.trim().lowercase() in setOf("继续", "继续任务", "继续设置", "continue", "resume")
     fun continuation(history: List<JSONObject>, text: String): JSONObject? {
         val last = history.filter { it.optString("kind", "task") == "task" }.maxByOrNull { it.optLong("createdAt") } ?: return null
         if (isNewTask(text)) return null
         return last.takeIf { it.optString("phase") == "waiting_user" ||
             (it.optString("phase") in listOf("paused", "failed") &&
-                (text.trim().lowercase() in listOf("继续", "继续任务", "continue", "resume") || isTaskAmendment(text))) }
+                (isContinuation(text) || isTaskAmendment(text))) }
     }
 }

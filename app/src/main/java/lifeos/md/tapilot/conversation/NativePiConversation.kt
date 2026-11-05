@@ -70,7 +70,7 @@ internal class NativePiConversation(context: Context) : ConversationAgent {
                 }.start().also {
                     process = it; writer = it.outputStream.bufferedWriter()
                     write(JSONObject().put("type", "init").put("messages", messages)
-                        .put("language", language).put("installedApps", catalog.getOrDefault(JSONArray())).put("goal", goal).put("userInput", userInput).put("resume", resume ?: JSONArray()).put("pendingInputs", resumeInputs).put("limits", limits.json()))
+                        .put("allowBackgroundSetup", input.allowBackgroundSetup).put("language", language).put("installedApps", catalog.getOrDefault(JSONArray())).put("goal", goal).put("userInput", userInput).put("resume", resume ?: JSONArray()).put("pendingInputs", resumeInputs).put("limits", limits.json()))
                     while (deferred.isNotEmpty()) write(deferred.removeFirst())
                     accepting = true
                 }
@@ -98,6 +98,7 @@ internal class NativePiConversation(context: Context) : ConversationAgent {
                                     "model.complete" -> complete(args.getJSONArray("messages"), args.getJSONArray("tools"))
                                     "phone.execute" -> phone(PhoneOperation.from(args)).json()
                                     "phone.findApps" -> JSONObject().put("apps", findApps(args.getString("query")))
+                                    "phone.setupBackgroundScreen" -> callbacks.setupBackgroundScreen()
                                     else -> error(appText("未知 Agent 请求", "Unknown agent request"))
                                 }
                             }

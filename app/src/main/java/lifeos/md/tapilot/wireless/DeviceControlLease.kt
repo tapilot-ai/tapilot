@@ -8,7 +8,8 @@ internal object DeviceControlLease {
         owner = session
     }
     @Synchronized fun checkAccess(session: String) {
-        check(owner == null || owner == session) { "Wireless control is active. Disconnect it before starting a local task." }
+        check(canAccess(session)) { "Wireless control is active. Disconnect it before starting a local task." }
     }
+    @Synchronized fun canAccess(session: String): Boolean = owner == null || owner == session
     @Synchronized fun release(session: String) { if (owner == session) owner = null }
 }

@@ -37,13 +37,18 @@ class WirelessControlTest {
         assertThrows(IllegalArgumentException::class.java) { policy.prepare(JSONObject().put("action", JSONObject().put("type", "launch").put("uri", "https://example.com"))) }
     }
     @Test fun `wireless lease prevents another session and cannot be released by it`() {
+        assertTrue(DeviceControlLease.canAccess("local"))
         DeviceControlLease.acquire("wireless-test")
         try {
+            assertTrue(DeviceControlLease.canAccess("wireless-test"))
+            assertFalse(DeviceControlLease.canAccess("local"))
             DeviceControlLease.checkAccess("wireless-test")
             DeviceControlLease.release("someone-else")
+            assertFalse(DeviceControlLease.canAccess("local"))
             assertThrows(IllegalStateException::class.java) { DeviceControlLease.checkAccess("local") }
             assertThrows(IllegalStateException::class.java) { DeviceControlLease.acquire("other") }
         } finally { DeviceControlLease.release("wireless-test") }
+        assertTrue(DeviceControlLease.canAccess("local"))
         DeviceControlLease.checkAccess("local")
     }
     @Test fun `transport rejects oversized and partial requests`() {

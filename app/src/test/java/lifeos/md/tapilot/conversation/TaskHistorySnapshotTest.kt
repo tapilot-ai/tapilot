@@ -195,4 +195,37 @@ class TaskHistorySnapshotTest {
         assertSame(retry, TaskHistorySnapshot.retryTarget(used, listOf(retry, used, sibling, foreign)))
         assertEquals(0, TaskLifecycle.pendingInputs(retry, listOf(used, sibling, foreign)).length())
     }
+    @Test fun setupAuthorizationFollowsRealContinuationAndRetrySelection() {
+        val previous = entry("setup", "chat", 1).put("source", "帮我开启后台屏幕")
+            .put("goal", "帮我开启后台屏幕").put("phase", "waiting_user")
+        for (text in listOf("继续", "继续任务", "继续设置", "continue", "resume")) {
+            val history = TaskHistorySnapshot.capture(listOf(previous), "chat", text, "task", null, null)
+            assertEquals(text, TaskPurpose.BACKGROUND_SETUP, history.purpose(text))
+        }
+        for (text in listOf("继续任务。请先检查当前画面，核对我手动处理后的状态；不要重复已完成的发送、提交或付款。",
+            "Continue the task. Inspect the current screen and check the state after my manual changes. Do not repeat completed sends, submissions or payments.")) {
+            val history = TaskHistorySnapshot.capture(listOf(previous), "chat", text, "task", null, "setup")
+            assertEquals(TaskPurpose.BACKGROUND_SETUP, history.purpose(text))
+        }
+        val retry = TaskHistorySnapshot.capture(listOf(previous), "chat", "继续", "task", "setup", null)
+        assertEquals(TaskPurpose.BACKGROUND_SETUP, retry.purpose("继续"))
+    }
+
+    @Test fun ordinaryNewRequestsAndOtherConversationsDoNotInheritSetupAuthorization() {
+        val previous = entry("setup", "chat", 1).put("source", "帮我开启后台屏幕").put("phase", "waiting_user")
+        for (text in listOf("在后台屏幕打开设置", "如何使用后台屏幕", "新任务：打开设置")) {
+            val history = TaskHistorySnapshot.capture(listOf(previous), "chat", text, "task", null, null)
+            assertEquals(text, TaskPurpose.GENERAL, history.purpose(text))
+        }
+        val other = TaskHistorySnapshot.capture(listOf(previous), "other", "继续", "task", null, "setup")
+        assertEquals(TaskPurpose.GENERAL, other.purpose("继续"))
+    }
+
+    @Test fun explicitSetupStartsItsOwnAttemptAfterAnOrdinaryHandoff() {
+        val previous = entry("phone", "chat", 1).put("source", "Open Settings").put("phase", "waiting_user")
+        val history = TaskHistorySnapshot.capture(listOf(previous), "chat", "帮我开启后台屏幕", "task", null, null)
+        assertNull(history.retry)
+        assertEquals(TaskPurpose.BACKGROUND_SETUP, history.purpose("帮我开启后台屏幕"))
+    }
+
 }

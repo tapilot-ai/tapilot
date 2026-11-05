@@ -15,12 +15,15 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
-/** Test APK only. Submits a goal to the real product coordinator; never performs its actions. */
+/** Test APK only. Uses the real coordinator or waits for UI submission; never performs task actions. */
 class NativeTaskPerformanceHarness : Instrumentation() {
     private var samples = 3
     private var runId = ""
     private var manualRebind = false
     private var screenshotAb = false
+    private var backgroundSetup = false
+    private var manualEntry = false
+    private var checkSetupBusy = false
     private var taskOverride: String? = null
     private var resetPackage: String? = null
     override fun onCreate(arguments: Bundle?) {
@@ -29,6 +32,9 @@ class NativeTaskPerformanceHarness : Instrumentation() {
         runId = arguments?.getString("run_id") ?: java.util.UUID.randomUUID().toString()
         manualRebind = arguments?.getString("manual_accessibility_rebind") == "1"
         screenshotAb = arguments?.getString("screenshot_ab") == "1"
+        backgroundSetup = arguments?.getString("background_setup") == "1"
+        manualEntry = arguments?.getString("manual_entry") == "1"
+        checkSetupBusy = arguments?.getString("check_setup_busy") == "1"
         taskOverride = arguments?.getString("task")?.also { require(it.isNotBlank()) }
         resetPackage = arguments?.getString("reset_package")?.also {
             require(it.matches(Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+")))
@@ -149,11 +155,30 @@ class NativeTaskPerformanceHarness : Instrumentation() {
                 val started = SystemClock.elapsedRealtime()
                 runOnMainSync {
                     coordinator.command(JSONObject().put("action", "new"))
+                }
+                if (manualEntry) {
+                    taskOverride?.let { text -> runOnMainSync {
+                        targetContext.getSystemService(android.content.ClipboardManager::class.java)
+                            .setPrimaryClip(android.content.ClipData.newPlainText("UI test request", text))
+                    } }
+                    sendStatus(1, Bundle().apply { putString("entry", "Model ready; trigger the task through the product UI") })
+                    await(5 * 60_000) { runtime.state.running }
+                }
+                runOnMainSync {
+                    if (!manualEntry)
                     coordinator.command(JSONObject().put("action", "send").put("text",
-                        taskOverride ?: if (screenshotAb) "Open Android Settings. Tap the Display & brightness entry and verify that page is visible. Return to the main Settings page and verify it is visible. Read only: do not change settings. No voice."
+                        taskOverride ?: if (backgroundSetup) "帮我开启后台屏幕，自动完成设置导航，需要授权或配对码时等待我处理。" else if (screenshotAb) "Open Android Settings. Tap the Display & brightness entry and verify that page is visible. Return to the main Settings page and verify it is visible. Read only: do not change settings. No voice."
                         else "Open Android Settings and verify its main Settings page is visible. Read only. No voice."))
                     check(runtime.state.running) { "Task was not accepted" }
                     taskId = coordinator.data.getJSONArray("history").getJSONObject(0).getString("id")
+                }
+                if (checkSetupBusy) {
+                    runOnMainSync {
+                        check(!coordinator.canStartBackgroundScreenSetup)
+                        check(!coordinator.requestBackgroundScreenSetup()) { "Busy setup request was accepted" }
+                        check(coordinator.data.getJSONArray("history").getJSONObject(0).getString("id") == taskId) { "Busy request replaced the active task" }
+                    }
+                    checkSetupEntry(automation, output, "$index-busy-entry.png", enabled = false)
                 }
                 var entry = JSONObject()
                 await(10 * 60_000) {
@@ -168,6 +193,8 @@ class NativeTaskPerformanceHarness : Instrumentation() {
                     .put("performance", entry.optJSONObject("performance") ?: JSONObject())
                     .put("operations", entry.optJSONArray("completedOperations") ?: JSONArray())
                     .put("reply", entry.optString("reply"))
+                    .put("manualEntry", manualEntry)
+                    .put("inputText", entry.optString("inputText"))
                 result.getJSONArray("samples").put(sample)
                 val reports = entry.optJSONArray("reports") ?: JSONArray()
                 for (i in 0 until reports.length()) {
@@ -178,10 +205,36 @@ class NativeTaskPerformanceHarness : Instrumentation() {
                 File(output, "summary.json").writeText(result.toString(2))
                 check(entry.optString("status") == "succeeded") { "Native task failed" }
                 check(entry.optString("reply").isNotBlank()) { "Missing final answer" }
-                check(entry.optInt("phoneOperations") > 0 && reports.length() > 0) { "No native execution evidence" }
-                val operations = entry.getJSONArray("completedOperations")
-                sample.put("failedOperations", (0 until operations.length()).count { !operations.getJSONObject(it).optBoolean("success") })
-                check(operations.length() > 0 && operations.getJSONObject(operations.length() - 1).optBoolean("success")) { "Final phone operation was not verified" }
+                if (backgroundSetup) {
+                    check(entry.optJSONObject("performance")?.optJSONObject("phone.setupBackgroundScreen")?.optInt("count") == 1) {
+                        "Setup acceptance requires an actual native setup RPC"
+                    }
+                    val shell = targetContext.getSharedPreferences("shell-assistance", android.content.Context.MODE_PRIVATE)
+                    sample.put("shellConnected", lifeos.md.tapilot.shell.ShellSession.ready)
+                        .put("overlayAllowed", Settings.canDrawOverlays(targetContext))
+                        .put("backgroundEnabled", shell.getBoolean("background-enabled", false))
+                    check(lifeos.md.tapilot.shell.ShellSession.ready && Settings.canDrawOverlays(targetContext) &&
+                        shell.getBoolean("authorized", false) && shell.getBoolean("background-enabled", false)) { "Background setup has no native readiness proof" }
+                } else {
+                    check(entry.optInt("phoneOperations") > 0 && reports.length() > 0) { "No native execution evidence" }
+                    val operations = entry.getJSONArray("completedOperations")
+                    sample.put("failedOperations", (0 until operations.length()).count { !operations.getJSONObject(it).optBoolean("success") })
+                    check(operations.length() > 0 && operations.getJSONObject(operations.length() - 1).optBoolean("success")) { "Final phone operation was not verified" }
+                }
+                if (manualEntry) {
+                    // finish() terminates the app. Capture its result before teardown
+                    // and allow the product's delayed foreground navigation to settle.
+                    Thread.sleep(1_000)
+                    val screenshot = checkNotNull(automation.takeScreenshot()) { "Missing final UI screenshot" }
+                    try { File(output, "$index-final.png").outputStream().use {
+                        check(screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
+                    } } finally { screenshot.recycle() }
+                }
+            }
+            if (checkSetupBusy) {
+                Thread.sleep(1_000)
+                checkSetupEntry(automation, output, "idle-entry.png", enabled = true)
+                result.put("busySetupRejected", true).put("idleSetupEnabled", true)
             }
             result.put("status", "passed")
             code = 0
@@ -224,6 +277,24 @@ class NativeTaskPerformanceHarness : Instrumentation() {
             File(output, "summary.json").writeText(result.toString(2))
         }
         finish(code, Bundle().apply { putString("performance_status", result.getString("status")); putString("performance_path", output.absolutePath) })
+    }
+    private fun checkSetupEntry(automation: UiAutomation, output: File, name: String, enabled: Boolean) {
+        val activity = startActivitySync(Intent(targetContext, lifeos.md.tapilot.shell.ShellSetupActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        fun find(view: android.view.View): android.widget.Button? {
+            if (view is android.widget.Button && view.text.toString() == targetContext.getString(lifeos.md.tapilot.R.string.shell_auto_setup)) return view
+            if (view is android.view.ViewGroup) for (i in 0 until view.childCount) find(view.getChildAt(i))?.let { return it }
+            return null
+        }
+        try {
+            runOnMainSync {
+                check(!activity.isFinishing)
+                check(checkNotNull(find(activity.window.decorView)).isEnabled == enabled) { "Unexpected setup button availability" }
+            }
+            val bitmap = checkNotNull(automation.takeScreenshot())
+            try { File(output, name).outputStream().use { check(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)) } }
+            finally { bitmap.recycle() }
+        } finally { runOnMainSync { activity.finish() } }
     }
     private fun await(timeoutMs: Long, predicate: () -> Boolean) {
         val deadline = SystemClock.elapsedRealtime() + timeoutMs
