@@ -1,3 +1,4 @@
+import { sameLink } from '../server/clients/entries.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm, readFile, readlink, unlink, symlink } from 'node:fs/promises';
@@ -26,7 +27,7 @@ test('onboarding runs the installed connector and leaves native/phone acceptance
   const updated = await clientCommand('onboard', { client: 'workbuddy' }, options);
   assert.deepEqual(updated.launcher, first.launcher);
   assert.equal(await readFile(first.configFile, 'utf8'), config, 'host config stays stable across updates');
-  assert.equal(await readlink(join(first.directory, 'current')), packageRoot);
+  assert.ok(sameLink(await readlink(join(first.directory, 'current')), packageRoot));
   const record = await readFile(first.record, 'utf8');
   await unlink(join(first.directory, 'current'));
   await symlink(options.home, join(first.directory, 'current'), 'dir');

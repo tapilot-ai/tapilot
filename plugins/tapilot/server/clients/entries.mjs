@@ -1,8 +1,17 @@
-import { lstat, readlink, symlink, rename, rm } from 'node:fs/promises';
+import { lstat, stat, link, readlink, symlink, rename, rm } from 'node:fs/promises';
 import { join, normalize } from 'node:path';
 import { randomUUID } from 'node:crypto';
 
 export const sameLink = (a, b) => typeof b === 'string' && normalize(a).replace(/[\\/]$/, '') === normalize(b).replace(/[\\/]$/, '');
+
+export async function entryMatches(file, target) {
+  if (typeof target !== 'string') return false;
+  const info = await lstat(file);
+  if (info.isSymbolicLink()) return sameLink(await readlink(file), target);
+  if (process.platform !== 'win32' || !info.isFile()) return false;
+  const source = await stat(target);
+  return source.dev === info.dev && source.ino === info.ino;
+}
 
 // Stable host paths; releases remain immutable for already-running sessions.
 export async function publishEntries(directory, runtime, previous) {
@@ -11,10 +20,9 @@ export async function publishEntries(directory, runtime, previous) {
   for (const name of Object.keys(targets)) {
     const file = join(directory, name);
     try {
-      const stat = await lstat(file);
-      if (!stat.isSymbolicLink() || !previous || !sameLink(await readlink(file), previous[name]))
+      if (!previous || !await entryMatches(file, previous[name]))
         throw new Error(`Stable entry was edited or is unmanaged: ${file}`);
-      old[name] = await readlink(file);
+      old[name] = previous[name];
     } catch (error) { if (error.code !== 'ENOENT') throw error; }
   }
   const changed = [];
@@ -23,7 +31,8 @@ export async function publishEntries(directory, runtime, previous) {
     const backup = `${file}.${randomUUID()}.old`;
     let saved = false;
     try {
-      await symlink(target, stage, name === 'current' ? (process.platform === 'win32' ? 'junction' : 'dir') : 'file');
+      if (process.platform === 'win32' && name !== 'current') await link(target, stage);
+      else await symlink(target, stage, process.platform === 'win32' ? 'junction' : name === 'current' ? 'dir' : 'file');
       if (process.platform === 'win32' && old[name]) { await rename(file, backup); saved = true; }
       try { await rename(stage, file); }
       catch (error) { if (saved) await rename(backup, file); throw error; }

@@ -3,7 +3,7 @@ import { dirname, join, resolve, isAbsolute } from 'node:path';
 import { homedir } from 'node:os';
 import { createHash, randomUUID } from 'node:crypto';
 import lockfile from 'proper-lockfile';
-import { publishEntries, sameLink } from './entries.mjs';
+import { publishEntries, sameLink, entryMatches } from './entries.mjs';
 import { parse, modify, applyEdits } from 'jsonc-parser';
 import { clientConfiguration, packageRoot } from './catalog.mjs';
 import { clientSkill, skillLauncher, connectorLauncher } from './skills.mjs';
@@ -134,7 +134,7 @@ async function installPreparedClient(client, options) {
       await rename(staged, plan.skill); staged = null; swapped = true;
       if (plan.skillLink && !await info(plan.skillLink)) {
         await mkdir(dirname(plan.skillLink), { recursive: true });
-        await symlink(plan.skill, plan.skillLink, 'dir'); linked = true;
+        await symlink(plan.skill, plan.skillLink, process.platform === 'win32' ? 'junction' : 'dir'); linked = true;
       }
       const { dispose, ...runtime } = options.runtime;
       entries = await publishEntries(plan.directory, runtime, record?.entries);
@@ -196,7 +196,7 @@ export async function uninstallClient(client, options = {}) {
     await rm(plan.record);
     for (const [name, target] of Object.entries(record.entries ?? {})) {
       const file = join(plan.directory, name);
-      if ((await info(file))?.isSymbolicLink() && sameLink(await readlink(file), target)) await rm(file);
+      if (await info(file) && await entryMatches(file, target)) await rm(file);
     }
     // A shared phone daemon may have been started by this client and still serve
     // another client. DSH may also have this package loaded under its own Node.

@@ -1,3 +1,4 @@
+import { entryMatches } from '../server/clients/entries.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, cp, symlink, readFile, writeFile, readdir, rm, access, realpath } from 'node:fs/promises';
@@ -93,7 +94,7 @@ test('real managed install survives removed source and Node, updates old launche
   t.diagnostic(`Rollback and update complete: ${Date.now() - startedAt}ms`);
   assert.notEqual(updated.runtime.root, result.runtime.root);
   assert.deepEqual(updated.launcher, result.launcher, 'the whole saved GUI command remains stable');
-  assert.equal(await realpath(updated.launcher.command), await realpath(updated.runtime.node));
+  assert.equal(await entryMatches(updated.launcher.command, updated.runtime.node), true);
   assert.equal((await probeConnector({ ...result.launcher, env: {} })).protocol, 'passed', 'old saved GUI command starts the new record-backed connector');
   const config = await clientCommand('config', { client: 'doubao' }, { home, skillsRoot: options.skillsRoot });
   assert.equal(config.runtime.root, updated.runtime.root);
