@@ -20,6 +20,7 @@ export async function publishEntries(directory, runtime, previous) {
   for (const name of Object.keys(targets)) {
     const file = join(directory, name);
     try {
+      await lstat(file);
       if (!previous || !await entryMatches(file, previous[name]))
         throw new Error(`Stable entry was edited or is unmanaged: ${file}`);
       old[name] = previous[name];
