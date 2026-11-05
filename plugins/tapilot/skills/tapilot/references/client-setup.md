@@ -76,8 +76,13 @@ starts paused; wait for the user to be ready and explicitly resume before captur
 ## No runtime available
 
 If the Skill launcher reports a missing runtime, do not ask for a developer's
-checkout path and do not fall back to ADB. Prefer the verified macOS setup archive: it includes Node and dependencies;
-double-click Install Tapilot.command and choose the requested client. If using
+checkout path and do not fall back to ADB. Read https://tapilot.lifeos.md/install/agent.en.md
+and https://tapilot.lifeos.md/releases/clients/latest.json. Select a published archive
+whose platform and arch match the machine running the client, and verify its size
+and SHA-256 before extraction. Never run an archive for a different OS or architecture.
+The archive includes Node and dependencies. On macOS run Install Tapilot.command;
+on Windows run Install Tapilot.cmd; on Linux run sh install-tapilot.sh. Choose only
+the requested client. A missing matching archive means automatic setup must stop. If using
 a verified Tapilot package or the user's existing repository instead: install its locked dependencies with the supported
 Node, then run `node <package>/server/cli.mjs install --client NAME`. This initial
 bootstrap needs a package containing server, UI/assets, integrations, scripts,

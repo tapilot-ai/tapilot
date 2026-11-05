@@ -13,21 +13,26 @@ These are different from inclusion in a vendor-curated store. DSH ships no index
 source. DSH Go is a separate client; Web panel acceptance does not establish Go
 native panel support.
 
-## Unified macOS setup
+## Unified desktop setup
 
-The macOS arm64 setup archive is now available in the [Client Setup 0.6.18 Preview](https://github.com/tapilot-ai/tapilot/releases/tag/client-setup-v0.6.18). Use the [website setup entry](https://tapilot.lifeos.md/install) and its public `/install/agent.en.md` instructions. This does not publish an npm package, DSH marketplace index or Codex marketplace entry.
+Use the [website setup entry](https://tapilot.lifeos.md/install) and its public
+`/install/agent.en.md` instructions. The release manifest lists actual published
+archives for each OS and architecture; never substitute a different platform.
+The 0.6.20 preview candidate covers macOS, Windows and Linux on x64 and ARM64.
+A successful local or CI build is not itself public publication.
 
+Each `tapilot-setup-PLATFORM-ARCH-VERSION.tar.gz` includes Node, its license and
+the independently audited runtime. Run `Install Tapilot.command` on macOS,
+`Install Tapilot.cmd` on Windows, or `sh install-tapilot.sh` on Linux. Select
+only one client and follow the actual paths returned by the installer.
+No checkout, npm installation or external Node is needed. `SHA256SUMS` covers
+published archives. Windows uses ACLs, junctions and hard links; its native client
+GUI and fresh standard-user sessions still need separate acceptance.
 
-The builder also emits `tapilot-setup-darwin-ARCH-VERSION.tar.gz` with a supported
-Node binary, the complete audited runtime and `Install Tapilot.command`. Users
-extract, double-click, choose a client and follow only its remaining host steps.
-No checkout, npm installation or external Node is needed. `SHA256SUMS` covers all
-archives. The archive supports the builder's macOS architecture only.
-
-The wizard saves a local `INSTALLATION.md` and separates installation/protocol
-checks from native panel and phone-task acceptance. Run a new verified archive to
-update; this is an explicit offline update, not a network auto-updater. Distribution
-through a vendor marketplace remains a separate publication step; the unified macOS arm64 archive has a verified public GitHub download.
+The wizard saves `INSTALLATION.md` and reports installation/protocol checks
+separately from native panel and phone acceptance. Use a newer verified archive
+to update; this is not an unattended network updater. Vendor stores, public
+Codex marketplace distribution and npm publication remain separate routes.
 
 ## Build
 
@@ -75,8 +80,8 @@ DSH, and add that URL under Discover. No package or index has been published yet
 node scripts/check-client-setup.mjs /path/to/client-distribution
 ```
 
-This uses isolated home/Skill directories for Doubao, WorkBuddy and DSH. It runs
-the actual `.command` entry with no external Node on PATH, installs twice, checks
+This uses isolated home/Skill directories for Doubao, WorkBuddy, DSH and Cherry. It runs
+the actual platform-specific installer entry with no external Node on PATH, installs twice, checks
 stable host configuration, deletes the installer source, and starts fresh managed
 CLI/connector/plugin processes. Results remain under `build/setup-validation-*`.
 These are installation lifecycle checks, not native UI or device acceptance.

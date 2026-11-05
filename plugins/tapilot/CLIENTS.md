@@ -11,10 +11,12 @@ See [the native acceptance log](NATIVE-ACCEPTANCE.md) for actual client attempts
 remaining blockers and the current test scope. Cursor is excluded from further
 native testing at the user's request.
 
-## Unified macOS setup
+## Unified desktop setup
 
-Use the verified `tapilot-setup-darwin-ARCH-VERSION.tar.gz` archive. It includes
-Node and dependencies. Extract it, double-click `Install Tapilot.command`, and
+Use the verified `tapilot-setup-PLATFORM-ARCH-VERSION.tar.gz` archive. It includes
+Node and dependencies. Match the execution OS and architecture using the official
+release manifest. Extract it and run `Install Tapilot.command` on macOS,
+`Install Tapilot.cmd` on Windows, or `sh install-tapilot.sh` on Linux, then
 choose Doubao Work, WorkBuddy, DSH Web, Cherry Studio, Codex, VS Code or Skill only. The installer
 runs `onboard --client CLIENT`, installs into managed storage, checks the installed
 launcher/protocol and saves `INSTALLATION.md` with remaining host steps. Codex
@@ -28,8 +30,9 @@ old release path with the stable path once. Subsequent updates need a host reloa
 Doubao account-side Skill uploads must still be re-imported when content changes.
 
 The archive is platform-specific. macOS gatekeeping may require normal user
-approval; the installer does not bypass it. Windows/Linux setup bundles and
-native lifecycle acceptance remain pending. No public release is implied by
+approval; the installer does not bypass it. Six-platform CI covers macOS, Windows
+and Linux on x64/ARM64. Native client rendering, physical phones and fresh standard-user
+sessions require separate acceptance. No public release is implied by
 building a local archive.
 
 ## Client status
@@ -65,9 +68,10 @@ and saved GUI launch commands. Uninstall removes idle releases; it preserves cod
 with a running managed process, a DSH registration, or unknown process activity,
 so another client's shared phone daemon is not broken.
 
-Initial integration validation targets macOS. Windows/Linux config paths are
-generated, but installation, symlinks and client rendering need platform acceptance.
-The package is still distributed from this repository or a verified local tarball.
+Installation, update and restart after removing the installer source are verified
+on native six-platform CI runners. This does not establish native client rendering
+on every OS. Public archives are listed at https://tapilot.lifeos.md/install;
+only use a published matching entry with a verified SHA-256.
 
 ## Inspect and diagnose
 
@@ -247,7 +251,7 @@ previous managed integration first; it is never silently moved.
 tapilot onboard --client cherry
 ```
 
-Or choose **Cherry Studio** in the unified macOS setup menu. The installer copies
+Or choose **Cherry Studio** in the unified desktop setup menu. The installer copies
 the runtime into managed storage and exports the Cherry-specific Skill into the
 canonical Skills directory. It does not write Cherry's internal application state,
 register an MCP connector, or promise MCP Apps support.
