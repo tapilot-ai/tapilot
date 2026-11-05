@@ -1,5 +1,0 @@
-11-03 00:16:30.935  3933  3998 I C03f00/ArkCompiler: [gc] SmartGC: app cold start finished
-11-03 00:16:38.125  3933  3933 E C02801/MultimodalInputConnect: Read result failed, code is: 106.
-11-03 00:16:38.125  3933  3933 E C02800/OHInputManager: [|3229]RequestInjection fail, error:-1002
-11-03 00:16:38.133  3933  3933 W C03913/AceText: [(100000:100000:scope)] destroy TxtParagraph with placeholderCnt_ 0, textAlign_ 0, count 0
-11-03 00:16:40.175  3933  4000 I C02d10/HiViewRemoteService: [720075006f007] GetHiViewRemoteService: refresh remote service instance.
