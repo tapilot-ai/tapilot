@@ -19,11 +19,15 @@ internal data class AgentInput(
     val goal: String = "",
     val userInput: String = "",
     val language: String = "en",
-)
+    val purpose: TaskPurpose = TaskPurpose.GENERAL,
+) {
+    val allowBackgroundSetup get() = purpose == TaskPurpose.BACKGROUND_SETUP
+}
 
 internal data class AgentCallbacks(
     val complete: (JSONArray, JSONArray) -> JSONObject,
     val phone: (PhoneOperation) -> PhoneResult,
     val findApps: (String) -> JSONArray,
     val event: (JSONObject) -> Unit,
+    val setupBackgroundScreen: () -> JSONObject = { error("Background-screen setup is unavailable") },
 )

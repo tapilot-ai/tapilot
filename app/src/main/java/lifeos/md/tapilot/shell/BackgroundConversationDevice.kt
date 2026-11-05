@@ -50,6 +50,10 @@ class BackgroundConversationDevice(context: Context, private val primary: Device
         task = id; generation++; accepting = true; manual = false; frame = null; cancelled.clear()
         background = preferences.backgroundEnabled
     }
+    override fun usePrimaryForSetup() {
+        check(!probe.active && inFlight == 0) { "Cannot start setup after background phone operations" }
+        background = false
+    }
     override fun endTask(id: String, retainForTakeover: Boolean) {
         if (task != id) return
         accepting = false; generation++; frame = null; task = null

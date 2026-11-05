@@ -10,7 +10,7 @@ import {
   androidAssistantAIActContext,
   mergeAndroidAssistantAIActContext,
 } from './assistant-context.mjs';
-import { withAndroidAiActDefaults } from './execution-policy.mjs';
+import { androidReplanningCycleLimit, withAndroidAiActDefaults } from './execution-policy.mjs';
 import { withSettledScreenshots, nativeFingerprint } from './settled-capture.mjs';
 import { StdioNativeBridge } from './stdio-native-bridge.mjs';
 import { siwcFetch, measuredFetch, observeModelNetwork } from './siwc-fetch.mjs';
@@ -78,7 +78,7 @@ const setup = defineProjectSetup({
             autoPrintReportMsg: false,
             generateReport: true,
             screenshotShrinkFactor,
-            replanningCycleLimit: 100,
+            replanningCycleLimit: androidReplanningCycleLimit(process.env),
             aiContexts: { aiAct: defaultAIActContext },
           });
           agent.onDumpUpdate = createStepProgress(emitStep, runId);

@@ -22,7 +22,7 @@ internal data class ConversationTaskInput(
     val backgroundScreen: Boolean = false,
 )
 
-internal enum class TaskStage { UNDERSTANDING, PREPARING_PHONE, OPERATING_PHONE, PREPARING_REPLY }
+internal enum class TaskStage { UNDERSTANDING, PREPARING_PHONE, OPERATING_PHONE, PREPARING_REPLY, SETTING_UP_BACKGROUND_SCREEN }
 
 internal sealed interface TaskRunEvent {
     data class Progress(val stage: TaskStage, val detail: String = "", val increment: Boolean = false) : TaskRunEvent
@@ -46,6 +46,7 @@ internal class ConversationTaskRunner(
     private val complete: (JSONArray, JSONArray) -> JSONObject,
     private val confirm: (String) -> String,
     private val emit: (TaskRunEvent) -> Unit,
+    private val setupBackgroundScreen: (((String, String) -> PhoneResult) -> JSONObject)? = null,
 ) {
     fun run(input: ConversationTaskInput, stopped: () -> Boolean): ConversationTaskResult {
         val reports = JSONArray()
@@ -91,10 +92,13 @@ internal class ConversationTaskRunner(
                     "\nPhone operations use an isolated background screen, not the primary screen. Use find_apps and an exact app target before the first operation. Observe the background screen after explicit continuation; never assume the primary screen is visible. Screen isolation is enforced by the host; do not require an app to display a background-screen badge as a success condition. Unsupported background operations must be reported, never switched to the primary screen." else ""
                 val messages = NativeConversationAgent.messages(input.history.prior, modelSource + screenHint, input.language == "zh", attachments,
                     saved?.optJSONArray("images")?.strings().orEmpty())
+                val purpose = input.history.purpose(input.userInput)
+                val allowSetup = purpose == TaskPurpose.BACKGROUND_SETUP
+                var setupResult: JSONObject? = null
                 var prepared = false
                 val reply = agent.run(AgentInput(messages,
                     input.history.retry?.takeIf { input.resume || it.optString("phase") != "completed" }?.optJSONArray("agentContext"),
-                    input.limits, input.history.pendingInputs, input.goal, input.userInput, input.language), stopped, AgentCallbacks(
+                    input.limits, input.history.pendingInputs, input.goal, input.userInput, input.language, purpose), stopped, AgentCallbacks(
                     complete = { chat, tools ->
                         checkActive()
                         if (!prepared) { prepared = true; services.prepare(JSONObject(input.environment.toString())) }
@@ -104,6 +108,8 @@ internal class ConversationTaskRunner(
                     findApps = { query -> checkActive(); PhoneOperationRoute.findApps(services.capabilities().optJSONArray("apps") ?: JSONArray(), query) },
                     phone = { operation ->
                         checkActive()
+                        check(!allowSetup) { "Use the native setup tool for a background-screen setup task." }
+                        check(setupResult == null) { "Setup has ended this task. Send further phone work as a new task." }
                         emit(TaskRunEvent.Progress(TaskStage.PREPARING_PHONE, operation.instruction, true))
                         val revised = confirm(operation.instruction)
                         checkActive()
@@ -133,17 +139,49 @@ internal class ConversationTaskRunner(
                         }
                     },
                     event = { checkActive(); emit(TaskRunEvent.Agent(it)) },
+                    setupBackgroundScreen = {
+                        checkActive()
+                        check(allowSetup) { "The user did not request background-screen setup. Execute the requested app task instead." }
+                        check(operations.length() == 0 && (!phoneStarted || input.history.previousPurpose == TaskPurpose.BACKGROUND_SETUP)) { "Start background-screen setup as a separate task, before other phone operations." }
+                        check(setupResult == null) { "Setup was already requested in this task." }
+                        val request = appText("配置后台屏幕：自动进入开发者选项并开启调试开关，授权与配对码由你确认。",
+                            "Set up the background screen: navigate Developer options and enable debugging; leave consent and pairing codes to you.")
+                        require(confirm(request) == request) { appText("自动设置使用固定流程。请将修改后的要求单独发送，本次尚未开始设置。",
+                            "Automatic setup uses a fixed flow. Send your revised request separately; setup has not started.") }
+                        checkActive()
+                        phoneStarted = true
+                        emit(TaskRunEvent.Progress(TaskStage.SETTING_UP_BACKGROUND_SCREEN))
+                        val setup = checkNotNull(setupBackgroundScreen) { "Background-screen setup is unavailable" }
+                        setup { instruction, condition ->
+                            checkActive()
+                            emit(TaskRunEvent.Progress(TaskStage.SETTING_UP_BACKGROUND_SCREEN, instruction, true))
+                            services.status(TaskExecutionStatus.RUNNING)
+                            val run = services.run(NativeConversationAgent.verifiedTask(instruction, condition,
+                                effort = "balance", backgroundScreen = false), JSONObject(input.environment.toString())
+                                    .put("MIDSCENE_ANDROID_SETUP_NAVIGATION", "1"))
+                            rememberReports(run, instruction)
+                            checkActive()
+                            PhoneResult.fromRun(run).also { result ->
+                                operations.put(JSONObject().put("instruction", instruction).put("success", result.success).put("result", result.result))
+                                emit(TaskRunEvent.Operation(JSONArray(reports.toString()), JSONArray(operations.toString())))
+                            }
+                        }.also { checkActive(); setupResult = it }
+                    },
                 ))
                 checkActive()
                 phase = reply.getString("phase")
                 if (phase !in setOf("completed", "waiting_user", "failed")) throw TaskFailure("task_terminal_missing")
                 if (phase == "failed") throw TaskFailure.from(reply)
-                if (phase == "completed") {
+                if (reply.optString("completionKind") == "setup") {
+                    val verified = checkNotNull(setupResult) { "Setup did not run" }
+                    check(phase == verified.getString("phase") && reply.optString("reply") == verified.getString("reply")) { "Setup result does not match host state" }
+                } else if (phase == "completed") {
+                    check(!allowSetup) { "Background-screen setup requires a verified native setup result." }
                     val generalAnswer = reply.optString("completionKind") == "answer" && reply.optInt("operations") == 0
                     if (!generalAnswer && reply.optJSONObject("lastPhoneResult")?.optBoolean("success") != true)
                         throw TaskFailure("task_verification_missing")
                 }
-                check(reply.optJSONObject("lastPhoneResult")?.optBoolean("success") != false || phase == "waiting_user") {
+                check(reply.optString("completionKind") == "setup" || reply.optJSONObject("lastPhoneResult")?.optBoolean("success") != false || phase == "waiting_user") {
                     appText("手机操作未通过最终画面验证", "Phone operation did not pass final screen verification")
                 }
                 reply.optString("reply").takeIf { it.isNotBlank() } ?: throw TaskFailure("task_result_missing")

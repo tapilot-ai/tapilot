@@ -1,0 +1,24 @@
+{
+  "runtimeTests": {
+    "total": 148,
+    "passed": 148
+  },
+  "jvmTests": {
+    "total": 461,
+    "passed": 460,
+    "skipped": 1
+  },
+  "oldRuntimeRegressions": {
+    "failed": 3
+  },
+  "android": {
+    "runId": "setup-review-busy-entry-fixed-20261104",
+    "status": "passed",
+    "deviceModel": "sdk_gphone64_arm64",
+    "androidVersion": "15",
+    "busySetupRejected": true,
+    "idleSetupEnabled": true
+  },
+  "ordinaryTaskFailedIntermediateOperations": 1,
+  "fullFirstSetupRerun": false
+}

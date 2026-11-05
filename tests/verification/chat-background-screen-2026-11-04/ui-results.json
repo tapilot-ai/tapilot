@@ -1,0 +1,76 @@
+{
+  "apkSha256": "1023ada263497f6955d58ec1da4b70316d1c38ae3073eabb60559e24c3778681",
+  "backgroundDisplayId": 2,
+  "runs": [
+    {
+      "runId": "setup-button-fresh-default-display-20261104",
+      "status": "passed",
+      "modelBacked": true,
+      "deviceModel": "sdk_gphone64_arm64",
+      "androidVersion": "15",
+      "abi": "arm64-v8a",
+      "sample": {
+        "manualEntry": true,
+        "status": "succeeded",
+        "phoneOperations": 1,
+        "shellConnected": true,
+        "overlayAllowed": true,
+        "backgroundEnabled": true,
+        "reply": "Background screen is configured. Your next phone task will run on it.",
+        "inputText": "Set up the background screen. Automate settings navigation and wait for me when consent or a pairing code is needed."
+      }
+    },
+    {
+      "runId": "setup-ui-synonym-20261104",
+      "status": "passed",
+      "modelBacked": true,
+      "deviceModel": "sdk_gphone64_arm64",
+      "androidVersion": "15",
+      "abi": "arm64-v8a",
+      "sample": {
+        "manualEntry": true,
+        "status": "succeeded",
+        "phoneOperations": 1,
+        "shellConnected": true,
+        "overlayAllowed": true,
+        "backgroundEnabled": true,
+        "reply": "Background screen is configured. Your next phone task will run on it.",
+        "inputText": "Configure the virtual screen"
+      }
+    },
+    {
+      "runId": "setup-ui-chinese-20261104",
+      "status": "passed",
+      "modelBacked": true,
+      "deviceModel": "sdk_gphone64_arm64",
+      "androidVersion": "15",
+      "abi": "arm64-v8a",
+      "sample": {
+        "manualEntry": true,
+        "inputText": "把虚拟屏打开",
+        "status": "succeeded",
+        "phoneOperations": 1,
+        "shellConnected": true,
+        "overlayAllowed": true,
+        "backgroundEnabled": true,
+        "reply": "Background screen is configured. Your next phone task will run on it."
+      }
+    },
+    {
+      "runId": "setup-ui-background-task-20261104",
+      "status": "passed",
+      "modelBacked": true,
+      "deviceModel": "sdk_gphone64_arm64",
+      "androidVersion": "15",
+      "abi": "arm64-v8a",
+      "sample": {
+        "manualEntry": true,
+        "inputText": "Open Android Settings on the background screen. Go to Apps and verify the Apps page. Read only. Do not change settings.",
+        "status": "succeeded",
+        "phoneOperations": 1,
+        "failedOperations": 0,
+        "reply": "Verified Android Settings is open on the background screen at the Apps page. Visible items include Recently opened apps (Tapilot, 1 minute ago), See all 26 apps, Default apps, Screen time, Cloud media app, Unused apps, App battery usage, Special app access, and Advanced. No settings were changed."
+      }
+    }
+  ]
+}

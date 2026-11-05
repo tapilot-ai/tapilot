@@ -10,6 +10,7 @@ interface ConversationScreenDevice : DeviceService {
     fun beginTask(id: String, continuing: Boolean)
     fun endTask(id: String, retainForTakeover: Boolean)
     fun closeScreen()
+    fun usePrimaryForSetup()
 }
 
 internal fun conversationScreenDevice(context: Context, primary: DeviceService): DeviceService =

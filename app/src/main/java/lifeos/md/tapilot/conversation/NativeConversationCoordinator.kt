@@ -217,6 +217,7 @@ class NativeConversationCoordinator(
                     }
                 }
                 "stop" -> stop()
+                "backgroundScreenSetup" -> requestBackgroundScreenSetup()
                 "settings" -> if (!running) { messageLoads.discard(); settingsOpen = true; settings.clearStatus() }
                 "advanced" -> if (!running && data.optBoolean("advanced")) { messageLoads.discard(); advancedOpen = true }
                 "new" -> if (!running) { messageLoads.discard(); panelResumeId = null; data.put("active", "chat-${UUID.randomUUID()}"); preview = null; save() }
@@ -252,6 +253,21 @@ class NativeConversationCoordinator(
             }
             publish()
         }.onFailure(::fail)
+    }
+    val backgroundScreenSetupUnavailableReason: Int? get() = when {
+        !lifeos.md.tapilot.wireless.DeviceControlLease.canAccess("local-conversation") -> lifeos.md.tapilot.R.string.shell_auto_wireless_busy
+        !ready || closed || running || execution.stopUnconfirmed -> lifeos.md.tapilot.R.string.shell_auto_busy
+        else -> null
+    }
+    val canStartBackgroundScreenSetup get() = backgroundScreenSetupUnavailableReason == null
+    fun requestBackgroundScreenSetup(): Boolean {
+        if (!canStartBackgroundScreenSetup) {
+            error = activity.getString(backgroundScreenSetupUnavailableReason ?: lifeos.md.tapilot.R.string.shell_auto_busy)
+            publish(); return false
+        }
+        start(local("帮我开启后台屏幕，自动完成设置导航，需要我授权或输入配对码时等待我处理。", "Set up the background screen. Automate settings navigation and wait for me when consent or a pairing code is needed."),
+            file = null, restoreDraft = data.optString("draft"), restoreAttachment = pendingAttachment)
+        return running
     }
     private var panelResumeId: String? = null
     private fun submit(text: String) {
@@ -430,7 +446,7 @@ class NativeConversationCoordinator(
         val source = text.trim().ifBlank { local("请查看附件", "Please inspect the attachment") }
         val entry = JSONObject().put("id", id).put("conversationId", cid).put("createdAt", startedAt)
             .put("source", source).put("inputText", text).put("kind", kind).put("modelName", if (useChatGpt) chatGptModel else model.getString("modelName"))
-            .put("status", "running").put("reports", JSONArray())
+            .put("status", "running").put("purpose", taskHistory.purpose(text).name).put("reports", JSONArray())
         if (chatGptAccount.isNotBlank()) entry.put("conversationProvider", "chatgpt").put("conversationModel", chatGptModel)
         retry?.let { entry.put("retryOf", it.getString("id")) }
         TaskLifecycle.begin(entry, retry?.takeIf { continueOf != null || it.optString("phase") != "completed" })
@@ -451,6 +467,13 @@ class NativeConversationCoordinator(
                     } else services.call(method, params, runSession) {}
                 },
             )
+            var setupAttempted = false
+            val setup = lifeos.md.tapilot.shell.BackgroundScreenSetup(activity, ::onMain) { detail -> onMain {
+                if (!stopped.get() && execution.owns(runSession)) {
+                    progress = progress?.copy(title = local("正在配置后台屏幕", "Setting up background screen"), detail = detail, operation = "")
+                    publish()
+                }
+            } }
             val runner = ConversationTaskRunner(pi, taskServices,
                 complete = { chat, tools ->
                     waitFor(inputControl.ready, stopped, 0)
@@ -458,12 +481,17 @@ class NativeConversationCoordinator(
                     else requestCompletion(model, key, chat, runSession, stopped, tools)
                 },
                 confirm = { confirmOperation(it, stopped) },
+                setupBackgroundScreen = { operate ->
+                    onMain { setupAttempted = true; inputControl.usePrimaryForSetup(); inputControl.resume() }
+                    setup.run({ stopped.get() || closed }, { waitFor(inputControl.ready, stopped, 0) }, operate)
+                },
                 emit = { event -> onMain {
                     if (stopped.get() || !execution.owns(runSession)) return@onMain
                     when (event) {
                         is TaskRunEvent.Progress -> {
-                            if (event.stage in listOf(TaskStage.PREPARING_PHONE, TaskStage.OPERATING_PHONE)) phoneInteractionStarted = true
+                            if (event.stage in listOf(TaskStage.PREPARING_PHONE, TaskStage.OPERATING_PHONE, TaskStage.SETTING_UP_BACKGROUND_SCREEN)) phoneInteractionStarted = true
                             val title = when (event.stage) {
+                                TaskStage.SETTING_UP_BACKGROUND_SCREEN -> local("正在配置后台屏幕", "Setting up background screen")
                                 TaskStage.UNDERSTANDING -> local("正在理解任务", "Understanding task")
                                 TaskStage.PREPARING_PHONE -> local("准备操作手机", "Preparing phone operation")
                                 TaskStage.OPERATING_PHONE -> if (backgroundScreen) local("正在操作后台屏幕", "Operating background screen") else local("正在操作手机", "Operating phone")
@@ -558,7 +586,7 @@ class NativeConversationCoordinator(
                     if (!running) {
                         services.call("task.status", JSONObject().put("status", status).put("detail", message), runSession) {}
                         if (global) services.call("app.showGlobalResult", JSONObject().put("message", feedback), runSession) {}
-                        else if (phoneStarted && !stopped.get() && !backgroundReplies && !backgroundScreen) services.call("app.bringToFront", sessionId = runSession) {}
+                        else if (phoneStarted && !stopped.get() && !backgroundReplies && (!backgroundScreen || setupAttempted)) services.call("app.bringToFront", sessionId = runSession) {}
                         publish()
                     }
                     settled = true

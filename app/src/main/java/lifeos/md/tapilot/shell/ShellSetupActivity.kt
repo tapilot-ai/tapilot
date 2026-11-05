@@ -25,12 +25,25 @@ class ShellSetupActivity : Activity() {
     private lateinit var content: LinearLayout
     private lateinit var scroll: ScrollView
     private val palette get() = AppTheme.colors(this)
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var pendingRequest: String? = null
+    private var renderedMessage: String? = null
+    private val coordinator get() = (application as lifeos.md.tapilot.TapilotApplication).assistant.coordinator
+    private var renderedUnavailableReason: Int? = null
+    private val refresh = object : Runnable {
+        override fun run() {
+            if (renderedMessage != BackgroundScreenSetup.current?.message || renderedUnavailableReason != coordinator.backgroundScreenSetupUnavailableReason) render()
+            handler.postDelayed(this, 500)
+        }
+    }
     private var advanced = false
     private var manualDeveloper = false
     override fun attachBaseContext(base: Context) { super.attachBaseContext(AppLanguage.wrap(base)) }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         preferences = ShellPreferences(this)
+        pendingRequest = intent.getStringExtra(SETUP_REQUEST)
+        intent.removeExtra(SETUP_REQUEST)
         advanced = savedInstanceState?.getBoolean("advanced") ?: false
         manualDeveloper = savedInstanceState?.getBoolean("developer") ?: false
         content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(palette.background); setPadding(dp(24), dp(24), dp(24), dp(32)) }
@@ -48,8 +61,35 @@ class ShellSetupActivity : Activity() {
         ShellSetupService.changed = { render() }
         if (preferences.authorized) ShellSetupService.start(this)
         render()
+        handler.removeCallbacks(refresh); handler.postDelayed(refresh, 500)
+        handleRequest()
     }
-    override fun onPause() { ShellSetupService.changed = null; super.onPause() }
+    private fun handleRequest() {
+        val request = pendingRequest; pendingRequest = null
+        when (request) {
+            REQUEST_CONSENT -> if (!preferences.authorized) consent() else if (!preferences.backgroundEnabled) {
+                preferences.backgroundEnabled = true; ShellSetupService.start(this); render()
+            }
+            REQUEST_NOTIFICATIONS -> notifications()
+        }
+    }
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent); setIntent(intent)
+        pendingRequest = intent.getStringExtra(SETUP_REQUEST); intent.removeExtra(SETUP_REQUEST)
+        handleRequest()
+    }
+    override fun onPause() { handler.removeCallbacks(refresh); ShellSetupService.changed = null; super.onPause() }
+    override fun onDestroy() { handler.removeCallbacksAndMessages(null); super.onDestroy() }
+    @Deprecated("Use Android back navigation")
+    override fun onBackPressed() { BackgroundScreenSetup.current?.cancel(); super.onBackPressed() }
+    private fun consent() {
+        AlertDialog.Builder(this).setTitle(R.string.shell_title).setMessage(R.string.shell_consent)
+            .setPositiveButton(R.string.shell_agree) { _, _ ->
+                preferences.authorized = true; preferences.backgroundEnabled = true
+                ShellSetupService.start(this); render()
+            }.setNegativeButton(android.R.string.cancel) { _, _ -> BackgroundScreenSetup.current?.cancel(); render() }
+            .setOnCancelListener { BackgroundScreenSetup.current?.cancel(); render() }.show()
+    }
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putBoolean("advanced", advanced); outState.putBoolean("developer", manualDeveloper)
         super.onSaveInstanceState(outState)
@@ -71,6 +111,29 @@ class ShellSetupActivity : Activity() {
         content.removeAllViews()
         label(R.string.shell_experimental)
         label(R.string.shell_title, true)
+        val guided = BackgroundScreenSetup.current
+        renderedMessage = guided?.message
+        renderedUnavailableReason = coordinator.backgroundScreenSetupUnavailableReason
+        if (guided != null) {
+            TextView(this).apply {
+                text = guided.message; setTextColor(palette.text); textSize = 16f
+                accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
+                content.addView(this)
+            }
+            button(R.string.shell_auto_stop) { guided.cancel(); render() }
+        } else {
+            renderedUnavailableReason?.let { label(it) }
+            button(R.string.shell_auto_setup, enabled = renderedUnavailableReason == null) {
+                if (coordinator.requestBackgroundScreenSetup()) {
+                    startActivity(Intent(this, lifeos.md.tapilot.MainActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+                    finish()
+                } else {
+                    Toast.makeText(this, R.string.shell_auto_not_started, Toast.LENGTH_LONG).show()
+                    render()
+                }
+            }
+        }
         val enabled = Switch(this).apply {
             setText(R.string.shell_chat_enabled); setTextColor(palette.text); textSize = 17f
             minHeight = dp(56); isChecked = preferences.backgroundEnabled
@@ -83,20 +146,16 @@ class ShellSetupActivity : Activity() {
                 BackgroundConversationDevice.current?.closeScreen()
                 render()
             } else if (!preferences.authorized) {
-                AlertDialog.Builder(this).setTitle(R.string.shell_title).setMessage(R.string.shell_consent)
-                    .setPositiveButton(R.string.shell_agree) { _, _ ->
-                        preferences.authorized = true; preferences.backgroundEnabled = true
-                        ShellSetupService.start(this); render()
-                    }.setNegativeButton(android.R.string.cancel) { _, _ -> render() }
-                    .setOnCancelListener { render() }.show()
+                consent()
             } else { preferences.backgroundEnabled = true; ShellSetupService.start(this); render() }
         }
         if (!preferences.authorized) {
             label(R.string.shell_chat_off)
-            button(R.string.shell_done) { finish() }
+            button(R.string.shell_done) { BackgroundScreenSetup.current?.cancel(); finish() }
             return
         }
         label(ShellSetupService.message(ShellSetupService.state)).apply { accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE }
+        if (!ShellNotifications(this).pairAllowed()) button(R.string.shell_notifications) { notifications() }
         if (!Settings.canDrawOverlays(this)) {
             label(R.string.shell_overlay_help)
             button(R.string.shell_overlay_permission) {
@@ -114,7 +173,6 @@ class ShellSetupActivity : Activity() {
                 button(R.string.shell_step_done) { manualDeveloper = true; render() }
             } else {
                 label(R.string.shell_pair_title, true); label(R.string.shell_pair_help)
-                if (!ShellNotifications(this).pairAllowed()) button(R.string.shell_notifications) { notifications() }
                 button(R.string.shell_wireless) { wirelessSettings() }
                 button(R.string.shell_retry, ShellSetupService.state !in listOf(ShellState.PAIRING, ShellState.CONNECTING)) {
                     ShellSetupService.instance?.retryNow() ?: ShellSetupService.start(this)
@@ -136,7 +194,7 @@ class ShellSetupActivity : Activity() {
                     .setNegativeButton(android.R.string.cancel, null).show()
             }
         }
-        button(R.string.shell_done) { finish() }
+        button(R.string.shell_done) { BackgroundScreenSetup.current?.cancel(); finish() }
     }
     private fun recoveryControl() {
         val check = CheckBox(this).apply { setText(R.string.shell_recovery); setTextColor(palette.text); buttonTintList = android.content.res.ColorStateList.valueOf(palette.text); isChecked = preferences.recovery; minHeight = dp(48) }
@@ -202,13 +260,20 @@ class ShellSetupActivity : Activity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults); render()
     }
     private fun wirelessSettings() {
-        val direct = Intent("android.settings.WIRELESS_DEBUGGING_SETTINGS")
-        if (direct.resolveActivity(packageManager) != null) runCatching { startActivity(direct) }
+        runCatching { startActivity(wirelessIntent(this)) }
             .onFailure { open(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS) }
-        else runCatching { startActivity(Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
-            .putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
-            .putExtra(":settings:show_fragment_args", Bundle().apply { putString(":settings:fragment_args_key", "toggle_adb_wireless") })) }
-            .onFailure { open(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS) }
+    }
+    companion object {
+        internal const val SETUP_REQUEST = "background-screen-setup-request"
+        internal const val REQUEST_CONSENT = "consent"
+        internal const val REQUEST_NOTIFICATIONS = "notifications"
+        internal fun wirelessIntent(context: Context): Intent {
+            val direct = Intent("android.settings.WIRELESS_DEBUGGING_SETTINGS")
+            if (direct.resolveActivity(context.packageManager) != null) return direct
+            return Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+                .putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
+                .putExtra(":settings:show_fragment_args", Bundle().apply { putString(":settings:fragment_args_key", "toggle_adb_wireless") })
+        }
     }
     private fun open(action: String) {
         runCatching { startActivity(Intent(action)) }.onFailure {

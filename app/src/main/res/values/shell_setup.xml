@@ -1,4 +1,9 @@
 <resources>
+    <string name="shell_auto_wireless_busy">This phone is controlled by a computer. Disconnect it on that computer before starting automatic setup.</string>
+    <string name="shell_auto_busy">Finish the current task before starting automatic setup.</string>
+    <string name="shell_auto_not_started">Automatic setup did not start. Return to chat to check the message.</string>
+    <string name="shell_auto_setup">Set up automatically</string>
+    <string name="shell_auto_stop">Stop automatic setup</string>
     <string name="shell_title">Background screen</string>
     <string name="shell_experimental">Experimental · optional</string>
     <string name="shell_intro">Try operating an app on a separate screen while keeping your main screen available. Setup happens on this phone; no computer is needed.</string>

@@ -193,4 +193,93 @@ class ConversationTaskRunnerTest {
             assertNull(TaskLifecycle.continuation(listOf(entry), "A separate question"))
         }
     }
+    @Test fun setupUsesHostReadinessInsteadOfPhoneScreenshotAndRetainsReports() {
+        val services = Services().apply { success = false }
+        val host = JSONObject().put("phase", "completed").put("reply", "Native setup ready")
+        val agent = Agent { _, callbacks ->
+            val result = callbacks.setupBackgroundScreen()
+            JSONObject().put("phase", result.getString("phase")).put("reply", result.getString("reply"))
+                .put("completionKind", "setup")
+        }
+        val result = ConversationTaskRunner(agent, services, { _, _ -> JSONObject() }, { it }, {},
+            setupBackgroundScreen = { operate ->
+                operate("Enable debugging", "Enabled or user confirmation shown")
+                host
+            }).run(input().copy(source = "帮我开启后台屏幕", userInput = "帮我开启后台屏幕", backgroundScreen = true)) { false }
+        assertTrue(result.outcome.isSuccess)
+        assertEquals("Native setup ready", result.outcome.getOrThrow())
+        assertEquals(1, result.reports.length())
+        assertFalse(services.sources.single().toString().contains("owned nonzero background display"))
+        assertEquals("1", services.environments.single().getString("MIDSCENE_ANDROID_SETUP_NAVIGATION"))
+        assertFalse(services.actions.contains("HOME"))
+    }
+
+    @Test fun setupCannotClaimHostSuccessWithoutRunningSetup() {
+        val result = runner(Agent { _, _ -> JSONObject().put("phase", "completed").put("reply", "Invented")
+            .put("completionKind", "setup") }, Services()).run(input().copy(source = "帮我开启后台屏幕", userInput = "帮我开启后台屏幕")) { false }
+        assertTrue(result.outcome.isFailure)
+    }
+
+    @Test fun setupRejectsAlteredHostResult() {
+        val agent = Agent { _, callbacks ->
+            callbacks.setupBackgroundScreen()
+            JSONObject().put("phase", "completed").put("reply", "Invented success").put("completionKind", "setup")
+        }
+        val result = ConversationTaskRunner(agent, Services(), { _, _ -> JSONObject() }, { it }, {},
+            setupBackgroundScreen = { JSONObject().put("phase", "waiting_user").put("reply", "Consent needed") })
+            .run(input().copy(source = "帮我开启后台屏幕", userInput = "帮我开启后台屏幕")) { false }
+        assertTrue(result.outcome.isFailure)
+    }
+
+    @Test fun cancellingSetupConfirmationPreventsSetupSideEffects() {
+        val stopped = AtomicBoolean()
+        var setupCalled = false
+        val agent = Agent { _, callbacks -> callbacks.setupBackgroundScreen(); terminal("completed") }
+        val result = ConversationTaskRunner(agent, Services(), { _, _ -> JSONObject() },
+            { stopped.set(true); it }, {}, setupBackgroundScreen = { setupCalled = true; JSONObject() })
+            .run(input().copy(userInput = "帮我开启后台屏幕"), stopped::get)
+        assertTrue(result.outcome.isFailure)
+        assertFalse(setupCalled)
+    }
+
+    @Test fun ordinaryBackgroundWorkCannotInvokeSetupEvenIfTheAgentRequestsIt() {
+        var called = false
+        val task = ConversationTaskRunner(Agent { request, callbacks ->
+            assertFalse(request.allowBackgroundSetup)
+            callbacks.setupBackgroundScreen()
+            terminal("completed")
+        }, Services(), { _, _ -> JSONObject() }, { it }, {}, setupBackgroundScreen = { called = true; JSONObject() })
+        val result = task.run(input().copy(userInput = "Open Android Settings on the background screen")) { false }
+        assertTrue(result.outcome.isFailure)
+        assertFalse(called)
+    }
+
+    @Test fun realTypedAndButtonContinuationsKeepNativeSetupCapability() {
+        val previous = JSONObject().put("id", "setup").put("conversationId", "chat").put("createdAt", 1)
+            .put("source", "帮我开启后台屏幕").put("goal", "帮我开启后台屏幕").put("phase", "waiting_user")
+        for ((text, explicit, handoff) in listOf(Triple("继续", false, false),
+            Triple("Continue the task. Inspect the current screen.", true, false), Triple("继续", true, true))) {
+            val history = TaskHistorySnapshot.capture(listOf(previous), "chat", text, "task", null, if (explicit) "setup" else null)
+            var called = false
+            val agent = Agent { request, callbacks ->
+                assertTrue(request.allowBackgroundSetup)
+                callbacks.setupBackgroundScreen().put("completionKind", "setup")
+            }
+            val result = ConversationTaskRunner(agent, Services(), { _, _ -> JSONObject() }, { it }, {},
+                setupBackgroundScreen = { called = true; JSONObject().put("phase", "completed").put("reply", "Native ready") })
+                .run(input(history).copy(userInput = text, source = text, resume = explicit, phoneStarted = handoff, goal = "帮我开启后台屏幕")) { false }
+            assertTrue(result.outcome.toString(), result.outcome.isSuccess)
+            assertTrue(called)
+        }
+    }
+
+    @Test fun setupCannotCompleteAsAnAnswerOrAnOrdinaryPhoneTask() {
+        for (kind in listOf("answer", "phone")) {
+            val agent = Agent { _, _ -> JSONObject().put("phase", "completed").put("reply", "Invented ready")
+                .put("completionKind", kind).put("operations", 0).put("lastPhoneResult", PhoneResult(true, "Visible").json()) }
+            val result = runner(agent, Services()).run(input().copy(userInput = "帮我开启后台屏幕")) { false }
+            assertTrue(kind, result.outcome.isFailure)
+        }
+    }
+
 }
