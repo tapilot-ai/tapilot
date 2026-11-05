@@ -195,7 +195,7 @@ jobs:
       - run: npm ci --prefix tests/midscene
       - name: Prepare serialized SIWC session
         id: access
-        uses: quanru/midscene-action/siwc/prepare@b1ba55da51c8768df637bad5d30f78754f3716c2
+        uses: web-infra-dev/midscene-action/siwc/prepare@94837f568181d3e855a22a4854f4a2191ac82a6a
         with:
           working-directory: tests/midscene
           environment: tapilot-siwc
@@ -257,7 +257,7 @@ jobs:
           sudo udevadm trigger --name-match=kvm
       - name: Install APK and run real screen core flows with Terra
         if: ${{ vars.TAPILOT_CI_AUTH_MODE == 'siwc' }}
-        uses: quanru/midscene-action/siwc/run@b1ba55da51c8768df637bad5d30f78754f3716c2
+        uses: web-infra-dev/midscene-action/siwc/run@94837f568181d3e855a22a4854f4a2191ac82a6a
         with:
           working-directory: .
           command: GITHUB_STEP_SUMMARY=/dev/null bash scripts/run-apk-ci-emulator.sh
@@ -340,7 +340,7 @@ jobs:
         id: apk-test
         env:
           TAPILOT_CI_PLAN: ${{ needs.apk-build.outputs.plan }}
-        uses: quanru/midscene-action@b1ba55da51c8768df637bad5d30f78754f3716c2
+        uses: web-infra-dev/midscene-action@94837f568181d3e855a22a4854f4a2191ac82a6a
         with:
           working-directory: tests/midscene
           command: node scripts/merge-ci-reports.mjs
@@ -446,7 +446,7 @@ jobs:
           git rev-parse HEAD > tests/midscene/midscene_run/ci/source.txt
           sha256sum app/build/outputs/apk/debug/app-debug.apk > tests/midscene/midscene_run/ci/SHA256SUMS
       - name: Run Android smoke cases and collect native Midscene reports
-        uses: quanru/midscene-action@b1ba55da51c8768df637bad5d30f78754f3716c2 # reviewed SIWC revision; upstream PR #4
+        uses: web-infra-dev/midscene-action@94837f568181d3e855a22a4854f4a2191ac82a6a # pinned upstream SIWC revision
         env:
           MIDSCENE_MODEL_API_KEY: ${{ secrets.MIDSCENE_MODEL_API_KEY }}
           MIDSCENE_INCLUDE_TAGS: smoke
