@@ -17,7 +17,7 @@ const exec = promisify(execFile);
 
 test('explicit target overrides inherited host evidence; missing target never installs', async t => {
   const home = await mkdtemp(join(tmpdir(), 'tapilot-target-'));
-  t.after(() => rm(home, { recursive: true, force: true }));
+  t.after(() => rm(home, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 }));
   assert.equal(detection('doubao', { host: 'codex' }).selectedClient, 'doubao');
   assert.equal(detection('doubao', { host: 'codex' }).recommendation, 'doubao');
   const result = await clientCommand('install', {}, { home });
@@ -30,7 +30,7 @@ test('explicit target overrides inherited host evidence; missing target never in
 
 test('real managed install survives removed source and Node, updates old launcher, and preserves prior install on failed update', { timeout: 300000 }, async t => {
   const home = await mkdtemp(join(tmpdir(), 'tapilot-stable-'));
-  t.after(() => rm(home, { recursive: true, force: true }));
+  t.after(() => rm(home, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 }));
   const source = join(home, 'temporary checkout');
   await mkdir(source);
   for (const name of ['server', 'ui', 'assets', 'integrations', 'skills', 'scripts', 'package.json', 'LICENSE'])
@@ -107,13 +107,13 @@ test('real managed install survives removed source and Node, updates old launche
   assert.equal(removed.pairingPreserved, true);
   assert.equal(removed.runtimeRetained, true, 'uninstall cannot delete code still used by a shared daemon or host');
   await access(updated.runtime.node);
-  const stopped = once(running, 'exit'); running.kill(); await stopped;
+  const stopped = once(running, 'close'); running.kill(); await stopped;
   await assert.rejects(access(result.record), { code: 'ENOENT' });
 });
 
 test('skill-only integration exports usable guidance without an MCP connector', async t => {
   const home = await mkdtemp(join(tmpdir(), 'tapilot-skill-'));
-  t.after(() => rm(home, { recursive: true, force: true }));
+  t.after(() => rm(home, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 }));
   const options = { home, skillsRoot: join(home, 'canonical'), prepareRuntime: async () => ({ root: packageRoot, node: process.execPath, dispose: async () => {} }) };
   const result = await installClient('skill', options);
   assert.equal(result.panel, 'none');
@@ -130,7 +130,7 @@ test('skill-only integration exports usable guidance without an MCP connector', 
 
 test('doctor reports an edited installed config and installer preserves an edited launcher', async t => {
   const home = await mkdtemp(join(tmpdir(), 'tapilot-diagnosis-'));
-  t.after(() => rm(home, { recursive: true, force: true }));
+  t.after(() => rm(home, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 }));
   const options = { home, skillsRoot: join(home, 'canonical'), prepareRuntime: async () => ({ root: packageRoot, node: process.execPath, dispose: async () => {} }) };
   const result = await installClient('workbuddy', options);
   const original = await readFile(result.configFile, 'utf8');
