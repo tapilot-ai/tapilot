@@ -37,3 +37,9 @@ independent final screenshot verification is unchanged. The real brightness
 trace otherwise waited two seconds after a plain-text response before asking
 for the required completion marker. `semantic-retry.test.mjs` verifies immediate
 correction, bounded failure and cancellation for both ESM and CommonJS.
+
+On Android only, the core publication patch uses exclusive file copy instead of
+hard links for single-file reports. Android denies the hard-link operation even
+inside the app sandbox. COPYFILE_EXCL preserves rejection of existing targets;
+other platforms retain the upstream publication path. The application imports and
+shares the original self-contained SDK report, so no data sidecars are lost.

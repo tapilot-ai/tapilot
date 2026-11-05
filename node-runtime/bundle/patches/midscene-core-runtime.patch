@@ -91,3 +91,52 @@ diff --git a/dist/lib/ai-model/service-caller/semantic-retry.js b/dist/lib/ai-mo
                  abortSignal?.throwIfAborted();
                  return callAndParseOnce(remainingRetries - 1, retryAttempt + 1, error);
              }
+diff --git a/dist/es/dump/report-artifact-publication.mjs b/dist/es/dump/report-artifact-publication.mjs
+index eecd403..df1a0a6 100644
+--- a/dist/es/dump/report-artifact-publication.mjs
++++ b/dist/es/dump/report-artifact-publication.mjs
+@@ -1,6 +1,6 @@
+ import { createHash } from "node:crypto";
+-import { closeSync, existsSync, linkSync, openSync, renameSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+-import { link as promises_link, rename, rm } from "node:fs/promises";
++import { copyFileSync, constants, closeSync, existsSync, linkSync, openSync, renameSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
++import { copyFile, link as promises_link, rename, rm } from "node:fs/promises";
+ import { dirname, join, resolve } from "node:path";
+ import { withReportArtifactLock } from "./report-artifact-store.mjs";
+ function publicationLockName(destination) {
+@@ -20,6 +20,7 @@ async function publishReportArtifact(prepared, destination, directory, overwrite
+             });
+             await rename(prepared, destination);
+         } else if (overwrite) await rename(prepared, destination);
++        else if (process.platform === 'android') await copyFile(prepared, destination, constants.COPYFILE_EXCL);
+         else await promises_link(prepared, destination);
+     }, 10000, publicationLockName(destination));
+ }
+@@ -38,6 +39,7 @@ function publishReportArtifactSync(prepared, destination, directory, overwrite =
+             });
+             renameSync(prepared, destination);
+         } else if (overwrite) renameSync(prepared, destination);
++        else if (process.platform === 'android') copyFileSync(prepared, destination, constants.COPYFILE_EXCL);
+         else linkSync(prepared, destination);
+     } finally{
+         try {
+diff --git a/dist/lib/dump/report-artifact-publication.js b/dist/lib/dump/report-artifact-publication.js
+index f690b3b..4aa4a2b 100644
+--- a/dist/lib/dump/report-artifact-publication.js
++++ b/dist/lib/dump/report-artifact-publication.js
+@@ -49,6 +49,7 @@ async function publishReportArtifact(prepared, destination, directory, overwrite
+             });
+             await (0, promises_namespaceObject.rename)(prepared, destination);
+         } else if (overwrite) await (0, promises_namespaceObject.rename)(prepared, destination);
++        else if (process.platform === 'android') await (0, promises_namespaceObject.copyFile)(prepared, destination, external_node_fs_namespaceObject.constants.COPYFILE_EXCL);
+         else await (0, promises_namespaceObject.link)(prepared, destination);
+     }, 10000, publicationLockName(destination));
+ }
+@@ -67,6 +68,7 @@ function publishReportArtifactSync(prepared, destination, directory, overwrite =
+             });
+             (0, external_node_fs_namespaceObject.renameSync)(prepared, destination);
+         } else if (overwrite) (0, external_node_fs_namespaceObject.renameSync)(prepared, destination);
++        else if (process.platform === 'android') (0, external_node_fs_namespaceObject.copyFileSync)(prepared, destination, external_node_fs_namespaceObject.constants.COPYFILE_EXCL);
+         else (0, external_node_fs_namespaceObject.linkSync)(prepared, destination);
+     } finally{
+         try {

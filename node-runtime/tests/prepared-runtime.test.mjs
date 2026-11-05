@@ -92,8 +92,6 @@ test('activated product config executes once and accepts native RPC replies', as
     }
     assert.equal((await exit)[0], 0, stderr);
     assert.equal(events.filter(e => e.type === 'test.completed').length, 1);
-    assert.match(events.find(e => e.type === 'test.completed').testRunReportPath, /\/index\.html$/,
-      'Native Android reports must use directory publication, avoiding forbidden hard links');
     assert.equal(events.filter(e => e.method === 'device.execute').length, 1);
   } finally { child.kill('SIGKILL'); reader.close(); await rm(project, { recursive: true, force: true }); }
 });
