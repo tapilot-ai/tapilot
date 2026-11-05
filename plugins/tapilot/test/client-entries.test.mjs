@@ -29,3 +29,20 @@ test('stable entries support first install, update, rollback and reject unmanage
     await assert.rejects(publishEntries(directory, releases[0]), /edited or is unmanaged/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+// A missing release must not make an existing executable appear unmanaged-free.
+test('a Windows hard link with a missing recorded source is preserved', { skip: process.platform !== 'win32' }, async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tapilot-entry-source-'));
+  try {
+    const directory = join(root, 'entries');
+    await mkdir(directory);
+    const node = join(root, 'node.exe');
+    await writeFile(node, 'fixture');
+    const release = join(root, 'release');
+    await mkdir(release);
+    const first = await publishEntries(directory, { root: release, node });
+    await rm(node);
+    assert.equal(await entryMatches(join(directory, 'node.exe'), node), false);
+    await assert.rejects(publishEntries(directory, { root: release, node }, first.targets), /edited or is unmanaged/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});

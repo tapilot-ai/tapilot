@@ -9,8 +9,13 @@ export async function entryMatches(file, target) {
   const info = await lstat(file);
   if (info.isSymbolicLink()) return sameLink(await readlink(file), target);
   if (process.platform !== 'win32' || !info.isFile()) return false;
-  const source = await stat(target);
-  return source.dev === info.dev && source.ino === info.ino;
+  try {
+    const source = await stat(target);
+    return source.dev === info.dev && source.ino === info.ino;
+  } catch (error) {
+    if (error.code === 'ENOENT') return false;
+    throw error;
+  }
 }
 
 // Stable host paths; releases remain immutable for already-running sessions.

@@ -210,11 +210,11 @@ test("real AI SDK uses Responses fixture and wireless adapter for act/assert/wai
           stdio: ["ignore", "ignore", "pipe", "ipc"],
         },
       );
-      let stderr = "";
+      let stderr = "", received, failure;
       child.stderr.on("data", (v) => (stderr += v));
       const timer = setTimeout(() => {
+        failure = Error("worker timeout " + stderr);
         child.kill();
-        reject(Error("worker timeout " + stderr));
       }, 20000);
       child.on("message", async (m) => {
         if (m.type === "request")
@@ -224,14 +224,17 @@ test("real AI SDK uses Responses fixture and wireless adapter for act/assert/wai
             value: await phone.request(m.method, m.params),
           });
         else if (m.type === "result") {
-          clearTimeout(timer);
-          resolve({ ...m.result, diagnostic: stderr });
+          received = m.result;
         }
       });
-      child.on("error", reject);
-      child.on("exit", (code) => {
+      child.on("error", error => { failure = error; });
+      // On Windows the child retains its cwd until close; do not delete the
+      // fixture or start the next worker as soon as the result IPC arrives.
+      child.on("close", (code) => {
         clearTimeout(timer);
-        if (code && !stderr.includes("Assertion")) reject(Error(stderr));
+        if (failure) reject(failure);
+        else if (!received || code && !stderr.includes("Assertion")) reject(Error(stderr || "worker exited without result"));
+        else resolve({ ...received, diagnostic: stderr });
       });
       child.send({
         type: "run",
