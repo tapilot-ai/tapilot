@@ -1,0 +1,354 @@
+{
+  "commit": "79ba4a20d84b3b6bc75ccd52bb3ba8c8fa057073",
+  "runUrl": "https://github.com/tapilot-ai/tapilot/actions/runs/42041054670",
+  "published": false,
+  "results": [
+    {
+      "archive": "tapilot-setup-darwin-arm64-0.6.19.tar.gz",
+      "platform": "darwin",
+      "arch": "arm64",
+      "node": "v24.20.0",
+      "runner": "macOS",
+      "sha256": "7cae59759c94f2f6c19415f90ba65fb05bd8de8b119bdb6664eb8c89b694cb88",
+      "results": [
+        {
+          "client": "doubao",
+          "interactiveFirstInstall": "passed",
+          "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+          "firstInstall": "passed",
+          "update": "passed",
+          "stableHostPaths": "passed",
+          "restartAfterSourceRemoval": "passed"
+        },
+        {
+          "client": "workbuddy",
+          "interactiveFirstInstall": "passed",
+          "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+          "firstInstall": "passed",
+          "update": "passed",
+          "stableHostPaths": "passed",
+          "restartAfterSourceRemoval": "passed"
+        },
+        {
+          "client": "dsh",
+          "interactiveFirstInstall": "passed",
+          "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+          "firstInstall": "passed",
+          "update": "passed",
+          "stableHostPaths": "passed",
+          "restartAfterSourceRemoval": "passed"
+        },
+        {
+          "client": "cherry",
+          "interactiveFirstInstall": "passed",
+          "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+          "firstInstall": "passed",
+          "update": "passed",
+          "stableHostPaths": "passed",
+          "restartAfterSourceRemoval": "passed"
+        }
+      ],
+      "osUserSession": "not_tested_isolated_home_only",
+      "nativeHostRendering": "not_tested",
+      "phone": "not_tested",
+      "jobUrl": "https://github.com/tapilot-ai/tapilot/actions/runs/42041054670/job/127291659126",
+      "conclusion": "success",
+      "runtimeTests": {
+        "passed": 193,
+        "failed": 0,
+        "skipped": 1
+      }
+    },
+    {
+      "archive": "tapilot-setup-darwin-x64-0.6.19.tar.gz",
+      "platform": "darwin",
+      "arch": "x64",
+      "node": "v24.19.0",
+      "runner": "macOS",
+      "sha256": "0d9c93ad1130ca43053773dbd7418c8d8de96085dd5c50b93def551adc7d3571",
+      "results": [
+        {
+          "client": "doubao",
+          "interactiveFirstInstall": "passed",
+          "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+          "firstInstall": "passed",
+          "update": "passed",
+          "stableHostPaths": "passed",
+          "restartAfterSourceRemoval": "passed"
+        },
+        {
+          "client": "workbuddy",
+          "interactiveFirstInstall": "passed",
+          "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+          "firstInstall": "passed",
+          "update": "passed",
+          "stableHostPaths": "passed",
+          "restartAfterSourceRemoval": "passed"
+        },
+        {
+          "client": "dsh",
+          "interactiveFirstInstall": "passed",
+          "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+          "firstInstall": "passed",
+          "update": "passed",
+          "stableHostPaths": "passed",
+          "restartAfterSourceRemoval": "passed"
+        },
+        {
+          "client": "cherry",
+          "interactiveFirstInstall": "passed",
+          "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+          "firstInstall": "passed",
+          "update": "passed",
+          "stableHostPaths": "passed",
+          "restartAfterSourceRemoval": "passed"
+        }
+      ],
+      "osUserSession": "not_tested_isolated_home_only",
+      "nativeHostRendering": "not_tested",
+      "phone": "not_tested",
+      "jobUrl": "https://github.com/tapilot-ai/tapilot/actions/runs/42041054670/job/127291659110",
+      "conclusion": "success",
+      "runtimeTests": {
+        "passed": 193,
+        "failed": 0,
+        "skipped": 1
+      }
+    },
+    {
+      "archive": "tapilot-setup-linux-arm64-0.6.19.tar.gz",
+      "platform": "linux",
+      "arch": "arm64",
+      "node": "v24.22.2",
+      "runner": "Linux",
+      "sha256": "5dfca8bedd94ecf081a544e38f2fe176c715511d3e86bd938472ca5e6b34ee34",
+      "results": [
+        {
+          "client": "doubao",
+          "interactiveFirstInstall": "passed",
+          "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+          "firstInstall": "passed",
+          "update": "passed",
+          "stableHostPaths": "passed",
+          "restartAfterSourceRemoval": "passed"
+        },
+        {
+          "client": "workbuddy",
+          "interactiveFirstInstall": "passed",
+          "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+          "firstInstall": "passed",
+          "update": "passed",
+          "stableHostPaths": "passed",
+          "restartAfterSourceRemoval": "passed"
+        },
+        {
+          "client": "dsh",
+          "interactiveFirstInstall": "passed",
+          "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+          "firstInstall": "passed",
+          "update": "passed",
+          "stableHostPaths": "passed",
+          "restartAfterSourceRemoval": "passed"
+        },
+        {
+          "client": "cherry",
+          "interactiveFirstInstall": "passed",
+          "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+          "firstInstall": "passed",
+          "update": "passed",
+          "stableHostPaths": "passed",
+          "restartAfterSourceRemoval": "passed"
+        }
+      ],
+      "osUserSession": "not_tested_isolated_home_only",
+      "nativeHostRendering": "not_tested",
+      "phone": "not_tested",
+      "jobUrl": "https://github.com/tapilot-ai/tapilot/actions/runs/42041054670/job/127291659195",
+      "conclusion": "success",
+      "runtimeTests": {
+        "passed": 193,
+        "failed": 0,
+        "skipped": 1
+      }
+    },
+    {
+      "archive": "tapilot-setup-linux-x64-0.6.19.tar.gz",
+      "platform": "linux",
+      "arch": "x64",
+      "node": "v24.22.2",
+      "runner": "Linux",
+      "sha256": "3ea71a9ab439708c392ab8fbefdc45d5278f983de04dccb23d595f0e41ede5d6",
+      "results": [
+        {
+          "client": "doubao",
+          "interactiveFirstInstall": "passed",
+          "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+          "firstInstall": "passed",
+          "update": "passed",
+          "stableHostPaths": "passed",
+          "restartAfterSourceRemoval": "passed"
+        },
+        {
+          "client": "workbuddy",
+          "interactiveFirstInstall": "passed",
+          "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+          "firstInstall": "passed",
+          "update": "passed",
+          "stableHostPaths": "passed",
+          "restartAfterSourceRemoval": "passed"
+        },
+        {
+          "client": "dsh",
+          "interactiveFirstInstall": "passed",
+          "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+          "firstInstall": "passed",
+          "update": "passed",
+          "stableHostPaths": "passed",
+          "restartAfterSourceRemoval": "passed"
+        },
+        {
+          "client": "cherry",
+          "interactiveFirstInstall": "passed",
+          "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+          "firstInstall": "passed",
+          "update": "passed",
+          "stableHostPaths": "passed",
+          "restartAfterSourceRemoval": "passed"
+        }
+      ],
+      "osUserSession": "not_tested_isolated_home_only",
+      "nativeHostRendering": "not_tested",
+      "phone": "not_tested",
+      "jobUrl": "https://github.com/tapilot-ai/tapilot/actions/runs/42041054670/job/127291658693",
+      "conclusion": "success",
+      "runtimeTests": {
+        "passed": 193,
+        "failed": 0,
+        "skipped": 1
+      }
+    },
+    {
+      "archive": "tapilot-setup-win32-arm64-0.6.19.tar.gz",
+      "platform": "win32",
+      "arch": "arm64",
+      "node": "v24.22.2",
+      "runner": "Windows",
+      "sha256": "bc65c402f399dc4c635cc2884a66db39d55e3b39c0dc708274895bc14a7bd8da",
+      "results": [
+        {
+          "client": "doubao",
+          "interactiveFirstInstall": "passed",
+          "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+          "firstInstall": "passed",
+          "update": "passed",
+          "stableHostPaths": "passed",
+          "restartAfterSourceRemoval": "passed"
+        },
+        {
+          "client": "workbuddy",
+          "interactiveFirstInstall": "passed",
+          "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+          "firstInstall": "passed",
+          "update": "passed",
+          "stableHostPaths": "passed",
+          "restartAfterSourceRemoval": "passed"
+        },
+        {
+          "client": "dsh",
+          "interactiveFirstInstall": "passed",
+          "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+          "firstInstall": "passed",
+          "update": "passed",
+          "stableHostPaths": "passed",
+          "restartAfterSourceRemoval": "passed"
+        },
+        {
+          "client": "cherry",
+          "interactiveFirstInstall": "passed",
+          "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+          "firstInstall": "passed",
+          "update": "passed",
+          "stableHostPaths": "passed",
+          "restartAfterSourceRemoval": "passed"
+        }
+      ],
+      "osUserSession": "not_tested_isolated_home_only",
+      "nativeHostRendering": "not_tested",
+      "phone": "not_tested",
+      "jobUrl": "https://github.com/tapilot-ai/tapilot/actions/runs/42041054670/job/127291659491",
+      "conclusion": "success",
+      "runtimeTests": {
+        "passed": 194,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "archive": "tapilot-setup-win32-x64-0.6.19.tar.gz",
+      "platform": "win32",
+      "arch": "x64",
+      "node": "v24.22.2",
+      "runner": "Windows",
+      "sha256": "9a98540216687cd61b0382a788c442971cb5f03df5520f5566deb49f41633ddb",
+      "results": [
+        {
+          "client": "doubao",
+          "interactiveFirstInstall": "passed",
+          "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+          "firstInstall": "passed",
+          "update": "passed",
+          "stableHostPaths": "passed",
+          "restartAfterSourceRemoval": "passed"
+        },
+        {
+          "client": "workbuddy",
+          "interactiveFirstInstall": "passed",
+          "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+          "firstInstall": "passed",
+          "update": "passed",
+          "stableHostPaths": "passed",
+          "restartAfterSourceRemoval": "passed"
+        },
+        {
+          "client": "dsh",
+          "interactiveFirstInstall": "passed",
+          "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+          "firstInstall": "passed",
+          "update": "passed",
+          "stableHostPaths": "passed",
+          "restartAfterSourceRemoval": "passed"
+        },
+        {
+          "client": "cherry",
+          "interactiveFirstInstall": "passed",
+          "environment": "allowlisted_without_inherited_provider_or_tapilot_config",
+          "firstInstall": "passed",
+          "update": "passed",
+          "stableHostPaths": "passed",
+          "restartAfterSourceRemoval": "passed"
+        }
+      ],
+      "osUserSession": "not_tested_isolated_home_only",
+      "nativeHostRendering": "not_tested",
+      "phone": "not_tested",
+      "jobUrl": "https://github.com/tapilot-ai/tapilot/actions/runs/42041054670/job/127291659372",
+      "conclusion": "success",
+      "runtimeTests": {
+        "passed": 194,
+        "failed": 0,
+        "skipped": 0
+      }
+    }
+  ],
+  "downloadVerification": {
+    "platforms": [
+      "win32-x64",
+      "win32-arm64"
+    ],
+    "source": "GitHub Actions artifacts",
+    "zipCRC": "passed",
+    "sha256EntriesPerPlatform": 6,
+    "setupMatchesCIEvidence": true,
+    "publicStableRelease": false
+  }
+}
